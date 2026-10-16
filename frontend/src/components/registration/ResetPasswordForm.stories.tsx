@@ -62,6 +62,17 @@ export const FromAnInvite: Story = {
   },
 };
 
+/**
+ * Setting a password from a forgot password link, for somebody whose
+ * email address was not confirmed yet. The same link confirms it, so the
+ * page says "Set your password".
+ */
+export const ConfirmingTheAddress: Story = {
+  args: {
+    isConfirming: true,
+  },
+};
+
 export const DarkMode: Story = {
   ...Default,
   globals: { colorScheme: "dark" },

@@ -314,7 +314,340 @@ written.
       `email_not_verified`, and the delegate is told to verify their
       address.
 
-## Phase 5: Every module of teaching content
+### Forgot password, following OWASP
+
+Decided on 2026-10-16. The forgot password page says "Check your inbox"
+to everybody, so it never shows whether an address has an account, and
+the email says what is true. This is the OWASP Forgot Password Cheat
+Sheet's advice: the same answer on screen for every address, and the
+detail only where the owner alone can read it. Today
+`POST /api/auth/forgot-password` in `backend/app/main.py` already answers
+the same for everybody, but sends nothing to an address with no account,
+and a reset leaves an unconfirmed address unconfirmed. Both change here,
+then four stories test every case.
+
+- [x] Email an address with no account, from `forgot_password` in
+      `backend/app/main.py`: nobody has a Quill account with this
+      address, and a link to register. A new template beside
+      `password_reset.html.j2`, with its preview and its
+      `app/email/previews_test.py` case. The reply on screen and from the
+      API stays exactly as it is, so the page still reveals nothing. A
+      deactivated account still gets nothing: it is treated as unknown
+      today, and sending it a "register" email would invite a second
+      account. Somebody could type a stranger's address and send them
+      this email; the route allows three requests a minute and
+      `send_email` ten emails an hour to one address, which keeps that
+      small. Backend tests beside the route: an unknown address is sent
+      the register email, a deactivated one nothing, and the response is
+      identical in all three cases.
+
+      Built as `no_account.html.j2`. Found while building it: a send that
+      failed for a known address raised, so a failure could show the
+      address had an account. Every forgot password email now goes
+      through `_send_forgot_password_email`, which logs a refused or
+      failed send, without the address, and answers "ok" regardless.
+      The backend tests are in `backend/tests/auth_test.py`
+      (`TestForgotPasswordEmails`), with the existing route's tests,
+      rather than beside `main.py`.
+
+- [x] Confirm the address and set the password in one email. For an
+      account whose address is not confirmed yet, `forgot_password` sends
+      a "confirm your email and set your password" email instead of the
+      reset one, carrying the same token. `reset_password` marks
+      `email_verified` true whenever it accepts a token, for any account:
+      following a link sent to the address proves the address is theirs,
+      as the verification link does, which the route's own comment
+      already says. The page reads "Set your password" rather than "Reset
+      password" when the link came from that email, through a flag on the
+      link as `invite=1` already does. Check while building it whether an
+      admin-made account is unconfirmed when its invite is sent; the
+      invite uses the same token, so this would confirm it too. Backend
+      tests beside the route, and the page's own test for its heading.
+
+      Checked: `backend/app/users/create.py` makes an admin's account
+      with `email_verified` already true, so an invite never needed this.
+      Built as `confirm_and_set_password.html.j2` and a `confirm=1` flag
+      on the link, which `ResetPasswordForm`'s new `isConfirming` turns
+      into "Set your password" and a "Set password" button. The invite's
+      page is left saying "Reset password", as it did; that was not
+      asked for.
+
+- [ ] 10. As a uTD who has forgotten I never registered, I want forgot
+      password to email me that I have no account and how to register,
+      so that I am not left waiting for a reset that never comes.
+      Tested: the page says "Check your inbox", and the captured email
+      names no account and links to `/register`.
+- [ ] 11. As a TD who registered and never confirmed my address, I want
+      forgot password to confirm it and set my password in one email, so
+      that I can get in without a second round.
+      Tested: the email asks to confirm and set a password, following it
+      sets one, and the TD then signs in with no `email_not_verified`
+      refusal and no second email.
+- [ ] 12. As a TD or a TA, I want forgot password to email me a link to
+      set a new password, so that I can get back in.
+      Tested: the reset email's link sets a new password, the old one no
+      longer works, and the new one signs in.
+- [ ] 13. As Quill, I want a deactivated TD or TA who asks for a reset to
+      be sent nothing, so that a closed account cannot be opened again
+      this way.
+      Tested: the page says "Check your inbox" as for anybody, and no
+      email is captured for that address.
+
+## Phase 5: Taking a module, for a teaching admin and a teaching delegate
+
+Specs under `frontend/e2e/tests/taking-a-module/`. Each story is tested
+for both a TA and a TD unless it names one; a uTD becomes a TD by
+registering (Phase 4), so from sign-in on the two are the same. Each
+browser project signs in as its own TA and TD, so their attempts and
+results never mix: the dashboard counts in story 19 depend on it.
+
+The module is "Chest X-ray Interpretation" from `respiratory-teaching`,
+pinned by `.github/scripts/ci/fetch-e2e-teaching.sh`. It is public, so CI
+clones it with no token; the EoEETA module is private and would need a
+deploy key, which is Phase 10's question. Its assessment offers four of
+five questions, needs three right (75%) to pass, and each question's
+`question.yaml` names its answer in `correct_option_id`. So the tests need
+no made-up questions: a fixture reads the pinned module's answers, finds
+the question on screen by its text, and picks the right option to pass or
+a wrong one to fail. A new pin is then picked up with no test change.
+
+- [ ] Seed a TA and a TD per browser project, at "CI Teaching Centre",
+      given a place and enrolled on the module, so each browser sits its
+      own attempts. The TD's clinical lead is `ci_lead`, from Phase 4,
+      who is the person emailed on a pass.
+
+- [ ] Give the module a video. The pinned module has none, so story 7
+      cannot be tested against it. Add one short, licence-free clip to a
+      small test-only module kept in this repository beside the pinned
+      one, synced by `seed_ci.py` the same way, rather than to
+      `respiratory-teaching`, which is real teaching content. Check first
+      how a video slide is served when `TEACHING_STORAGE_BACKEND` is
+      `local`: if the local backend cannot serve one, story 7 is marked
+      `test.fail()` with a comment naming what is missing, so the suite
+      reports the moment it starts passing, and the gap goes in this
+      plan.
+
+- [ ] Add "Back to dashboard" to the result page when it is opened from
+      the dashboard (story 21). Today the button shows only straight
+      after an assessment, so somebody opening an old result has no way
+      back but the navigation. With its page test and story.
+
+- [ ] 1. As a TA or a TD, or a uTD, I want to open "How to join a course"
+      from the login page, read the guide, and get back to the login page
+      from a link in it, so that I can find out how to join before I sign
+      in. The guide, `src/guides/content/join-a-course.md`, links to
+      `/login`.
+- [ ] 2. As a TA or a TD, I want to sign in, so that I can take a module.
+- [ ] 3. As a TA or a TD, I want to see the one teaching module I am
+      enrolled on at `/teaching`, so that I know what to take.
+- [ ] 4. As a TA or a TD, I want to open the module's landing page, so
+      that I can see what it covers before I start.
+- [ ] 5. As a TA or a TD, I want to open the learning section from the
+      landing page, so that I can study before the assessment.
+- [ ] 6. As a TA or a TD, I want to read every slide to the end, so that I
+      cover all the learning.
+- [ ] 7. As a TA or a TD, I want every video in the learning to play, so
+      that I can watch what the slides show.
+      Tested: each video loads and its time moves on once played.
+- [ ] 8. As a TA or a TD, I want to leave the learning from the navigation
+      bar, so that I am never trapped in a lesson.
+- [ ] 9. As a TA or a TD, I want to start the assessment, so that I can be
+      tested on the module.
+- [ ] 10. As a TA or a TD, I want to see each question of the assessment
+      and answer it, so that every one is marked.
+- [ ] 11. As a TA or a TD, I want to finish the assessment, so that my
+      answers are submitted and scored.
+- [ ] 12. As a TA or a TD, I want to see my score on the result page,
+      `/teaching/assessment/{id}/result`, so that I know how I did.
+- [ ] 13. As a TA or a TD, I want to pass when I answer well enough, so
+      that my result reflects what I know.
+      Tested by answering every question right.
+- [ ] 14. As a TA or a TD, I want to fail when I do not, so that a pass
+      means something.
+      Tested by answering every question wrong.
+- [ ] 15. As a TA or a TD who has passed, I want to download my
+      certificate, so that I have proof of the pass.
+      Tested: the download is a PDF.
+- [ ] 16. As a TD who has passed, I want my clinical lead and me each to be
+      emailed the certificate, so that we both have it without asking.
+      Tested with the captured email from Phase 1: one to the delegate and
+      one to `ci_lead`, each with the certificate attached. For a TA the
+      same is checked for whatever lead their site has.
+- [ ] 17. As a TA or a TD, I want "Results by question" on a pass and on a
+      fail, showing each question with the right answer and mine, so that
+      I can learn from my mistakes.
+- [ ] 18. As a TA or a TD, I want "Back to dashboard" on the result page to
+      take me to the dashboard, so that I can carry on.
+- [ ] 19. As a TA or a TD, I want to see my earlier attempts on the
+      dashboard, so that I can look back at them.
+      Tested: after stories 13 and 14, two attempts, one pass and one
+      fail.
+- [ ] 20. As a TA or a TD, I want to open any earlier attempt from the
+      dashboard and see its result page again, so that I can look back at
+      how I did.
+- [ ] 21. As a TA or a TD, I want "Back to dashboard" on a result page I
+      opened from the dashboard too, so that I can always get back.
+      Needs the button added above.
+
+## Phase 6: Settings, for a teaching admin and a teaching delegate
+
+Specs under `frontend/e2e/tests/settings/`, each tested for both a TA and
+a TD. Each browser project changes its own seeded TA and TD, and every
+switch is put back where it started, so a retry replays cleanly.
+
+- [ ] 22. As a TA or a TD, I want to update my account details, so that
+      they stay correct.
+- [ ] 23. As a TA or a TD, I want to turn dark mode on and off, so that
+      Quill suits how I like to read.
+- [ ] 24. As a TA or a TD, I want to turn off "Help improve Quill", so
+      that I choose whether my use is counted.
+- [ ] 25. As a TA or a TD, I want to turn news and updates on and off, so
+      that I get only the email I want.
+- [ ] 26. As a TA or a TD, I want to turn on two-factor authentication,
+      so that my account is harder to break into.
+- [ ] 27. As a TA or a TD, I want to set up two-factor authentication with
+      an authenticator app and then sign in with a code from it, so that
+      it actually protects me.
+      Possible end to end: the setup page shows the secret in its
+      `otpauth://` link, and `e2e/fixtures/totp.ts` already works out the
+      current code from a secret, as the keyboard sign-in journey does.
+      The test reads the secret, enters the code to finish setting up,
+      signs out, and signs in again with a fresh code. It then turns
+      two-factor off, so a retry starts clean.
+- [ ] 28. As Quill, I want neither a TA nor a TD to see the Clinician
+      passport card in settings, so that teaching users are shown only
+      what is theirs.
+      `Settings.tsx` shows it only with the passport feature and
+      `assess_clinician_passport`; the test checks neither user gets it.
+
+## Phase 7: Guides, for a teaching admin and a teaching delegate
+
+Specs under `frontend/e2e/tests/guides/`. The guides list at `/guides`
+groups guides by `audience` in `frontend/src/guides/registry.ts`: a
+reader sees their own tier and every one below it, so a TA sees "For
+admins" and "For everyone", and a TD sees "For everyone" alone. Each
+teaching guide also needs the `teaching` feature.
+
+- [ ] Move "Join a course" to "For everyone": its `audience` in
+      `registry.ts` goes from `admin` to `everyone`. Decided by Mark on
+      2026-10-16. The comment beside it gave the old reason, that
+      somebody signed in has joined already so only an admin needs it;
+      it is rewritten to say that a delegate is shown it too, as the
+      guide to point a colleague at. It stays `public`, so it is still
+      read signed out from the login page. Update the registry's tests
+      for the new grouping.
+
+- [ ] 1. As a TA, I want to see both the "For admins" and the "For
+      everyone" guides, so that I can find how to run teaching and how
+      delegates take part.
+      Tested: "For admins" lists "Add a delegate by hand" and "See
+      delegates' results"; "For everyone" lists "Join a course" and "Take
+      a module and its assessment".
+- [ ] 2. As a TA, I want to open "Add a delegate by hand", so that I can
+      learn how to make an account for somebody who cannot register.
+- [ ] 3. As a TA, I want to open "See delegates' results", so that I can
+      learn how to follow who has passed.
+- [ ] 4. As a TA or a TD, I want to open "Join a course", so that I can
+      follow, or pass on, how to register.
+- [ ] 5. As a TA or a TD, I want to open "Take a module and its
+      assessment", so that I know how to work through a module.
+- [ ] 6. As Quill, I want a TD to see only the "For everyone" guides, so
+      that delegates are shown only what is theirs.
+      Tested: no "For admins" heading, and neither admin guide in the
+      list. Opening an admin guide's address directly is checked too, and
+      shows what the app shows for any page that is not theirs.
+
+## Phase 8: What is not theirs, feedback, and signing out
+
+Specs under `frontend/e2e/tests/everyday/`, each tested for both a TA and
+a TD unless it names one. Feedback is built already: `POST /api/feedback`
+takes it, "Your feedback" at `/feedback` lists what somebody sent with any
+reply, `GET /api/feedback/mine` serves it, an unread reply shows in the
+inbox, and `backend/app/feedback/router.py` emails the sender when an
+operator writes a comment. A change of status alone sends no email, so
+story 4 tests a comment.
+
+- [ ] 1. As Quill, I want neither a TA nor a TD to see the passport or
+      safety areas, in the menu or by typing their addresses, so that
+      teaching users are shown only teaching.
+      Tested: no Passport or Safety link in the navigation, and
+      `/passport`, `/passport/logbook`, `/safety` and a safety case's
+      address each show the 404 page, not an error and not the area.
+- [ ] 2. As a TA or a TD, I want to send feedback from anywhere in the
+      app, so that I can tell Quill what is wrong or could be better.
+- [ ] 3. As a TA or a TD, I want to see the feedback I have sent, with any
+      reply, so that I know it was received and what came of it.
+- [ ] 4. As a TA or a TD, I want to be told in the app and by email when
+      Quill replies to my feedback, so that I do not have to keep
+      checking.
+      Tested: the superuser writes a comment on it from
+      `/admin/feedback`, the sender's inbox then shows the reply as
+      unread, the captured email reaches them, and opening "Your
+      feedback" marks it read.
+- [ ] 5. As a TA or a TD, I want to sign out and sign back in, so that I
+      can leave a shared computer safely and come back later.
+      Tested: after signing out, a page that needs signing in sends them
+      to the login page, and signing in again lands them where they
+      start.
+- [ ] 6. As Quill, I want a TD to see no admin section, so that delegates
+      cannot reach the pages that run teaching.
+      A TD only. Tested: no Admin link in the navigation, and `/admin`,
+      `/admin/users` and `/admin/teaching` each show the 404 page.
+
+## Phase 9: The edges of the journeys
+
+Specs under `frontend/e2e/tests/edges/`. Added on 2026-10-16, when Mark
+asked what the earlier phases left out. Each is tested for both a TA and
+a TD unless it names one.
+
+- [ ] 1. As a TA or a TD, I want an assessment I run out of time on to be
+      submitted and marked with what I answered, so that the time limit
+      is fair and I am not left on a page that no longer counts.
+      The module allows ten minutes, and waiting that long would stretch
+      the run, while moving the browser's clock would not move the
+      server's. So `seed_ci.py` seeds, for each browser's TD, an attempt
+      started eleven minutes ago, and the test opens it. Check first
+      whether the limit is enforced by the server, the browser or both,
+      and test each side that enforces it.
+- [ ] 2. As a TA or a TD, I want to leave an assessment part way through
+      and come back to the same attempt, with my answers kept, so that a
+      dropped connection or a closed tab does not cost me the attempt.
+- [ ] 3. As a TA or a TD who has failed, I want to try again straight
+      away, so that I can retake it while the learning is fresh.
+      The module sets `allow_immediate_retry`; the test checks a new
+      attempt starts with new questions drawn.
+- [ ] 4. As a TA or a TD, I want to come back to the learning at the slide
+      I left, so that I do not have to find my place again.
+- [ ] 5. As a TD, I want to lose a module once a TA takes me off it, so
+      that only people still enrolled can take it.
+      Tested across two people: the TA unticks the module on the TD's
+      member page, and the TD's dashboard no longer shows it and its
+      address no longer opens it.
+- [ ] 6. As a TA or a TD left idle past the fifteen-minute access token,
+      I want the app to carry on without signing me out, so that a long
+      read or a slow assessment is not lost.
+      The token's expiry is the server's clock, so the test removes the
+      access cookie, as its expiry would, leaving the refresh cookie.
+      The next request is answered 401, `api.ts` refreshes and retries,
+      and the page carries on with no visit to the login page.
+- [ ] 7. As a TD on a phone, I want to sign in, take the module and see my
+      result, so that I can do it on the device I have.
+      A phone-sized Playwright project, Chromium at a phone's width,
+      running the core of Phase 5: below `md`, 992px, the navigation is
+      behind the hamburger, so these journeys open it to get about.
+- [ ] 8. As a TA, I want to filter all delegates by trust and by clinical
+      lead, so that I can find the delegates I am responsible for.
+      The "All delegates" card promises both; the test checks each filter
+      narrows the table and that clearing it brings everybody back.
+- [ ] 9. As a TA or a TD, I want to change my password in settings, so
+      that I can keep my account safe.
+      Tested: the old password stops working and the new one signs in.
+- [ ] 10. As a TA or a TD, I want the unsubscribe link in a news email to
+      turn news off, so that I can stop it from the email itself.
+      Tested with a captured news email: following its link turns news
+      off, and settings then show it off.
+
+## Phase 10: Every module of teaching content
 
 - [ ] Settle the four open questions from the discussion on 2026-10-15
       before writing this phase's steps: 1. What "all the content" means: every module and every slide, with

@@ -18,6 +18,42 @@
     }
   },
   {
+    "id": "confirm-and-set-password",
+    "label": "Confirm email and set password",
+    "quill": {
+      "file": "confirm-and-set-password--quill.html",
+      "subject": "Confirm your email and set your Quill password",
+      "preheader": "The link lasts 30 minutes.",
+      "fromName": "Quill Medical",
+      "replyTo": null
+    },
+    "ldd": {
+      "file": "confirm-and-set-password--ldd.html",
+      "subject": "Confirm your email and set your Quill password",
+      "preheader": "The link lasts 30 minutes.",
+      "fromName": "Let's Do Digital",
+      "replyTo": null
+    }
+  },
+  {
+    "id": "no-account",
+    "label": "No account for this address",
+    "quill": {
+      "file": "no-account--quill.html",
+      "subject": "You do not have a Quill account yet",
+      "preheader": "Nobody has a Quill account with this address.",
+      "fromName": "Quill Medical",
+      "replyTo": null
+    },
+    "ldd": {
+      "file": "no-account--ldd.html",
+      "subject": "You do not have a Quill account yet",
+      "preheader": "Nobody has a Quill account with this address.",
+      "fromName": "Let's Do Digital",
+      "replyTo": null
+    }
+  },
+  {
     "id": "email-verification",
     "label": "Email verification",
     "quill": {

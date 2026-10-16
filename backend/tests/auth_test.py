@@ -6,7 +6,11 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app import main
-from app.email_send import EmailRateLimitError
+from app.email_send import (
+    EmailNotAllowedError,
+    EmailRateLimitError,
+    EmailSendError,
+)
 from app.models import User
 from app.security import generate_totp_secret
 from tests.competencies import hold
@@ -670,8 +674,147 @@ class TestForgotPassword:
         assert sent == []
 
 
+class TestForgotPasswordEmails:
+    """What each address is sent, while the reply stays the same for all.
+
+    The page says "check your inbox" whatever the address, so it never
+    shows who has an account. The email says what is true, as the OWASP
+    Forgot Password Cheat Sheet advises.
+    """
+
+    @staticmethod
+    def _ask(
+        test_client: TestClient,
+        monkeypatch: pytest.MonkeyPatch,
+        email: str,
+    ) -> tuple[dict[str, object], list[dict[str, object]]]:
+        sent: list[dict[str, object]] = []
+        monkeypatch.setattr(
+            main, "send_email", lambda **kwargs: sent.append(kwargs)
+        )
+
+        response = test_client.post(
+            "/api/auth/forgot-password", json={"email": email}
+        )
+        assert response.status_code == 200
+
+        return response.json(), sent
+
+    def test_an_address_with_no_account_is_told_how_to_register(
+        self, test_client: TestClient, monkeypatch: pytest.MonkeyPatch
+    ):
+        reply, sent = self._ask(test_client, monkeypatch, "nobody@example.com")
+
+        assert reply == {"detail": "ok"}
+        assert len(sent) == 1
+        assert sent[0]["to"] == "nobody@example.com"
+        assert sent[0]["subject"] == "You do not have a Quill account yet"
+        assert "/register" in str(sent[0]["html_body"])
+        assert "/reset-password" not in str(sent[0]["html_body"])
+
+    def test_an_unconfirmed_address_is_sent_confirm_and_set(
+        self,
+        test_client: TestClient,
+        test_user: User,
+        db_session: Session,
+        monkeypatch: pytest.MonkeyPatch,
+    ):
+        test_user.email_verified = False
+        db_session.commit()
+
+        reply, sent = self._ask(test_client, monkeypatch, test_user.email)
+
+        assert reply == {"detail": "ok"}
+        assert len(sent) == 1
+        assert sent[0]["subject"] == (
+            "Confirm your email and set your Quill password"
+        )
+        assert "/reset-password?token=" in str(sent[0]["text_body"])
+        assert "&confirm=1" in str(sent[0]["text_body"])
+
+    def test_a_confirmed_address_is_sent_the_reset(
+        self,
+        test_client: TestClient,
+        test_user: User,
+        monkeypatch: pytest.MonkeyPatch,
+    ):
+        _reply, sent = self._ask(test_client, monkeypatch, test_user.email)
+
+        assert sent[0]["subject"] == "Reset your Quill password"
+        assert "confirm=1" not in str(sent[0]["text_body"])
+
+    def test_every_address_gets_the_same_reply(
+        self,
+        test_client: TestClient,
+        test_user: User,
+        monkeypatch: pytest.MonkeyPatch,
+    ):
+        known, _ = self._ask(test_client, monkeypatch, test_user.email)
+        unknown, _ = self._ask(test_client, monkeypatch, "x@example.com")
+
+        assert known == unknown
+
+    @pytest.mark.parametrize(
+        "error",
+        [
+            EmailRateLimitError("limited"),
+            EmailNotAllowedError("not allowed"),
+            EmailSendError("down"),
+        ],
+    )
+    def test_a_failed_send_still_answers_ok(
+        self,
+        test_client: TestClient,
+        monkeypatch: pytest.MonkeyPatch,
+        error: Exception,
+    ):
+        """A send that fails must not show the address has an account."""
+
+        def refuse(**_kwargs: object) -> None:
+            raise error
+
+        monkeypatch.setattr(main, "send_email", refuse)
+
+        response = test_client.post(
+            "/api/auth/forgot-password", json={"email": "nobody@example.com"}
+        )
+
+        assert response.status_code == 200
+        assert response.json() == {"detail": "ok"}
+
+
 class TestResetPassword:
     """Test reset-password endpoint."""
+
+    def test_a_reset_confirms_the_address(
+        self, test_client: TestClient, test_user: User, db_session: Session
+    ):
+        """Following a link sent to the address proves it is theirs, so
+        signing in straight afterwards is not refused as unconfirmed."""
+        from app.security import create_password_reset_token
+
+        test_user.email_verified = False
+        db_session.commit()
+        token = create_password_reset_token(
+            test_user.email, test_user.token_version
+        )
+
+        response = test_client.post(
+            "/api/auth/reset-password",
+            json={"token": token, "new_password": "ConfirmedPass123!"},
+        )
+
+        assert response.status_code == 200
+        db_session.refresh(test_user)
+        assert test_user.email_verified is True
+        signed_in = test_client.post(
+            "/api/auth/login",
+            json={
+                "username": test_user.username,
+                "password": "ConfirmedPass123!",
+            },
+        )
+        assert signed_in.status_code == 200
 
     def test_reset_password_inactive_user(
         self, test_client: TestClient, test_user: User, db_session: Session
