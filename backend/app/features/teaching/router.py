@@ -998,6 +998,33 @@ def update_answer(
     # ------------------------------------------------------------------
 
 
+def _send_certificate_email(**kwargs: Any) -> None:
+    """Send one certificate email, in the background, and never raise.
+
+    A pass queues an email to the candidate and one to each clinical lead
+    as background tasks, and Starlette runs them one after another,
+    stopping at the first that raises. One that was refused - an address
+    over its hourly allowance, say - used to stop every email queued after
+    it, so other people silently got nothing. A refusal or a failed send
+    is logged, without the address, and the next email goes out.
+    """
+    from app.email_send import (
+        EmailNotAllowedError,
+        EmailRateLimitError,
+        EmailSendError,
+        send_email,
+    )
+
+    try:
+        send_email(**kwargs)
+    except EmailRateLimitError:
+        logger.warning("certificate email not sent: address rate limited")
+    except EmailNotAllowedError:
+        logger.warning("certificate email not sent: recipient not allowed")
+    except EmailSendError:
+        logger.exception("certificate email could not be sent")
+
+
 def _maybe_enqueue_certificate_emails(
     *,
     background_tasks: BackgroundTasks,
@@ -1011,7 +1038,6 @@ def _maybe_enqueue_certificate_emails(
     """Enqueue certificate emails if the bank is live and email sending is enabled."""
     from app.config import settings as app_settings
     from app.email_send import Attachment as EmailAttachment
-    from app.email_send import send_email
     from app.features.teaching.certificate import (
         certificate_pass_summary,
         download_certificate_background_from_gcs,
@@ -1136,7 +1162,7 @@ def _maybe_enqueue_certificate_emails(
             rendered = render_email(student_template, ctx)
             att = attachments if student_template["attach_certificate"] else []
             background_tasks.add_task(
-                send_email,
+                _send_certificate_email,
                 to=user.email,
                 attachments=att,
                 **in_branded_layout(
@@ -1195,7 +1221,7 @@ def _maybe_enqueue_certificate_emails(
                         else []
                     )
                     background_tasks.add_task(
-                        send_email,
+                        _send_certificate_email,
                         to=lead.email,
                         attachments=att,
                         **in_branded_layout(

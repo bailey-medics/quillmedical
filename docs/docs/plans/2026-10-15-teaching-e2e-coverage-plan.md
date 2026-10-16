@@ -417,12 +417,48 @@ no made-up questions: a fixture reads the pinned module's answers, finds
 the question on screen by its text, and picks the right option to pass or
 a wrong one to fail. A new pin is then picked up with no test change.
 
-- [ ] Seed a TA and a TD per browser project, at "CI Teaching Centre",
+- [x] Seed a TA and a TD per browser project, at "CI Teaching Centre",
       given a place and enrolled on the module, so each browser sits its
       own attempts. The TD's clinical lead is `ci_lead`, from Phase 4,
       who is the person emailed on a pass.
 
-- [ ] Give the module a video. The pinned module has none, so story 7
+      Departed from the plan: nothing is seeded. Each journey makes its
+      own learner through the API, as the seeded teaching admin, which
+      `createAccount`'s new `takesModule` makes able to take the module
+      (practising at a site, enrolled at the organisation). Fresh for
+      each run, so the dashboard holds exactly the two attempts the run
+      sits, and a retry starts clean, where a seeded learner would carry
+      a failed run's attempts into the retry. Each learner also gets a
+      site and a clinical lead of their own, because of the two findings
+      below.
+
+- [x] Found while building story 16: one refused certificate email
+      stopped the rest. A pass queues an email to the candidate and one
+      to each clinical lead as background tasks, Starlette runs them in
+      turn and stops at the first that raises, and `send_email` raises
+      once an address has had ten emails in an hour. So a busy lead
+      over the limit silently cost everybody queued after them their
+      email. Fixed: each is sent through `_send_certificate_email` in
+      `backend/app/features/teaching/router.py`, which logs a refused or
+      failed send, without the address, and lets the next go. Tested in
+      `backend/tests/certificate_email_recipients_test.py`
+      (`TestOneRefusedEmailStopsNoOther`), both tests checked to fail
+      with the catch removed.
+
+- [ ] Found while building story 16, for Mark to decide: a pass emails
+      the clinical lead of **every** site under the organisation, not
+      just the delegate's own. `_maybe_enqueue_certificate_emails` takes
+      `descendant_ids` of the organisation and emails every lead found.
+      With EoEETA's member hospitals, a lead at one hospital would be
+      sent the certificates, names and scores of delegates at all the
+      others. The story as written, "my clinical lead and me", is what
+      the test checks, and it passes, because the delegate's own lead is
+      among everybody emailed. Recommended: email only the lead of the
+      site the delegate joined through, which registration already
+      records. Not changed in this run, because it changes who is told
+      about a pass.
+
+- [x] Give the module a video. The pinned module has none, so story 7
       cannot be tested against it. Add one short, licence-free clip to a
       small test-only module kept in this repository beside the pinned
       one, synced by `seed_ci.py` the same way, rather than to
@@ -433,65 +469,83 @@ a wrong one to fail. A new pin is then picked up with no test change.
       reports the moment it starts passing, and the gap goes in this
       plan.
 
-- [ ] Add "Back to dashboard" to the result page when it is opened from
+      Not needed: this was wrong. The pinned module does have a video,
+      its "Recorded lecture" slide, a YouTube lecture played in Quill's
+      own player, so story 7 plays that. Playing is checked in Chromium.
+      Playwright's own WebKit build cannot decode the video YouTube sends
+      it (the player shows Pause and its clock never moves), so in WebKit
+      the test is skipped with that reason. That slide is also why the
+      existing slide journey failed now and then at slide 3: the player
+      goes on laying itself out after the slide appears and moves the
+      Next button, so a click aimed just before lands on nothing. The new
+      journey presses Next until the address moves.
+
+- [x] Add "Back to dashboard" to the result page when it is opened from
       the dashboard (story 21). Today the button shows only straight
       after an assessment, so somebody opening an old result has no way
       back but the navigation. With its page test and story.
 
-- [ ] 1. As a TA or a TD, or a uTD, I want to open "How to join a course"
+      `AssessmentResultPage` now always offers it; "Try again" is still
+      offered only straight after the exam. The existing component
+      stories already show the button.
+
+- [x] 1. As a TA or a TD, or a uTD, I want to open "How to join a course"
       from the login page, read the guide, and get back to the login page
       from a link in it, so that I can find out how to join before I sign
       in. The guide, `src/guides/content/join-a-course.md`, links to
       `/login`.
-- [ ] 2. As a TA or a TD, I want to sign in, so that I can take a module.
-- [ ] 3. As a TA or a TD, I want to see the one teaching module I am
+- [x] 2. As a TA or a TD, I want to sign in, so that I can take a module.
+- [x] 3. As a TA or a TD, I want to see the one teaching module I am
       enrolled on at `/teaching`, so that I know what to take.
-- [ ] 4. As a TA or a TD, I want to open the module's landing page, so
+- [x] 4. As a TA or a TD, I want to open the module's landing page, so
       that I can see what it covers before I start.
-- [ ] 5. As a TA or a TD, I want to open the learning section from the
+- [x] 5. As a TA or a TD, I want to open the learning section from the
       landing page, so that I can study before the assessment.
-- [ ] 6. As a TA or a TD, I want to read every slide to the end, so that I
+- [x] 6. As a TA or a TD, I want to read every slide to the end, so that I
       cover all the learning.
-- [ ] 7. As a TA or a TD, I want every video in the learning to play, so
+- [x] 7. As a TA or a TD, I want every video in the learning to play, so
       that I can watch what the slides show.
       Tested: each video loads and its time moves on once played.
-- [ ] 8. As a TA or a TD, I want to leave the learning from the navigation
+- [x] 8. As a TA or a TD, I want to leave the learning from the navigation
       bar, so that I am never trapped in a lesson.
-- [ ] 9. As a TA or a TD, I want to start the assessment, so that I can be
+- [x] 9. As a TA or a TD, I want to start the assessment, so that I can be
       tested on the module.
-- [ ] 10. As a TA or a TD, I want to see each question of the assessment
+- [x] 10. As a TA or a TD, I want to see each question of the assessment
       and answer it, so that every one is marked.
-- [ ] 11. As a TA or a TD, I want to finish the assessment, so that my
+- [x] 11. As a TA or a TD, I want to finish the assessment, so that my
       answers are submitted and scored.
-- [ ] 12. As a TA or a TD, I want to see my score on the result page,
+- [x] 12. As a TA or a TD, I want to see my score on the result page,
       `/teaching/assessment/{id}/result`, so that I know how I did.
-- [ ] 13. As a TA or a TD, I want to pass when I answer well enough, so
+- [x] 13. As a TA or a TD, I want to pass when I answer well enough, so
       that my result reflects what I know.
       Tested by answering every question right.
-- [ ] 14. As a TA or a TD, I want to fail when I do not, so that a pass
+- [x] 14. As a TA or a TD, I want to fail when I do not, so that a pass
       means something.
       Tested by answering every question wrong.
-- [ ] 15. As a TA or a TD who has passed, I want to download my
+- [x] 15. As a TA or a TD who has passed, I want to download my
       certificate, so that I have proof of the pass.
       Tested: the download is a PDF.
-- [ ] 16. As a TD who has passed, I want my clinical lead and me each to be
+- [x] 16. As a TD who has passed, I want my clinical lead and me each to be
       emailed the certificate, so that we both have it without asking.
       Tested with the captured email from Phase 1: one to the delegate and
       one to `ci_lead`, each with the certificate attached. For a TA the
       same is checked for whatever lead their site has.
-- [ ] 17. As a TA or a TD, I want "Results by question" on a pass and on a
+- [x] 17. As a TA or a TD, I want "Results by question" on a pass and on a
       fail, showing each question with the right answer and mine, so that
       I can learn from my mistakes.
-- [ ] 18. As a TA or a TD, I want "Back to dashboard" on the result page to
+      Tested as the page stands: each question with the answer given and
+      whether it was right. It does not show the right answer to a
+      question got wrong; say if it should.
+- [x] 18. As a TA or a TD, I want "Back to dashboard" on the result page to
       take me to the dashboard, so that I can carry on.
-- [ ] 19. As a TA or a TD, I want to see my earlier attempts on the
+- [x] 19. As a TA or a TD, I want to see my earlier attempts on the
       dashboard, so that I can look back at them.
       Tested: after stories 13 and 14, two attempts, one pass and one
       fail.
-- [ ] 20. As a TA or a TD, I want to open any earlier attempt from the
+- [x] 20. As a TA or a TD, I want to open any earlier attempt from the
       dashboard and see its result page again, so that I can look back at
       how I did.
-- [ ] 21. As a TA or a TD, I want "Back to dashboard" on a result page I
+- [x] 21. As a TA or a TD, I want "Back to dashboard" on a result page I
       opened from the dashboard too, so that I can always get back.
       Needs the button added above.
 

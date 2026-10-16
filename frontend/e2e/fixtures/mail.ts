@@ -85,6 +85,29 @@ export async function waitForEmail(
   return emails[emails.length - 1];
 }
 
+/**
+ * Wait for an email to *to* that *matches*, and return the newest such.
+ *
+ * For an address several tests send to at once, such as a clinical
+ * lead's, where the newest email may be another test's.
+ */
+export async function waitForEmailMatching(
+  to: string,
+  matches: (email: CapturedEmail) => boolean,
+  timeout = 15_000,
+): Promise<CapturedEmail> {
+  await expect
+    .poll(() => emailsTo(to).filter(matches).length, {
+      message: `No matching email was sent to ${to}`,
+      timeout,
+    })
+    .toBeGreaterThan(0);
+
+  const found = emailsTo(to).filter(matches);
+
+  return found[found.length - 1];
+}
+
 /** How many emails have been sent to *to* so far. */
 export function emailCount(to: string): number {
   return emailsTo(to).length;

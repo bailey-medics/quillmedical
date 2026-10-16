@@ -16,17 +16,22 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any
 
+import pytest
 from fastapi import BackgroundTasks
 from sqlalchemy import insert, update
 from sqlalchemy.orm import Session
 
 from app.cbac.positions import set_clinical_lead
+from app.email_send import EmailRateLimitError
 from app.features.teaching.models import (
     Assessment,
     QuestionBankConfig,
     QuestionBankOrgStatus,
 )
-from app.features.teaching.router import _maybe_enqueue_certificate_emails
+from app.features.teaching.router import (
+    _maybe_enqueue_certificate_emails,
+    _send_certificate_email,
+)
 from app.models import (
     OrgUnit,
     User,
@@ -390,3 +395,51 @@ class TestTheEmailIsBranded:
         [sent] = _sent(db_session, assessment, config_row, candidate)
         assert "<p>Well done" in sent["html_body"]
         assert "&lt;p&gt;" not in sent["html_body"]
+
+
+class TestOneRefusedEmailStopsNoOther:
+    """Each certificate email is its own background task.
+
+    Starlette runs a request's background tasks in turn and stops at the
+    first that raises. So an email refused for its address, an hourly
+    allowance run out, must be caught, or everybody queued after it gets
+    nothing.
+    """
+
+    def test_a_refused_email_is_logged_not_raised(
+        self, monkeypatch, caplog
+    ) -> None:
+        def refuse(**_kwargs: Any) -> None:
+            raise EmailRateLimitError("limited")
+
+        monkeypatch.setattr("app.email_send.send_email", refuse)
+
+        with caplog.at_level("WARNING", logger="app.features.teaching.router"):
+            _send_certificate_email(to="lead@example.com", subject="s")
+
+        assert "address rate limited" in caplog.text
+        assert "lead@example.com" not in caplog.text
+
+    @pytest.mark.anyio
+    async def test_the_emails_after_a_refused_one_still_go(
+        self, monkeypatch
+    ) -> None:
+        sent: list[str] = []
+
+        def send(*, to: str, **_kwargs: Any) -> None:
+            if to == "over-the-limit@example.com":
+                raise EmailRateLimitError("limited")
+            sent.append(to)
+
+        monkeypatch.setattr("app.email_send.send_email", send)
+        tasks = BackgroundTasks()
+        for address in (
+            "over-the-limit@example.com",
+            "lead-two@example.com",
+            "lead-three@example.com",
+        ):
+            tasks.add_task(_send_certificate_email, to=address)
+
+        await tasks()
+
+        assert sent == ["lead-two@example.com", "lead-three@example.com"]

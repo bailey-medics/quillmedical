@@ -148,7 +148,10 @@ export default function AssessmentResultPage() {
           showTryAgain={
             fromExam && allowRetry && bankIsLive && !assessment.is_passed
           }
-          showBackToDashboard={fromExam}
+          // Offered however the page was reached: straight from the
+          // exam, or by opening an earlier attempt from the dashboard,
+          // which left no way back but the navigation.
+          showBackToDashboard
           onTryAgain={() => {
             navigate(
               `/teaching/assessment/new?bank=${assessment.question_bank_id}`,
