@@ -20,6 +20,7 @@ from sqlalchemy import func, select  # noqa: E402
 from sqlalchemy.orm import Session  # noqa: E402
 
 from app.cbac.grants import sync_competency_rows  # noqa: E402
+from app.cbac.positions import set_clinical_lead  # noqa: E402
 from app.config import settings  # noqa: E402
 from app.db import CoreSessionLocal  # noqa: E402
 from app.features.teaching.access import (  # noqa: E402
@@ -194,6 +195,7 @@ def seed() -> None:
         # the teaching admin does not belong to, for the journeys in
         # e2e/tests/teaching-admin/.
         seed_teaching_admin_places(db, org.id, educator)
+        seed_clinical_lead(db, admin)
 
         db.commit()
 
@@ -331,6 +333,22 @@ def seed_teaching_admin_places(
     print("Seeded the teaching admin's places")
 
 
+def seed_clinical_lead(db: Session, appointed_by: User) -> None:
+    """Seed the clinical lead a delegate names when they register.
+
+    ``ci_lead`` holds the clinical lead post at ``CI Teaching Centre``, so
+    a delegate registering for a module the organisation serves can give
+    ``ci_lead@ci.local`` and join that site. A post is held where somebody
+    belongs, so the lead joins the site before being appointed to it.
+    """
+    site = db.query(OrgUnit).filter(OrgUnit.name == "CI Teaching Centre").one()
+    lead = _ensure_user(db, "ci_lead", "teaching_clinical_lead")
+    add_org_unit_member(db, site.id, lead.id, "staff")
+    set_clinical_lead(db, site, lead, appointed_by=appointed_by)
+    db.flush()
+    print("Seeded the clinical lead of CI Teaching Centre")
+
+
 def seed_teaching(db: Session, org_unit_id: int, admin_id: int) -> None:
     """Sync each mounted teaching module into the CI organisation, live.
 
@@ -389,6 +407,9 @@ def seed_teaching(db: Session, org_unit_id: int, admin_id: int) -> None:
             db.add(status)
 
         status.is_live = True
+        # Open to registration, which puts it on the public register page
+        # and lets its clinical lead's address be accepted there.
+        status.site_registration = True
         # Going live needs one when the module emails a coordinator on a
         # pass. Emails are dry-run in CI, so nothing is sent to it.
         status.coordinator_email = "coordinator@ci.local"
