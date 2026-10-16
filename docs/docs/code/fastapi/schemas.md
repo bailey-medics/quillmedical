@@ -8,10 +8,6 @@
 
 ::: app.schemas.cbac
 
-## Features Schemas
-
-::: app.schemas.features
-
 ## Letter Schemas
 
 ::: app.schemas.letters
