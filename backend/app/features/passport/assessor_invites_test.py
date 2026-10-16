@@ -373,7 +373,7 @@ def test_an_invitation_keeps_the_hash_of_its_token_and_not_the_token(
     assert row.accepted_user_id is None
 
 
-def test_an_invitation_lasts_a_fortnight(
+def test_an_invitation_lasts_thirty_days(
     db_session: Session, passport: Passport
 ) -> None:
     before = datetime.now(UTC)
@@ -436,7 +436,7 @@ def test_a_token_whose_invitation_is_gone_is_refused_in_the_same_words(
         invite_named_by(db_session, token)
 
 
-def test_an_invitation_past_its_own_fortnight_is_refused(
+def test_an_invitation_past_its_own_thirty_days_is_refused(
     db_session: Session, passport: Passport
 ) -> None:
     """The row refuses on its own, while the token would still decode."""

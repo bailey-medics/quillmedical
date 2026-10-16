@@ -529,11 +529,11 @@ def decode_invite_token(token: str) -> InviteClaims:
 # function only makes a token that expires; the row decides whether it
 # may still be used.
 
-#: How long a passport assessor invite lasts. Fourteen days because a
+#: How long a passport assessor invite lasts. Thirty days because a
 #: consultant asked to sign something off may be on nights, on leave, or
-#: simply slow to read email, and a link that dies over a fortnight's
-#: annual leave means the holder has to ask twice.
-PASSPORT_INVITE_TTL_DAYS = 14
+#: simply slow to read email, and a fortnight proved too short: a link
+#: that dies over annual leave means the holder has to ask twice.
+PASSPORT_INVITE_TTL_DAYS = 30
 
 #: Marks a passport invite apart from the patient-sharing invite above.
 #: Checked on decode, so a token minted for one purpose cannot be
@@ -564,7 +564,7 @@ def create_passport_invite_token(
             replayed against a passport rather than spent once.
         email: Who it was sent to. Checked on acceptance, so a forwarded
             link cannot be redeemed by whoever received it.
-        ttl_days: How long it lasts, defaulting to a fortnight.
+        ttl_days: How long it lasts, defaulting to thirty days.
 
     Returns:
         The signed token.
@@ -725,15 +725,23 @@ def verify_email_verify_token(token: str) -> str | None:
         token: Email verification token from email link.
 
     Returns:
-        The email address if valid, None otherwise.
+        The email address if valid, None if the token is tampered
+        with, expired, or does not carry an address.
     """
     try:
-        data: dict[str, str] = _email_verify.loads(
+        data = _email_verify.loads(
             token, max_age=settings.EMAIL_VERIFY_TTL_MIN * 60
         )
-        return data.get("email")
     except BadSignature:
         return None
+    if not isinstance(data, dict):
+        return None
+
+    email = data.get("email")
+    if not isinstance(email, str):
+        return None
+
+    return email
 
 
 # --- Marketing unsubscribe links ---

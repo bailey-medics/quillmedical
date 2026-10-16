@@ -31,6 +31,7 @@ from app.features.teaching.email_templates import (
     render_email as render_teaching_email,
 )
 from app.paths import EMAIL_PREVIEWS_DIR
+from app.security import PASSPORT_INVITE_TTL_DAYS
 
 THEMES: tuple[EmailThemeName, ...] = EMAIL_THEME_NAMES
 
@@ -236,7 +237,7 @@ def previews() -> list[Preview]:
                 "confirming_logbook": False,
                 "has_account": False,
                 "url": "https://quill-medical.com/passport/assessors/accept?token=example",
-                "expires_in_days": 14,
+                "expires_in_days": PASSPORT_INVITE_TTL_DAYS,
             },
         ),
         Preview(
@@ -252,7 +253,7 @@ def previews() -> list[Preview]:
                 "confirming_logbook": False,
                 "has_account": True,
                 "url": "https://quill-medical.com/inbox",
-                "expires_in_days": 14,
+                "expires_in_days": PASSPORT_INVITE_TTL_DAYS,
             },
         ),
         Preview(
@@ -271,7 +272,7 @@ def previews() -> list[Preview]:
                 "confirming_logbook": False,
                 "has_account": False,
                 "url": "https://quill-medical.com/passport/assessors/accept?token=example",
-                "expires_in_days": 14,
+                "expires_in_days": PASSPORT_INVITE_TTL_DAYS,
             },
         ),
         Preview(
@@ -301,7 +302,7 @@ def previews() -> list[Preview]:
                 "confirming_logbook": False,
                 "has_account": False,
                 "url": "https://quill-medical.com/passport/assessors/accept?token=example",
-                "expires_in_days": 14,
+                "expires_in_days": PASSPORT_INVITE_TTL_DAYS,
             },
         ),
         Preview(
@@ -319,7 +320,7 @@ def previews() -> list[Preview]:
                 "confirming_logbook": True,
                 "has_account": False,
                 "url": "https://quill-medical.com/passport/assessors/accept?token=example",
-                "expires_in_days": 14,
+                "expires_in_days": PASSPORT_INVITE_TTL_DAYS,
             },
         ),
         Preview(

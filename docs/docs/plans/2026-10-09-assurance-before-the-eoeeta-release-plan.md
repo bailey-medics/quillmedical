@@ -718,7 +718,7 @@ before any feature.
 - [x] [`frontend/tsconfig.node.json`](../../../frontend/tsconfig.node.json).
 - [x] [`frontend/vite.config.ts`](../../../frontend/vite.config.ts).
 - [x] [`frontend/eslint.config.ts`](../../../frontend/eslint.config.ts).
-- [ ] [`security.py`](../../../backend/app/security.py)
+- [x] [`security.py`](../../../backend/app/security.py)
 
 - [ ] Audit [`infra/`](../../../infra/), the Terraform, for what is exposed: ingress and
       the load balancer, IAM bindings, public buckets, where each secret
@@ -1082,7 +1082,7 @@ plan's. **Nothing more is built on the exam from this plan**: see
 Audit in this order, stamping each in the ledger, and treating anything
 found as a bug to fix on its own branch before going on.
 
-- [ ] [`backend/app/security.py`](../../../backend/app/security.py): JWT signing and verification, cookie
+- [x] [`backend/app/security.py`](../../../backend/app/security.py): JWT signing and verification, cookie
       flags, CSRF token minting, TOTP, Argon2.
 
 - [ ] [`backend/app/deps.py`](../../../backend/app/deps.py) and the dependency constants and

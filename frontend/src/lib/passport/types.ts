@@ -591,7 +591,7 @@ export interface RecordResult {
  * What the accept page shows before anybody commits to anything.
  *
  * Reading an invitation is not accepting it, so this may be fetched as
- * often as the assessor likes for the whole fourteen days.
+ * often as the assessor likes for the whole thirty days.
  * `needs_account` chooses between a registration form and a sign-in
  * prompt; `already_accepted` means the invitation has done its job, and
  * the page should send them to sign in rather than show an error.
