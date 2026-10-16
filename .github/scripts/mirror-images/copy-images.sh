@@ -23,6 +23,15 @@
 # copy's digest is the source's digest, and an image pinned to a digest can
 # be pulled from the copy by that same digest. Copying one that is already
 # there changes nothing, so this is safe to run as often as wanted.
+#
+# An image pinned to a digest the mirror already holds is skipped, with no
+# call to the public registry at all. Copying it again changed nothing, but
+# `skopeo copy` still read it from the source first, so a pull request that
+# touched compose.ci.yml without changing an image could still be refused
+# by the public registry's limit. A digest names one exact image, so if the
+# mirror holds it, it holds the right one. An image named by tag alone is
+# always copied: the tag may point somewhere new. If the mirror cannot be
+# asked, the image is copied, as it was before.
 set -euo pipefail
 
 # shellcheck source=../shared/logging.sh
@@ -43,6 +52,20 @@ base_images() {
   local dockerfile="$1"
 
   sed -n -E 's/^ARG[[:space:]]+[A-Z0-9_]+_IMAGE=([^[:space:]]+).*$/\1/p' "$dockerfile"
+}
+
+# Whether the mirror already holds this exact image. Only an image pinned
+# to a digest can be known to be the same; one named by tag alone is
+# never counted as held.
+already_mirrored() {
+  local owner="$1"
+  local image="$2"
+
+  if [ -z "$(_digest_of "$image")" ]; then
+    return 1
+  fi
+
+  skopeo inspect --raw "docker://$(mirror_pull_ref "$owner" "$image")" >/dev/null 2>&1
 }
 
 main() {
@@ -89,16 +112,25 @@ main() {
   local image=""
   local source=""
   local destination=""
+  local copied=0
+  local held=0
 
   while IFS= read -r image; do
     source="$(mirror_source_ref "$image")"
     destination="$(mirror_push_ref "$owner" "$image")"
 
+    if already_mirrored "$owner" "$image"; then
+      log "Already mirrored: ${source}"
+      held=$((held + 1))
+      continue
+    fi
+
     log "Copying ${source} to ${destination}"
     skopeo copy --all "docker://${source}" "docker://${destination}"
+    copied=$((copied + 1))
   done <<<"$images"
 
-  log "Copied $(wc -l <<<"$images" | tr -d ' ') image(s)"
+  log "Copied ${copied} image(s); ${held} already mirrored"
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then

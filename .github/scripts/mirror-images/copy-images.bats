@@ -2,23 +2,39 @@
 # Tests for copy-images.sh
 #
 # With stand-ins for docker and skopeo on PATH, so nothing is pulled or
-# pushed. The stand-in for skopeo writes down what it was asked to copy.
+# pushed. The stand-in for skopeo writes down what it was asked to copy and
+# what it was asked to inspect, and finds in the mirror only what HELD
+# lists.
 
 setup() {
   SCRIPT="${BATS_TEST_DIRNAME}/copy-images.sh"
   BIN="${BATS_TEST_TMPDIR}/bin"
   COPIES="${BATS_TEST_TMPDIR}/copies"
+  INSPECTS="${BATS_TEST_TMPDIR}/inspects"
+  HELD="${BATS_TEST_TMPDIR}/held"
   mkdir -p "$BIN"
   : > "$COPIES"
+  : > "$INSPECTS"
+  : > "$HELD"
 
   cat > "${BIN}/skopeo" <<STUB
 #!/usr/bin/env bash
+if [ "\$1" = "inspect" ]; then
+  echo "\$*" >> "${INSPECTS}"
+  grep -qxF "\${@: -1}" "${HELD}"
+  exit
+fi
 echo "\$*" >> "${COPIES}"
 exit "\${SKOPEO_EXIT:-0}"
 STUB
   chmod +x "${BIN}/skopeo"
 
   PATH="${BIN}:${PATH}"
+}
+
+# Has the stand-in mirror hold these references.
+hold() {
+  printf '%s\n' "$@" > "$HELD"
 }
 
 # Puts a docker on PATH whose `compose config --images` prints these lines.
@@ -187,6 +203,62 @@ dockerfile_with() {
 
   [ "$status" -ne 0 ]
   [[ "$output" != *"Copied"* ]]
+}
+
+@test "a pinned image the mirror already holds is not copied" {
+  stub_images "public.ecr.aws/docker/library/caddy:2-alpine@sha256:abc123"
+  hold "docker://ghcr.io/bailey-medics/mirror/caddy@sha256:abc123"
+
+  run bash "$SCRIPT" bailey-medics compose.ci.yml
+
+  [ "$status" -eq 0 ]
+  [ ! -s "$COPIES" ]
+  [[ "$output" == *"Already mirrored"* ]]
+  [[ "$output" == *"Copied 0 image(s); 1 already mirrored"* ]]
+}
+
+@test "the mirror is asked by digest, not by tag" {
+  # The tag could point at an older copy; only the digest proves it is
+  # the very image pinned.
+  stub_images "public.ecr.aws/docker/library/caddy:2-alpine@sha256:abc123"
+
+  run bash "$SCRIPT" bailey-medics compose.ci.yml
+
+  [ "$(cat "$INSPECTS")" = "inspect --raw docker://ghcr.io/bailey-medics/mirror/caddy@sha256:abc123" ]
+}
+
+@test "a pinned image the mirror does not hold is copied" {
+  stub_images "public.ecr.aws/docker/library/caddy:2-alpine@sha256:abc123"
+  hold "docker://ghcr.io/bailey-medics/mirror/caddy@sha256:older"
+
+  run bash "$SCRIPT" bailey-medics compose.ci.yml
+
+  [ "$status" -eq 0 ]
+  [ "$(cat "$COPIES")" = "copy --all docker://public.ecr.aws/docker/library/caddy@sha256:abc123 docker://ghcr.io/bailey-medics/mirror/caddy:2-alpine" ]
+}
+
+@test "an image named by tag alone is copied without asking the mirror" {
+  # The tag may have moved on upstream, so holding it proves nothing.
+  stub_images "public.ecr.aws/docker/library/postgres:18-alpine"
+  hold "docker://ghcr.io/bailey-medics/mirror/postgres:18-alpine"
+
+  run bash "$SCRIPT" bailey-medics compose.ci.yml
+
+  [ ! -s "$INSPECTS" ]
+  [ "$(wc -l < "$COPIES" | tr -d ' ')" -eq 1 ]
+}
+
+@test "copies only the images the mirror lacks" {
+  stub_images \
+    "public.ecr.aws/docker/library/caddy:2-alpine@sha256:abc123" \
+    "public.ecr.aws/docker/library/postgres:18-alpine@sha256:def456"
+  hold "docker://ghcr.io/bailey-medics/mirror/caddy@sha256:abc123"
+
+  run bash "$SCRIPT" bailey-medics compose.ci.yml
+
+  [ "$status" -eq 0 ]
+  [ "$(cat "$COPIES")" = "copy --all docker://public.ecr.aws/docker/library/postgres@sha256:def456 docker://ghcr.io/bailey-medics/mirror/postgres:18-alpine" ]
+  [[ "$output" == *"Copied 1 image(s); 1 already mirrored"* ]]
 }
 
 @test "fails without an owner and a compose file" {
