@@ -81,7 +81,7 @@ reads `main`, and the stack synced after every merge.
 
 ## Phase 3: Merge only when the base reads main
 
-- [ ] Say so where merging is described. `.claude/rules/ci.md` and
+- [x] Say so where merging is described. `.claude/rules/ci.md` and
       `.github/instructions/ci.instructions.md` tell a reviewer to queue
       an approved pull request with "Merge when ready". Add, in both:
       look at the base first, and if it reads a `feature/…` branch rather
@@ -89,8 +89,35 @@ reads `main`, and the stack synced after every merge.
       `main` once the one beneath has landed, and queue it then. A pull
       request merged into its base branch is not on `main` and nothing
       carries it there. Run `/sync-copilot-config` for the pair.
+      Done on 16 October 2026: a section "A stacked pull request: check
+      the base before merging" in both files, which also says a pull
+      request GitHub has closed is not lost and how to bring it back. The
+      same text went into both by hand rather than through
+      `/sync-copilot-config`, since a full run reconciles a dozen
+      unrelated entries; that run is still owed.
 
-- [ ] Make the mistake harder to make. GitHub shows a stacked pull
+## Phase 4: Sync after every merge
+
+- [x] Add to `/crpd` and `/f`, in their "before anything" sections, that
+      after any pull request in the stack has merged, `just stack-sync`
+      runs before anything is built or merged, and that a stack whose
+      bottom was closed by GitHub rather than merged is treated the
+      same. `/f` already says this for a stack with a merged branch; make
+      the closed case explicit, since it is the one that caught us.
+      Done on 16 October 2026, with a second case found while writing it:
+      a pull request merged into the branch below has a merge commit
+      that is not on `main`, and `stack-sync` would drop its branch as
+      done. Both skills now check the merge commit against `origin/main`
+      before syncing and stop if it is not there, since carrying the work
+      over is the human's call. A pull request GitHub closed is brought
+      back with `stack-sync` and `stack-submit`, never by hand.
+
+## Phase 5: Refuse a merge into anything but main
+
+Moved here from Phase 3 on 16 October 2026, because it cannot be built
+unattended.
+
+- [x] Make the mistake harder to make. GitHub shows a stacked pull
       request's merge button with its base branch as the target, which
       is the trap. Find out whether a ruleset can refuse a merge into any
       branch but `main`, or whether `merged-outside-main.yml` can be
@@ -104,14 +131,71 @@ reads `main`, and the stack synced after every merge.
       the bottom one, which is right: those are not ready to merge until
       the stack tool has moved them. Decide here which, and build it.
 
-## Phase 4: Sync after every merge
+      Found on 16 October 2026, before building: a required check cannot
+      do it. Rulesets enforce required checks on the branches they cover,
+      and the only protected branch is `main`, so a check failing on a
+      pull request into a `feature/…` branch would show red and still let
+      it merge. The repository already holds the real block:
+      `var.block_merges_into_feature_branches` in
+      `infra/github/branch_rules.tf`, which requires linear history on
+      every branch but `main` and switches off squash and rebase merging,
+      so no merge into a feature branch is possible. It is off because it
+      has never been tried, and trying it needs merges, which are Mark's.
+      There is a new question to add to its trial: GitHub's stack merge
+      records every pull request above the bottom as merged into the
+      branch below it, so confirm a queued stack still lands with the
+      block on. The trial steps are in the variable's description. If
+      the stack merge is refused, the block stays off and Phase 3's rule
+      and `merged-outside-main.yml` are the protection.
 
-- [ ] Add to `/crpd` and `/f`, in their "before anything" sections, that
-      after any pull request in the stack has merged, `just stack-sync`
-      runs before anything is built or merged, and that a stack whose
-      bottom was closed by GitHub rather than merged is treated the
-      same. `/f` already says this for a stack with a merged branch; make
-      the closed case explicit, since it is the one that caught us.
+- [x] Try the block. On 16 October 2026 the first attempt stopped before
+      anything changed: `terraform init` could not read the state in
+      `gs://quill-medical-app-terraform-state`, because the Google Cloud
+      application-default login on Mark's machine had expired
+      (`invalid_rapt`). `gcloud auth application-default login`, which
+      opens a browser, has to be run by Mark first. Then, in order:
+      - **Switch it on without committing.** Add
+        `block_merges_into_feature_branches = true` to
+        `infra/github/terraform.tfvars`, run `just terraform-github`, and
+        read the plan before answering `yes`: it should change only
+        `required_linear_history` on the branch-naming ruleset and
+        `allow_squash_merge` and `allow_rebase_merge` on the repository.
+      - **A push still works.** Push a throwaway branch,
+        `feature/zz-block-trial-base`, cut from `origin/main` with one new
+        commit. `main`'s own merge commits are in its history, and this is
+        the question the variable's description says is untested. If the
+        push is refused, `git checkout infra/github/terraform.tfvars`, run
+        `just terraform-github` again, and record that here: the block
+        cannot be used.
+      - **A merge into a feature branch is refused.** Push a second
+        throwaway branch on top of the first and open a pull request from
+        it into the first. Read `gh pr view --json mergeStateStatus`: it
+        should not report the pull request as mergeable. Never press the
+        merge button to find out.
+      - **A stack still pushes.** Run `just stack-submit` on a real stack
+        and confirm every branch is accepted.
+      - **A queued stack still lands.** The next time Mark queues a stack
+        of two or more, confirm it reaches `main`. GitHub's stack merge
+        records each pull request above the bottom as merged into the
+        branch below it, and the block may refuse exactly that. If it
+        does, switch the block off as above.
+      - **Then commit it.** If all of that holds, commit the
+        `terraform.tfvars` line, close the throwaway pull request and
+        delete both branches, and say in `.claude/rules/ci.md` that a
+        merge into a feature branch is now refused.
+
+      Tried on 16 October 2026, after Mark renewed the login. The plan
+      changed only the three expected settings and applied cleanly. The
+      first push then failed: a throwaway branch cut from `origin/main`
+      with one new commit was refused with "push declined due to
+      repository rule violations". Linear history on a branch counts
+      every merge commit in its history, including `main`'s own, so with
+      the block on no branch cut from `main` can be pushed at all. The
+      block was switched off again at once, and the same push then went
+      through; the throwaway branch is deleted. No later step was run.
+      So `block_merges_into_feature_branches` cannot be used as built,
+      and its description now says so. Phase 3's rule and
+      `merged-outside-main.yml` are the protection.
 
 ## Decisions
 

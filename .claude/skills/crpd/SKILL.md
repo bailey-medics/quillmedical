@@ -249,6 +249,22 @@ Four things differ in substance, and nothing else does:
    whose pull request has merged. That refusal means this step was
    skipped. Do what it says, never work round it.
 
+   **Two ways a stack can look merged and not be.** Both happened on
+   15 October 2026; see the [stacked pull requests land on main
+   plan](../../../docs/docs/plans/2026-10-15-stacked-pull-requests-land-on-main-plan.md).
+
+   - **A pull request GitHub closed without merging.** When the branch
+     beneath it is deleted after a merge into another branch, GitHub
+     closes the pull request above rather than moving it to `main`. Its
+     branch is intact: `just stack-sync`, then `just stack-submit` opens
+     a fresh pull request for it. Never reopen or replace it by hand.
+   - **A pull request merged into the branch below rather than `main`.**
+     Its work is not on `main`. Check the merge commit with
+     `git merge-base --is-ancestor <commit> origin/main` before syncing;
+     if it is not on `main`, stop and report it, because `stack-sync`
+     would drop the branch as done and the work needs a pull request
+     into `main` that only the human should open.
+
 2. **Stop if the stack spans worktrees.** `just stack-log` names any branch
    checked out elsewhere. A stack lives in one worktree; `gh stack rebase`
    would skip those branches and still report success. Report it and stop
