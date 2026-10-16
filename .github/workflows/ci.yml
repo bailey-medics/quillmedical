@@ -700,6 +700,7 @@ jobs:
     env:
       CI_IMAGE_BACKEND: ghcr.io/${{ github.repository_owner }}/quillmedical-ci_backend:${{ github.sha }}
       CI_IMAGE_FRONTEND: ghcr.io/${{ github.repository_owner }}/quillmedical-ci_frontend:${{ github.sha }}
+      CI_IMAGE_PUBLIC: ghcr.io/${{ github.repository_owner }}/quillmedical-ci_public:${{ github.sha }}
     steps:
       - uses: actions/checkout@v7.0.1
 
@@ -757,6 +758,19 @@ jobs:
             ${{ steps.base_frontend.outputs.build_args }}
           cache-from: type=gha,scope=ci-frontend
 
+      # The public site, quill-medical.com, which the tests open and
+      # follow into the app. Production serves it from Cloud Storage.
+      - name: Build and push public site image
+        uses: docker/build-push-action@v7.3.0
+        with:
+          context: .
+          file: ./frontend/Dockerfile
+          target: public-ci
+          push: true
+          tags: ${{ env.CI_IMAGE_PUBLIC }}
+          build-args: ${{ steps.base_frontend.outputs.build_args }}
+          cache-from: type=gha,scope=ci-public
+
   # ---------- E2E (Playwright) ----------
   heavy_e2e:
     if: (github.event_name == 'pull_request' && github.event.pull_request.draft == false) || github.event_name == 'merge_group'
@@ -771,6 +785,7 @@ jobs:
     env:
       CI_IMAGE_BACKEND: ghcr.io/${{ github.repository_owner }}/quillmedical-ci_backend:${{ github.sha }}
       CI_IMAGE_FRONTEND: ghcr.io/${{ github.repository_owner }}/quillmedical-ci_frontend:${{ github.sha }}
+      CI_IMAGE_PUBLIC: ghcr.io/${{ github.repository_owner }}/quillmedical-ci_public:${{ github.sha }}
     steps:
       - uses: actions/checkout@v7.0.1
 
@@ -785,9 +800,11 @@ jobs:
         run: |
           bash "${GITHUB_WORKSPACE}/.github/scripts/shared/retry-once.sh" docker pull "$CI_IMAGE_BACKEND"
           bash "${GITHUB_WORKSPACE}/.github/scripts/shared/retry-once.sh" docker pull "$CI_IMAGE_FRONTEND"
+          bash "${GITHUB_WORKSPACE}/.github/scripts/shared/retry-once.sh" docker pull "$CI_IMAGE_PUBLIC"
           # compose.ci.yml Docker compose uses local tags, so apply local tags to pulled images.
           docker tag "$CI_IMAGE_BACKEND" quillmedical-ci_backend:latest
           docker tag "$CI_IMAGE_FRONTEND" quillmedical-ci_frontend:latest
+          docker tag "$CI_IMAGE_PUBLIC" quillmedical-ci_public:latest
 
       # The image is the prod target, built from the same Dockerfile and
       # context as the one deploy.yml ships. A backend test may sit beside
