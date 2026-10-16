@@ -248,32 +248,6 @@ def read_fhir_patient(patient_id: str) -> dict[str, Any] | None:
         raise FhirClientError("Failed to retrieve patient record") from exc
 
 
-def delete_fhir_patient(patient_id: str) -> bool:
-    """Delete a FHIR Patient resource by ID.
-
-    WARNING: This function is ONLY for development/testing purposes!
-    It should NOT be exposed via API endpoints in production.
-    Patient data should be soft-deleted (Patient.active = false) instead.
-
-    Args:
-        patient_id (str): FHIR Patient resource ID to delete.
-
-    Returns:
-        bool: True if deletion successful, False otherwise.
-    """
-    if not patient_id or not patient_id.strip():
-        raise ValueError("patient_id must be a non-empty string")
-
-    fhir = get_fhir_client()
-
-    try:
-        patient = Patient.read(patient_id, fhir.server)
-        patient.delete()
-        return True
-    except Exception:
-        return False
-
-
 def list_fhir_patients() -> list[dict[str, Any]]:
     """List all FHIR Patient resources.
 

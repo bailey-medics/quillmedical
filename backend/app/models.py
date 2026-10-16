@@ -1128,11 +1128,6 @@ def validate_member_capacity(value: str) -> str:
     return value
 
 
-def validate_site_capacity(value: str) -> str:
-    """Return the capacity unchanged, or raise. Kept for the site call sites."""
-    return validate_member_capacity(value)
-
-
 org_unit_member = Table(
     "org_unit_member",
     Base.metadata,

@@ -103,7 +103,6 @@ _DEP_SESSION = Depends(get_core_db)
 
 
 DEP_REQUIRE_MANAGE_USERS = Depends(has_competency("manage_users"))
-DEP_REQUIRE_MANAGE_STAFF = Depends(has_competency("manage_staff_membership"))
 DEP_REQUIRE_MANAGE_PATIENTS = Depends(
     has_competency("manage_patient_membership")
 )

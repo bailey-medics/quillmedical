@@ -3,22 +3,6 @@
 from pydantic import BaseModel, ConfigDict
 
 
-class CompetencyCheck(BaseModel):
-    """Request to check if user has a competency."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    user_id: int
-    competency: str
-
-
-class CompetencyCheckResponse(BaseModel):
-    """Response for competency check."""
-
-    has_competency: bool
-    reason: str | None = None
-
-
 class UpdateCompetenciesRequest(BaseModel):
     """Request to update user's additional/removed competencies."""
 

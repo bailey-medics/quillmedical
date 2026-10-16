@@ -26,7 +26,6 @@ from app.cbac.competencies import (
     RETIRED_COMPETENCY_IDS,
     CompetencyEntry,
     _load_catalogue,
-    _load_competencies,
     framework_competencies,
     get_competency_details,
     is_valid_competency,
@@ -74,7 +73,7 @@ def test_load_merges_files_in_filename_order(tmp_path: Path) -> None:
         'competencies:\n  - id: first\n    display_name: "First"\n'
     )
 
-    loaded = _load_competencies(tmp_path)
+    loaded = _load_catalogue(tmp_path)[0]
 
     # Sorted by filename, so the merged order is the same everywhere
     # rather than whatever order the filesystem happens to return.
@@ -95,7 +94,7 @@ def test_load_rejects_an_id_defined_in_two_files(tmp_path: Path) -> None:
     )
 
     with pytest.raises(ValueError, match="Duplicate competency id"):
-        _load_competencies(tmp_path)
+        _load_catalogue(tmp_path)[0]
 
 
 def test_levels_are_optional(tmp_path: Path) -> None:
@@ -108,7 +107,7 @@ def test_levels_are_optional(tmp_path: Path) -> None:
         'competencies:\n  - id: plain\n    display_name: "Plain"\n'
     )
 
-    loaded = _load_competencies(tmp_path)
+    loaded = _load_catalogue(tmp_path)[0]
 
     assert loaded[0].levels is None
     assert loaded[0].expires_after_months is None
@@ -126,7 +125,7 @@ def test_levels_keep_their_declared_order(tmp_path: Path) -> None:
         '      - id: unsupervised\n        name: "Unsupervised"\n'
     )
 
-    loaded = _load_competencies(tmp_path)
+    loaded = _load_catalogue(tmp_path)[0]
 
     assert loaded[0].levels is not None
     assert [lvl.id for lvl in loaded[0].levels] == [
@@ -148,7 +147,7 @@ def test_load_rejects_duplicate_level_ids(tmp_path: Path) -> None:
     )
 
     with pytest.raises(ValueError, match="duplicate level ids"):
-        _load_competencies(tmp_path)
+        _load_catalogue(tmp_path)[0]
 
 
 def test_load_rejects_an_empty_level_list(tmp_path: Path) -> None:
@@ -161,7 +160,7 @@ def test_load_rejects_an_empty_level_list(tmp_path: Path) -> None:
     )
 
     with pytest.raises(ValueError, match="empty level list"):
-        _load_competencies(tmp_path)
+        _load_catalogue(tmp_path)[0]
 
 
 def test_scopes_are_optional(tmp_path: Path) -> None:
@@ -170,7 +169,7 @@ def test_scopes_are_optional(tmp_path: Path) -> None:
         'competencies:\n  - id: plain\n    display_name: "Plain"\n'
     )
 
-    assert _load_competencies(tmp_path)[0].scopes is None
+    assert _load_catalogue(tmp_path)[0][0].scopes is None
 
 
 def test_scopes_keep_their_declared_order(tmp_path: Path) -> None:
@@ -184,7 +183,7 @@ def test_scopes_keep_their_declared_order(tmp_path: Path) -> None:
         '      - id: other\n        name: "Other"\n'
     )
 
-    loaded = _load_competencies(tmp_path)
+    loaded = _load_catalogue(tmp_path)[0]
 
     assert loaded[0].scopes is not None
     assert [scope.id for scope in loaded[0].scopes] == [
@@ -207,7 +206,7 @@ def test_load_rejects_duplicate_scope_ids(tmp_path: Path) -> None:
     )
 
     with pytest.raises(ValueError, match="duplicate scope ids"):
-        _load_competencies(tmp_path)
+        _load_catalogue(tmp_path)[0]
 
 
 def test_load_rejects_an_empty_scope_list(tmp_path: Path) -> None:
@@ -220,7 +219,7 @@ def test_load_rejects_an_empty_scope_list(tmp_path: Path) -> None:
     )
 
     with pytest.raises(ValueError, match="empty scope list"):
-        _load_competencies(tmp_path)
+        _load_catalogue(tmp_path)[0]
 
 
 def test_load_rejects_scopes_with_no_other(tmp_path: Path) -> None:
@@ -234,7 +233,7 @@ def test_load_rejects_scopes_with_no_other(tmp_path: Path) -> None:
     )
 
     with pytest.raises(ValueError, match="no 'other'"):
-        _load_competencies(tmp_path)
+        _load_catalogue(tmp_path)[0]
 
 
 def test_the_real_catalogue_has_a_scoped_competency() -> None:
@@ -451,7 +450,7 @@ def test_expires_after_months_is_read(tmp_path: Path) -> None:
         "    expires_after_months: 12\n"
     )
 
-    assert _load_competencies(tmp_path)[0].expires_after_months == 12
+    assert _load_catalogue(tmp_path)[0][0].expires_after_months == 12
 
 
 def test_the_real_catalogue_has_a_levelled_competency() -> None:
@@ -476,7 +475,7 @@ def test_load_rejects_an_empty_directory(tmp_path: Path) -> None:
     for a reason anyone could see.
     """
     with pytest.raises(FileNotFoundError, match="No competency definitions"):
-        _load_competencies(tmp_path)
+        _load_catalogue(tmp_path)[0]
 
 
 def test_get_competency_details_known_id() -> None:
