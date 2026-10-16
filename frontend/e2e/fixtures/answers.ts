@@ -34,12 +34,17 @@ export interface KnownQuestion {
   right: string;
   /** The label of an option that is wrong. */
   wrong: string;
+  /** Every option's label, in the file's order. */
+  options: string[];
+  /** Each picture's label, which the page gives it as alt text. */
+  images: string[];
 }
 
 interface QuestionFile {
   text: string;
   options: { id: string; label: string }[];
   correct_option_id: string;
+  images?: { key: string; label?: string }[];
 }
 
 function isQuestionFile(value: unknown): value is QuestionFile {
@@ -93,6 +98,10 @@ export function knownQuestions(): KnownQuestion[] {
         text: squash(parsed.text),
         right: right.label,
         wrong: wrong.label,
+        options: parsed.options.map((option) => option.label),
+        images: (parsed.images ?? []).map(
+          (image) => image.label ?? "Question image",
+        ),
       };
     });
 }

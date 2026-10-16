@@ -38,6 +38,10 @@ async function analyseSettled(page: Page) {
   for (let attempt = 1; ; attempt += 1) {
     try {
       return await new AxeBuilder({ page })
+        // YouTube's own player, inside the frame Quill's player drives.
+        // Its markup is YouTube's, not ours to fix, and it fails
+        // aria-allowed-attr and aria-prohibited-attr on every lecture.
+        .exclude('iframe[src*="youtube"]')
         .options({
           runOnly: { type: "tag", values: [...WCAG_TAGS] },
           rules: Object.fromEntries(
