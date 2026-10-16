@@ -43,7 +43,7 @@ export default function AdminTeachingDashboard() {
         <ActionCard
           icon={<IconUserCheck />}
           title="All delegates"
-          subtitle="View delegate progress, assessment results, and filter by trust or clinical lead."
+          subtitle="View delegate progress, assessment results, and filter by site or clinical lead."
           buttonLabel="View delegates"
           buttonUrl="/admin/teaching/all-delegates"
         />

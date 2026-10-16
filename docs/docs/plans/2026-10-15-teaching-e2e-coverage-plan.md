@@ -445,7 +445,7 @@ a wrong one to fail. A new pin is then picked up with no test change.
       (`TestOneRefusedEmailStopsNoOther`), both tests checked to fail
       with the catch removed.
 
-- [ ] Found while building story 16: a pass emails the clinical lead of
+- [x] Found while building story 16: a pass emails the clinical lead of
       **every** site under the organisation, not just the delegate's own.
       `_maybe_enqueue_certificate_emails` takes `descendant_ids` of the
       organisation and emails every lead found, so with EoEETA's member
@@ -788,6 +788,10 @@ a TD unless it names one.
       The filter offers sites and clinical leads, not trusts, so "by
       trust" is tested as by site, the place a delegate belongs to. The
       card's subtitle still says "trust"; worth rewording to "site".
+      - [x] Reword it, decided by Mark on 2026-10-16: "View delegate
+        progress, assessment results, and filter by site or clinical
+        lead." in `frontend/src/pages/admin/teaching/AdminTeachingDashboard.tsx`,
+        with any test or story that quotes the old words.
 - [x] 9. As a TA or a TD, I want to change my password in settings, so
       that I can keep my account safe.
       Tested: the old password stops working and the new one signs in.
@@ -953,16 +957,113 @@ so the leak tests are written before the fix they prove.
 
 ## Phase 11: Every module of teaching content
 
-- [ ] Settle the four open questions from the discussion on 2026-10-15
-      before writing this phase's steps: 1. What "all the content" means: every module and every slide, with
-      each assessment sat once (recommended), or every question in
-      every bank as well. 2. Which repositories: every teaching repository, private EoEETA
-      ones included (recommended), which needs a read-only deploy key
-      or GitHub App token in CI. 3. Where it runs: in each content repository's own CI on its pull
-      request (recommended), since that pull request is the gate for
-      content, with Quill's CI keeping its one pinned module. 4. What a test checks: each slide renders with no console errors and
-      no broken images or video, plus an axe scan (recommended), and no
-      screenshot comparison.
+- [x] Settle the open questions. Decided by Mark on 2026-10-16:
+      - **What is tested** - going through a module, each slide shows
+        what its file says it should: its text, its pictures and its
+        videos. Each question shows its text, its picture and its
+        options. Not every question bank in every combination, and no
+        screenshot comparison.
+      - **Which repositories** - respiratory-teaching only. It holds one
+        module, `chest-xray-interpretation-test`, the one Quill's CI
+        already fetches at a fixed commit, so no new credential and no
+        new repository in CI.
+      - **What a slide must pass** - no console errors, no broken
+        picture or video, and the axe scan `fixtures/axe` already runs.
+      - **Where it runs** - in Quill's CI, against the fixed commit in
+        `.github/scripts/ci/fetch-e2e-teaching.sh`, as today.
+
+- [ ] Check every slide against the module's own file, in
+      `tests/taking-a-module/content.spec.ts`. Read
+      `learning/content.mdx` the way `fixtures/answers.ts` reads the
+      questions: split it into slides as the app does, and for each
+      slide check its headings and text are shown, each picture has
+      loaded (a `naturalWidth` above nought, not merely an `img` in the
+      page), and each `<YouTube>` has Quill's player. Fail on any
+      console error or failed request for a picture or video on the way.
+      Reading the file, not a copy of it in the test, means new material
+      is checked as soon as the pin moves.
+      Tested against the module as it is, decided by Mark on 2026-10-16:
+      its slides have text, the lecture and a callout but no picture yet,
+      so the picture check runs on whatever pictures a slide has, none
+      today. When Mark adds slides he will ask for the E2E tests to be
+      brought up to date, which is moving `PINNED_SHA` in
+      `.github/scripts/ci/fetch-e2e-teaching.sh` to his commit.
+
+- [ ] Check every question against its file. An attempt draws four of
+      the five at random, so sit attempts until every question has been
+      shown once, checking each as it appears: its text, its picture
+      loaded, and its options. The module allows an immediate retry, so
+      this costs a few attempts and no waiting.
+
+## Phase 12: What a delegate can reach of anybody else's
+
+Asked for by Mark on 2026-10-16: a teaching delegate reaches nothing of
+another delegate's, of a teaching admin's or of the superuser's, and no
+admin page at all. Decided the same day where each part is tested. The
+API is checked by backend unit tests, which are quicker, can call every
+route and run on every push; end-to-end tests check what a person sees,
+with a few requests through the real stack. `every_route_is_guarded_test.py`
+checks only that each route asks who is calling, not that a delegate is
+refused, so nothing checks this today.
+
+- [ ] Backend: every route refuses a delegate, unless it is theirs to
+      use, in `backend/tests/a_delegate_reaches_only_their_own_test.py`.
+      Walk `served_routes(app)`, call each as a teaching delegate with
+      real ids filled in for its path (another delegate's assessment, a
+      teaching admin's, the superuser's account, an org unit, a piece of
+      feedback), and expect a 403 or a 404, never a 422 or a 200. Routes
+      a delegate may call are named in a list with the reason, such as
+      their own modules, attempts, settings and feedback, and the list
+      fails in both directions as `PUBLIC` does: a new route a delegate
+      can call fails until it is listed, and an entry for a route that
+      no longer exists fails until it is taken out. A floor on the
+      number of routes walked, so an empty walk cannot pass.
+      A route the list admits is checked with somebody else's ids too:
+      admitted means a delegate may call it for their own, not for
+      anybody's.
+
+- [ ] Frontend: every admin page shows a delegate the 404 page, in a
+      vitest test beside `src/routes.tsx`. Walk the exported `routes`,
+      take every path under `/admin` (about forty), render each as a
+      teaching delegate and expect the 404 page. A floor on the count,
+      and a new admin page is covered without anybody adding it.
+
+- [ ] End to end: one delegate cannot open another's pages, in
+      `tests/leaks/delegate-to-delegate.spec.ts`. Two learners at
+      `TEACHING_SITES.centre` and one at `TEACHING_SITES.annexe`, made
+      with `makeLearnerAt`; one passes, and each of the other two is
+      refused the result page, results by question and the certificate,
+      each first checked to open for its owner. Story 6 of Phase 8
+      already shows a delegate the 404 page for `/admin`, `/admin/users`
+      and `/admin/teaching` in a real browser, and stays as it is.
+
+## Phase 13: Passport and safety places nobody in teaching can reach
+
+Discussed with Mark on 2026-10-16. The seed has no passport or safety
+place at all, so nothing tests that a teaching admin or delegate cannot
+reach one. What somebody may do depends on what they hold and where they
+belong, not on what a place is for, so one list of checks run against
+each place covers both, and a third kind of place later is one more
+entry in it. The teaching journeys stay where they are: they never go
+near these places, so moving them would test nothing new.
+
+- [ ] Seed "CI Passport Hospital" with "CI Passport Centre", the passport
+      feature on, and a member holding a passport record; and "CI Safety
+      Hospital" with "CI Safety Centre", the safety feature on, and a
+      member holding a safety post. Real data in each, so a refusal is
+      protecting something rather than an empty place.
+
+- [ ] Write `tests/leaks/other-features.spec.ts`, one parametrised list
+      run against each place, as the seeded teaching admin and as a
+      delegate at a teaching site:
+      - the organisation is not in the teaching admin's list;
+      - the organisation page, the site page and the member's page do
+        not open, by the menu or by address;
+      - the delegate sees no passport or safety page for those places.
+      Changing these places through the API is the backend's to check,
+      as Phase 12 decided: the org-scoping tests in `backend/tests/`
+      already refuse a teaching admin outside their own tree, and get a
+      case for each new kind of place if one is missing.
 
 ## Decisions
 

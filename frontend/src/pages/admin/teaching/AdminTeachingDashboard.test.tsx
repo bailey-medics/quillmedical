@@ -42,6 +42,29 @@ describe("AdminTeachingDashboard", () => {
     expect(screen.getByText("All delegates")).toBeInTheDocument();
   });
 
+  // The filter offers sites and clinical leads, not trusts
+  it("says All delegates filters by site or clinical lead", () => {
+    mockUseAuth.mockReturnValue({
+      state: {
+        status: "authenticated",
+        user: {
+          id: "1",
+          username: "coordinator",
+          email: "coordinator@example.com",
+          competencies: ["manage_teaching"],
+        },
+      },
+    });
+
+    renderWithRouter(<AdminTeachingDashboard />);
+
+    expect(
+      screen.getByText(
+        "View delegate progress, assessment results, and filter by site or clinical lead.",
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("hides Modules card from a teaching admin who is not an operator", () => {
     // The modules pages are operator-only, so the card led to a 404.
     mockUseAuth.mockReturnValue({
