@@ -85,6 +85,32 @@ export async function waitForEmail(
   return emails[emails.length - 1];
 }
 
+/** How many emails have been sent to *to* so far. */
+export function emailCount(to: string): number {
+  return emailsTo(to).length;
+}
+
+/**
+ * Check no more email reaches *to* within *wait* milliseconds, than the
+ * *before* it had already been sent.
+ *
+ * For an email that must not be sent. It waits the whole time, since a
+ * check made at once would pass before a slow send had happened.
+ */
+export async function expectNoNewEmail(
+  to: string,
+  before: number,
+  wait = 5_000,
+): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, wait));
+
+  const after = emailsTo(to);
+  expect(
+    after.slice(before).map((email) => email.subject),
+    `An email was sent to ${to}`,
+  ).toEqual([]);
+}
+
 /**
  * The first link in an email whose address contains *contains*.
  *
