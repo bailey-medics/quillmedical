@@ -12,7 +12,8 @@ Environment Variables:
                       check-competency-seeding, delete-passport,
                       send-newsletter, accessibility-reminder,
                       apply-retention, send-teaching-reminders,
-                      finish-exams-out-of-time, set-records-kept.
+                      finish-exams-out-of-time, set-records-kept,
+                      sync-teaching.
     ADMIN_USERNAME:   Required.  Target username.
     ADMIN_EMAIL:      Required for create-superadmin.
     ADMIN_PASSWORD:   Required for create-superadmin.
@@ -373,6 +374,46 @@ def finish_exams_out_of_time() -> int:
     return out_of_time_main()
 
 
+def sync_teaching() -> int:
+    """Sync every teaching bank into the database from where it is held.
+
+    Started by the teaching pipeline once a teaching repository's content
+    is in the bucket, in place of the pipeline calling an endpoint with a
+    token. GitHub signs in to Google Cloud and starts this job; it holds
+    no credential the app accepts.
+
+    The sync is committed whatever happened, as the endpoint's was: a
+    bank that synced stays synced when another is rejected. Any rejected
+    bank is printed with its reason and the job fails, so the pipeline
+    run goes red and says which bank and why.
+    """
+    from app.db.core_db import CoreSessionLocal
+    from app.features.teaching.ci_sync import sync_every_bank
+
+    db = CoreSessionLocal()
+
+    try:
+        outcome = sync_every_bank(db)
+        db.commit()
+    except Exception as exc:
+        db.rollback()
+        print(f"✗ The sync did not run: {exc}", file=sys.stderr)
+        return 1
+    finally:
+        db.close()
+
+    if outcome.message:
+        print(f"✓ {outcome.message}")
+
+    for bank in outcome.synced:
+        print(f"✓ {bank.bank_id} synced at version {bank.version}")
+
+    for failed in outcome.errors:
+        print(f"✗ {failed.bank_id}: {failed.error}", file=sys.stderr)
+
+    return 1 if outcome.errors else 0
+
+
 def send_newsletter() -> int:
     """Send a newsletter to everybody who said yes, or report who would get it.
 
@@ -705,6 +746,10 @@ ACTIONS: dict[str, tuple[Callable[[], int], str]] = {
         send_teaching_reminders,
         "Send enrolment reminders and renewal notices (a report without "
         "REMINDERS_APPLY=true)",
+    ),
+    "sync-teaching": (
+        sync_teaching,
+        "Sync every teaching bank from the bucket into the database",
     ),
     "finish-exams-out-of-time": (
         finish_exams_out_of_time,

@@ -108,3 +108,4 @@
 - [Migrations Squash](2026-10-15-migrations-squash-plan.md)
 - [Stacked Pull Requests Land on Main](2026-10-15-stacked-pull-requests-land-on-main-plan.md)
 - [Security Module Tidy](2026-10-15-security-module-tidy-plan.md)
+- [Teaching Sync Without a GitHub Secret](2026-10-16-teaching-sync-without-a-github-secret-plan.md)

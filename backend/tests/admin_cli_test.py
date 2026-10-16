@@ -854,3 +854,108 @@ class TestFinishExamsOutOfTime:
         )
         assert result == 7
         sweep.assert_called_once_with()
+
+
+class TestSyncTeaching:
+    """The sync the teaching pipeline starts, in place of an endpoint."""
+
+    @staticmethod
+    def _outcome(
+        synced: list[tuple[str, str]],
+        errors: list[tuple[str, str]],
+        message: str | None = None,
+    ) -> object:
+        from app.features.teaching.schemas import (
+            CiSyncBankResult,
+            CiSyncErrorItem,
+            CiTeachingSyncOut,
+        )
+
+        return CiTeachingSyncOut(
+            synced=[CiSyncBankResult(bank_id=b, version=v) for b, v in synced],
+            errors=[CiSyncErrorItem(bank_id=b, error=e) for b, e in errors],
+            message=message,
+        )
+
+    @pytest.mark.usefixtures("_patch_session")
+    def test_a_clean_sync_commits_and_passes(
+        self, db_session: Session, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        from scripts.admin_cli import sync_teaching
+
+        outcome = self._outcome([("colonoscopy", "1.2.0")], [])
+
+        with (
+            patch(
+                "app.features.teaching.ci_sync.sync_every_bank",
+                return_value=outcome,
+            ),
+            patch.object(db_session, "commit") as commit,
+        ):
+            assert sync_teaching() == 0
+
+        commit.assert_called_once()
+        assert "colonoscopy synced at version 1.2.0" in capsys.readouterr().out
+
+    @pytest.mark.usefixtures("_patch_session")
+    def test_a_rejected_bank_fails_the_job_and_names_it(
+        self, db_session: Session, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """The banks that did sync are still committed, as the endpoint
+        did; the job fails so the pipeline run goes red."""
+        from scripts.admin_cli import sync_teaching
+
+        outcome = self._outcome(
+            [("colonoscopy", "1.2.0")], [("gastroscopy", "bad certificate")]
+        )
+
+        with (
+            patch(
+                "app.features.teaching.ci_sync.sync_every_bank",
+                return_value=outcome,
+            ),
+            patch.object(db_session, "commit") as commit,
+        ):
+            assert sync_teaching() == 1
+
+        commit.assert_called_once()
+        assert "gastroscopy: bad certificate" in capsys.readouterr().err
+
+    @pytest.mark.usefixtures("_patch_session")
+    def test_nothing_to_sync_passes_and_says_so(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        from scripts.admin_cli import sync_teaching
+
+        outcome = self._outcome([], [], message="No banks found")
+
+        with patch(
+            "app.features.teaching.ci_sync.sync_every_bank",
+            return_value=outcome,
+        ):
+            assert sync_teaching() == 0
+
+        assert "No banks found" in capsys.readouterr().out
+
+    @pytest.mark.usefixtures("_patch_session")
+    def test_a_sync_that_raises_is_rolled_back_and_fails(
+        self, db_session: Session, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        from scripts.admin_cli import sync_teaching
+
+        with (
+            patch(
+                "app.features.teaching.ci_sync.sync_every_bank",
+                side_effect=RuntimeError("bucket unreachable"),
+            ),
+            patch.object(db_session, "rollback") as rollback,
+        ):
+            assert sync_teaching() == 1
+
+        rollback.assert_called_once()
+        assert "The sync did not run" in capsys.readouterr().err
+
+    def test_is_listed_as_an_action(self) -> None:
+        from scripts.admin_cli import ACTIONS
+
+        assert "sync-teaching" in ACTIONS
