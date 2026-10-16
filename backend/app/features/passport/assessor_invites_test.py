@@ -390,10 +390,10 @@ def test_the_token_names_the_invitation_and_the_address(
     db_session: Session, passport: Passport
 ) -> None:
     token = _invite(db_session, passport)
-    payload = decode_passport_invite_token(token)
+    claims = decode_passport_invite_token(token)
 
-    assert payload["invite_id"] == _row(db_session).id
-    assert payload["email"] == OUTSIDE
+    assert claims.invite_id == _row(db_session).id
+    assert claims.email == OUTSIDE
 
 
 # --- reading a token --------------------------------------------------------

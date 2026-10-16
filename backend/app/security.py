@@ -41,7 +41,7 @@ def _now() -> datetime:
     return datetime.now(UTC)
 
 
-def hash_password(p: str) -> str:
+def hash_password(password: str) -> str:
     """Hash Password with Argon2.
 
     Hashes a plain text password using the Argon2id algorithm, which is
@@ -49,7 +49,7 @@ def hash_password(p: str) -> str:
     parameters (time_cost=3, memory_cost=65536, parallelism=4).
 
     Args:
-        p: Plain text password to hash.
+        password: Plain text password to hash.
 
     Returns:
         str: Argon2 hash string in PHC format, suitable for database storage.
@@ -58,21 +58,21 @@ def hash_password(p: str) -> str:
         ValueError: If password is empty or None.
     """
     # Defensive programming: validate input
-    if not p:
+    if not password:
         raise ValueError("Password cannot be empty")
 
-    return _ph.hash(p)
+    return _ph.hash(password)
 
 
-def verify_password(p: str, h: str) -> bool:
+def verify_password(password: str, password_hash: str) -> bool:
     """Verify Password Against Hash.
 
     Verifies a plain text password against an Argon2 hash stored in the
     database. Uses constant-time comparison to prevent timing attacks.
 
     Args:
-        p: Plain text password to verify.
-        h: Argon2 hash from database (PHC format).
+        password: Plain text password to verify.
+        password_hash: Argon2 hash from database (PHC format).
 
     Returns:
         bool: True if password matches hash, False otherwise.
@@ -80,17 +80,17 @@ def verify_password(p: str, h: str) -> bool:
     Raises:
         ValueError: If password or hash is empty.
     """
-    if not p:
+    if not password:
         raise ValueError("Password cannot be empty")
-    if not h:
+    if not password_hash:
         raise ValueError("Hash cannot be empty")
     try:
-        return _ph.verify(h, p)
+        return _ph.verify(password_hash, password)
     except VerifyMismatchError:
         return False
 
 
-def password_needs_rehash(h: str) -> bool:
+def password_needs_rehash(password_hash: str) -> bool:
     """Whether a stored hash was made with weaker parameters than now.
 
     A hash carries the parameters it was made with, and verifying reads
@@ -100,16 +100,16 @@ def password_needs_rehash(h: str) -> bool:
     and hashes the password again if the answer is yes.
 
     Args:
-        h: Argon2 hash from the database (PHC format).
+        password_hash: Argon2 hash from the database (PHC format).
 
     Returns:
         bool: True if the hash should be made again with the current
             parameters.
     """
-    if not h:
+    if not password_hash:
         raise ValueError("Hash cannot be empty")
 
-    return _ph.check_needs_rehash(h)
+    return _ph.check_needs_rehash(password_hash)
 
 
 class TokenNotAcceptable(Exception):
@@ -117,9 +117,10 @@ class TokenNotAcceptable(Exception):
 
     Raised by every decoder here, whatever was wrong: a bad signature, a
     token that has run out or carries no expiry at all, an algorithm
-    other than ours, something that is not a token, or a token of one
-    kind offered where another is wanted. One error, so that a caller
-    never needs the name of the library underneath.
+    other than ours, something that is not a token, a token of one
+    kind offered where another is wanted, or one missing a claim its
+    kind carries. One error, so that a caller never needs the name of
+    the library underneath.
     """
 
 
@@ -131,7 +132,60 @@ REFRESH_TYPE = "refresh"
 INVITE_TYPE = "invite"
 
 
-def _read(tok: str, kind: str, not_that_kind: str) -> dict[str, Any]:
+class SessionClaims(NamedTuple):
+    """What an access or a refresh token says, once it has been read."""
+
+    username: str
+    token_version: int
+
+
+class InviteClaims(NamedTuple):
+    """What an invite to share a patient's record says."""
+
+    patient_id: str
+    email: str
+    user_type: str
+
+
+def _str_claim(data: dict[str, Any], name: str) -> str:
+    """One claim that must be a string, or the token is refused.
+
+    The signature is good by the time this is asked, so a claim that is
+    missing or of the wrong type means a token this app did not make,
+    and it is refused as firmly as a forged one.
+
+    Raises:
+        TokenNotAcceptable: If the claim is missing or not a string.
+    """
+    value = data.get(name)
+    if not isinstance(value, str):
+        raise TokenNotAcceptable(f"Token has no {name}")
+
+    return value
+
+
+def _int_claim(data: dict[str, Any], name: str) -> int:
+    """One claim that must be a whole number, or the token is refused.
+
+    A JSON ``true`` is not one, though Python counts ``bool`` as an
+    ``int``.
+
+    Raises:
+        TokenNotAcceptable: If the claim is missing or not an integer.
+    """
+    value = data.get(name)
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise TokenNotAcceptable(f"Token has no {name}")
+
+    return value
+
+
+def _session_claims(data: dict[str, Any]) -> SessionClaims:
+    """The claims an access or a refresh token carries."""
+    return SessionClaims(_str_claim(data, "sub"), _int_claim(data, "tv"))
+
+
+def _read(token: str, kind: str, not_that_kind: str) -> dict[str, Any]:
     """Check a token and hand back its claims, or refuse it.
 
     Its signature is checked against our secret, under our algorithm and
@@ -140,7 +194,7 @@ def _read(tok: str, kind: str, not_that_kind: str) -> dict[str, Any]:
     the kind asked for.
 
     Args:
-        tok: The token.
+        token: The token.
         kind: The ``type`` it must carry.
         not_that_kind: What to say of a good token of another kind.
 
@@ -149,7 +203,7 @@ def _read(tok: str, kind: str, not_that_kind: str) -> dict[str, Any]:
     """
     try:
         data: dict[str, Any] = jwt.decode(
-            tok,
+            token,
             settings.JWT_SECRET.get_secret_value(),
             algorithms=[settings.JWT_ALG],
             options={"require": ["exp"]},
@@ -163,7 +217,7 @@ def _read(tok: str, kind: str, not_that_kind: str) -> dict[str, Any]:
     return data
 
 
-def create_access_token(sub: str, token_version: int = 0) -> str:
+def create_access_token(username: str, token_version: int = 0) -> str:
     """Create JWT Access Token.
 
     Creates a short-lived JWT access token naming the user. The token is
@@ -178,21 +232,20 @@ def create_access_token(sub: str, token_version: int = 0) -> str:
     the size of a cookie.
 
     Args:
-        sub: Subject (username) for the token.
+        username: Who the token is for.
         token_version: User's token version for session invalidation.
 
     Returns:
         str: Encoded JWT access token valid for ACCESS_TTL_MIN minutes.
 
     Raises:
-        ValueError: If subject is empty.
+        ValueError: If the username is empty.
     """
-    # Defensive programming: validate inputs
-    if not sub or not sub.strip():
-        raise ValueError("Subject (username) cannot be empty")
+    if not username or not username.strip():
+        raise ValueError("Username cannot be empty")
 
     payload: dict[str, Any] = {
-        "sub": sub,
+        "sub": username,
         "type": ACCESS_TYPE,
         "tv": token_version,
         "exp": _now() + timedelta(minutes=settings.ACCESS_TTL_MIN),
@@ -205,7 +258,7 @@ def create_access_token(sub: str, token_version: int = 0) -> str:
     )
 
 
-def create_refresh_token(sub: str, token_version: int = 0) -> str:
+def create_refresh_token(username: str, token_version: int = 0) -> str:
     """Create JWT Refresh Token.
 
     Creates a long-lived JWT refresh token used to obtain new access tokens
@@ -213,20 +266,20 @@ def create_refresh_token(sub: str, token_version: int = 0) -> str:
     (default: 7 days). Stored in HTTP-only cookie with restricted path.
 
     Args:
-        sub: Subject (username) for the token.
+        username: Who the token is for.
         token_version: User's token version for session invalidation.
 
     Returns:
         str: Encoded JWT refresh token valid for REFRESH_TTL_DAYS days.
 
     Raises:
-        ValueError: If subject is empty.
+        ValueError: If the username is empty.
     """
-    if not sub or not sub.strip():
-        raise ValueError("Subject (username) cannot be empty")
+    if not username or not username.strip():
+        raise ValueError("Username cannot be empty")
 
     payload: dict[str, Any] = {
-        "sub": sub,
+        "sub": username,
         "type": REFRESH_TYPE,
         "tv": token_version,
         "exp": _now() + timedelta(days=settings.REFRESH_TTL_DAYS),
@@ -239,7 +292,7 @@ def create_refresh_token(sub: str, token_version: int = 0) -> str:
     )
 
 
-def decode_token(tok: str) -> dict[str, Any]:
+def decode_token(token: str) -> SessionClaims:
     """Check an access token and hand back its claims.
 
     The token a request carries in its ``access_token`` cookie. A refresh
@@ -247,42 +300,46 @@ def decode_token(tok: str) -> dict[str, Any]:
     minutes, and is refused here though its signature is good.
 
     Args:
-        tok: The token.
+        token: The token.
 
     Returns:
-        The claims: ``sub`` (the username), ``tv`` and ``exp``.
+        The username and token version it carries.
 
     Raises:
-        TokenNotAcceptable: If the token is not valid, or is not an
-            access token.
+        TokenNotAcceptable: If the token is not valid, is not an access
+            token, or is missing its username or token version.
     """
-    return _read(tok, ACCESS_TYPE, "Not an access token")
+    data = _read(token, ACCESS_TYPE, "Not an access token")
+
+    return _session_claims(data)
 
 
-def decode_refresh_token(tok: str) -> dict[str, Any]:
+def decode_refresh_token(token: str) -> SessionClaims:
     """Check a refresh token and hand back its claims.
 
     The token in the ``refresh_token`` cookie, exchanged for a new
     access token. An access token is not one, and is refused here.
 
     Args:
-        tok: The token.
+        token: The token.
 
     Returns:
-        The claims: ``sub`` (the username), ``tv`` and ``exp``.
+        The username and token version it carries.
 
     Raises:
-        TokenNotAcceptable: If the token is not valid, or is not a
-            refresh token.
+        TokenNotAcceptable: If the token is not valid, is not a refresh
+            token, or is missing its username or token version.
     """
-    return _read(tok, REFRESH_TYPE, "Not a refresh token")
+    data = _read(token, REFRESH_TYPE, "Not a refresh token")
+
+    return _session_claims(data)
 
 
 # CSRF (double-submit cookie)
 _csrf = URLSafeSerializer(settings.JWT_SECRET.get_secret_value(), salt="csrf")
 
 
-def make_csrf(sub: str) -> str:
+def make_csrf(username: str) -> str:
     """Create CSRF Protection Token.
 
     Generates a CSRF token for protecting state-changing operations against
@@ -291,35 +348,35 @@ def make_csrf(sub: str) -> str:
     for POST/PUT/PATCH/DELETE requests.
 
     Args:
-        sub: Subject (username) to tie the token to.
+        username: Who the token is tied to.
 
     Returns:
         str: URL-safe CSRF token signed with JWT_SECRET.
 
     Raises:
-        ValueError: If the subject is empty.
+        ValueError: If the username is empty.
     """
-    if not sub or not sub.strip():
-        raise ValueError("Subject (username) cannot be empty")
+    if not username or not username.strip():
+        raise ValueError("Username cannot be empty")
 
-    return _csrf.dumps({"sub": sub})
+    return _csrf.dumps({"sub": username})
 
 
-def verify_csrf(token: str, sub: str) -> bool:
+def verify_csrf(token: str, username: str) -> bool:
     """Verify CSRF Token.
 
     Verifies a CSRF token matches the expected username. Used by the
     require_csrf dependency to protect state-changing operations. Returns
-    False when the signature is bad or the subject is another user's.
+    False when the signature is bad or the username is another user's.
     Only a bad signature is caught: anything else raised here is a fault
     in our code, and surfaces rather than reading as a wrong token.
 
     Args:
         token: CSRF token from X-CSRF-Token header.
-        sub: Expected subject (username) from JWT.
+        username: Who the request's access token names.
 
     Returns:
-        bool: True if token is valid and subject matches, False otherwise.
+        bool: True if token is valid and username matches, False otherwise.
     """
     try:
         data = _csrf.loads(token)
@@ -328,11 +385,11 @@ def verify_csrf(token: str, sub: str) -> bool:
     if not isinstance(data, dict):
         return False
 
-    signed_sub = data.get("sub")
-    if not isinstance(signed_sub, str):
+    signed_username = data.get("sub")
+    if not isinstance(signed_username, str):
         return False
 
-    return hmac.compare_digest(signed_sub.encode(), sub.encode())
+    return hmac.compare_digest(signed_username.encode(), username.encode())
 
 
 def generate_totp_secret() -> str:
@@ -432,17 +489,26 @@ def create_invite_token(
     )
 
 
-def decode_invite_token(tok: str) -> dict[str, Any]:
+def decode_invite_token(token: str) -> InviteClaims:
     """Decode and verify an invite JWT.
 
+    Args:
+        token: The token from the invite link.
+
     Returns:
-        dict: Payload with ``patient_id``, ``email``, ``user_type``.
+        The patient, the address it was sent to and the kind of user.
 
     Raises:
-        TokenNotAcceptable: If the token is not valid, or is not an
-            invite.
+        TokenNotAcceptable: If the token is not valid, is not an
+            invite, or is missing any of the three.
     """
-    return _read(tok, INVITE_TYPE, "Not an invite token")
+    data = _read(token, INVITE_TYPE, "Not an invite token")
+
+    return InviteClaims(
+        _str_claim(data, "patient_id"),
+        _str_claim(data, "email"),
+        _str_claim(data, "user_type"),
+    )
 
 
 # --- Passport assessor invite tokens ---
@@ -473,6 +539,13 @@ PASSPORT_INVITE_TTL_DAYS = 14
 #: Checked on decode, so a token minted for one purpose cannot be
 #: presented for the other even though both are signed with the same key.
 PASSPORT_INVITE_TYPE = "passport_assessor_invite"
+
+
+class PassportInviteClaims(NamedTuple):
+    """What a passport assessor invite says."""
+
+    invite_id: str
+    email: str
 
 
 def create_passport_invite_token(
@@ -521,24 +594,28 @@ def create_passport_invite_token(
     )
 
 
-def decode_passport_invite_token(tok: str) -> dict[str, Any]:
+def decode_passport_invite_token(token: str) -> PassportInviteClaims:
     """Decode and verify a passport assessor invite.
 
     Args:
-        tok: The token from the invite link.
+        token: The token from the invite link.
 
     Returns:
-        The payload, carrying ``invite_id`` and ``email``.
+        The invitation it is for and the address it was sent to.
 
     Raises:
         TokenNotAcceptable: If the signature is wrong, the token has
             expired, or it is not a passport invite. A patient-sharing
             invite is signed with the same key and would otherwise
             decode cleanly here, so the type is checked rather than
-            assumed.
+            assumed. Also if either claim is missing.
     """
-    return _read(
-        tok, PASSPORT_INVITE_TYPE, "Not a passport assessor invite token"
+    data = _read(
+        token, PASSPORT_INVITE_TYPE, "Not a passport assessor invite token"
+    )
+
+    return PassportInviteClaims(
+        _str_claim(data, "invite_id"), _str_claim(data, "email")
     )
 
 

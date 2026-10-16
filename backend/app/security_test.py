@@ -1,7 +1,7 @@
 """Tests for security module (password hashing, JWT, CSRF, TOTP)."""
 
 from datetime import UTC, datetime, timedelta
-from typing import cast
+from typing import Any, cast
 from unittest.mock import patch
 
 import jwt
@@ -11,6 +11,7 @@ from argon2 import PasswordHasher, Type
 
 from app.config import settings
 from app.security import (
+    SessionClaims,
     TokenNotAcceptable,
     create_access_token,
     create_email_verify_token,
@@ -29,6 +30,21 @@ from app.security import (
     verify_password_reset_token,
     verify_totp_code,
 )
+
+
+def _raw(token: str) -> dict[str, Any]:
+    """Every claim a token carries, read past the decoder.
+
+    For tests of what a token is made with. The decoders hand back only
+    the claims a caller uses, so the expiry and the type are read here.
+    """
+    claims: dict[str, Any] = jwt.decode(
+        token,
+        settings.JWT_SECRET.get_secret_value(),
+        algorithms=[settings.JWT_ALG],
+    )
+
+    return claims
 
 
 class TestPasswordHashing:
@@ -128,18 +144,14 @@ class TestJWTTokens:
         username = "testuser"
         token = create_access_token(username, 3)
 
-        # Decode and verify payload
-        decoded = decode_token(token)
-        assert decoded["sub"] == username
-        assert decoded["tv"] == 3
-        assert "exp" in decoded
+        assert decode_token(token) == SessionClaims(username, 3)
 
     def test_access_token_names_the_user_and_nothing_more(self):
         """Roles and competencies are read from the database on every
         request, never from the cookie, so the token does not carry
         them: a claim that crept back in would grow the cookie with
         every competency granted."""
-        decoded = decode_token(create_access_token("testuser"))
+        decoded = _raw(create_access_token("testuser"))
 
         assert set(decoded) == {"sub", "type", "tv", "exp"}
 
@@ -156,11 +168,10 @@ class TestJWTTokens:
         username = "testuser"
         token = create_refresh_token(username)
 
-        # Decode and verify payload
-        decoded = decode_refresh_token(token)
-        assert decoded["sub"] == username
+        assert decode_refresh_token(token) == SessionClaims(username, 0)
+
+        decoded = _raw(token)
         assert decoded["type"] == "refresh"
-        assert "exp" in decoded
 
         # Verify expiration is in the future
         exp_time = datetime.fromtimestamp(decoded["exp"], UTC)
@@ -208,7 +219,7 @@ class TestJWTTokens:
 
         # Access token should expire in ACCESS_TTL_MIN minutes
         access_token = create_access_token(username)
-        decoded_access = decode_token(access_token)
+        decoded_access = _raw(access_token)
         access_exp = datetime.fromtimestamp(decoded_access["exp"], UTC)
         expected_access_exp = datetime.now(UTC) + timedelta(
             minutes=settings.ACCESS_TTL_MIN
@@ -218,7 +229,7 @@ class TestJWTTokens:
 
         # Refresh token should expire in REFRESH_TTL_DAYS days
         refresh_token = create_refresh_token(username)
-        decoded_refresh = decode_refresh_token(refresh_token)
+        decoded_refresh = _raw(refresh_token)
         refresh_exp = datetime.fromtimestamp(decoded_refresh["exp"], UTC)
         expected_refresh_exp = datetime.now(UTC) + timedelta(
             days=settings.REFRESH_TTL_DAYS

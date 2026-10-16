@@ -56,16 +56,15 @@ def get_current_user(request: Request, db: Session = DEP_GET_SESSION) -> User:
     if not tok:
         raise HTTPException(401, "Not authenticated")
     try:
-        payload = decode_token(tok)
+        claims = decode_token(tok)
     except Exception as e:
         raise HTTPException(401, "Invalid token") from e
 
-    sub = payload.get("sub")
-    user = db.scalar(select(User).where(User.username == sub))
+    user = db.scalar(select(User).where(User.username == claims.username))
 
     if not user or not user.is_active:
         raise HTTPException(401, "Inactive user")
-    if payload.get("tv", 0) != user.token_version:
+    if claims.token_version != user.token_version:
         raise HTTPException(401, "Session invalidated")
 
     request.state.roles = [r.name for r in user.roles]
@@ -138,15 +137,15 @@ def get_optional_user(
     if not tok:
         return None
     try:
-        payload = decode_token(tok)
+        claims = decode_token(tok)
     except Exception:
         return None
 
-    user = db.scalar(select(User).where(User.username == payload.get("sub")))
+    user = db.scalar(select(User).where(User.username == claims.username))
 
     if not user or not user.is_active:
         return None
-    if payload.get("tv", 0) != user.token_version:
+    if claims.token_version != user.token_version:
         return None
 
     return user
