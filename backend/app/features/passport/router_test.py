@@ -1794,7 +1794,7 @@ class TestAcceptingAnInvitation:
     The distinction is the difference between a workable invitation and
     a dead end. An assessor who opens the link between clinics and
     closes the tab, or who starts registering and is interrupted, must
-    be able to come back to it for the whole fourteen days.
+    be able to come back to it for the whole thirty days.
     """
 
     @pytest.fixture
@@ -4145,7 +4145,7 @@ class TestWhatAnExternalAssessorCannotReach:
     def _stale_invite(
         self, holder_client: TestClient, db_session: Session, passport_id: str
     ) -> PassportAssessorInvite:
-        """An invitation whose fortnight has already run out."""
+        """An invitation whose thirty days have already run out."""
         holder_client.post(
             f"/api/passport/{passport_id}/competencies/"
             f"{COMPETENCY}/requests",
@@ -4169,7 +4169,7 @@ class TestWhatAnExternalAssessorCannotReach:
 
         return invite
 
-    def test_an_invitation_past_its_fortnight_is_refused(
+    def test_an_invitation_past_its_thirty_days_is_refused(
         self,
         holder_client: TestClient,
         test_client: TestClient,
@@ -4217,7 +4217,7 @@ class TestWhatAnExternalAssessorCannotReach:
         which is right everywhere but here - minting an already-dead
         token is a bug in real code. So this signs one directly with the
         same key to reach the ``exp`` check inside ``jwt.decode``, which
-        is what actually stops a fortnight-old link.
+        is what actually stops a link past its thirty days.
         """
         passport_id = _create_passport(holder_client)
         holder_client.post(

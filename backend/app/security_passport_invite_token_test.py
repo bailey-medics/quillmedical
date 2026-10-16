@@ -142,18 +142,18 @@ class TestItRefusesTheWrongThing:
 
 
 class TestExpiry:
-    def test_the_default_is_a_fortnight(self) -> None:
+    def test_the_default_is_thirty_days(self) -> None:
         """A consultant may be on nights, on leave, or slow to read email.
 
-        A link that dies over a fortnight's annual leave means the holder
-        has to ask twice.
+        A fortnight proved too short: a link that dies over annual leave
+        means the holder has to ask twice.
         """
-        assert PASSPORT_INVITE_TTL_DAYS == 14
+        assert PASSPORT_INVITE_TTL_DAYS == 30
 
         token = create_passport_invite_token(INVITE_ID, EMAIL)
         payload = _raw(token)
 
-        expected = _now() + timedelta(days=14)
+        expected = _now() + timedelta(days=30)
         assert abs(payload["exp"] - expected.timestamp()) < 60
 
     def test_an_expired_token_is_refused(self) -> None:

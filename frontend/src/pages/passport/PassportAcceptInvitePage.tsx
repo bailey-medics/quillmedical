@@ -4,7 +4,7 @@
  * What an assessor's invitation link opens.
  *
  * **Reading an invitation is not accepting it.** The preview may be
- * fetched as often as the assessor likes for the whole fourteen days, so
+ * fetched as often as the assessor likes for the whole thirty days, so
  * somebody who opens the link between clinics and closes the tab can
  * come back to it. Only completing the form consumes the invitation.
  *

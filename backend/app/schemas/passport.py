@@ -757,7 +757,7 @@ class InvitePreviewOut(BaseModel):
 
     Reading an invitation is not accepting it. This is what the link
     resolves to when opened - as often as the assessor likes, for the
-    whole fourteen days - so somebody who opens it between clinics and
+    whole thirty days - so somebody who opens it between clinics and
     closes the tab can come back to it.
 
     ``needs_account`` tells the page which of two things to render: a

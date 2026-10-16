@@ -3440,7 +3440,7 @@ def preview_assessor_invite(
 
     Opening a link is not accepting it, and this route is what makes
     that true: it may be called as often as the assessor likes for the
-    full fourteen days. An assessor who opens it between clinics and
+    full thirty days. An assessor who opens it between clinics and
     closes the tab, or who starts registering and is interrupted, comes
     back to exactly this.
     """

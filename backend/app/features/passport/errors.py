@@ -92,7 +92,7 @@ class InviteNotValid(PassportError):
 
     One refusal for three reasons, in the same words: the token cannot
     be read or has run out, it names no invitation, or the invitation's
-    own fortnight has passed. A caller holding a bad token learns only
+    own thirty days have passed. A caller holding a bad token learns only
     that it is bad, never whether a given invitation exists.
     """
 

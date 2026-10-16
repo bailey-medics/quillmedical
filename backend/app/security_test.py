@@ -8,6 +8,7 @@ import jwt
 import pyotp
 import pytest
 from argon2 import PasswordHasher, Type
+from itsdangerous import URLSafeTimedSerializer
 
 from app.config import settings
 from app.security import (
@@ -324,6 +325,23 @@ class TestTimedTokens:
         token = create_email_verify_token("ada@example.com")
         with patch.object(settings, "EMAIL_VERIFY_TTL_MIN", -1):
             assert verify_email_verify_token(token) is None
+
+    @pytest.mark.parametrize(
+        "payload",
+        ["ada@example.com", ["ada@example.com"], {}, {"email": 7}],
+        ids=["a bare string", "a list", "no address", "a number"],
+    )
+    def test_verify_token_without_an_address_is_refused(
+        self, payload: object
+    ) -> None:
+        """Signed with our key and salt, so only a fault in our own code
+        could make one. It is refused, rather than raising or handing
+        back something that is not an address."""
+        token = URLSafeTimedSerializer(
+            settings.JWT_SECRET.get_secret_value(), salt="email-verify"
+        ).dumps(payload)
+
+        assert verify_email_verify_token(token) is None
 
 
 class TestTOTP:
