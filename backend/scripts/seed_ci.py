@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import os
 import sys
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 sys.path.insert(0, "/app")
 
@@ -27,6 +27,7 @@ from app.features.teaching.access import (  # noqa: E402
     give_place,
 )
 from app.features.teaching.models import (  # noqa: E402
+    Assessment,
     QuestionBankConfig,
     QuestionBankOrgStatus,
 )
@@ -198,6 +199,10 @@ def seed() -> None:
 
         # 6. Open every teaching module mounted at /teaching-repos
         seed_teaching(db, org.id, admin.id)
+
+        # 7. A delegate with a result, for the teaching admin's list of
+        # delegates in e2e/tests/teaching-admin/
+        seed_delegate_result(db, org.id)
 
         print("CI seed complete")
     except Exception as exc:
@@ -402,6 +407,54 @@ def seed_teaching(db: Session, org_unit_id: int, admin_id: int) -> None:
         db.commit()
         print(f"Opened teaching module {bank_id} at version {version}")
         print(f"Enrolled {len(enrolled)} on {bank_id}")
+
+
+def seed_delegate_result(db: Session, org_unit_id: int) -> None:
+    """Seed a delegate at the teaching site who has passed a module.
+
+    ``results_delegate`` sat the first open module yesterday and passed,
+    so the teaching admin's list of delegates has a row to show, with a
+    result and a date, before any test has sat an assessment. Nothing is
+    seeded when no module is open.
+    """
+    status = db.scalar(
+        select(QuestionBankOrgStatus)
+        .where(
+            QuestionBankOrgStatus.org_unit_id == org_unit_id,
+            QuestionBankOrgStatus.is_live.is_(True),
+        )
+        .order_by(QuestionBankOrgStatus.question_bank_id)
+    )
+
+    if status is None or status.active_version is None:
+        print("No module open; no delegate result seeded")
+        return
+
+    delegate = _ensure_user(db, "results_delegate", "teaching_delegate")
+    centre = _ensure_org_unit(db, "CI Teaching Centre", "site", org_unit_id)
+    add_org_unit_member(db, centre.id, delegate.id, "staff")
+    already = db.scalar(
+        select(Assessment.id).where(Assessment.user_id == delegate.id)
+    )
+
+    if already is None:
+        sat = datetime.now(UTC) - timedelta(days=1)
+        db.add(
+            Assessment(
+                user_id=delegate.id,
+                org_unit_id=org_unit_id,
+                question_bank_id=status.question_bank_id,
+                bank_version=status.active_version,
+                time_limit_minutes=60,
+                total_items=10,
+                is_passed=True,
+                started_at=sat,
+                completed_at=sat + timedelta(minutes=20),
+            )
+        )
+
+    db.commit()
+    print(f"Seeded a passed result on {status.question_bank_id}")
 
 
 if __name__ == "__main__":
