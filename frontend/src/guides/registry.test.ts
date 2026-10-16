@@ -34,6 +34,11 @@ describe("the guide registry", () => {
     },
   );
 
+  it("lists Join a course for everyone, not only for admins", () => {
+    // A delegate is who a colleague asks how to join.
+    expect(findGuide("join-a-course")?.audience).toBe("everyone");
+  });
+
   it("finds a guide by its slug, and nothing for an unknown one", () => {
     expect(findGuide(GUIDES[0].slug)).toBe(GUIDES[0]);
     expect(findGuide("no-such-guide")).toBeUndefined();

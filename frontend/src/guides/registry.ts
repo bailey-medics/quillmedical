@@ -79,10 +79,11 @@ export const GUIDES = [
     slug: "join-a-course",
     title: "Join a course",
     summary: "Register, confirm your email address and sign in.",
-    // Read signed out, by somebody who has no account yet. Whoever is
-    // signed in has joined already, so only an admin, who is asked how
-    // it is done, is still shown it.
-    audience: "admin",
+    // Read signed out, by somebody who has no account yet, from the login
+    // page. Shown to everybody signed in too: a delegate who has joined
+    // is the person a colleague asks how to, and this is the guide to
+    // point them at. Decided on 2026-10-16; it was for admins only.
+    audience: "everyone",
     public: true,
     feature: "teaching",
   },

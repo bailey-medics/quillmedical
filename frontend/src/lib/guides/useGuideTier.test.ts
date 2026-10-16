@@ -295,12 +295,13 @@ describe("useReadableGuide", () => {
     expect(read("join-a-course")).toBe("join-a-course");
   });
 
-  // A delegate who is signed in has joined already. The guide is public
-  // for the reader with no account, and an admin's once signed in.
-  it("keeps the joining guide from a signed-in delegate", () => {
+  // The joining guide is for everyone since 2026-10-16: a delegate who
+  // has joined is who a colleague asks how to. It is still public for the
+  // reader with no account.
+  it("shows the joining guide to a signed-in delegate", () => {
     signInAs(someone({ enabled_features: ["teaching"] }));
 
-    expect(read("join-a-course")).toBeUndefined();
+    expect(read("join-a-course")).toBe("join-a-course");
     expect(read("take-a-module-and-its-assessment")).toBe(
       "take-a-module-and-its-assessment",
     );
