@@ -305,6 +305,48 @@ def test_a_taken_address_is_answered_exactly_as_a_taken_username_is(
     assert for_email.value.message == for_username.value.message
 
 
+@pytest.mark.parametrize(
+    "fields",
+    [{"username": "colleague"}, {"email": "colleague@example.test"}],
+    ids=["the username", "the address"],
+)
+def test_an_account_written_since_the_check_is_refused_the_same_way(
+    db_session: Session,
+    colleague: User,
+    monkeypatch: pytest.MonkeyPatch,
+    fields: dict[str, object],
+) -> None:
+    """Two registrations at once: the database refuses the second.
+
+    The first look finds nothing, as it would have if the other request
+    wrote its account in between, so the database's unique constraint is
+    what refuses it. The answer is the check's, not a 500.
+    """
+    looks: list[str] = []
+    real_check = register_module._check_username_and_email_free
+
+    def found_free_the_first_time(
+        db: Session, username: str, email: str
+    ) -> None:
+        looks.append(username)
+        if len(looks) > 1:
+            real_check(db, username, email)
+
+    monkeypatch.setattr(
+        register_module,
+        "_check_username_and_email_free",
+        found_free_the_first_time,
+    )
+
+    with pytest.raises(UsernameOrEmailInUse):
+        register_account(db_session, _new(**fields))
+
+    assert len(looks) == 2
+    assert _account(db_session) is None
+    # The refusal is undone by its savepoint, leaving the transaction
+    db_session.commit()
+
+
 # --- which refusal comes first ----------------------------------------------
 
 

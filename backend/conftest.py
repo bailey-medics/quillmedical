@@ -5,7 +5,7 @@ from collections.abc import Generator
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import Connection, create_engine, event
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
@@ -76,6 +76,26 @@ engine = create_engine(
     connect_args={"check_same_thread": False},
     poolclass=StaticPool,
 )
+
+
+# pysqlite leaves BEGIN to itself and does not send one before a
+# SAVEPOINT, so the savepoint opens a transaction of its own and releasing
+# it commits. A ``begin_nested`` that succeeds would then survive the
+# outer rollback, which Postgres never allows. SQLAlchemy's documented
+# fix: take BEGIN away from pysqlite and send it when SQLAlchemy begins.
+# https://docs.sqlalchemy.org/en/20/dialects/sqlite.html#serializable-isolation-savepoints-transactional-ddl
+@event.listens_for(engine, "connect")
+def _no_pysqlite_transactions(
+    dbapi_connection: object, connection_record: object
+) -> None:
+    dbapi_connection.isolation_level = None  # type: ignore[attr-defined]
+
+
+@event.listens_for(engine, "begin")
+def _begin_as_sqlalchemy_says(connection: Connection) -> None:
+    connection.exec_driver_sql("BEGIN")
+
+
 TestingSessionLocal = sessionmaker(
     autocommit=False, autoflush=False, bind=engine
 )

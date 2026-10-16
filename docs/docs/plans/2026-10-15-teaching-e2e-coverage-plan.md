@@ -818,7 +818,7 @@ a TD unless it names one.
       view rather than leaving the page. Journey 3 on a phone is added to
       the accessibility testing log's "Not yet run" list.
 
-- [ ] Found while running the journeys side by side: two requests making
+- [x] Found while running the journeys side by side: two requests making
       accounts with the same address at the same moment get a 500, not a
       refusal. The route checks the username and address are free, then
       inserts, and between the two the other request can insert first, so
@@ -839,6 +839,19 @@ a TD unless it names one.
       raised as it was. Tests beside each module: a second insert made
       to collide, by holding the check open, is refused with the right
       answer and leaves one account.
+
+      Built slightly differently: the constraint's name is not read from
+      the error, because Postgres and the SQLite unit tests word it
+      differently. The insert is made in a savepoint, as
+      `begin_attempt` already does for two attempts at once, and on an
+      `IntegrityError` the checks are simply asked again. By then the
+      other account is written, so the check that raises is the one that
+      says which was taken; if neither does, the error is raised as it
+      was. The unit tests' SQLite engine needed SQLAlchemy's documented
+      pysqlite fix in `backend/conftest.py`: without it a savepoint
+      opened its own transaction and releasing it committed, so a
+      successful `begin_nested` survived the request's rollback, which
+      Postgres never allows.
 
 - [x] Found in CI: YouTube sends nothing to CI's data-centre runners, so
       the lecture's clock never moved there and story 7 of Phase 5 failed

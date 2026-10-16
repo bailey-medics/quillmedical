@@ -16,6 +16,7 @@ teaching enrolments, which come last.
 from dataclasses import dataclass, field
 from datetime import datetime
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.cbac.base_professions import resolve_user_competencies
@@ -177,8 +178,7 @@ def create_account(db: Session, actor: User, new: NewAccount) -> User:
         source="admin",
         granted_by=actor.id,
     )
-    db.add(user)
-    db.flush()
+    _write_account(db, user)
     # An admin vouches for the address, so if it is on the mailing list
     # of people with no account, one record of them is kept.
     fold_into_account(db, user)
@@ -198,6 +198,34 @@ def create_account(db: Session, actor: User, new: NewAccount) -> User:
         settle_teaching_enrolments(db, actor, user, new.teaching_enrolments)
 
     return user
+
+
+def _write_account(db: Session, user: User) -> None:
+    """Write the account, refusing it if another has just taken its name.
+
+    The username and the address were found free, but a second request
+    making the same person, a double click or two admins at once, can
+    write its account between that check and this one. The database's
+    unique constraints refuse whichever comes second, and the checks are
+    asked again, so it is told which was taken rather than answered with
+    a 500. Written in a savepoint, so the refusal leaves the rest of the
+    request's transaction as it was.
+
+    The row is flushed, not committed.
+
+    Raises:
+        UsernameTaken: If an account has just been given the username.
+        EmailTaken: If an account has just been given the address.
+        IntegrityError: If the database refused it for anything else.
+    """
+    try:
+        with db.begin_nested():
+            db.add(user)
+            db.flush()
+    except IntegrityError:
+        check_username_free(db, user.username)
+        check_email_free(db, user.email)
+        raise
 
 
 def _check_within_a_limited_scope(
