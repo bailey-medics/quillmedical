@@ -39,6 +39,34 @@ interaction between two queued PRs, neither breaking alone, isn't caught by
 these two checks specifically - the other required checks (unit tests,
 E2E) still verify the combined functional behaviour of the merge-group ref.
 
+## A stacked pull request: check the base before merging
+
+A stacked pull request's base is the branch below it, and GitHub's merge
+button merges into the base. Only the bottom of a stack has `main` as its
+base. A pull request merged into the branch below is not on `main`, and
+nothing carries it there: on 15 October 2026 #2023 and #2026 were merged
+that way and their work sat on a branch until a separate pull request
+carried it over.
+
+- **Merge only a pull request whose base reads `main`.** The base is shown
+  at the top of the pull request, "into `<branch>`".
+- **If it reads a `feature/…` branch, do not merge it.** Merge the one
+  below first, then run `just stack-sync`, which moves the next one onto
+  `main`, and queue it then.
+- **Run `just stack-sync` after any part of a stack merges**, before
+  merging or building anything more on it.
+- **A stacked pull request GitHub has closed is not lost.** When the
+  branch beneath it is deleted after a merge, GitHub can close the pull
+  request above rather than move it to `main`. Its branch and commits are
+  still there; `just stack-sync` brings it onto `main` and
+  `just stack-submit` opens a fresh pull request for it.
+
+`merged-outside-main.yml` raises the alarm in Slack when a merge lands
+somewhere other than `main`. Nothing refuses such a merge. Refusing it
+with linear history on feature branches was tried on 16 October 2026 and
+blocks every push of a branch cut from `main`; see
+`var.block_merges_into_feature_branches` in `infra/github/branch_rules.tf`.
+
 ## Changing anything the queue depends on
 
 The queue is easy to break from a distance, and it fails quietly. Every

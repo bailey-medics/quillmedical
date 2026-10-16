@@ -210,6 +210,20 @@ What `stack-log` shows decides what happens next:
     HEAD...origin/main` reports `0 0`. `/crpd` will find no stack there
     and start one with `just stack-new`.
 
+- **A branch whose pull request GitHub closed without merging it.**
+  GitHub closes the pull request above a merge when it cannot move it to
+  `main`: its base branch was deleted, and that branch had merged into
+  another branch rather than `main`. The branch and its commits are still
+  there. Treat it as "any branch merged": `just stack-sync`, then
+  `just stack-submit` opens a fresh pull request for it. Never reopen the
+  closed one by hand, and never open a replacement with `gh pr create`.
+- **A branch whose pull request merged, but not into `main`.** Check
+  before syncing: `git merge-base --is-ancestor <its merge commit>
+  origin/main`. If the merge commit is not on `main`, the work is
+  stranded on the branch it merged into, and `stack-sync` would drop it
+  from the stack as done. Stop and report it: the work needs one pull
+  request from that branch into `main`, and that is the human's to open.
+
 - **"No stack on this branch", on `main`** - a first unit. `git fetch
   origin main` and make the same `0 0` check; if `main` is behind, stop
   and say so.

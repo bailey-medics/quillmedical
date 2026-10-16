@@ -90,19 +90,17 @@ variable "block_merges_into_feature_branches" {
     True does two things together. It requires linear history on every
     branch but main, so a merge commit is refused there, and it switches
     off squash and rebase merging for the repository, so there is no other
-    way to merge. Pushing a stack is unaffected: its branches hold one
-    commit each and are rebased, never merged. Every merge into main is
-    already a merge commit, through the queue.
+    way to merge. The hope was that pushing a stack would be unaffected,
+    its branches holding one commit each, rebased and never merged.
 
-    False, the default, because it has not been tried. Whether GitHub
-    takes the merge commits a feature branch inherits from main as a
-    breach of linear history is not something to find out on every push
-    at once. To try it: set this to true in terraform.tfvars WITHOUT
-    committing the change, apply, push a throwaway branch, open a pull
-    request from a second throwaway branch into it and confirm no merge
-    is offered, then confirm `just stack-submit` still pushes a stack. If
-    all three hold, commit the tfvars change. If a push is refused, `git
-    checkout infra/github/terraform.tfvars` and apply again.
+    Tried on 2026-10-16 and it does not work: with linear history required
+    on every branch but main, a branch cut from main cannot be pushed,
+    because main's own merge commits are in its history and the rule
+    refuses them. So this must stay false. See
+    docs/docs/plans/2026-10-15-stacked-pull-requests-land-on-main-plan.md.
+
+    Kept, switched off, as the record of what was tried, so the idea is
+    not tried again without a different way round main's history.
   EOT
   type        = bool
   default     = false
