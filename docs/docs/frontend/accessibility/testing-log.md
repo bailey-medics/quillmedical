@@ -80,6 +80,13 @@ evidence the NHS DTAC's accessibility section (D1) asks for, and the
   announced, that the tickbox "This happened as recorded here" is
   announced with its description, and that "Confirm entry" is announced
   as unavailable until the box is ticked.
+- **Journey 3 again, on a phone, for the menu closing** - added on 16
+  October 2026 by the
+  [teaching E2E coverage plan](../../plans/2026-10-15-teaching-e2e-coverage-plan.md).
+  Tapping the menu entry for the page already open now closes the menu,
+  as tapping any other entry does. Check that focus lands back on the
+  page, not lost behind the closed menu, and that the menu is not still
+  read out after it closes.
 - **A guide page, by itself** - not one of the four journeys. Open
   `/guides/join-a-course` signed out and
   `/guides/add-a-delegate-by-hand` signed in. Check the headings read in

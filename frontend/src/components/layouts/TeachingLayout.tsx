@@ -82,6 +82,14 @@ export default function TeachingLayout({
     mainRef.current?.scrollTo?.(0, 0);
   }, [location.pathname]);
 
+  // Close the drawer after any tap of a link in it. Going to another page
+  // mounts that page's own layout with its drawer shut, but a tap on the
+  // page already open stays in this one: the address is the same and only
+  // the location's key changes, and the drawer was left open over it.
+  useEffect(() => {
+    close();
+  }, [location.key, close]);
+
   const resolvedFooterText =
     footerText ??
     (state.status === "authenticated"

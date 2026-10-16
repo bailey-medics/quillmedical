@@ -1,9 +1,10 @@
 /**
  * The edges of taking a module: running out of time, leaving part way,
- * retrying, coming back to a lesson, and being taken off a module.
+ * retrying, and being taken off a module.
  *
- * Stories 1 to 5 of Phase 9 in
- * docs/docs/plans/2026-10-15-teaching-e2e-coverage-plan.md. Each journey
+ * Stories 1, 2, 3 and 5 of Phase 9 in
+ * docs/docs/plans/2026-10-15-teaching-e2e-coverage-plan.md; story 4,
+ * remembering the last slide, was dropped at EoEETA's request. Each journey
  * makes its own learner (`fixtures/people.ts`), except running out of
  * time, whose attempt `seed_ci.py` dates past its limit: the server's
  * clock is what counts, and a test cannot move it.
@@ -117,35 +118,6 @@ for (const { who, kind, profession } of TEACHING_PEOPLE) {
 
       // A new attempt, not the one just failed.
       expect(page.url()).not.toBe(failed.replace(/\/result$/, ""));
-    });
-
-    test("coming back to the learning picks up at the slide left", async ({
-      page,
-      browser,
-    }, testInfo) => {
-      // Not built: "Start learning" always opens the first slide, and
-      // nothing records the last one read. Marked as a known failure, so
-      // the suite says so the moment it is built.
-      test.fail(true, "The learning does not yet remember the slide left");
-
-      const username = freshUsername(`place_${kind}`, testInfo.project.name);
-      await makeLearner(browser, username, profession);
-
-      await signIn(page, username);
-      await page.goto(`/teaching/learn/${MODULE_ID}/slide/0`);
-      await page
-        .getByRole("complementary")
-        .getByRole("button", { name: "Key teaching point" })
-        .click();
-      await expect(page).toHaveURL(/\/slide\/4$/);
-      await page
-        .getByRole("complementary")
-        .getByRole("button", { name: "Exit lesson" })
-        .click();
-
-      await page.goto(`/teaching/${MODULE_ID}`);
-      await page.getByRole("button", { name: /learning/i }).click();
-      await expect(page).toHaveURL(/\/slide\/4$/, { timeout: 5_000 });
     });
   });
 }

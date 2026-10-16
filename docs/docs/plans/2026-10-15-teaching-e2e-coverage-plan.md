@@ -753,11 +753,11 @@ a TD unless it names one.
       away, so that I can retake it while the learning is fresh.
       The module sets `allow_immediate_retry`; the test checks a new
       attempt starts with new questions drawn.
-- [ ] 4. ~~As a TA or a TD, I want to come back to the learning at the
+- [x] 4. ~~As a TA or a TD, I want to come back to the learning at the
       slide I left.~~ Dropped on 2026-10-16: EoEETA asked Quill not to
       remember which slide somebody visited last. The `test.fail()` test
-      for it in `tests/edges/assessment-rules.spec.ts` is to be deleted,
-      since there is nothing to wait for.
+      for it in `tests/edges/assessment-rules.spec.ts` is deleted, since
+      there is nothing to wait for.
 - [x] 5. As a TD, I want to lose a module once a TA takes me off it, so
       that only people still enrolled can take it.
       Tested across two people: the TA unticks the module on the TD's
@@ -802,12 +802,21 @@ a TD unless it names one.
       test reopens the account afterwards and finds news off in settings.
       Stories 6, 8, 9 and 10 are in `tests/edges/account-edges.spec.ts`.
 
-- [ ] Found while building story 7: on a phone, tapping the menu entry
+- [x] Found while building story 7: on a phone, tapping the menu entry
       for the page already open leaves the menu open over it. The menu
       closes when the page changes, and tapping the current page changes
       nothing. Decided by Mark on 2026-10-16: it closes. Close the menu on
       any tap of an entry, and add the case to the phone journey: tapping
       "Teaching" while on `/teaching` closes the menu.
+      Two places held it open. `NestedNavLink` keeps the menu open when a
+      heading with children is tapped, so they can be seen; it now closes
+      when that heading's own page is the one open. And the teaching
+      pages' `TeachingLayout` never closed its menu on a tap at all, so it
+      now closes whenever the location's key changes, which it does on
+      every navigation, the same address included. The phone journey
+      checks it with the menu's `inert`, since the menu slides out of
+      view rather than leaving the page. Journey 3 on a phone is added to
+      the accessibility testing log's "Not yet run" list.
 
 - [ ] Found while running the journeys side by side: two requests making
       accounts with the same address at the same moment get a 500, not a
