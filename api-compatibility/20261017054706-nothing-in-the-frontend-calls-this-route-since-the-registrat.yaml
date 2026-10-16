@@ -1,0 +1,4 @@
+generation: 1
+forces_reload: false
+change: "api-path-removed-without-deprecation GET /api/auth/organisations api path removed without deprecation"
+reason: "Nothing in the frontend calls this route since the registration form lost its organisation dropdown, so no open tab can be broken by its removal."

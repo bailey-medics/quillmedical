@@ -66,12 +66,13 @@ PUBLIC: dict[RouteKey, str] = {
     ("POST", "/api/auth/resend-verification"): (
         "an unverified user has no session; always answers ok"
     ),
-    ("GET", "/api/auth/organisations"): (
-        "names and ids for the registration form's dropdown"
+    ("POST", "/api/accept-invite"): (
+        "an outside clinician or patient advocate joins one patient's "
+        "record; the signed invite token in the link is the authority"
     ),
-    ("POST", "/api/accept-invite"): "carries the invite's own token",
     ("POST", "/api/analytics/page-views"): (
-        "counts a page view from signed-out pages too"
+        "anonymous by design: the sign-in cookie is not read, so a view "
+        "cannot be tied to a person"
     ),
     ("POST", "/api/analytics/client-errors"): (
         "a crash on the login page must still be reportable; notes the "

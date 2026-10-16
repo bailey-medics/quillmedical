@@ -297,30 +297,6 @@ class HealthCheckOut(BaseModel):
     ]
 
 
-class OrganisationListItem(BaseModel):
-    """Organisation summary for public listing.
-
-    Attributes:
-        org_unit_id: The organisation's own row in the tree, which is
-            the id registration sends back. Replaces ``id``, which
-            counted in the organisations table's own ids.
-        name: Organisation name.
-    """
-
-    org_unit_id: int
-    name: str
-
-
-class OrganisationsOut(BaseModel):
-    """List organisations response.
-
-    Attributes:
-        organisations: List of organisations available for registration.
-    """
-
-    organisations: list[OrganisationListItem]
-
-
 class TeachingModuleItem(BaseModel):
     """Teaching module summary for public listing.
 
