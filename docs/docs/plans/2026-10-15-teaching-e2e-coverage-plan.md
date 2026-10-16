@@ -870,21 +870,32 @@ of two organisations with two sites each, so a test can see what reaches
 across a site or an organisation and what does not. Built in this order,
 so the leak tests are written before the fix they prove.
 
-- [ ] Seed the world in `backend/scripts/seed_ci.py`: "CI Teaching
+- [x] Seed the world in `backend/scripts/seed_ci.py`: "CI Teaching
       Hospital" with "CI Teaching Centre" and a second site, and a second
       teaching organisation with two sites of its own, the module open
       at both organisations. Each of the four sites has its own clinical
       lead, and each organisation its own teaching admin. The existing
       "CI Other Hospital", which runs no teaching, stays as the place
       nobody may move a delegate to.
+      Built as `seed_teaching_world`: "CI Teaching Annexe" beside the
+      Centre, and "CI Second Hospital" with "CI Second Centre" and "CI
+      Second Annexe", led by `ci_annexe_lead`, `ci_second_lead` and
+      `ci_second_annexe_lead`, with `educator_second` its teaching admin.
+      The whole E2E suite was run against it: nothing it already checked
+      changed.
 
-- [ ] Give the fixtures the world: `PLACES` names all four sites and both
+- [x] Give the fixtures the world: `PLACES` names all four sites and both
       organisations, and `makeLearner` takes the site to put somebody at,
       rather than making a site of its own each time. A learner's lead is
       then the seeded lead of their site, so the emails each lead
       receives say who leaks.
+      Built beside `makeLearner` rather than in it: `TEACHING_SITES`
+      names each site with its organisation, lead and teaching admin, and
+      `makeLearnerAt` puts somebody at one, made by that organisation's
+      own teaching admin. `makeLearner` keeps a site and lead per learner,
+      for the reason in the last step of this phase.
 
-- [ ] Write the leak tests, before the fix, in `tests/leaks/`:
+- [x] Write the leak tests, before the fix, in `tests/leaks/`:
       - a pass emails the delegate and their own site's lead, and no lead
         at the other site of the organisation, nor at either site of the
         other organisation (fails today, so written as `test.fail()`
@@ -899,6 +910,15 @@ so the leak tests are written before the fix they prove.
         cannot open the other organisation's results;
       - a clinical lead named at one site is not offered at registration
         for the other organisation's module.
+
+      Built in `tests/leaks/leaks.spec.ts`. The email test fails today on
+      the leak itself: `ci_lead`, at the Centre, is told of a pass at the
+      Annexe. The other four pass. "Only the modules their organisation
+      serves" is checked as the one module both organisations serve being
+      shown once; no seeded organisation serves a module the other does
+      not. The registration case asks the public lead check for one lead
+      at each organisation, not all four, because it is limited to ten a
+      minute and the registering journeys share that.
 
 - [ ] Email only the delegate's own site's lead on a pass, in
       `_maybe_enqueue_certificate_emails`: the lead of the site the

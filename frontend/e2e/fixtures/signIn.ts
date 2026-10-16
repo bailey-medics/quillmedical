@@ -23,6 +23,8 @@ export const PEOPLE = {
    * as a teaching admin at a partner does. The default signed-in user.
    */
   teachingAdmin: "educator",
+  /** The teaching admin of the second teaching organisation. */
+  secondTeachingAdmin: "educator_second",
 } as const;
 
 /** What the seed calls its places. */
@@ -31,11 +33,61 @@ export const PLACES = {
   organisation: "CI Teaching Hospital",
   /** A site inside it, where the teaching admin is staff too. */
   site: "CI Teaching Centre",
-  /** An organisation the teaching admin belongs nowhere in. */
+  /** Its second site. */
+  annexe: "CI Teaching Annexe",
+  /** The second teaching organisation, with a teaching admin of its own. */
+  secondOrganisation: "CI Second Hospital",
+  /** A site inside that one. */
+  secondSite: "CI Second Centre",
+  /** Its second site. */
+  secondAnnexe: "CI Second Annexe",
+  /** An organisation that runs no teaching, nobody's to move anyone to. */
   otherOrganisation: "CI Other Hospital",
   /** A site inside that one. */
   otherSite: "CI Other Centre",
 } as const;
+
+/** One of the four teaching sites the seed makes. */
+export interface TeachingSite {
+  site: string;
+  organisation: string;
+  /** The username of the site's clinical lead. */
+  lead: string;
+  /** The username of the organisation's teaching admin. */
+  admin: string;
+}
+
+/**
+ * Two teaching organisations of two sites each, every site with its own
+ * clinical lead, so a test can see what crosses a site or an
+ * organisation and what does not.
+ */
+export const TEACHING_SITES = {
+  centre: {
+    site: PLACES.site,
+    organisation: PLACES.organisation,
+    lead: "ci_lead",
+    admin: PEOPLE.teachingAdmin,
+  },
+  annexe: {
+    site: PLACES.annexe,
+    organisation: PLACES.organisation,
+    lead: "ci_annexe_lead",
+    admin: PEOPLE.teachingAdmin,
+  },
+  secondCentre: {
+    site: PLACES.secondSite,
+    organisation: PLACES.secondOrganisation,
+    lead: "ci_second_lead",
+    admin: PEOPLE.secondTeachingAdmin,
+  },
+  secondAnnexe: {
+    site: PLACES.secondAnnexe,
+    organisation: PLACES.secondOrganisation,
+    lead: "ci_second_annexe_lead",
+    admin: PEOPLE.secondTeachingAdmin,
+  },
+} as const satisfies Record<string, TeachingSite>;
 
 /**
  * Sign in through the login form as one of the seeded people.

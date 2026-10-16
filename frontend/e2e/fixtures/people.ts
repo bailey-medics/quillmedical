@@ -8,10 +8,16 @@
  * the username.
  */
 
-import { expect, type Browser } from "@playwright/test";
+import { expect, type Browser, type BrowserContext } from "@playwright/test";
 import { MODULE_ID } from "./answers";
 import { createAccount, orgUnitId, send } from "./api";
-import { PLACES, freshUsername } from "./signIn";
+import {
+  PEOPLE,
+  PLACES,
+  freshUsername,
+  signIn,
+  type TeachingSite,
+} from "./signIn";
 
 /** The seeded teaching admin's saved sign-in, from `auth.setup.ts`. */
 export const TEACHING_ADMIN_STATE = "e2e/.auth/user.json";
@@ -99,6 +105,55 @@ export async function makeLearner(
   await context.close();
 
   return siteId;
+}
+
+/**
+ * Make a learner able to take the module at one of the seeded teaching
+ * sites, as that organisation's teaching admin.
+ *
+ * Their clinical lead is the site's seeded lead, so a test can see which
+ * leads a pass reaches. Shared by every test that uses the site, so only
+ * the leak tests use this; a journey that checks the lead's email uses
+ * `makeLearner`, whose lead is the learner's own. Their password is their
+ * username followed by `123`.
+ */
+export async function makeLearnerAt(
+  browser: Browser,
+  username: string,
+  profession: string,
+  at: TeachingSite,
+): Promise<void> {
+  const context = await asTeachingAdminOf(browser, at);
+  const page = await context.newPage();
+  const siteId = await orgUnitId(page, at.site);
+  const organisationId = await orgUnitId(page, at.organisation);
+
+  await createAccount(page, {
+    username,
+    name: `Learner ${username}`,
+    profession,
+    password: `${username}123`,
+    orgUnitIds: [siteId],
+    takesModule: { siteId, organisationId, moduleId: MODULE_ID },
+  });
+  await context.close();
+}
+
+/** A browser context signed in as the teaching admin of *at*'s organisation. */
+export async function asTeachingAdminOf(
+  browser: Browser,
+  at: TeachingSite,
+): Promise<BrowserContext> {
+  if (at.admin === PEOPLE.teachingAdmin) {
+    return browser.newContext({ storageState: TEACHING_ADMIN_STATE });
+  }
+
+  const context = await browser.newContext({
+    storageState: { cookies: [], origins: [] },
+  });
+  await signIn(await context.newPage(), at.admin);
+
+  return context;
 }
 
 /** The username of a learner's own clinical lead. */
