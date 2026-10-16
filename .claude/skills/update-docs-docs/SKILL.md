@@ -256,27 +256,15 @@ appear under `docs/docs/`:
 ## When the merge queue fills during the run
 
 A long run can still be building its later units when a human reads the
-early ones and queues them to merge. `just stack-submit` rebases the whole
-stack before it pushes, and it cannot rebase past a queued pull request;
-pushing one also takes it out of the queue.
+early ones and queues them to merge. That needs nothing special:
+`just stack-submit` skips a queued branch, neither rebasing nor pushing
+it, so it stays in the queue, and rebases and pushes everything above it
+as usual. Push each unit as it lands, queued branches below or not.
 
-So before each push, look:
-
-```bash
-gh stack view --json
-```
-
-- **No branch has `isQueued: true`** - push as usual.
-- **Any branch has** - do not push. `/crpd` commits the unit onto its
-  branch and stops there, as its own step 5 sets out. Carry on to the next
-  unit: it stacks on the unpushed one.
-- **Look again before the next unit's push.** Once nothing is queued, bring
-  the stack up to date with `just stack-sync` if a branch has merged, and
-  push. That one push carries every unit held back, and each of their pull
-  requests then needs its description written, not only the newest.
-- **Still queued at the end of the run** - do not wait. Name the units
-  that are committed and not pushed in the final report, so the human can
-  run `just stack-submit` once the queue has drained.
+A pull request is never opened by hand with `gh pr create`, even with
+something queued: GitHub's stack feature does not track one made that
+way, and closes it when the stack beneath it merges. See step 5 of
+`/crpd`.
 
 ## Then the new documents, one unit each
 
@@ -321,7 +309,6 @@ At the end, one block:
 - Anything unresolved, as a numbered list of questions, each with a
   recommendation and the pull request it belongs to.
 - Anything that stopped the run.
-- Any unit committed and not pushed because the merge queue was in use.
 - Any fault found in a document outside the area named, with the
   correction it needs.
 - Any fault found in the code itself, which this skill does not fix.

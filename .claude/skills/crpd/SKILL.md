@@ -2,7 +2,7 @@
 name: crpd
 description: Commit, rebase, push and describe one stacked branch
 argument-hint: "[repo: eoeeta-teaching|eoeeta-teaching-testing|respiratory-teaching] [ready]"
-allowed-tools: Bash(git status:*), Bash(git diff:*), Bash(git log:*), Bash(git branch:*), Bash(git rev-parse:*), Bash(git fetch:*), Bash(git push:*), Bash(just stack-log:*), Bash(just stack-log-long:*), Bash(just stack-files:*), Bash(git switch:*), Bash(just stack-add:*), Bash(just stack-new:*), Bash(just stack-fresh:*), Bash(just stack-sync:*), Bash(just stack-rebase:*), Bash(just stack-submit:*), Bash(just stack-move:*), Bash(gh stack view:*), Bash(gh pr list:*), Bash(gh pr view:*), Bash(gh pr create:*), Bash(gh pr edit:*), Bash(gh pr ready:*), Bash(python3 scripts/stack-status.py:*), Bash(STACK_REPO=* just stack-*), Bash(git -C *), Bash(just validate-teaching:*)
+allowed-tools: Bash(git status:*), Bash(git diff:*), Bash(git log:*), Bash(git branch:*), Bash(git rev-parse:*), Bash(git fetch:*), Bash(just stack-log:*), Bash(just stack-log-long:*), Bash(just stack-files:*), Bash(git switch:*), Bash(just stack-add:*), Bash(just stack-new:*), Bash(just stack-fresh:*), Bash(just stack-sync:*), Bash(just stack-rebase:*), Bash(just stack-submit:*), Bash(just stack-move:*), Bash(gh stack view:*), Bash(gh pr list:*), Bash(gh pr view:*), Bash(gh pr edit:*), Bash(gh pr ready:*), Bash(python3 scripts/stack-status.py:*), Bash(STACK_REPO=* just stack-*), Bash(git -C *), Bash(just validate-teaching:*)
 disallowed-tools: Bash(gh pr merge:*), Bash(gh stack merge:*), Bash(git rebase:*), Bash(git commit:*), Bash(git reset:*), Bash(git cherry-pick:*), Bash(git stash:*), mcp__github__merge_pull_request, mcp__github__enable_pr_auto_merge
 ---
 
@@ -96,8 +96,6 @@ These hold on every run.
 - **Never change labels, reviewers, milestones, or the base branch.** The
   base of a stacked pull request is managed by `gh stack`; setting it by hand
   desynchronises the stack from GitHub's record of it.
-  One exception, and it is not a change: step 5 names the base when it
-  has to create a pull request itself, because something below is queued.
 - **Never mention AI authorship anywhere.** No attribution footer, no
   "Generated with" line, no session link, no `Co-Authored-By` trailer, no
   robot emoji - not in a commit message, not in a pull request description,
@@ -522,8 +520,7 @@ to start a stack anywhere but the tip of `origin/main`, and says to run
    and `stack-submit` does that itself in step 5.
 
    If `just stack-log` ever warns that a branch needs rebasing, that is
-   the trunk having moved, and step 5 deals with it. When a pull request
-   in the stack is queued to merge, step 5 skips that rebase too.
+   the trunk having moved, and step 5 deals with it.
 
 4. **Run the targeted tests for what this branch touched** - `just ub -k
    "..."` and `just uf src/path/to/file.test.tsx` - and nothing wider. For
@@ -556,50 +553,21 @@ to start a stack anywhere but the tip of `origin/main`, and says to run
    It pushes the *whole* stack, not just this branch - that is unavoidable,
    because rebasing onto the latest trunk rewrites every branch in it.
 
-   **When a pull request in the stack is queued to merge, do not run
-   `stack-submit`. Open this branch's pull request on its own instead.**
-   `gh stack view --json` marks a queued one with `isQueued: true`. Check
-   before this step, every run.
+   **Run it whether or not a pull request in the stack is queued to
+   merge.** `gh stack submit` skips a queued branch itself: it neither
+   rebases nor pushes it, so it stays in the queue, and it reports so
+   ("Skipping feature/… (PR #2001 queued)"). Everything above it is
+   rebased and pushed as usual.
 
-   What must not happen is the queued branch being pushed. `stack-submit`
-   rebases the whole stack onto the latest trunk and pushes every branch,
-   and a queued pull request whose branch is force-pushed is dropped from
-   the merge queue and has to be queued again by a human. That is a
-   reason to leave the lower branches alone. It is not a reason to
-   withhold a pull request from a new branch nobody has queued, which
-   needs nothing below it to move.
-
-   So push the new branch alone and open its pull request:
-
-   ```bash
-   git push -u origin "$(git branch --show-current)"
-   gh pr create --draft \
-     --head "$(git branch --show-current)" \
-     --base <the branch below, from just stack-log> \
-     --title "Passport: what this branch does" \
-     --body-file <path to the body>
-   ```
-
-   - **Push this branch and no other**, by name. It is new, so nothing is
-     rewritten. Never `just stack-submit`, `just stack-rebase` or
-     `just stack-sync` here: each can rebase or push the branches below.
-     `stack-sync` skips queued branches today, but it still pushes the
-     rest, and that is more than this step needs.
-   - **The base is the branch directly below**, which is what `gh stack`
-     would have set. This is the one time the command names a base, and
-     only on creation; never change the base of a pull request that
-     already exists.
-   - **Write the title and body first** (step 9), since `gh pr create`
-     takes them. Steps 6 to 8 then have nothing to do: the pull request
-     is new and nobody else has written in it.
-   - **Always a draft**, whatever the arguments. With `ready`, mark it
-     ready in step 10 as usual.
-
-   Say in the report that the stack was not rebased or submitted, and
-   which pull requests are queued. The pull request will not show in the
-   stack on GitHub until the next ordinary run: once the queue has
-   drained, `just stack-sync` drops what merged and `stack-submit`
-   registers the rest.
+   This step used to say the opposite: with a queued pull request below,
+   push the new branch alone and open its pull request with
+   `gh pr create`. That was written on 4 October 2026, when
+   `stack-submit` would force-push a queued branch and drop it from the
+   queue. It no longer does, and a pull request made with `gh pr create`
+   is one GitHub's stack feature does not track: when the stack beneath
+   it merges, GitHub cannot move it to `main`, and closes it. That
+   closed #2014 on 15 October. So every pull request is made here, by
+   `stack-submit`, and never by hand.
 
 6. **Find this branch's pull request.**
 

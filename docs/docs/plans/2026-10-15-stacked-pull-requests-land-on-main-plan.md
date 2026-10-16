@@ -35,7 +35,7 @@ reads `main`, and the stack synced after every merge.
 
 ## Phase 2: Every pull request goes through the stack tool
 
-- [ ] Take the queued-branch workaround out of `/crpd`. Step 5 of
+- [x] Take the queued-branch workaround out of `/crpd`. Step 5 of
       `.claude/skills/crpd/SKILL.md` says that when a pull request in the
       stack is queued, `stack-submit` must not run, and the new branch
       is pushed on its own with `git push` and given a pull request with
@@ -46,19 +46,38 @@ reads `main`, and the stack synced after every merge.
       feature/… (PR #2001 queued)" on 15 October. A pull request made
       with `gh pr create` is one GitHub's stack feature does not track,
       so when the stack beneath it merges GitHub cannot re-point it and
-      closes it, which is what happened to #2014 and #2021. Rewrite step
+      closes it, which is what happened to #2014. Rewrite step
       5 to run `stack-submit` always, say why the workaround went, and
       remove `gh pr create` and the bare `git push` from the skill's
       `allowed-tools`. Correct the memory note that records the
       workaround.
+      Done on 16 October 2026. Step 5 runs `stack-submit` always, and
+      says why the workaround went; `gh pr create` and `git push` are out
+      of the skill's `allowed-tools`, and the exception for naming a base
+      is gone from its "Never" list. `update-docs-docs`, which told a run
+      to hold its pushes while anything was queued, now pushes as usual.
+      The memory note is corrected, keeping one caveat it recorded: on
+      25 September GitHub briefly did not report a queued pull request
+      as queued, and `stack-submit` force-pushed it out of the queue.
+      That can still happen; the cost is queueing it again by hand.
 
-- [ ] Check that `stack-submit` registers a pull request GitHub then
+- [x] Check that `stack-submit` registers a pull request GitHub then
       re-points. On a throwaway stack of two branches, merge the bottom
       through the queue and confirm the top's base changes to `main`
       rather than the top being closed. Record the result here; if
       GitHub closes it still, the fault is upstream in a nine-day-old
       feature, and Phase 3's rule is the whole protection until it is
       fixed.
+      Not run as written: it needs a pull request merged, and merging is
+      Mark's alone. Today's history answers it instead, and the answer is
+      no. #2014 was made by hand with `gh pr create`, but #2021 was made
+      by `stack-submit`, and GitHub closed both. #2021's base was a
+      branch whose own pull request merged into the branch below it,
+      not into `main`, as GitHub's stack merge does for every pull
+      request but the bottom one; GitHub then had nowhere to re-point
+      #2021 and closed it, despite the changelog's promise that stacks
+      retarget. So Phase 2 removes one way to lose a pull request, not
+      both, and Phase 3's check is the protection that holds.
 
 ## Phase 3: Merge only when the base reads main
 
