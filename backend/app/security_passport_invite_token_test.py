@@ -27,6 +27,7 @@ documenting the gap the row has to close.
 from __future__ import annotations
 
 from datetime import timedelta
+from typing import Any
 
 import jwt
 import pytest
@@ -35,6 +36,7 @@ from app.config import settings
 from app.security import (
     PASSPORT_INVITE_TTL_DAYS,
     PASSPORT_INVITE_TYPE,
+    PassportInviteClaims,
     TokenNotAcceptable,
     _now,
     create_invite_token,
@@ -47,28 +49,41 @@ INVITE_ID = "7f4e9a21-0000-4000-8000-000000000001"
 EMAIL = "amara@example.nhs.uk"
 
 
+def _raw(token: str) -> dict[str, Any]:
+    """Every claim a token carries, read past the decoder.
+
+    For tests of what a token is made with. The decoders hand back only
+    the claims a caller uses, so the expiry and the type are read here.
+    """
+    claims: dict[str, Any] = jwt.decode(
+        token,
+        settings.JWT_SECRET.get_secret_value(),
+        algorithms=[settings.JWT_ALG],
+    )
+
+    return claims
+
+
 class TestItRoundTrips:
     def test_a_token_decodes_to_what_went_in(self) -> None:
         token = create_passport_invite_token(INVITE_ID, EMAIL)
 
-        payload = decode_passport_invite_token(token)
+        claims = decode_passport_invite_token(token)
 
-        assert payload["invite_id"] == INVITE_ID
-        assert payload["email"] == EMAIL
+        assert claims == PassportInviteClaims(INVITE_ID, EMAIL)
 
     def test_the_email_is_lowercased(self) -> None:
         """So a forwarded link cannot be matched case-sensitively later."""
         token = create_passport_invite_token(INVITE_ID, "Amara@Example.NHS.UK")
 
-        assert decode_passport_invite_token(token)["email"] == EMAIL
+        assert decode_passport_invite_token(token).email == EMAIL
 
     def test_surrounding_whitespace_is_trimmed(self) -> None:
         token = create_passport_invite_token(f"  {INVITE_ID}  ", f" {EMAIL} ")
 
-        payload = decode_passport_invite_token(token)
+        claims = decode_passport_invite_token(token)
 
-        assert payload["invite_id"] == INVITE_ID
-        assert payload["email"] == EMAIL
+        assert claims == PassportInviteClaims(INVITE_ID, EMAIL)
 
 
 class TestItRefusesTheWrongThing:
@@ -136,7 +151,7 @@ class TestExpiry:
         assert PASSPORT_INVITE_TTL_DAYS == 14
 
         token = create_passport_invite_token(INVITE_ID, EMAIL)
-        payload = decode_passport_invite_token(token)
+        payload = _raw(token)
 
         expected = _now() + timedelta(days=14)
         assert abs(payload["exp"] - expected.timestamp()) < 60
@@ -159,7 +174,7 @@ class TestExpiry:
 
     def test_a_shorter_lifetime_can_be_asked_for(self) -> None:
         token = create_passport_invite_token(INVITE_ID, EMAIL, ttl_days=1)
-        payload = decode_passport_invite_token(token)
+        payload = _raw(token)
 
         expected = _now() + timedelta(days=1)
         assert abs(payload["exp"] - expected.timestamp()) < 60

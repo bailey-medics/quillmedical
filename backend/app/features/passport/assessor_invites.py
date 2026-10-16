@@ -329,11 +329,11 @@ def invite_named_by(
             bad, never whether a given invitation exists.
     """
     try:
-        payload = decode_passport_invite_token(token)
+        claims = decode_passport_invite_token(token)
     except TokenNotAcceptable:
         raise InviteNotValid() from None
 
-    invite = db.get(PassportAssessorInvite, str(payload.get("invite_id", "")))
+    invite = db.get(PassportAssessorInvite, claims.invite_id)
 
     if invite is None:
         raise InviteNotValid()
@@ -345,7 +345,7 @@ def invite_named_by(
     if _as_utc(invite.expires_at) <= datetime.now(UTC):
         raise InviteNotValid()
 
-    return invite, str(payload["email"])
+    return invite, claims.email
 
 
 def _new_assessor(

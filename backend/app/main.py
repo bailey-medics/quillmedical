@@ -1462,17 +1462,16 @@ def refresh(
     if not tok:
         raise HTTPException(401, "No refresh token")
     try:
-        payload = decode_refresh_token(tok)
+        claims = decode_refresh_token(tok)
     except Exception as e:
         raise HTTPException(401, "Bad refresh token") from e
 
-    sub = payload.get("sub")
-    user = db.scalar(select(User).where(User.username == sub))
+    user = db.scalar(select(User).where(User.username == claims.username))
 
     if not user or not user.is_active:
         raise HTTPException(401, "Inactive user")
         # Reject refresh tokens minted before a password change
-    if payload.get("tv", 0) != user.token_version:
+    if claims.token_version != user.token_version:
         raise HTTPException(401, "Session invalidated")
 
     new_access = create_access_token(user.username, user.token_version)

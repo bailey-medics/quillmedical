@@ -90,13 +90,13 @@ def accept_external_invite(
             has the username.
     """
     try:
-        payload = decode_invite_token(token)
+        claims = decode_invite_token(token)
     except TokenNotAcceptable as err:
         raise InviteTokenInvalid() from err
 
-    patient_id: str = payload["patient_id"]
-    email: str = normalise_email(payload["email"])
-    user_type: str = payload["user_type"]
+    patient_id = claims.patient_id
+    email = normalise_email(claims.email)
+    user_type = claims.user_type
 
     # Check if user already exists
     existing = db.scalar(select(User).where(User.email == email))

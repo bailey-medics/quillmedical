@@ -35,6 +35,9 @@ from app.config import settings
 from app.models import User
 from app.security import (
     PASSPORT_INVITE_TYPE,
+    InviteClaims,
+    PassportInviteClaims,
+    SessionClaims,
     create_access_token,
     create_invite_token,
     create_passport_invite_token,
@@ -45,7 +48,7 @@ from app.security import (
     decode_token,
 )
 
-Decoder = Callable[[str], dict[str, Any]]
+Decoder = Callable[[str], object]
 
 HASHES = {
     "HS256": hashlib.sha256,
@@ -119,58 +122,64 @@ PASSPORT_INVITE = {
     "email": "ada@example.com",
 }
 
-# Each decoder with a payload it reads.
-DECODERS: list[tuple[str, Decoder, dict[str, Any]]] = [
-    ("decode_token", decode_token, ACCESS),
-    ("decode_refresh_token", decode_refresh_token, REFRESH),
-    ("decode_invite_token", decode_invite_token, INVITE),
+# Each decoder with a payload it reads, and what it hands back for it.
+DECODERS: list[tuple[str, Decoder, dict[str, Any], object]] = [
+    ("decode_token", decode_token, ACCESS, SessionClaims("ada", 0)),
+    (
+        "decode_refresh_token",
+        decode_refresh_token,
+        REFRESH,
+        SessionClaims("ada", 0),
+    ),
+    (
+        "decode_invite_token",
+        decode_invite_token,
+        INVITE,
+        InviteClaims("p-1", "ada@example.com", "external_hcp"),
+    ),
     (
         "decode_passport_invite_token",
         decode_passport_invite_token,
         PASSPORT_INVITE,
+        PassportInviteClaims("i-1", "ada@example.com"),
     ),
 ]
 EVERY_DECODER = pytest.mark.parametrize(
     "decode,payload",
-    [(decode, payload) for _, decode, payload in DECODERS],
-    ids=[name for name, _, _ in DECODERS],
+    [(decode, payload) for _, decode, payload, _ in DECODERS],
+    ids=[name for name, _, _, _ in DECODERS],
 )
 
 
 class TestWhatEachDecoderTakes:
-    @EVERY_DECODER
+    @pytest.mark.parametrize(
+        "decode,payload,expected",
+        [
+            (decode, payload, expected)
+            for _, decode, payload, expected in DECODERS
+        ],
+        ids=[name for name, _, _, _ in DECODERS],
+    )
     def test_a_token_signed_with_our_secret_is_read(
-        self, decode: Decoder, payload: dict[str, Any]
+        self, decode: Decoder, payload: dict[str, Any], expected: object
     ) -> None:
         token = forge({**payload, "exp": _in(60)})
 
-        read = decode(token)
-
-        for key, value in payload.items():
-            assert read[key] == value
+        assert decode(token) == expected
 
     def test_the_tokens_this_app_makes_are_read(self) -> None:
-        access = decode_token(create_access_token("ada", 3))
-
-        assert access["sub"] == "ada"
-        assert access["tv"] == 3
-        assert access["type"] == "access"
-        assert (
-            decode_refresh_token(create_refresh_token("ada", 3))["type"]
-            == "refresh"
+        assert decode_token(create_access_token("ada", 3)) == SessionClaims(
+            "ada", 3
         )
-        assert (
-            decode_invite_token(
-                create_invite_token("p-1", "ada@example.com", "external_hcp")
-            )["patient_id"]
-            == "p-1"
-        )
-        assert (
-            decode_passport_invite_token(
-                create_passport_invite_token("i-1", "ada@example.com")
-            )["invite_id"]
-            == "i-1"
-        )
+        assert decode_refresh_token(
+            create_refresh_token("ada", 3)
+        ) == SessionClaims("ada", 3)
+        assert decode_invite_token(
+            create_invite_token("p-1", "ada@example.com", "external_hcp")
+        ) == InviteClaims("p-1", "ada@example.com", "external_hcp")
+        assert decode_passport_invite_token(
+            create_passport_invite_token("i-1", "ada@example.com")
+        ) == PassportInviteClaims("i-1", "ada@example.com")
 
 
 class TestWhatEachDecoderRefuses:
@@ -307,6 +316,39 @@ class TestATokenWithNoExpiry:
         self, decode: Decoder, payload: dict[str, Any]
     ) -> None:
         assert refused(decode, forge(dict(payload)))
+
+
+class TestATokenMissingAClaim:
+    """Refused, as a forged one is.
+
+    Its signature is good, so only somebody holding the secret could make
+    it, but every token this app makes carries each claim its kind needs.
+    One that does not is not a token this app made.
+    """
+
+    @EVERY_DECODER
+    def test_each_claim_left_out(
+        self, decode: Decoder, payload: dict[str, Any]
+    ) -> None:
+        for name in payload.keys() - {"type"}:
+            without = {k: v for k, v in payload.items() if k != name}
+
+            assert refused(decode, forge({**without, "exp": _in(60)})), name
+
+    @EVERY_DECODER
+    def test_each_claim_of_the_wrong_type(
+        self, decode: Decoder, payload: dict[str, Any]
+    ) -> None:
+        for name in payload.keys() - {"type"}:
+            token = forge({**payload, name: [name], "exp": _in(60)})
+
+            assert refused(decode, token), name
+
+    def test_a_token_version_of_true(self) -> None:
+        """Python counts ``bool`` as an ``int``; a token version is not."""
+        token = forge({**ACCESS, "tv": True, "exp": _in(60)})
+
+        assert refused(decode_token, token)
 
 
 def _me(client: TestClient, token: str) -> int:
