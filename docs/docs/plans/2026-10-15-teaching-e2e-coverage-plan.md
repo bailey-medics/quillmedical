@@ -555,17 +555,37 @@ Specs under `frontend/e2e/tests/settings/`, each tested for both a TA and
 a TD. Each browser project changes its own seeded TA and TD, and every
 switch is put back where it started, so a retry replays cleanly.
 
-- [ ] 22. As a TA or a TD, I want to update my account details, so that
+Departed from the plan: nothing is seeded. Each test makes the person it
+changes, through `e2e/fixtures/people.ts`, so nothing it switches is seen
+by another test, a retry or the other browser, and nothing has to be put
+back.
+
+- [x] Found while building story 23: the dark mode switch had no name of
+      its own, so a screen reader announced it by its state, "No". It now
+      carries `aria-label="Dark mode"`, as the other switches on the page
+      already did, with a test in `src/pages/Settings.test.tsx`.
+
+- [ ] Found while building story 27, for Mark to decide: a two-factor
+      code can be used twice. `verify_totp_code` in
+      `backend/app/security.py` accepts any code for the current 30-second
+      step and records none as used, so somebody who sees a code being
+      typed can sign in with it in the same half-minute. RFC 6238 section
+      5.2 says a code accepted once should be refused after. Recommended:
+      store the last step each account used and refuse that step again.
+      Not changed in this run, because it changes how everybody with
+      two-factor signs in.
+
+- [x] 22. As a TA or a TD, I want to update my account details, so that
       they stay correct.
-- [ ] 23. As a TA or a TD, I want to turn dark mode on and off, so that
+- [x] 23. As a TA or a TD, I want to turn dark mode on and off, so that
       Quill suits how I like to read.
-- [ ] 24. As a TA or a TD, I want to turn off "Help improve Quill", so
+- [x] 24. As a TA or a TD, I want to turn off "Help improve Quill", so
       that I choose whether my use is counted.
-- [ ] 25. As a TA or a TD, I want to turn news and updates on and off, so
+- [x] 25. As a TA or a TD, I want to turn news and updates on and off, so
       that I get only the email I want.
-- [ ] 26. As a TA or a TD, I want to turn on two-factor authentication,
+- [x] 26. As a TA or a TD, I want to turn on two-factor authentication,
       so that my account is harder to break into.
-- [ ] 27. As a TA or a TD, I want to set up two-factor authentication with
+- [x] 27. As a TA or a TD, I want to set up two-factor authentication with
       an authenticator app and then sign in with a code from it, so that
       it actually protects me.
       Possible end to end: the setup page shows the secret in its
@@ -574,7 +594,7 @@ switch is put back where it started, so a retry replays cleanly.
       The test reads the secret, enters the code to finish setting up,
       signs out, and signs in again with a fresh code. It then turns
       two-factor off, so a retry starts clean.
-- [ ] 28. As Quill, I want neither a TA nor a TD to see the Clinician
+- [x] 28. As Quill, I want neither a TA nor a TD to see the Clinician
       passport card in settings, so that teaching users are shown only
       what is theirs.
       `Settings.tsx` shows it only with the passport feature and
