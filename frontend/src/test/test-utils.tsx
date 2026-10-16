@@ -14,6 +14,7 @@ import {
   BrowserRouter,
   createMemoryRouter,
   RouterProvider,
+  type RouteObject,
 } from "react-router-dom";
 import type { ReactElement, ReactNode } from "react";
 import { theme, cssVariablesResolver } from "@/theme";
@@ -144,6 +145,27 @@ export function renderWithRouter(
   }
 
   return render(ui, { wrapper: RouterAndMantineWrapper, ...renderOptions });
+}
+
+/**
+ * Render a list of routes, as `routes.tsx` declares them, at an address.
+ *
+ * For a test of the routes themselves rather than of one page: their
+ * guards, and the lazy pages they load. A data router renders once the
+ * matched route's lazy page has loaded, so wait with `findBy...`.
+ *
+ * @example
+ * renderRoutes([adminRoute], "/admin/users");
+ * expect(await screen.findByText("404 - Page not found")).toBeInTheDocument();
+ */
+export function renderRoutes(routes: RouteObject[], initialRoute: string) {
+  const router = createMemoryRouter(routes, {
+    initialEntries: [initialRoute],
+  });
+
+  return render(<RouterProvider router={router} />, {
+    wrapper: MantineWrapper,
+  });
 }
 
 /**
