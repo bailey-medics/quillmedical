@@ -243,20 +243,6 @@ SPECIALTIES: list[Specialty] = _load_specialties(SPECIALTIES_FILE)
 SPECIALTY_IDS: tuple[str, ...] = tuple(s.id for s in SPECIALTIES)
 
 
-def _load_competencies(directory: Path) -> list[CompetencyEntry]:
-    """Read and merge every competency definition file in *directory*.
-
-    Args:
-        directory: The directory holding the definition files.
-
-    Returns:
-        Every competency defined across the directory, in filename order.
-        See :func:`_load_catalogue`, which also returns the frameworks
-        and raises for everything this does.
-    """
-    return _load_catalogue(directory)[0]
-
-
 def _framework_of(data: Any, path: Path) -> Framework | None:
     """The framework a definition file declares, or None.
 

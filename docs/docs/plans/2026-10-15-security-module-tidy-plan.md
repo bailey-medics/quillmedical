@@ -213,6 +213,74 @@ scan at the end to see whether the rot found here is wider than this file.
         are not; and the constants in the "other" list, most of which a
         test imports to pin a vocabulary.
 
+## Phase 7: Delete what the scan found to be obsolete
+
+Phase 6's list was read name by name on 16 October 2026. Twelve entries
+are obsolete: nothing outside their own tests refers to them, and a live
+replacement exists or the reason they were kept has passed. The rest are
+kept: the audit report, the positions and practising API that `CLAUDE.md`
+documents, a test hook, and small helpers with a clear use ahead. One PR
+for all twelve, since each is a deletion and one CI run checks them
+together. None is in the OpenAPI spec, so `oasdiff` is not involved.
+
+- [x] Delete `delete_fhir_patient` from `backend/app/fhir_client.py`.
+      Nothing refers to it, not even a test, and its docstring says it
+      is for development only.
+
+- [x] Delete `validate_site_capacity` from `backend/app/models.py`. It
+      forwarded to `validate_member_capacity` "for the site call sites",
+      and none are left.
+
+- [x] Delete `DEP_REQUIRE_MANAGE_STAFF` from
+      `backend/app/org_units/router.py`.
+      `DEP_REQUIRE_MANAGE_STAFF_OR_SCOPED` replaced it.
+
+- [x] Delete the 28 pre-unification organisation and site schemas from
+      `backend/app/schemas/organisations.py`, keeping only the three link
+      schemas `org_units/router.py` imports. Phase 6 counted 22; it is
+      every class above the links, `OrganisationListItem` included,
+      because `main.py` imports the class of that name from
+      `schemas/auth.py`, not this one.
+
+- [x] Delete `backend/app/schemas/features.py`, whose two classes
+      (`FeatureOut`, `FeatureToggleIn`) nothing imports, and its line in
+      `docs/docs/backend/fastapi/index.md`.
+
+- [x] Delete `CompetencyCheck` and `CompetencyCheckResponse` from
+      `backend/app/schemas/cbac.py`, and `CompetencyCatalogueOut` from
+      `backend/app/schemas/passport.py`.
+
+- [x] Delete `SyncTriggerIn`, `CoordinatorEmailIn`,
+      `QuestionBankOrgStatusIn` and `QuestionBankOrgStatusOut` from
+      `backend/app/features/teaching/schemas.py`.
+
+- [x] Delete `_resolve_bank_path` from
+      `backend/app/features/teaching/router.py`.
+      `_resolve_bank_path_or_gcs` replaced it and carries the same
+      path-traversal guard, so the three traversal tests move to the live
+      function rather than going with the dead one.
+
+- [x] Delete `_load_competencies` from `backend/app/cbac/competencies.py`,
+      a one-line wrapper over `_load_catalogue` used only by tests, which
+      call `_load_catalogue(...)[0]` instead.
+
+- [x] Delete `load_email_template` from
+      `backend/app/features/teaching/email_templates.py`. The code uses
+      `extract_email_template`, which its docstring already preferred.
+
+- [x] Delete `SingleUserCannotSelfJoin` from `backend/app/messaging.py`:
+      the contract half of the platform role change of 9 September, kept
+      one deploy so the error code survived. Nothing in `frontend/src`
+      matches on it.
+
+- [x] Run the tests of every touched module: `just ub` with the paths of
+      their test files. Done 16 October 2026: 477 passed, 3 skipped,
+      across the competencies, grant scope, teaching router, email
+      template, CI sync, messaging, FHIR client and passport schema
+      tests and `tests/org_scoped_access_criteria_test.py`. Ruff then
+      dropped the `Path` and `yaml` imports `load_email_template` had
+      been the last user of.
+
 ## Decisions
 
 - **No dead-code tool in pre-commit or CI** - dead code cannot run, so

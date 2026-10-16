@@ -20,7 +20,6 @@ from app.messaging import (
     NotAParticipant,
     NotInMessageOrganisation,
     NotInPatientOrganisation,
-    SingleUserCannotSelfJoin,
     UserNotFound,
     add_participant,
     create_conversation,
@@ -303,14 +302,6 @@ def test_no_two_errors_share_a_code() -> None:
 
     assert len(codes) == len(set(codes))
     assert MessagingError.error_code not in codes
-
-
-def test_the_retired_self_join_error_keeps_its_code() -> None:
-    """A client may still be matching on it."""
-    assert (
-        SingleUserCannotSelfJoin.error_code == "single_user_cannot_self_join"
-    )
-    assert SingleUserCannotSelfJoin.status_code == 403
 
 
 # ---------------------------------------------------------------------------

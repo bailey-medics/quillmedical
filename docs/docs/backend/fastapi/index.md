@@ -79,7 +79,6 @@ app/
 │   ├── __init__.py      # Schema module exports
 │   ├── auth.py          # Authentication request/response models
 │   ├── cbac.py          # CBAC request/response models
-│   ├── features.py      # Organisation feature toggle models
 │   ├── letters.py       # Letter/correspondence models
 │   └── messaging.py     # Messaging request/response models
 └── utils/

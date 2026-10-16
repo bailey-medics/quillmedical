@@ -9,13 +9,11 @@ Body Markdown is converted to HTML via the ``markdown`` package.
 from __future__ import annotations
 
 import logging
-from pathlib import Path
 from string import Template
 from typing import Any, NotRequired, TypedDict
 
 import markdown
 import nh3
-import yaml
 from markupsafe import Markup
 
 from app.email.brand import EmailImage
@@ -77,36 +75,6 @@ def extract_email_template(
         attach_certificate=bool(data.get("attach_certificate", True)),
         preheader=str(data.get("preheader") or "").strip(),
     )
-
-
-def load_email_template(
-    bank_path: Path,
-    bank_id: str,
-    template_name: str,
-) -> EmailTemplate | None:
-    """Load an email template from the bank's config.yaml on disk.
-
-    Prefer :func:`extract_email_template` when the config dict is
-    already available (e.g. from the database).
-
-    Args:
-        bank_path: Root path to all question banks.
-        bank_id: Question bank identifier (directory name).
-        template_name: Section key in config.yaml, e.g.
-            ``"coordinator_email"`` or ``"student_email"``.
-
-    Returns:
-        Parsed template dict, or None if section not found.
-    """
-    config_path = bank_path / bank_id / "config.yaml"
-
-    if not config_path.is_file():
-        return None
-
-    with open(config_path, encoding="utf-8") as f:
-        loaded: dict[str, Any] = yaml.safe_load(f) or {}
-
-    return extract_email_template(loaded, template_name)
 
 
 def render_email(

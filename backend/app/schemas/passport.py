@@ -747,12 +747,6 @@ class CompetencyOptionOut(BaseModel):
     expires_after_months: int | None = None
 
 
-class CompetencyCatalogueOut(BaseModel):
-    """Every competency a holder may request a sign-off for."""
-
-    competencies: list[CompetencyOptionOut] = Field(default_factory=list)
-
-
 # --------------------------------------------------------------------
 # External assessors
 # --------------------------------------------------------------------

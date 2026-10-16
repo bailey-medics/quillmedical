@@ -1433,35 +1433,6 @@ def list_items(
     return list(db.execute(stmt).scalars().all())
 
 
-def _resolve_bank_path(bank_id: str) -> Path:
-    """Resolve a bank_id to a safe filesystem path.
-
-    Uses ``TEACHING_QUESTION_BANK_PATH`` from config.  Raises 400 if
-    the setting is not configured, 404 if the bank directory does not
-    exist.  Rejects path-traversal attempts (``..`` or ``/``).
-    """
-    from app.config import settings
-    from app.features.teaching.storage import resolve_local_bank
-
-    if not bank_id or "/" in bank_id or ".." in bank_id:
-        raise HTTPException(400, "Invalid bank_id")
-
-    base = settings.TEACHING_QUESTION_BANK_PATH
-
-    if not base:
-        raise HTTPException(
-            400,
-            "TEACHING_QUESTION_BANK_PATH is not configured",
-        )
-
-    resolved = resolve_local_bank(base, bank_id)
-
-    if not resolved:
-        raise HTTPException(404, f"Question bank '{bank_id}' not found")
-
-    return resolved
-
-
 def _resolve_bank_path_or_gcs(bank_id: str) -> tuple[Path, bool]:
     """Resolve bank to filesystem path or download from GCS.
 

@@ -323,12 +323,6 @@ class AssessmentHistoryOut(BaseModel):
 # ------------------------------------------------------------------
 
 
-class SyncTriggerIn(BaseModel):
-    """Request body for triggering a sync."""
-
-    question_bank_id: str
-
-
 class ValidationMessageOut(BaseModel):
     """One validation error or warning."""
 
@@ -500,12 +494,6 @@ class TeachingOrgSettingsIn(BaseModel):
         return self
 
 
-class CoordinatorEmailIn(BaseModel):
-    """Update coordinator email for an organisation."""
-
-    coordinator_email: str
-
-
 class TeachingOrgSettingsOut(BaseModel):
     """Teaching settings for an organisation."""
 
@@ -573,12 +561,6 @@ class DelegateOut(BaseModel):
 # ------------------------------------------------------------------
 
 
-class QuestionBankOrgStatusIn(BaseModel):
-    """Toggle live/closed status for a bank."""
-
-    is_live: bool
-
-
 class PromoteBankVersionIn(BaseModel):
     """Which version this organisation's candidates should receive."""
 
@@ -614,15 +596,6 @@ class QuestionBankOrgSettingsOut(BaseModel):
     question_bank_id: str
     is_live: bool
     site_registration: bool = False
-
-
-class QuestionBankOrgStatusOut(BaseModel):
-    """Current live/closed status for a bank."""
-
-    model_config = ConfigDict(from_attributes=True)
-
-    question_bank_id: str
-    is_live: bool
 
 
 # ------------------------------------------------------------------

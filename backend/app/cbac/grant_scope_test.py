@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 from app.cbac.competencies import (
     COMPETENCIES,
     SCOPED_MANAGER_IDS,
-    _load_competencies,
+    _load_catalogue,
 )
 from app.cbac.grant_scope import (
     UNLIMITED,
@@ -246,19 +246,19 @@ class TestLoadChecks:
         self._write(tmp_path, ["misspelt"])
 
         with pytest.raises(ValueError, match="unknown competency"):
-            _load_competencies(tmp_path)
+            _load_catalogue(tmp_path)[0]
 
     def test_a_retired_id_fails_to_load(self, tmp_path: Path) -> None:
         self._write(tmp_path, ["old"])
 
         with pytest.raises(ValueError, match="retired competency"):
-            _load_competencies(tmp_path)
+            _load_catalogue(tmp_path)[0]
 
     def test_the_root_competency_fails_to_load(self, tmp_path: Path) -> None:
         self._write(tmp_path, ["manage_users"])
 
         with pytest.raises(ValueError, match="may only be granted"):
-            _load_competencies(tmp_path)
+            _load_catalogue(tmp_path)[0]
 
     def test_passport_write_on_another_list_fails_to_load(
         self, tmp_path: Path
@@ -271,7 +271,7 @@ class TestLoadChecks:
         self._write(tmp_path, ["passport_write"])
 
         with pytest.raises(ValueError, match="held by entitlement"):
-            _load_competencies(tmp_path)
+            _load_catalogue(tmp_path)[0]
 
     def test_manage_passport_may_name_it(self, tmp_path: Path) -> None:
         (tmp_path / "a.yaml").write_text(
@@ -284,7 +284,7 @@ class TestLoadChecks:
             '    display_name: "Write"\n'
         )
 
-        loaded = _load_competencies(tmp_path)
+        loaded = _load_catalogue(tmp_path)[0]
 
         assert {entry.id for entry in loaded} == {
             "manage_passport",

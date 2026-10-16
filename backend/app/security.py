@@ -80,7 +80,6 @@ def verify_password(p: str, h: str) -> bool:
     Raises:
         ValueError: If password or hash is empty.
     """
-    # Defensive programming: validate inputs
     if not p:
         raise ValueError("Password cannot be empty")
     if not h:

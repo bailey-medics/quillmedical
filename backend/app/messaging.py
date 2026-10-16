@@ -108,22 +108,6 @@ class NotInPatientOrganisation(MessagingError):
     message = "You do not share an organisation with this patient"
 
 
-class SingleUserCannotSelfJoin(MessagingError):
-    """No longer raised; kept so the error code survives a deploy.
-
-    `join_conversation` used to refuse on platform level before it looked
-    at membership, and this was that refusal. Both rejections are now the
-    one below, which describes the actual reason. Removing the class in
-    the same deploy would take the code out of the API for any client
-    still matching on it, so it is retired in a later one - the contract
-    half of expand-contract.
-    """
-
-    status_code = 403
-    error_code = "single_user_cannot_self_join"
-    message = "Single-user accounts cannot self-join conversations"
-
-
 class NotInMessageOrganisation(MessagingError):
     status_code = 403
     error_code = "not_in_message_organisation"
