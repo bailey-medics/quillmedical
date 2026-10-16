@@ -76,7 +76,17 @@ export async function signIn(
   throw new Error(`Signing in as ${username} was refused three times`);
 }
 
-/** A username no earlier run or other browser project has used. */
+/**
+ * A username no earlier run or other browser project has used.
+ *
+ * The time alone is not enough: two copies of one test running side by
+ * side, as `--repeat-each` runs them, can ask in the same millisecond.
+ * So a few random digits follow it.
+ */
 export function freshUsername(prefix: string, project: string): string {
-  return `${prefix}_${project}_${Date.now()}`;
+  const random = Math.floor(Math.random() * 1_000)
+    .toString()
+    .padStart(3, "0");
+
+  return `${prefix}_${project}_${Date.now()}${random}`;
 }
