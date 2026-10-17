@@ -972,7 +972,7 @@ so the leak tests are written before the fix they prove.
       - **Where it runs** - in Quill's CI, against the fixed commit in
         `.github/scripts/ci/fetch-e2e-teaching.sh`, as today.
 
-- [ ] Check every slide against the module's own file, in
+- [x] Check every slide against the module's own file, in
       `tests/taking-a-module/content.spec.ts`. Read
       `learning/content.mdx` the way `fixtures/answers.ts` reads the
       questions: split it into slides as the app does, and for each
@@ -989,11 +989,22 @@ so the leak tests are written before the fix they prove.
       brought up to date, which is moving `PINNED_SHA` in
       `.github/scripts/ci/fetch-e2e-teaching.sh` to his commit.
 
-- [ ] Check every question against its file. An attempt draws four of
+- [x] Check every question against its file. An attempt draws four of
       the five at random, so sit attempts until every question has been
       shown once, checking each as it appears: its text, its picture
       loaded, and its options. The module allows an immediate retry, so
       this costs a few attempts and no waiting.
+
+      Both built in `tests/taking-a-module/content.spec.ts`, with the
+      slide reading in `fixtures/learning.ts` and each question's options
+      and pictures added to `fixtures/answers.ts`. The slide test also
+      checks the app makes as many slides as the file holds, and scans
+      each slide with axe in light and dark. Found while building it:
+      axe failed every lecture slide inside YouTube's own player frame
+      (`aria-allowed-attr`, `aria-prohibited-attr`). That markup is
+      YouTube's, so `fixtures/axe.ts` now leaves YouTube frames out of
+      every scan. Questions are answered wrong, so the attempts send no
+      certificate email and stay clear of the hourly limit per address.
 
 ## Phase 12: What a delegate can reach of anybody else's
 
