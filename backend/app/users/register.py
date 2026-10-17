@@ -23,6 +23,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import delete, func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.cbac.positions import clinical_leads_of
@@ -186,8 +187,18 @@ def register_account(db: Session, new: Registration) -> User:
         base_profession=REGISTERED_PROFESSION,
     )
 
-    db.add(user)
-    db.flush()  # Assigns user.id so we can create memberships
+    # Found free above, but a second request registering the same person
+    # can write its account in between. The database refuses whichever
+    # comes second, and it is answered as the check above answers, not
+    # with a 500. In a savepoint, so the refusal leaves the rest of the
+    # transaction as it was. The flush assigns user.id for memberships.
+    try:
+        with db.begin_nested():
+            db.add(user)
+            db.flush()
+    except IntegrityError:
+        _check_username_and_email_free(db, username, email)
+        raise
 
     # Registration is an opt-out: somebody shown the sentence who leaves
     # the box unticked is sent news. A form that never showed it sends

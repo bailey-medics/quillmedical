@@ -25,6 +25,7 @@ from app.models import (
 )
 from app.organisations import add_org_unit_member
 from app.security import hash_password, verify_password
+from app.users import create as create_module
 from app.users.create import NewAccount, create_account
 from app.users.errors import (
     CompetenciesOutOfScope,
@@ -289,6 +290,48 @@ def test_an_address_another_account_has_is_refused_in_any_capitals(
         )
 
     assert _account(db_session, "starter") is None
+
+
+@pytest.mark.parametrize(
+    ("fields", "check", "refusal"),
+    [
+        ({"username": "colleague"}, "check_username_free", UsernameTaken),
+        ({"email": "colleague@example.test"}, "check_email_free", EmailTaken),
+    ],
+    ids=["the username", "the address"],
+)
+def test_an_account_written_since_the_check_is_refused_by_name(
+    db_session: Session,
+    manager: User,
+    colleague: User,
+    monkeypatch: pytest.MonkeyPatch,
+    fields: dict[str, object],
+    check: str,
+    refusal: type[Exception],
+) -> None:
+    """Two admins making the same person at once, or a double click.
+
+    The first look finds nothing, as it would have if the other request
+    wrote its account in between, so the database's unique constraint is
+    what refuses it. The answer still says which was taken, not a 500.
+    """
+    looks: list[str] = []
+    real_check = getattr(create_module, check)
+
+    def found_free_the_first_time(db: Session, value: str) -> None:
+        looks.append(value)
+        if len(looks) > 1:
+            real_check(db, value)
+
+    monkeypatch.setattr(create_module, check, found_free_the_first_time)
+
+    with pytest.raises(refusal):
+        create_account(db_session, manager, _new(**fields))
+
+    assert len(looks) == 2
+    assert _account(db_session, "starter") is None
+    # The refusal is undone by its savepoint, leaving the transaction
+    db_session.commit()
 
 
 @pytest.mark.parametrize("username", [None, ""], ids=["left out", "empty"])
