@@ -724,7 +724,7 @@ a TD unless it names one.
       Tested across two people: the TA unticks the module on the TD's
       member page, and the TD's dashboard no longer shows it and its
       address no longer opens it.
-- [ ] 6. As a TA or a TD left idle past the fifteen-minute access token,
+- [x] 6. As a TA or a TD left idle past the fifteen-minute access token,
       I want the app to carry on without signing me out, so that a long
       read or a slow assessment is not lost.
       The token's expiry is the server's clock, so the test removes the
@@ -736,17 +736,26 @@ a TD unless it names one.
       A phone-sized Playwright project, Chromium at a phone's width,
       running the core of Phase 5: below `md`, 992px, the navigation is
       behind the hamburger, so these journeys open it to get about.
-- [ ] 8. As a TA, I want to filter all delegates by trust and by clinical
+- [x] 8. As a TA, I want to filter all delegates by trust and by clinical
       lead, so that I can find the delegates I am responsible for.
       The "All delegates" card promises both; the test checks each filter
       narrows the table and that clearing it brings everybody back.
-- [ ] 9. As a TA or a TD, I want to change my password in settings, so
+      The filter offers sites and clinical leads, not trusts, so "by
+      trust" is tested as by site, the place a delegate belongs to. The
+      card's subtitle still says "trust"; worth rewording to "site".
+- [x] 9. As a TA or a TD, I want to change my password in settings, so
       that I can keep my account safe.
       Tested: the old password stops working and the new one signs in.
-- [ ] 10. As a TA or a TD, I want the unsubscribe link in a news email to
+- [x] 10. As a TA or a TD, I want the unsubscribe link in a news email to
       turn news off, so that I can stop it from the email itself.
       Tested with a captured news email: following its link turns news
       off, and settings then show it off.
+      Departed from the plan: a newsletter is sent by an operator's job
+      (`send-newsletter`) that the browser cannot start, so the link is
+      taken from the email that tells somebody their account was closed,
+      which carries the same unsubscribe link for anybody sent news. The
+      test reopens the account afterwards and finds news off in settings.
+      Stories 6, 8, 9 and 10 are in `tests/edges/account-edges.spec.ts`.
 
 ## Phase 10: Every module of teaching content
 
