@@ -32,6 +32,20 @@ services:
       TEACHING_STORAGE_BACKEND: local
       TEACHING_QUESTION_BANK_PATH: /teaching-repos
       TEACHING_IMAGES_BASE_URL: /api/teaching/images
+      # A transcode and a caption job, so the media gate asks what it asks
+      # in App production: a module is hidden until its video is
+      # transcoded and a person has read its captions. Names nothing
+      # runs: the tests stand in for each job by calling its callback
+      # with this token, and seed_ci.py writes what the jobs would for
+      # the videos it uploads.
+      TEACHING_TRANSCODE_JOB: projects/ci/locations/none/jobs/transcode
+      TEACHING_CAPTION_JOB: projects/ci/locations/none/jobs/caption
+      TEACHING_TRANSCODE_CALLBACK_TOKEN: ci-transcode-callback-token
+      # Starting one of those jobs asks Google for credentials, which
+      # first looks for a metadata server. Pointed at a closed port, the
+      # look is refused at once instead of waiting out its timeouts.
+      GCE_METADATA_IP: 127.0.0.1:1
+      GCE_METADATA_HOST: 127.0.0.1:1
       EMAIL_DRY_RUN: "true"
       # Every dry-run email is also written here, so a test can follow
       # the link in an invite. Made writable by
