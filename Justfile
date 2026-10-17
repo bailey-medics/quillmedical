@@ -104,6 +104,8 @@ _e2e-up:
 
     # The module seed_ci.py syncs, pinned so a local run tests what CI does
     .github/scripts/ci/fetch-e2e-teaching.sh >&2
+    # The folder the stack writes its emails to, for the tests to read
+    .github/scripts/ci/prepare-e2e-mail.sh >&2
     E2E_PORT=0 ${compose} up --build --wait --wait-timeout 120 >&2
 
     # The prod image does not migrate on start-up, so the fresh database

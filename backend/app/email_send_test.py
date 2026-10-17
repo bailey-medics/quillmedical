@@ -1,8 +1,10 @@
 """Tests for email sending module."""
 
+import json
 import logging
 from email import message_from_bytes, policy
 from email.message import EmailMessage
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -49,6 +51,7 @@ class TestSendEmailDryRun:
         self, mock_settings: MagicMock, caplog: pytest.LogCaptureFixture
     ) -> None:
         mock_settings.EMAIL_DRY_RUN = True
+        mock_settings.EMAIL_CAPTURE_DIR = None
 
         with caplog.at_level(logging.INFO, logger="app.email_send"):
             send_email(
@@ -69,6 +72,7 @@ class TestSendEmailDryRun:
         self, mock_settings: MagicMock, caplog: pytest.LogCaptureFixture
     ) -> None:
         mock_settings.EMAIL_DRY_RUN = True
+        mock_settings.EMAIL_CAPTURE_DIR = None
 
         attachments: list[Attachment] = [
             {"filename": "certificate.pdf", "content": b"%PDF-fake"},
@@ -88,6 +92,80 @@ class TestSendEmailDryRun:
         assert "certificate.pdf" not in caplog.text
 
 
+class TestCapturingDryRunEmails:
+    """On the end-to-end stack, each dry-run email is written to a folder."""
+
+    def setup_method(self) -> None:
+        _rate_log.clear()
+
+    @patch("app.email_send.settings")
+    def test_each_email_is_one_json_file(
+        self, mock_settings: MagicMock, tmp_path: Path
+    ) -> None:
+        mock_settings.EMAIL_DRY_RUN = True
+        mock_settings.EMAIL_CAPTURE_DIR = str(tmp_path)
+
+        send_email(
+            to="invited@example.com",
+            subject="Set your password",
+            html_body='<a href="https://quill.test/reset">Set it</a>',
+            text_body="Set it: https://quill.test/reset",
+        )
+
+        files = list(tmp_path.glob("*.json"))
+        assert len(files) == 1
+        assert json.loads(files[0].read_text(encoding="utf-8")) == {
+            "to": "invited@example.com",
+            "subject": "Set your password",
+            "html": '<a href="https://quill.test/reset">Set it</a>',
+            "text": "Set it: https://quill.test/reset",
+        }
+        # Nothing half-written is left behind.
+        assert list(tmp_path.glob(".*")) == []
+
+    @patch("app.email_send.settings")
+    def test_emails_sort_in_the_order_they_were_sent(
+        self, mock_settings: MagicMock, tmp_path: Path
+    ) -> None:
+        mock_settings.EMAIL_DRY_RUN = True
+        mock_settings.EMAIL_CAPTURE_DIR = str(tmp_path)
+
+        for subject in ("First", "Second", "Third"):
+            send_email(to="a@example.com", subject=subject, html_body="<p/>")
+
+        subjects = [
+            json.loads(path.read_text(encoding="utf-8"))["subject"]
+            for path in sorted(tmp_path.glob("*.json"))
+        ]
+        assert subjects == ["First", "Second", "Third"]
+
+    @patch("app.email_send.settings")
+    def test_nothing_is_written_when_unset(
+        self, mock_settings: MagicMock, tmp_path: Path
+    ) -> None:
+        mock_settings.EMAIL_DRY_RUN = True
+        mock_settings.EMAIL_CAPTURE_DIR = None
+
+        send_email(to="a@example.com", subject="Hello", html_body="<p/>")
+
+        assert list(tmp_path.iterdir()) == []
+
+    @patch("app.email_send.settings")
+    def test_a_folder_that_cannot_be_written_is_logged_not_raised(
+        self,
+        mock_settings: MagicMock,
+        tmp_path: Path,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        mock_settings.EMAIL_DRY_RUN = True
+        mock_settings.EMAIL_CAPTURE_DIR = str(tmp_path / "missing")
+
+        with caplog.at_level(logging.WARNING, logger="app.email_send"):
+            send_email(to="a@example.com", subject="Hello", html_body="<p/>")
+
+        assert "Could not capture a dry-run email" in caplog.text
+
+
 class TestEmailRateLimiting:
     """Test per-recipient email rate limiting."""
 
@@ -99,6 +177,7 @@ class TestEmailRateLimiting:
     def test_allows_emails_under_limit(self, mock_settings: MagicMock) -> None:
         """Emails within rate limit should succeed."""
         mock_settings.EMAIL_DRY_RUN = True
+        mock_settings.EMAIL_CAPTURE_DIR = None
 
         # Send 10 emails (the limit) - all should succeed
         for i in range(10):
@@ -112,6 +191,7 @@ class TestEmailRateLimiting:
     def test_blocks_emails_over_limit(self, mock_settings: MagicMock) -> None:
         """11th email to same recipient within window should be blocked."""
         mock_settings.EMAIL_DRY_RUN = True
+        mock_settings.EMAIL_CAPTURE_DIR = None
 
         for i in range(10):
             send_email(
@@ -133,6 +213,7 @@ class TestEmailRateLimiting:
     ) -> None:
         """Rate limit is per-recipient, not global."""
         mock_settings.EMAIL_DRY_RUN = True
+        mock_settings.EMAIL_CAPTURE_DIR = None
 
         for i in range(10):
             send_email(
@@ -158,6 +239,8 @@ class TestEmailRateLimiting:
         import time
 
         mock_settings.EMAIL_DRY_RUN = True
+
+        mock_settings.EMAIL_CAPTURE_DIR = None
 
         send_email(
             to="prune@example.com",
@@ -188,6 +271,7 @@ class TestEmailRateLimiting:
     ) -> None:
         """Rate limit violation should log a warning."""
         mock_settings.EMAIL_DRY_RUN = True
+        mock_settings.EMAIL_CAPTURE_DIR = None
 
         for i in range(10):
             send_email(
@@ -270,6 +354,7 @@ class TestFailedSendsDoNotCountAgainstTheLimit:
     def test_a_dry_run_is_charged(self, mock_settings: MagicMock) -> None:
         """A dry run did everything but leave the machine."""
         mock_settings.EMAIL_DRY_RUN = True
+        mock_settings.EMAIL_CAPTURE_DIR = None
         mock_settings.EMAIL_ALLOWED_RECIPIENTS = ""
 
         send_email(to="logged@example.com", subject="x", html_body="<p>x</p>")
@@ -289,6 +374,7 @@ class TestAllowedRecipients:
     ) -> None:
         """Production sets nothing, and mails its users."""
         mock_settings.EMAIL_DRY_RUN = True
+        mock_settings.EMAIL_CAPTURE_DIR = None
         mock_settings.EMAIL_ALLOWED_RECIPIENTS = ""
 
         send_email(to="anybody@example.com", subject="x", html_body="<p>x</p>")
@@ -298,6 +384,7 @@ class TestAllowedRecipients:
         self, mock_settings: MagicMock
     ) -> None:
         mock_settings.EMAIL_DRY_RUN = True
+        mock_settings.EMAIL_CAPTURE_DIR = None
         mock_settings.EMAIL_ALLOWED_RECIPIENTS = (
             "me@example.com, other@example.com"
         )
@@ -309,6 +396,7 @@ class TestAllowedRecipients:
         self, mock_settings: MagicMock
     ) -> None:
         mock_settings.EMAIL_DRY_RUN = True
+        mock_settings.EMAIL_CAPTURE_DIR = None
         mock_settings.EMAIL_ALLOWED_RECIPIENTS = "me@example.com"
 
         with pytest.raises(EmailNotAllowedError):
@@ -324,6 +412,7 @@ class TestAllowedRecipients:
     ) -> None:
         """An address typed into a form is not normalised for us."""
         mock_settings.EMAIL_DRY_RUN = True
+        mock_settings.EMAIL_CAPTURE_DIR = None
         mock_settings.EMAIL_ALLOWED_RECIPIENTS = "  Me@Example.com ,, "
 
         send_email(to="ME@EXAMPLE.COM", subject="x", html_body="<p>x</p>")
@@ -332,6 +421,7 @@ class TestAllowedRecipients:
     def test_a_refusal_is_not_charged(self, mock_settings: MagicMock) -> None:
         """Refused before the limiter, so it costs nothing."""
         mock_settings.EMAIL_DRY_RUN = True
+        mock_settings.EMAIL_CAPTURE_DIR = None
         mock_settings.EMAIL_ALLOWED_RECIPIENTS = "me@example.com"
 
         with pytest.raises(EmailNotAllowedError):
@@ -351,6 +441,7 @@ class TestAllowedRecipients:
     ) -> None:
         """So a tester reads a configuration problem, not an outage."""
         mock_settings.EMAIL_DRY_RUN = True
+        mock_settings.EMAIL_CAPTURE_DIR = None
         mock_settings.EMAIL_ALLOWED_RECIPIENTS = "me@example.com"
 
         with caplog.at_level(logging.WARNING, logger="app.email_send"):
@@ -400,6 +491,7 @@ class TestTextReplyToAndSenderName:
         self, mock_settings: MagicMock, name: str
     ) -> None:
         mock_settings.EMAIL_DRY_RUN = True
+        mock_settings.EMAIL_CAPTURE_DIR = None
         mock_settings.EMAIL_ALLOWED_RECIPIENTS = ""
         mock_settings.EMAIL_FROM = "info@quill-medical.com"
 
@@ -592,6 +684,7 @@ class TestSendingThroughSes:
     ) -> None:
         _ses_settings(mock_settings)
         mock_settings.EMAIL_DRY_RUN = True
+        mock_settings.EMAIL_CAPTURE_DIR = None
 
         send_email(to="a@example.com", subject="Hi", html_body="<p>x</p>")
 
