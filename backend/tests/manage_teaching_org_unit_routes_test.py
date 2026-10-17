@@ -62,6 +62,16 @@ def _org(db: Session, name: str) -> OrgUnit:
     return org
 
 
+def _is_active(
+    db: Session, model: type[User] | type[OrgUnit], row_id: int
+) -> bool:
+    """Whether the account or org_unit is in use, read afresh."""
+    row = db.get(model, row_id)
+    assert isinstance(row, (User, OrgUnit))
+
+    return row.is_active
+
+
 @pytest.fixture
 def trust(db_session: Session) -> OrgUnit:
     return _org(db_session, "Teaching Trust")
@@ -763,19 +773,25 @@ class TestEditingASite:
             "Floor 2",
         )
 
-    def test_puts_a_site_out_of_use_and_back(
+    def test_deactivates_a_site_and_puts_it_back_in_use(
         self, client: TestClient, db_session: Session, trust: OrgUnit
     ) -> None:
+        """Out of use is deactivating, which deals with its people too;
+        see ``tests/site_deactivation_test.py``. Back in use is the
+        switch."""
         site_id = self._site(client, trust)
 
-        response = client.patch(
-            f"/api/org-units/{site_id}/active", json={"is_active": False}
-        )
+        deactivated = client.post(f"/api/org-units/{site_id}/deactivate")
+        assert deactivated.status_code == 200, deactivated.text
+        db_session.expire_all()
+        assert _is_active(db_session, OrgUnit, site_id) is False
 
-        assert response.status_code == 200, response.text
-        site = db_session.get(OrgUnit, site_id)
-        assert site is not None
-        assert site.is_active is False
+        reopened = client.patch(
+            f"/api/org-units/{site_id}/active", json={"is_active": True}
+        )
+        assert reopened.status_code == 200, reopened.text
+        db_session.expire_all()
+        assert _is_active(db_session, OrgUnit, site_id) is True
 
     def test_cannot_edit_their_own_organisation(
         self, client: TestClient, db_session: Session, trust: OrgUnit

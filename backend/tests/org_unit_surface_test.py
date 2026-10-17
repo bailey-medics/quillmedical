@@ -432,15 +432,37 @@ class TestChanging:
         assert resp.status_code == 422
 
     def test_deactivating(self, authenticated_superadmin_client, db_session):
+        """Through ``deactivate``, which deals with the ward's people too.
+        The switch only puts an org_unit back in use."""
         org = _org(db_session)
         ward = _ward(db_session, org.id)
 
-        resp = authenticated_superadmin_client.patch(
-            f"/api/org-units/{ward.id}/active", json={"is_active": False}
+        resp = authenticated_superadmin_client.post(
+            f"/api/org-units/{ward.id}/deactivate"
         )
 
         assert resp.status_code == 200
-        assert resp.json()["is_active"] is False
+        db_session.expire_all()
+        deactivated = db_session.get(OrgUnit, ward.id)
+        assert deactivated is not None
+        assert deactivated.is_active is False
+
+    def test_switching_off_is_refused_and_back_on_is_not(
+        self, authenticated_superadmin_client, db_session
+    ):
+        org = _org(db_session)
+        ward = _ward(db_session, org.id)
+
+        off = authenticated_superadmin_client.patch(
+            f"/api/org-units/{ward.id}/active", json={"is_active": False}
+        )
+        on = authenticated_superadmin_client.patch(
+            f"/api/org-units/{ward.id}/active", json={"is_active": True}
+        )
+
+        assert off.status_code == 409
+        assert on.status_code == 200
+        assert on.json()["is_active"] is True
 
     def test_deleting_a_ward(
         self, authenticated_superadmin_client, db_session

@@ -14,7 +14,13 @@ features, members or patient list; each is a fact about one org_unit. Only
 scoping walks the tree, which is what decides who may see and edit what.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    HTTPException,
+    Request,
+)
 from sqlalchemy import delete, func, insert, select
 from sqlalchemy.orm import Session
 
@@ -50,7 +56,12 @@ from app.org_units.access import (
     through_a_scope,
     visible_ids,
 )
+from app.org_units.deactivation import (
+    accounts_left_nowhere,
+    deactivate_site,
+)
 from app.org_units.detail import names_of, org_unit_detail
+from app.org_units.errors import DeactivateInstead
 from app.org_units.features import switch_feature
 from app.org_units.links import add_link
 from app.org_units.members import add_member, name_clinical_lead
@@ -89,6 +100,7 @@ from app.schemas.org_units import (
     PractisingCompetencyItem,
     SetClinicalLeadIn,
     SetOrgUnitPassportFrameworksIn,
+    SiteDeactivationOut,
     ToggleOrgUnitActiveIn,
     ToggleOrgUnitFeatureIn,
     UpdateOrgUnitIn,
@@ -98,6 +110,7 @@ from app.schemas.organisations import (
     OrgUnitLinkItem,
     OrgUnitLinksOut,
 )
+from app.users.closure_notice import send_closure_notice
 from app.users.scope import check_account_in_scope
 
 _DEP_SESSION = Depends(get_core_db)
@@ -420,17 +433,76 @@ def set_org_unit_active(
     current_user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> OrgUnitItem:
-    """Put an org_unit in or out of use.
+    """Put an org_unit back in use.
 
     Requires ``manage_users``, or a scoped manager such as
     ``manage_teaching`` at a site they act at. See ``require_editable``.
+
+    Taking one out of use is refused here: a site is deactivated with
+    ``POST /org-units/{unit_id}/deactivate``, which also deactivates the
+    accounts of people who belong nowhere else. Turning it off alone
+    would leave them signed up to a site that takes nobody.
+    Reactivating brings no account back: each is reactivated by hand.
     """
     unit = require_editable(db, current_user, unit_id)
-    unit.is_active = body.is_active
+
+    if not body.is_active:
+        raise DeactivateInstead()
+
+    unit.is_active = True
     db.flush()
     db.refresh(unit)
 
     return _item(unit)
+
+
+@router.get(
+    "/{unit_id}/deactivation",
+    response_model=SiteDeactivationOut,
+    dependencies=[DEP_REQUIRE_MANAGE_USERS_OR_SCOPED],
+)
+def preview_site_deactivation(
+    unit_id: int,
+    current_user: User = DEP_CURRENT_USER,
+    db: Session = _DEP_SESSION,
+) -> SiteDeactivationOut:
+    """How many accounts deactivating a site would deactivate with it.
+
+    For the confirm modal, which says the number before anybody presses
+    the button. Requires what deactivating it does.
+    """
+    unit = require_editable(db, current_user, unit_id)
+
+    return SiteDeactivationOut(
+        accounts=len(accounts_left_nowhere(db, current_user, unit))
+    )
+
+
+@router.post(
+    "/{unit_id}/deactivate",
+    response_model=SiteDeactivationOut,
+    dependencies=[DEP_REQUIRE_CSRF, DEP_REQUIRE_MANAGE_USERS_OR_SCOPED],
+)
+def deactivate_site_route(
+    unit_id: int,
+    background_tasks: BackgroundTasks,
+    current_user: User = DEP_CURRENT_USER,
+    db: Session = _DEP_SESSION,
+) -> SiteDeactivationOut:
+    """Deactivate a site, and the accounts of people left belonging nowhere.
+
+    Requires ``manage_users``, or a teaching admin at a site of their own
+    organisation. See ``require_editable`` and
+    ``app.org_units.deactivation``. Each account closed is emailed, after
+    the answer, as one deactivated by hand is.
+    """
+    unit = require_editable(db, current_user, unit_id)
+    closed, notices = deactivate_site(db, current_user, unit)
+
+    for notice in notices:
+        background_tasks.add_task(send_closure_notice, notice)
+
+    return SiteDeactivationOut(accounts=closed)
 
 
 @router.delete(

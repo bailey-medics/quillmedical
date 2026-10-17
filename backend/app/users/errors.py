@@ -181,6 +181,16 @@ class SelfGranting(UserAdminError):
     )
 
 
+class PlaceDeactivated(UserAdminError):
+    """Somebody placed at an org unit that has been deactivated."""
+
+    status_code = 409
+    message = (
+        "A site you chose has been deactivated, so nobody can be added "
+        "to it."
+    )
+
+
 class PlaceNotFound(UserAdminError):
     """An org unit the caller named that is not theirs to place people in.
 

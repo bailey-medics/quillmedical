@@ -31,6 +31,7 @@ from app.org_units.errors import (
     NobodyBelongsHere,
     NobodyLeadsHere,
     NotAtThisPlace,
+    OrgUnitDeactivated,
     UnknownCapacity,
     UserNotFound,
 )
@@ -99,6 +100,7 @@ def add_member(
         OrgUnitNotFound: If no org_unit has that id, or one does that
             the caller may not see.
         NobodyBelongsHere: If the org_unit's type has no members.
+        OrgUnitDeactivated: If the org_unit has been deactivated.
         UnknownCapacity: If the vocabulary does not hold the capacity.
         UserNotFound: If nobody has that id.
         AccountOutOfScope: If a scoped manager would change the capacity
@@ -113,6 +115,9 @@ def add_member(
 
     if not type_can_have_members(unit.type):
         raise NobodyBelongsHere(unit.type)
+
+    if not unit.is_active:
+        raise OrgUnitDeactivated()
 
     capacity = known_capacity(capacity)
 

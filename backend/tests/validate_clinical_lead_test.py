@@ -74,6 +74,22 @@ def _setup_org_with_site_and_lead(
 class TestValidateClinicalLead:
     """POST /api/teaching/public/validate-clinical-lead."""
 
+    def test_a_lead_at_a_deactivated_site_admits_nobody(
+        self, test_client, db_session
+    ):
+        """A deactivated site takes no more registrations."""
+        _org, site, _lead = _setup_org_with_site_and_lead(db_session)
+        site.is_active = False
+        db_session.commit()
+
+        resp = test_client.post(
+            "/api/teaching/public/validate-clinical-lead",
+            json={"email": "lead@test.local", "bank_id": "test-bank"},
+        )
+
+        assert resp.status_code == 200
+        assert resp.json()["valid"] is False
+
     def test_valid_lead(self, test_client, db_session):
         """Valid clinical lead email returns valid=True with org/site info."""
         org, site, _lead = _setup_org_with_site_and_lead(db_session)
