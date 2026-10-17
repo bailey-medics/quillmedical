@@ -1290,6 +1290,154 @@ What is there today:
       other guides have; `tests/guides/guides.spec.ts` now lists it among
       a teaching admin's guides.
 
+## Phase 16: Every certificate copy reaches the clinical lead
+
+Raised by Mark on 2026-10-17. `send_email` lets one address receive only
+ten emails an hour (`_EMAIL_MAX_PER_WINDOW` in
+`backend/app/email_send.py`). Each delegate's own certificate goes to
+their own address, so a cohort passing together is fine. But every pass
+also sends a copy to each clinical lead, and all of those land on the
+lead's one address. If 100 delegates pass in an hour, the lead gets 10
+copies, and since the fix in Phase 5 the other 90 are logged and
+dropped, never retried. Mark chose to let the lead's copies through
+rather than send a digest.
+
+- [x] Add a keyword-only `rate_limited: bool = True` to `send_email` in
+      `backend/app/email_send.py`. When it is false, skip
+      `_check_rate_limit` and `_record_send`. Every other rule still
+      applies: the allow-list (`EmailNotAllowedError`), dry run, and
+      error handling. The default stays true, so no existing caller
+      changes, and leaving the limit off is something a caller has to
+      ask for by name. Say in the docstring why it is safe to lift: the
+      limit stops somebody being mailed too often by something a person
+      can trigger at will, such as a password reset or a resent invite.
+      A lead's copy is sent by the system, once for each real pass, and
+      nobody can request one.
+
+- [x] Pass `rate_limited=False` from the lead's copy only, at the
+      `_send_certificate_email` call for each lead in
+      `_maybe_enqueue_certificate_emails`
+      (`backend/app/features/teaching/router.py`). The delegate's own
+      certificate keeps the limit. `_send_certificate_email` still
+      catches `EmailRateLimitError`, because the delegate's call can
+      still raise it. Update its docstring so it no longer gives "an
+      address over its hourly allowance" as the usual example for a
+      lead.
+
+- [x] Tests, in `backend/app/email_send_test.py`: with
+      `rate_limited=False`, an eleventh email to one address within the
+      hour is sent, and it does not count against that address, so a
+      limited send afterwards still gets its full ten. The allow-list
+      still refuses an address that is not allowed. In
+      `backend/tests/certificate_email_recipients_test.py`: eleven
+      passes in an hour, all with one lead, send all eleven copies to
+      the lead, while a delegate already at the limit is still refused.
+      Check each test fails with the change taken out.
+
+- [x] Leave the E2E journeys' per-learner site and lead alone (the
+      struck-through step in Phase 10). They do not depend on the lead's
+      limit any more, but taking them out is a separate change, and the
+      learner's own address still has the limit.
+
+      Built as written. The certificate tests run `send_email` for real,
+      in dry run, writing each email to a folder, and count what reached
+      each address. Each new test was run against the code with the
+      change taken out, and failed.
+
+## Phase 17: The self-hosted video in the respiratory module
+
+Asked for by Mark on 2026-10-17, after he added a self-hosted video to
+respiratory-teaching (#9, commit `a00d608`): a "Lungs in motion" slide
+holding `<Video ref="lungs-video" duration={8} />`, with
+`learning/lungs-video.mp4` beside `content.mdx`. The YouTube lecture
+cannot be played in CI, so this is the first video the tests can watch
+play from start to end.
+
+What it changed, found by moving the pin and running the suite: every
+journey that opens the module failed, because a learner saw no module at
+all. A module whose `<Video ref>` has no servable upload is hidden
+(`module_media_is_complete`). Servable means uploaded on the module's
+admin media page, transcoded, and its captions read and saved by a
+person (`captions_reviewed_at`; saving the captions is the acceptance,
+with no separate tick). The same is true in App production: once #9
+syncs, the respiratory module is hidden from learners until
+`lungs-video` is uploaded and captioned for each organisation running
+it, since uploads are per organisation.
+
+Decided by Mark on 2026-10-17:
+
+- [ ] Test the real gate, not a way round it. A first attempt let a
+      hand-placed `learning/{ref}.mp4` count as servable where content is
+      on disk (`hand_placed_media_keys` in `media.py`); it kept the
+      module visible but made the gate untestable, so it is undone.
+      Instead the seed uploads `lungs-video.mp4` for "CI Teaching
+      Hospital" through the same code the admin page's upload uses, and
+      marks it transcoded and its captions reviewed, so every existing
+      journey sees the module as before. Move `PINNED_SHA` in
+      `.github/scripts/ci/fetch-e2e-teaching.sh` to `a00d608`.
+
+- [ ] Turn the jobs on in the stack, so the gate asks what it asks in
+      App production: `TEACHING_TRANSCODE_JOB` and `TEACHING_CAPTION_JOB`
+      set in `compose.ci.yml` to names nothing runs, with the callback
+      token set too. The test stands in for each job by doing what the
+      job does on finishing: writing its output where the stack serves
+      media from, and calling `/api/ci/teaching/transcode-complete` and
+      `/api/ci/teaching/caption-complete` with the token. What exactly
+      each callback expects on disk is checked before building.
+
+- [ ] A journey at "CI Second Hospital", which has no upload, in
+      `tests/teaching-admin/`:
+      - a TA and a TD there see no module on the teaching pages, and
+        its address does not open;
+      - the superadmin uploads `lungs-video.mp4` on the module's media
+        page; still hidden, awaiting the transcode;
+      - the transcode job finishes; still hidden, the captions unread;
+      - the caption job finishes, and the superadmin reads and saves
+        the captions;
+      - the TA and the TD now see the module, open it, and the video
+        plays.
+
+- [ ] Test the self-hosted player: on the "Lungs in motion" slide the
+      video is granted through `/video-access`, fetched from Quill's own
+      origin, plays, its clock moves, and it reaches its end, in every
+      browser project. Written as
+      `tests/taking-a-module/self-hosted-video.spec.ts` and passing in
+      Chromium, WebKit and the phone project locally; CI's Linux
+      browsers may not decode H.264, which the first CI run will show.
+
+## Phase 18: Two more checks in the settings journeys
+
+Asked for by Mark on 2026-10-17, about #2050. Built in a new pull request
+on top, leaving #2050 as it is.
+
+- [ ] Check the two-factor QR code, not only the link beside it. Story 27
+      reads the secret from the `otpauth://` text and never looks at the
+      QR code, drawn on a `<canvas>` by the `qrcode` package in
+      `src/pages/TotpSetup.tsx`. Decode the canvas in the browser and
+      check it holds the same `otpauth://` address as the text, so the
+      code an app scans is the code the test signs in with.
+      The canvas has no accessible name either, so a screen reader
+      passes over it without a word: worth giving it one, such as "QR
+      code for your authenticator app", and finding it by that.
+
+- [ ] Turn Help improve Quill off and back on. Today's test turns it off
+      and reloads. Add turning it on again, and check what the switch
+      does, not only how it looks: with it off, moving between pages
+      sends no `POST /api/analytics/page-views`; with it on again, it
+      does. The choice is kept in the browser (`quill.pageViews.optOut`
+      in `localStorage`), so a reload shows each state.
+
+- [ ] A wrong two-factor code at sign-in, asked for by Mark on
+      2026-10-17. The backend refuses one (`test_login_with_invalid_totp`),
+      but no browser test types one. A person with two-factor on enters
+      their password, then a code that is wrong: the login page says so,
+      they stay on it, and a right code then signs them in.
+
+- [ ] Signing in after two-factor is turned off, asked for by Mark on
+      2026-10-17. A person sets two-factor up as story 27 does, turns
+      it off in settings (which asks for their password), signs out, and
+      signs in again with their password alone: no code is asked for.
+
 ## Decisions
 
 - **Refusals are checked at the API as well as on screen** - several

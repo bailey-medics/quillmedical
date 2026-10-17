@@ -14,7 +14,9 @@ leak tests found telling one site's lead of another site's delegates.
 
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -514,3 +516,98 @@ class TestOneRefusedEmailStopsNoOther:
         await tasks()
 
         assert sent == ["lead-two@example.com", "lead-three@example.com"]
+
+
+class TestALeadIsSentEveryCopy:
+    """A cohort passing together reaches its lead in full.
+
+    ``send_email`` lets one address receive ten emails an hour, and every
+    pass sends the lead a copy, so the eleventh pass in an hour used to be
+    logged and dropped. The lead's copy is now sent outside that limit;
+    the candidate's own email keeps it.
+    """
+
+    @pytest.fixture
+    def captured(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> Path:
+        """Send for real, in dry run, writing each email to a folder."""
+        from app import email_send
+
+        email_send._rate_log.clear()
+        monkeypatch.setattr(email_send.settings, "EMAIL_DRY_RUN", True)
+        monkeypatch.setattr(
+            email_send.settings, "EMAIL_CAPTURE_DIR", str(tmp_path)
+        )
+        monkeypatch.setattr(
+            email_send.settings, "EMAIL_ALLOWED_RECIPIENTS", ""
+        )
+
+        return tmp_path
+
+    @staticmethod
+    def _sent_to(folder: Path, address: str) -> int:
+        return sum(
+            1
+            for path in folder.glob("*.json")
+            if json.loads(path.read_text())["to"] == address
+        )
+
+    @pytest.mark.anyio
+    async def test_eleven_passes_in_an_hour_send_the_lead_eleven_copies(
+        self, db_session, captured: Path
+    ) -> None:
+        org, candidate, assessment, config_row = _setup(
+            db_session, coordinator=True
+        )
+        site = _site_of(db_session, org, "Ward 1")
+        _put_at(db_session, site, candidate)
+        _make_lead(
+            db_session, site, _user(db_session, "dr_lead", "lead@example.test")
+        )
+
+        for _ in range(11):
+            tasks = BackgroundTasks()
+            _maybe_enqueue_certificate_emails(
+                background_tasks=tasks,
+                assessment=assessment,
+                config_row=config_row,
+                user=candidate,
+                db=db_session,
+                criteria_results=[{"name": "Accuracy", "value": 0.9}],
+            )
+            await tasks()
+
+        assert self._sent_to(captured, "lead@example.test") == 11
+
+    @pytest.mark.anyio
+    async def test_a_candidate_at_the_limit_is_still_refused(
+        self, db_session, captured: Path
+    ) -> None:
+        import time
+
+        from app import email_send
+
+        org, candidate, assessment, config_row = _setup(
+            db_session, student=True, coordinator=True
+        )
+        site = _site_of(db_session, org, "Ward 1")
+        _put_at(db_session, site, candidate)
+        _make_lead(
+            db_session, site, _user(db_session, "dr_lead", "lead@example.test")
+        )
+        email_send._rate_log["candidate@example.test"] = [time.time()] * 10
+
+        tasks = BackgroundTasks()
+        _maybe_enqueue_certificate_emails(
+            background_tasks=tasks,
+            assessment=assessment,
+            config_row=config_row,
+            user=candidate,
+            db=db_session,
+            criteria_results=[{"name": "Accuracy", "value": 0.9}],
+        )
+        await tasks()
+
+        assert self._sent_to(captured, "candidate@example.test") == 0
+        assert self._sent_to(captured, "lead@example.test") == 1
