@@ -70,13 +70,13 @@ locals {
     SES_SECRET_ACCESS_KEY = "ses-secret-access-key"
   }
 
-  transcode_secret_env_vars = {
-    TRANSCODE_CALLBACK_TOKEN = "teaching-transcode-callback-token"
-  }
+  # Neither video job reads a secret any more: each proves itself to the
+  # backend with an identity token the metadata server signs for its own
+  # account. The maps stay, empty, because the workload list below is
+  # built from them and gives each job its service account.
+  transcode_secret_env_vars = {}
 
-  caption_secret_env_vars = {
-    CAPTION_CALLBACK_TOKEN = "teaching-transcode-callback-token"
-  }
+  caption_secret_env_vars = {}
 
   # Workload => the secrets it reads. The frontend reads none, which is the
   # point of this file.

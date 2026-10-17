@@ -13,13 +13,17 @@ Environment Variables:
     TRANSCODE_ASSET_ID:   Required.  Generated id of the uploaded asset.
     TEACHING_VIDEOS_SOURCE_BUCKET:  Required.  Where the raw upload is.
     TEACHING_VIDEOS_BUCKET:         Required.  Where renditions go.
-    TRANSCODE_CALLBACK_URL:   Optional.  Where to report completion.
-    TRANSCODE_CALLBACK_TOKEN: Optional.  Bearer token for that report.
+    TRANSCODE_CALLBACK_URL:      Optional.  Where to report completion.
+    TRANSCODE_CALLBACK_AUDIENCE: Optional.  The audience of the identity
+                                 token that report carries: the
+                                 backend's own address.
 
 Both callback variables are optional together: unset means development,
 where there is no backend to tell. Set in teaching, where the report is
 what makes a module servable - the backend fires this job and does not
-wait, so nothing else records that the renditions exist.
+wait, so nothing else records that the renditions exist. The job holds
+no secret for the report: the metadata server signs a token for its
+service account, and the backend checks who that is.
 
 Usage (Cloud Run Job):
     gcloud run jobs execute quill-transcode-teaching \\
@@ -146,7 +150,7 @@ def _report_complete(
     shape as the rest of this script's optional wiring.
     """
     url = os.environ.get("TRANSCODE_CALLBACK_URL", "").strip()
-    token = os.environ.get("TRANSCODE_CALLBACK_TOKEN", "").strip()
+    audience = os.environ.get("TRANSCODE_CALLBACK_AUDIENCE", "").strip()
 
     # A retaken poster has a report of its own. The transcode report
     # rewrites every rendition flag from the names it is given, so one
@@ -156,10 +160,22 @@ def _report_complete(
     if poster_only and url:
         url = f"{url.rsplit('/', 1)[0]}/poster-complete"
 
-    if not url or not token:
+    if not url or not audience:
         print(
             "Callback not configured; skipping completion report. "
             "The module stays hidden until it is recorded.",
+            file=sys.stderr,
+        )
+        return
+
+    from app.features.teaching.job_identity import mint_identity_token
+
+    token = mint_identity_token(audience)
+
+    if token is None:
+        print(
+            "ERROR: no identity token, so the completion report was not "
+            "sent; module stays hidden",
             file=sys.stderr,
         )
         return
