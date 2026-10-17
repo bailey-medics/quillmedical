@@ -48,7 +48,7 @@ from app.models import Feedback, OrgUnit, OrgUnitFeature, User
 from app.organisations import add_org_unit_member
 from app.security import hash_password
 from app.utils.route_list import served_routes
-from tests.every_route_is_guarded_test import PUBLIC
+from tests.every_route_is_guarded_test import PUBLIC, SERVICE_CALLER, _asks
 
 RouteKey = tuple[str, str]
 
@@ -272,6 +272,13 @@ def _answered(
     answers: dict[RouteKey, int] = {}
 
     for route in served_routes(app):
+        # A route that asks for a service's identity, a Cloud Run job's
+        # token, has no notion of a person at all: a delegate's session
+        # is nothing to it, and what it answers says nothing about how
+        # a delegate is kept to their own. Skipped as PUBLIC is.
+        if _asks(route) & SERVICE_CALLER:
+            continue
+
         for method in sorted(route.methods):
             key = (method, route.path)
             if key in PUBLIC:

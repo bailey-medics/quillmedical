@@ -7,7 +7,6 @@ a competency dependency needs the User model, and centralising here
 keeps that a one-way import rather than a cycle back into app.cbac.
 """
 
-import hmac
 import logging
 from collections.abc import Callable, Mapping
 from functools import wraps
@@ -29,11 +28,6 @@ from app.security import decode_token, verify_csrf
 logger = logging.getLogger(__name__)
 
 DEP_GET_SESSION = Depends(get_core_db)
-
-#: What `require_job_identity` returns when the caller proved itself with
-#: the shared token rather than an identity token. Goes with that token
-#: in Phase 4 of docs/docs/plans/2026-10-17-job-callbacks-off-the-internet-plan.md.
-SHARED_CREDENTIAL_CALLER = "shared-credential"
 
 
 def _verify_google_id_token(token: str, audience: str) -> Mapping[str, Any]:
@@ -58,24 +52,21 @@ def _verify_google_id_token(token: str, audience: str) -> Mapping[str, Any]:
 def require_job_identity(request: Request) -> str:
     """FastAPI dependency: the guard on the video jobs' completion reports.
 
-    A Cloud Run job has no session, so it proves itself another way. The
-    way being moved to is its own identity: a Google-signed token minted
-    by the metadata server for the backend's address, whose ``email`` is
-    one of the service accounts in ``TEACHING_JOB_CALLBACK_CALLERS``.
-    Until every job presents one, the shared
-    ``TEACHING_TRANSCODE_CALLBACK_TOKEN`` is accepted as well, so a job
-    started before the switch still lands its report.
+    A Cloud Run job has no session, so it proves itself with its own
+    identity: a Google-signed token minted by the metadata server for
+    the backend's address, whose ``email`` is one of the service
+    accounts in ``TEACHING_JOB_CALLBACK_CALLERS``. The job holds no
+    secret, so there is nothing to leak and nothing to rotate; what it
+    can do is bounded by what its account is allowed to do.
 
-    Returns who called: the service account email, or
-    ``SHARED_CREDENTIAL_CALLER``. Answers 503 when neither way is configured,
-    which is development, and 401 for anything that proves nothing.
+    Returns who called, as the service account email. Answers 503 when
+    the audience or the callers are not configured, which is
+    development, and 401 for anything that proves nothing.
     """
-    shared = settings.TEACHING_TRANSCODE_CALLBACK_TOKEN
     audience = settings.TEACHING_JOB_CALLBACK_AUDIENCE
     callers = settings.teaching_job_callback_callers
-    identity_configured = bool(audience) and bool(callers)
 
-    if not shared and not identity_configured:
+    if not audience or not callers:
         raise HTTPException(503, "Job callback not configured")
 
     auth_header = request.headers.get("Authorization", "")
@@ -85,26 +76,23 @@ def require_job_identity(request: Request) -> str:
 
     provided = auth_header.removeprefix("Bearer ").strip()
 
-    if shared and hmac.compare_digest(provided, shared.get_secret_value()):
-        return SHARED_CREDENTIAL_CALLER
+    try:
+        claims = _verify_google_id_token(provided, audience)
+    except (ValueError, GoogleAuthError) as exc:
+        # The reason, never the token: a token is a credential.
+        logger.warning("Job identity token refused: %s", exc)
+        raise HTTPException(401, "Invalid token") from None
 
-    if identity_configured and audience:
-        try:
-            claims = _verify_google_id_token(provided, audience)
-        except (ValueError, GoogleAuthError) as exc:
-            # The reason, never the token: a token is a credential.
-            logger.warning("Job identity token refused: %s", exc)
-        else:
-            email = claims.get("email")
-            if claims.get("email_verified") is True and email in callers:
-                return str(email)
+    email = claims.get("email")
 
-            logger.warning(
-                "Job identity token from %s is not a listed caller",
-                email or "<no email claim>",
-            )
+    if claims.get("email_verified") is not True or email not in callers:
+        logger.warning(
+            "Job identity token from %s is not a listed caller",
+            email or "<no email claim>",
+        )
+        raise HTTPException(401, "Invalid token")
 
-    raise HTTPException(401, "Invalid token")
+    return str(email)
 
 
 DEP_REQUIRE_JOB_IDENTITY = Depends(require_job_identity)

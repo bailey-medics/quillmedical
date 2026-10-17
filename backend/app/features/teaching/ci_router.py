@@ -126,7 +126,7 @@ def ci_transcode_complete(
     """Record that the transcode job produced and verified its outputs.
 
     Guarded by ``require_job_identity``: the job's own Google identity
-    token, or, while the jobs move over, the shared callback token.
+    token, minted for this backend's address by its service account.
 
     Idempotent: re-running a job for the same asset reports the same
     outputs and rewrites the same columns, which is what makes a manual

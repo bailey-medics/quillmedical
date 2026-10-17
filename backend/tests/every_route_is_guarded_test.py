@@ -43,6 +43,18 @@ CHECKS_CSRF: frozenset[str] = frozenset(
     }
 )
 
+# Functions that settle which *service* is calling: a Cloud Run job
+# proving itself with a Google identity token. No session and no cookie,
+# so there is nothing for another site to ride on and no CSRF check to
+# ask for.
+SERVICE_CALLER: frozenset[str] = frozenset(
+    {
+        "app.deps.require_job_identity",
+    }
+)
+
+GUARDS: frozenset[str] = SIGNED_IN | CHECKS_CSRF | SERVICE_CALLER
+
 CHANGING: frozenset[str] = frozenset({"POST", "PUT", "PATCH", "DELETE"})
 
 # Routes open to a caller with no session, and why each is.
@@ -80,18 +92,6 @@ PUBLIC: dict[RouteKey, str] = {
     ),
     ("POST", "/api/ci/teaching/sync"): (
         "called by CI with the TEACHING_SYNC_TOKEN bearer token"
-    ),
-    ("POST", "/api/ci/teaching/transcode-complete"): (
-        "called by the transcode job with its callback token"
-    ),
-    ("POST", "/api/ci/teaching/caption-complete"): (
-        "called by the caption job with the same callback token"
-    ),
-    ("POST", "/api/ci/teaching/no-speech"): (
-        "called by the caption job with the same callback token"
-    ),
-    ("POST", "/api/ci/teaching/poster-complete"): (
-        "called by the transcode job's poster mode with the same token"
     ),
     ("GET", "/api/marketing/unsubscribe"): (
         "the link in a newsletter, carrying its own signed token"
@@ -131,6 +131,14 @@ def _is_signed_in(route: ServedRoute) -> bool:
     return bool(_asks(route) & (SIGNED_IN | CHECKS_CSRF))
 
 
+def _is_service_call(route: ServedRoute) -> bool:
+    return bool(_asks(route) & SERVICE_CALLER)
+
+
+def _asks_who_is_calling(route: ServedRoute) -> bool:
+    return _is_signed_in(route) or _is_service_call(route)
+
+
 def _checks_csrf(route: ServedRoute) -> bool:
     return bool(_asks(route) & CHECKS_CSRF)
 
@@ -140,7 +148,7 @@ def _open_routes() -> set[RouteKey]:
     found: set[RouteKey] = set()
 
     for route in served_routes(app):
-        if not _is_signed_in(route):
+        if not _asks_who_is_calling(route):
             found.update(_keys(route))
 
     return found
@@ -172,6 +180,13 @@ class TestTheWalkSeesTheApp:
     def test_a_route_known_to_be_open_reads_as_open(self) -> None:
         assert ("GET", "/api/health") in _open_routes()
 
+    def test_a_route_known_to_be_a_service_call_reads_as_one(self) -> None:
+        by_path = {route.path: route for route in served_routes(app)}
+        route = by_path["/api/ci/teaching/transcode-complete"]
+
+        assert _is_service_call(route)
+        assert not _is_signed_in(route)
+
     def test_a_route_known_to_check_csrf_reads_as_checking(self) -> None:
         by_path = {route.path: route for route in served_routes(app)}
 
@@ -185,7 +200,7 @@ class TestTheWalkSeesTheApp:
         for route in served_routes(app):
             used |= _asks(route)
 
-        assert (SIGNED_IN | CHECKS_CSRF) - used == set()
+        assert GUARDS - used == set()
 
 
 class TestEveryRouteAsksWhoIsCalling:
