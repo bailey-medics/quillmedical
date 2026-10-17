@@ -319,3 +319,37 @@ class UnknownRelation(OrgUnitError):
     message = "Invalid relation. Must be one of: " + ", ".join(
         ORG_UNIT_RELATION_IDS
     )
+
+
+class OrgUnitDeactivated(OrgUnitError):
+    """Somebody added to an org unit that has been deactivated."""
+
+    status_code = 409
+    message = (
+        "This site has been deactivated, so nobody can be added to it. "
+        "Make it active again first."
+    )
+
+
+class OrganisationNotDeactivatedHere(OrgUnitError):
+    """An organisation, asked to be deactivated as a site is."""
+
+    status_code = 409
+    message = "Only a site is deactivated here, not an organisation."
+
+
+class AlreadyDeactivated(OrgUnitError):
+    """A site asked to be deactivated that already is."""
+
+    status_code = 409
+    message = "This site is already deactivated."
+
+
+class DeactivateInstead(OrgUnitError):
+    """A site switched off without its people being dealt with."""
+
+    status_code = 409
+    message = (
+        "A site is deactivated from its edit page, which also deactivates "
+        "the accounts of people who belong nowhere else."
+    )

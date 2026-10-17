@@ -1247,6 +1247,20 @@ What is there today:
       nowhere else are deactivated and emailed, one also on another
       site is not, its lead's address is refused at registration, and
       nobody can be added to it.
+      Built in two pull requests. The first is the backend:
+      `app/org_units/deactivation.py` works out the accounts and closes
+      them with `deactivate_account`, so each is checked against the
+      caller's reach and emailed as one closed by hand is. The routes are
+      `GET /api/org-units/{id}/deactivation`, the count for the modal,
+      and `POST /api/org-units/{id}/deactivate`. `PATCH .../active` now
+      refuses to switch a site off, 409, and still switches one back on;
+      reactivating brings no account back. Adding anybody is refused in
+      `add_member`, `settle_membership` (only for a site they are not
+      already at) and `create_account`, and `clinical_lead_site` leaves
+      out a deactivated site, so its lead admits nobody. A membership of
+      another site that is itself deactivated does not count as
+      belonging there. Only the site's own members are considered, not
+      those of anything inside it.
 
 - [ ] A guide for teaching admins, asked for by Mark on 2026-10-17:
       `frontend/src/guides/content/deactivate-a-site.md`, registered in

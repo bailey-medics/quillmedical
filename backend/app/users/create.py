@@ -28,7 +28,11 @@ from app.models import OrgUnit, User, normalise_email, org_unit_member
 from app.security import hash_password
 from app.users.competencies import additional_for_platform_role
 from app.users.enrolments import settle_teaching_enrolments
-from app.users.errors import MissingRequiredFields, NoPlaceChosen
+from app.users.errors import (
+    MissingRequiredFields,
+    NoPlaceChosen,
+    PlaceDeactivated,
+)
 from app.users.identity import (
     check_email_free,
     check_password_long_enough,
@@ -128,6 +132,7 @@ def create_account(db: Session, actor: User, new: NewAccount) -> User:
         EmailTaken: If an account has the address.
         PlaceNotFound: Naming the first org unit that does not exist or
             is outside the caller's reach.
+        PlaceDeactivated: If an org unit named has been deactivated.
         NoPlaceChosen: If the caller's scope has a limit and no org
             unit was named.
         PlatformRoleNotAllowed: If the caller's scope has a limit and
@@ -151,6 +156,9 @@ def create_account(db: Session, actor: User, new: NewAccount) -> User:
     check_email_free(db, email)
 
     places = org_units_the_caller_administers(db, actor, new.org_unit_ids)
+
+    if any(not place.is_active for place in places):
+        raise PlaceDeactivated()
 
     if not scope_for(actor).unlimited:
         _check_within_a_limited_scope(actor, new, places)

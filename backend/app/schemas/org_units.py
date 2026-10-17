@@ -445,6 +445,19 @@ class MemberLookupOut(BaseModel):
     user: MemberLookupUser | None = None
 
 
+class SiteDeactivationOut(BaseModel):
+    """What deactivating a site does, or did, to accounts.
+
+    Attributes:
+        accounts: How many accounts are, or were, deactivated with it:
+            those of people who belong to no other organisation or site.
+            A count, not names: at a site of any size the list would be
+            too long to read.
+    """
+
+    accounts: int
+
+
 class OrgUnitStatusOut(BaseModel):
     """What happened.
 

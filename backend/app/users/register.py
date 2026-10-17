@@ -599,10 +599,14 @@ def clinical_lead_site(
     # hospitals, and taking whichever came first put a delegate at a site
     # nobody had chosen. Kept only where the organisation accountable for
     # the site is one offering the bank.
+    # A deactivated site takes no more registrations, so a lead there
+    # admits nobody to it.
     names = {
         row.id: row.name
         for row in db.execute(
-            select(OrgUnit.id, OrgUnit.name).where(OrgUnit.id.in_(held_at))
+            select(OrgUnit.id, OrgUnit.name).where(
+                OrgUnit.id.in_(held_at), OrgUnit.is_active.is_(True)
+            )
         )
     }
     roots = root_ids_of(db, held_at)
@@ -610,7 +614,11 @@ def clinical_lead_site(
 
     for held_site_id in held_at:
         accountable = roots.get(held_site_id)
-        if accountable is None or accountable not in offering:
+        if (
+            accountable is None
+            or accountable not in offering
+            or held_site_id not in names
+        ):
             continue
         sites.append(
             ClinicalLeadSite(

@@ -20,7 +20,7 @@ from app.organisations import (
     org_units_administered_by,
     org_units_run_by_scoped_manager,
 )
-from app.users.errors import PlaceNotFound
+from app.users.errors import PlaceDeactivated, PlaceNotFound
 
 
 def capacity_at(place: OrgUnit) -> str:
@@ -111,10 +111,20 @@ def settle_membership(
     Raises:
         PlaceNotFound: Naming the first id that no org_unit has, or that
             is outside the caller's reach.
+        PlaceDeactivated: If they are to join an org_unit that has been
+            deactivated.
     """
     theirs = org_units_the_caller_places_people_in(db, actor)
     places = _load_within(db, org_unit_ids, theirs)
     memberships_before = passport_cover.capacities_of(db, user.id)
+
+    # Nobody joins a deactivated site. Somebody already there stays, so
+    # saving their page does not take them off it.
+    if any(
+        not place.is_active and place.id not in memberships_before
+        for place in places
+    ):
+        raise PlaceDeactivated()
 
     clearing = org_unit_member.delete().where(
         org_unit_member.c.user_id == user.id
