@@ -269,31 +269,50 @@ written.
       sign in, so that only people with an account get in.
       Tested for a wrong password, an unknown username, and a TA and a TD
       account that has been deactivated.
-- [ ] 5. As a uTD, I want to register through the link on the login page,
+- [x] 5. As a uTD, I want to register through the link on the login page,
       so that I can make an account myself.
-      A uTD only: a TA is made by somebody else, as Phase 3 tests.
-- [ ] 6. As a uTD, I want a "Register" button next to "Log in" on
+      A uTD only: a TA is made by somebody else, as Phase 3 tests. Stories
+      5 to 9 are in `getting-in/registering.spec.ts`. Registering needs a
+      clinical lead holding the post at a site under an organisation that
+      has opened the module to registration, so `seed_ci.py` now opens
+      the seeded module to registration and appoints `ci_lead` clinical
+      lead of "CI Teaching Centre" (`seed_clinical_lead`), as
+      `seed_guides.py` does for its own lead. Found on the way:
+      registration refuses an address on a reserved name such as `.test`,
+      which the accounts an admin makes are allowed, so a registering
+      delegate uses `example.com`. Nothing is sent: the stack captures it.
+- [x] 6. As a uTD, I want a "Register" button next to "Log in" on
       `optical-diagnosis-polyps`, so that I can join straight from the
       page that tells me about the module.
       The button does not exist yet: add it to
       `frontend/public_pages/src/pages/optical-diagnosis-polyps.tsx`,
-      pointing at `https://app.quill-medical.com/register`, with its
-      story and test, then test it takes a uTD to the register page.
-- [ ] 7. As Quill, I want a uTD who picks the wrong module, or gives an
+      pointing at `https://app.quill-medical.com/register`, then test it
+      takes a uTD to the register page. Added beside the "Log in" in the
+      page's own "Taking part" section, outlined like the buttons after
+      it, rather than in the header shared by every public page: the
+      register page asks for this module's clinical lead, so the button
+      belongs on the module's page. The public pages have no stories or
+      unit tests of their own; the end-to-end test is what checks it.
+- [x] 7. As Quill, I want a uTD who picks the wrong module, or gives an
       email that is not a clinical lead's for it, to be unable to
       register, so that only delegates their lead can vouch for get in.
-      Tested for each mistake on its own: the register page refuses, says
-      why, and no account is made.
-- [ ] 8. As a uTD, I want an email when I register, whose link confirms my
+      Tested for each mistake on its own. A lead's address nobody holds:
+      the register page says "Clinical lead not found" and goes no
+      further. A wrong module: the register page offers only modules open
+      to registration, so the stack has no wrong one to pick, and the
+      test asks the API by hand instead. The lead check answers not
+      valid, registration is refused, and no account is made.
+- [x] 8. As a uTD, I want an email when I register, whose link confirms my
       address and lets me into the app, so that I can start once I have
       shown the address is mine.
       Tested with the captured email from Phase 1: following its link
       verifies the address, and the delegate then signs in.
-- [ ] 9. As Quill, I want a uTD who never follows the link in that email
+- [x] 9. As Quill, I want a uTD who never follows the link in that email
       to be unable to get into the app, so that nobody gets in on an
       address they do not own.
-      Tested: signing in before following the link is refused, and the
-      delegate is told to confirm their address.
+      Tested: signing in before following the link is answered 403,
+      `email_not_verified`, and the delegate is told to verify their
+      address.
 
 ## Phase 5: Every module of teaching content
 
