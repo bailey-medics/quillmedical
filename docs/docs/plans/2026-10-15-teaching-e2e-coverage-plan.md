@@ -1665,7 +1665,7 @@ request queued to merge, so with twenty queued the repair would have
 failed. Adding the missing pull requests to the stack that already
 holds the rest (`gh stack link <stack> <prs>`) worked.
 
-- [ ] `stack-relink.py --repair` first adds what is missing to the stack
+- [x] `stack-relink.py --repair` first adds what is missing to the stack
       already holding the rest, when that stack holds them in order and
       nothing closed sits above them, and only unstacks and relinks
       when that cannot work. Either way it ends with `--check`.
@@ -1674,6 +1674,16 @@ holds the rest (`gh stack link <stack> <prs>`) worked.
       push that dropped it; a repair that still fails stops the push
       with the message it has today. Bats tests for each path, including
       a stack with queued pull requests.
+
+      Built as `add_missing` in `scripts/stack-relink.py`. It applies
+      only when the missing pull requests are all above the held ones,
+      the held ones are one stack in order with nothing above the last,
+      and nothing in it was closed without merging. It links with the
+      stack's number first, the form that worked by hand. If GitHub then
+      still does not hold them as one, the old unstack-and-link runs.
+      `stack-submit` now runs `--repair` and `--check` again when its
+      check fails. Six new bats tests; the two that say nothing was
+      unstacked were checked to go red with the new path switched off.
 
 ## Decisions
 

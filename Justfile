@@ -1835,10 +1835,11 @@ stack-relink:
 
     # For when GitHub's stack has drifted from this one: split in two,
     # missing pull requests, or holding one that was closed. Nothing is
-    # pushed and no branch is touched. Every stack on GitHub holding
-    # these pull requests is unstacked, the open ones are linked bottom
-    # to top as one, and the local record is pointed at the new stack.
-    # See scripts/stack-relink.py.
+    # pushed and no branch is touched. Pull requests missing from the top
+    # are added to the stack holding the rest; failing that, every stack
+    # on GitHub holding these pull requests is unstacked, the open ones
+    # are linked bottom to top as one, and the local record is pointed at
+    # the new stack. See scripts/stack-relink.py.
     branches="$(python3 "{{stack_scripts}}"/stack-status.py --rebuild-order)"
 
     if [ -z "${branches}" ]; then
@@ -1887,12 +1888,18 @@ stack-submit:
     # warning. A closed pull request left in GitHub's stack refuses
     # every addition after it, and on 2026-10-16 a stack of 24 was found
     # split in two with eight in neither. So the result is checked, and
-    # a mismatch fails here, naming the pull requests, rather than
-    # waiting to be noticed in a browser.
+    # a mismatch is repaired here, on the push that caused it: usually by
+    # adding the new pull request to the stack holding the rest, which
+    # works even with pull requests queued to merge. A repair that does
+    # not make them one stack fails the push, naming the pull requests.
     branches="$(python3 "{{stack_scripts}}"/stack-status.py --rebuild-order)"
 
     # shellcheck disable=SC2086
-    python3 "{{stack_scripts}}"/stack-relink.py --check ${branches}
+    if ! python3 "{{stack_scripts}}"/stack-relink.py --check ${branches}; then
+        echo "  Repairing GitHub's stack."
+        python3 "{{stack_scripts}}"/stack-relink.py --repair ${branches}
+        python3 "{{stack_scripts}}"/stack-relink.py --check ${branches}
+    fi
 
 
 alias stsy := stack-sync

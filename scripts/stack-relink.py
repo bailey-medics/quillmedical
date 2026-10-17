@@ -43,9 +43,12 @@ Four modes:
                                           GitHub, in this order, with no
                                           closed one in it; 1 when not,
                                           saying what is wrong
-    stack-relink.py --repair <branch>...  unstack every stack on GitHub
-                                          holding them, keeping the local
-                                          record, then link and repoint
+    stack-relink.py --repair <branch>...  add any missing from the top
+                                          of the stack holding the rest;
+                                          failing that, unstack every
+                                          stack on GitHub holding them,
+                                          keeping the local record, then
+                                          link and repoint
 
 Exit codes for `--link` and `--repair`: 0 linked and recorded, 1 it
 could not be done.
@@ -407,8 +410,83 @@ def check(branches: list[str]) -> int:
     return 1
 
 
+def add_missing(numbers: list[int]) -> bool:
+    """Add the pull requests GitHub left out to the stack holding the rest.
+
+    The usual drift: `gh stack submit` opens a new pull request at the
+    top and GitHub leaves it in no stack. Added to the stack that holds
+    the rest, it is put back without unstacking anything, which matters
+    because GitHub will not unstack a pull request queued to merge. On
+    2026-10-17 twenty were queued, and this put six back one at a time.
+
+    Only where that can work: the missing ones are all above the held
+    ones, the held ones are one stack on GitHub in their order with
+    nothing above the last of them, and nothing in it was closed without
+    merging, which would refuse the addition.
+
+    Returns:
+        True when it applied and the link was made; whether GitHub now
+        holds them all as one is for the caller to check.
+    """
+    held: list[tuple[int, int, int, int]] = []
+    missing: list[int] = []
+
+    for number in numbers:
+        stack = stack_of(number)
+        stack_number = stack.get("number") if stack is not None else None
+
+        if not isinstance(stack_number, int):
+            missing.append(number)
+            continue
+        if missing:
+            # A held one above a missing one: a gap in the middle, which
+            # adding at the top cannot close.
+            return False
+
+        position = stack.get("position") if stack is not None else None
+        size = stack.get("size") if stack is not None else None
+        if not isinstance(position, int) or not isinstance(size, int):
+            return False
+        held.append((number, stack_number, position, size))
+
+    if not held or not missing:
+        return False
+
+    stack_numbers = {stack_number for _, stack_number, _, _ in held}
+    positions = [position for _, _, position, _ in held]
+    _, stack_number, top, size = held[-1]
+
+    if len(stack_numbers) != 1 or positions != sorted(positions):
+        return False
+    if top != size:
+        # Something else sits above the last one held.
+        return False
+
+    github_stack = gh_json(
+        ["api", f"repos/{{owner}}/{{repo}}/stacks/{stack_number}"]
+    )
+
+    if not isinstance(github_stack, dict) or closed_unmerged(github_stack):
+        return False
+
+    # The stack's number first, then the pull requests to add: the form
+    # that put them back on 2026-10-17.
+    if gh(["stack", "link", str(stack_number), *map(str, missing)]) is None:
+        return False
+
+    listed = ", ".join(f"#{n}" for n in missing)
+    print(f"  Added {listed} to stack #{stack_number} on GitHub.")
+
+    return True
+
+
 def repair(branches: list[str]) -> int:
-    """Unstack what GitHub holds them in, keeping the record, then link.
+    """Put back what GitHub left out, or unstack and link them as one.
+
+    Adding the missing pull requests to the stack holding the rest is
+    tried first (`add_missing`), and kept when GitHub then holds them all
+    as one. Otherwise every stack holding them is unstacked, keeping the
+    record, and they are linked again.
 
     `gh stack unstack <number>` also deletes the local record's entry
     when the stack is the one checked out here, so the record is read
@@ -421,6 +499,10 @@ def repair(branches: list[str]) -> int:
 
     if numbers is None:
         return 1
+
+    if add_missing(numbers) and not problems(numbers):
+        return 0
+
     if path is None:
         print("✗ No local stack record to keep.", file=sys.stderr)
         return 1
@@ -472,7 +554,10 @@ def main() -> int:
         "--repair",
         nargs="+",
         metavar="BRANCH",
-        help="unstack what holds them on GitHub, then link them as one",
+        help=(
+            "add any missing to the stack holding the rest, or unstack "
+            "what holds them on GitHub and link them as one"
+        ),
     )
     args = parser.parse_args()
 
