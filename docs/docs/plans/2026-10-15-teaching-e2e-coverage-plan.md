@@ -650,32 +650,36 @@ inbox, and `backend/app/feedback/router.py` emails the sender when an
 operator writes a comment. A change of status alone sends no email, so
 story 4 tests a comment.
 
-- [ ] 1. As Quill, I want neither a TA nor a TD to see the passport or
+- [x] 1. As Quill, I want neither a TA nor a TD to see the passport or
       safety areas, in the menu or by typing their addresses, so that
       teaching users are shown only teaching.
       Tested: no Passport or Safety link in the navigation, and
       `/passport`, `/passport/logbook`, `/safety` and a safety case's
       address each show the 404 page, not an error and not the area.
-- [ ] 2. As a TA or a TD, I want to send feedback from anywhere in the
+- [x] 2. As a TA or a TD, I want to send feedback from anywhere in the
       app, so that I can tell Quill what is wrong or could be better.
-- [ ] 3. As a TA or a TD, I want to see the feedback I have sent, with any
+- [x] 3. As a TA or a TD, I want to see the feedback I have sent, with any
       reply, so that I know it was received and what came of it.
-- [ ] 4. As a TA or a TD, I want to be told in the app and by email when
+- [x] 4. As a TA or a TD, I want to be told in the app and by email when
       Quill replies to my feedback, so that I do not have to keep
       checking.
       Tested: the superuser writes a comment on it from
       `/admin/feedback`, the sender's inbox then shows the reply as
       unread, the captured email reaches them, and opening "Your
       feedback" marks it read.
-- [ ] 5. As a TA or a TD, I want to sign out and sign back in, so that I
+- [x] 5. As a TA or a TD, I want to sign out and sign back in, so that I
       can leave a shared computer safely and come back later.
       Tested: after signing out, a page that needs signing in sends them
       to the login page, and signing in again lands them where they
       start.
-- [ ] 6. As Quill, I want a TD to see no admin section, so that delegates
+- [x] 6. As Quill, I want a TD to see no admin section, so that delegates
       cannot reach the pages that run teaching.
       A TD only. Tested: no Admin link in the navigation, and `/admin`,
       `/admin/users` and `/admin/teaching` each show the 404 page.
+
+      All six are in `tests/everyday/everyday.spec.ts`, each making the
+      person it signs in as. The reply in story 4 is written by the
+      superuser through `/admin/feedback`, as an operator would.
 
 ## Phase 9: The edges of the journeys
 
