@@ -6,9 +6,10 @@ imported, the module still imported because Python resolves the name only
 when the function runs, and the whole suite passed either way. The bug
 would have shipped and surfaced as a certificate email that never arrived.
 
-These tests describe the behaviour as it stands today, so the coordinator
-lookup can be moved off ``site_member.role`` and onto the clinical
-lead post without changing who receives anything.
+The clinical lead told is the one at the site the candidate is at,
+beneath the organisation that served the module, and no other. Until
+2026-10-16 it was every lead beneath the organisation, which the E2E
+leak tests found telling one site's lead of another site's delegates.
 """
 
 from __future__ import annotations
@@ -116,6 +117,18 @@ def _make_lead(db: Session, site: OrgUnit, user: User) -> None:
         )
     )
     set_clinical_lead(db, site, user)
+    db.commit()
+
+
+def _put_at(db: Session, site: OrgUnit, user: User) -> None:
+    """Make *user* a member of *site*: the site they are at."""
+    db.execute(
+        insert(org_unit_member).values(
+            org_unit_id=site.id,
+            user_id=user.id,
+            capacity="staff",
+        )
+    )
     db.commit()
 
 
@@ -229,19 +242,74 @@ class TestTheCandidate:
 
 
 class TestTheClinicalLead:
-    """The coordinator email, which is the lookup about to be moved."""
+    """The coordinator email: the lead of the candidate's own site."""
 
-    def test_the_lead_of_a_linked_site_is_emailed(self, db_session):
+    def test_the_lead_of_the_candidates_site_is_emailed(self, db_session):
         org, candidate, assessment, config_row = _setup(
             db_session, coordinator=True
         )
         site = _site_of(db_session, org, "Ward 1")
+        _put_at(db_session, site, candidate)
         lead = _user(db_session, "dr_lead", "lead@example.test")
         _make_lead(db_session, site, lead)
 
         assert _run(db_session, assessment, config_row, candidate) == [
             "lead@example.test"
         ]
+
+    def test_the_lead_of_another_site_of_the_organisation_is_not(
+        self, db_session
+    ):
+        """The leak the E2E tests found: one site told of another's."""
+        org, candidate, assessment, config_row = _setup(
+            db_session, coordinator=True
+        )
+        theirs = _site_of(db_session, org, "Ward 1")
+        _put_at(db_session, theirs, candidate)
+        _make_lead(
+            db_session,
+            theirs,
+            _user(db_session, "dr_lead", "lead@example.test"),
+        )
+        next_door = _site_of(db_session, org, "Ward 2")
+        _make_lead(
+            db_session,
+            next_door,
+            _user(db_session, "dr_next_door", "next-door@example.test"),
+        )
+
+        assert _run(db_session, assessment, config_row, candidate) == [
+            "lead@example.test"
+        ]
+
+    def test_a_candidate_at_no_site_emails_no_lead(self, db_session):
+        """Belonging to the organisation alone names no site's lead."""
+        org, candidate, assessment, config_row = _setup(
+            db_session, coordinator=True
+        )
+        site = _site_of(db_session, org, "Ward 1")
+        _make_lead(
+            db_session, site, _user(db_session, "dr_lead", "lead@example.test")
+        )
+
+        assert _run(db_session, assessment, config_row, candidate) == []
+
+    def test_a_vacant_post_at_their_site_is_not_filled_from_next_door(
+        self, db_session
+    ):
+        org, candidate, assessment, config_row = _setup(
+            db_session, coordinator=True
+        )
+        theirs = _site_of(db_session, org, "Ward 1")
+        _put_at(db_session, theirs, candidate)
+        next_door = _site_of(db_session, org, "Ward 2")
+        _make_lead(
+            db_session,
+            next_door,
+            _user(db_session, "dr_next_door", "next-door@example.test"),
+        )
+
+        assert _run(db_session, assessment, config_row, candidate) == []
 
     def test_nobody_is_emailed_when_the_post_is_empty(self, db_session):
         """The vacancy case, and the one most at risk in the move.
@@ -252,7 +320,7 @@ class TestTheClinicalLead:
         org, candidate, assessment, config_row = _setup(
             db_session, coordinator=True
         )
-        _site_of(db_session, org, "Ward 1")
+        _put_at(db_session, _site_of(db_session, org, "Ward 1"), candidate)
 
         assert _run(db_session, assessment, config_row, candidate) == []
 
@@ -261,7 +329,7 @@ class TestTheClinicalLead:
         org, candidate, assessment, config_row = _setup(
             db_session, coordinator=True
         )
-        _site_of(db_session, org, "Ward 1")
+        _put_at(db_session, _site_of(db_session, org, "Ward 1"), candidate)
 
         elsewhere = _org(db_session, "Other Trust")
         their_site = _site_of(db_session, elsewhere, "Their Ward")
@@ -281,6 +349,7 @@ class TestTheClinicalLead:
             db_session, coordinator=True
         )
         site = _site_of(db_session, org, "Ward 1")
+        _put_at(db_session, site, candidate)
         impostor = _user(db_session, "dr_column_only", "column@example.test")
         db_session.execute(
             insert(org_unit_member).values(
@@ -298,6 +367,7 @@ class TestTheClinicalLead:
             db_session, coordinator=True
         )
         site = _site_of(db_session, org, "Ward 1")
+        _put_at(db_session, site, candidate)
         lead = _user(db_session, "dr_no_email", "")
         _make_lead(db_session, site, lead)
 
@@ -312,6 +382,7 @@ class TestBoth:
             db_session, student=True, coordinator=True
         )
         site = _site_of(db_session, org, "Ward 1")
+        _put_at(db_session, site, candidate)
         lead = _user(db_session, "dr_lead", "lead@example.test")
         _make_lead(db_session, site, lead)
 

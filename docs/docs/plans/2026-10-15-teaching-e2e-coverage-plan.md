@@ -920,7 +920,7 @@ so the leak tests are written before the fix they prove.
       at each organisation, not all four, because it is limited to ten a
       minute and the registering journeys share that.
 
-- [ ] Email only the delegate's own site's lead on a pass, in
+- [x] Email only the delegate's own site's lead on a pass, in
       `_maybe_enqueue_certificate_emails`: the lead of the site the
       delegate belongs to, under the organisation that served the
       module. A delegate at no site, or at a site with no lead, emails
@@ -928,13 +928,28 @@ so the leak tests are written before the fix they prove.
       `backend/tests/certificate_email_recipients_test.py`, whose
       "the lead of a linked site is emailed" cases describe today's
       behaviour, and take the `test.fail()` off the leak test.
+      Built: the lead lookup reads the sites beneath the organisation that
+      the candidate is a member of, and asks `clinical_leads_of` about
+      those alone. Three new cases in the test file failed against the old
+      lookup: a lead at another site of the organisation, a candidate at
+      no site, and a vacant post at their site with a lead next door.
 
-- [ ] Move the existing teaching journeys onto the world, so each runs
+- [x] ~~Move the existing teaching journeys onto the world, so each runs
       against a named site rather than one made for it, and drop
       `makeLearner`'s per-learner site and lead, which only worked
       round the leak. The rate limit on emails to one address still
       applies to a shared lead, so each journey's assertion on a lead's
-      email picks it out by learner, as `waitForEmailMatching` does.
+      email picks it out by learner, as `waitForEmailMatching` does.~~
+      Not done, decided while building it. The per-learner site and lead
+      did not only work round the leak: `send_email` refuses an eleventh
+      email to one address in an hour, and counts a dry run, so a lead
+      shared by every journey that passes, in two browsers with retries,
+      would stop being sent the email the journey checks. And the
+      journeys already run in the world: their sites are made beneath
+      "CI Teaching Hospital", the first of its two organisations. So
+      `makeLearner` keeps a site and lead per learner, and the seeded
+      sites and leads are for the leak tests, which pass a handful of
+      times a run.
 
 ## Phase 11: Every module of teaching content
 

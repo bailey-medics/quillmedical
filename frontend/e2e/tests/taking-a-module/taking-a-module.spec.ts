@@ -146,9 +146,9 @@ for (const { who, kind, profession } of LEARNERS) {
       // The learner and their clinical lead are each sent the certificate.
       const theirs = await waitForEmail(emailOf(username));
       expect(theirs.subject).toMatch(/^Certificate: /);
-      // Picked out by name: today every lead in the organisation is told
-      // of every pass (a finding in the plan), so the newest email to
-      // this lead may be about another learner.
+      // Their own site's lead, and only theirs: the leak tests in
+      // tests/leaks/ check no other lead is told. Picked out by name, so
+      // a retry's pass is not mistaken for this one.
       const leads = await waitForEmailMatching(
         emailOf(leadOf(username)),
         (email) => email.html.includes(`Learner ${username}`),

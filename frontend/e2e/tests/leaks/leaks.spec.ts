@@ -64,9 +64,6 @@ async function aLearnerWhoPassed(
 test("a pass emails the delegate's own site's lead, and no other", async ({
   browser,
 }, testInfo) => {
-  // Fails today: a pass emails every clinical lead in the organisation.
-  test.fail();
-
   const at = TEACHING_SITES.annexe;
   const { username, page } = await aLearnerWhoPassed(
     browser,
