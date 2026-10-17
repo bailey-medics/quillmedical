@@ -176,6 +176,12 @@ class User(Base):
     # TOTP (optional) - base32 secret string
     totp_secret: Mapped[str | None] = mapped_column(String(64), nullable=True)
     is_totp_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    #: The 30-second step of the last two-factor code accepted, so the
+    #: same code, or an older one, is refused after it: each code is used
+    #: once (RFC 6238 section 5.2). Null until a code is first accepted,
+    #: and again once two-factor is turned off. See
+    #: ``app.users.totp.use_totp_code``.
+    totp_last_step: Mapped[int | None] = mapped_column(Integer, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     #: When the account was closed or deactivated. Null while it is
     #: active, and for an account closed before this column existed. The

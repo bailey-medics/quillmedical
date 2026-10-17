@@ -166,6 +166,7 @@ def seed() -> None:
         add_org_unit_member(db, org.id, educator.id, "staff")
         print("Added educator to organisation")
         add_org_unit_member(db, org.id, two_factor.id, "staff")
+        seed_two_factor_per_browser(db, org.id)
         print("Added two-factor user to organisation")
 
         # Belonging is not enough to take a module: teaching asks for a
@@ -217,6 +218,22 @@ def seed() -> None:
         sys.exit(1)
     finally:
         db.close()
+
+
+def seed_two_factor_per_browser(db: Session, org_unit_id: int) -> None:
+    """Seed a two-factor user for each browser project.
+
+    For the keyboard-only login journey. Each two-factor code is used once
+    (``app.users.totp.use_totp_code``), so the two browsers signing in as
+    one person in the same 30 seconds would have the second refused.
+    """
+    for username in ("twofactor_chromium", "twofactor_webkit"):
+        user = _ensure_user(db, username, "teaching_admin")
+        user.totp_secret = CI_TOTP_SECRET
+        user.is_totp_enabled = True
+        add_org_unit_member(db, org_unit_id, user.id, "staff")
+        give_place(db, user, org_unit_id)
+    db.flush()
 
 
 def _ensure_user(

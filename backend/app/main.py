@@ -141,7 +141,6 @@ from app.security import (
     verify_email_verify_token,
     verify_password,
     verify_password_reset_token,
-    verify_totp_code,
 )
 from app.users.errors import UserAdminError
 from app.users.invites import accept_external_invite
@@ -151,6 +150,7 @@ from app.users.register import (
     undo_registration,
 )
 from app.users.router import router as users_router
+from app.users.totp import use_totp_code
 
 setup_logging()
 logger = logging.getLogger(__name__)
@@ -584,7 +584,7 @@ def login(
                     "error_code": "two_factor_required",
                 },
             )
-        if not verify_totp_code(user.totp_secret or "", data.totp_code):
+        if not use_totp_code(db, user, data.totp_code):
             raise HTTPException(
                 status_code=400,
                 detail={
@@ -1155,10 +1155,7 @@ def totp_verify(
                 "error_code": "no_totp_secret",
             },
         )
-    if not verify_totp_code(
-        current_user.totp_secret or "",
-        payload.code,
-    ):
+    if not use_totp_code(db, current_user, payload.code):
         raise HTTPException(
             status_code=400,
             detail={"message": "Invalid code", "error_code": "invalid_totp"},
@@ -1204,6 +1201,7 @@ def totp_disable(
 
     current_user.is_totp_enabled = False
     current_user.totp_secret = None
+    current_user.totp_last_step = None
     db.add(current_user)
 
     return DetailResponse(detail="disabled")

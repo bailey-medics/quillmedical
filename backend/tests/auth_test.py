@@ -328,6 +328,30 @@ class TestLogin:
         data = response.json()
         assert data["detail"]["error_code"] == "invalid_totp"
 
+    def test_a_two_factor_code_signs_in_once_only(
+        self, test_client: TestClient, test_user: User, db_session
+    ):
+        """RFC 6238 section 5.2: a code accepted once is refused after,
+        so somebody who saw it typed cannot sign in with it too."""
+        import pyotp
+
+        test_user.totp_secret = generate_totp_secret()
+        test_user.is_totp_enabled = True
+        db_session.commit()
+        code = pyotp.TOTP(test_user.totp_secret).now()
+        sign_in = {
+            "username": "testuser",
+            "password": "TestPassword123!",
+            "totp_code": code,
+        }
+
+        first = test_client.post("/api/auth/login", json=sign_in)
+        second = test_client.post("/api/auth/login", json=sign_in)
+
+        assert first.status_code == 200
+        assert second.status_code == 400
+        assert second.json()["detail"]["error_code"] == "invalid_totp"
+
 
 class TestLogout:
     """Test user logout endpoint."""
