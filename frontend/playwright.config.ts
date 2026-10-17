@@ -31,6 +31,7 @@ export default defineConfig({
         storageState: "e2e/.auth/user.json",
       },
       testDir: "./e2e/tests",
+      testIgnore: /\.phone\.spec\.ts$/,
       dependencies: ["setup"],
     },
     {
@@ -44,6 +45,20 @@ export default defineConfig({
         storageState: "e2e/.auth/user.json",
       },
       testDir: "./e2e/tests",
+      testIgnore: /\.phone\.spec\.ts$/,
+      dependencies: ["setup"],
+    },
+    {
+      // A phone's width, below `md`, where the navigation folds behind
+      // the hamburger. Only the journeys written for a phone, named
+      // `*.phone.spec.ts`, run here.
+      name: "phone",
+      use: {
+        ...devices["Pixel 7"],
+        storageState: "e2e/.auth/user.json",
+      },
+      testDir: "./e2e/tests",
+      testMatch: /\.phone\.spec\.ts$/,
       dependencies: ["setup"],
     },
   ],

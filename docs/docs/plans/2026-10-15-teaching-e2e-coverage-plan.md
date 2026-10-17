@@ -731,11 +731,17 @@ a TD unless it names one.
       access cookie, as its expiry would, leaving the refresh cookie.
       The next request is answered 401, `api.ts` refreshes and retries,
       and the page carries on with no visit to the login page.
-- [ ] 7. As a TD on a phone, I want to sign in, take the module and see my
+- [x] 7. As a TD on a phone, I want to sign in, take the module and see my
       result, so that I can do it on the device I have.
       A phone-sized Playwright project, Chromium at a phone's width,
       running the core of Phase 5: below `md`, 992px, the navigation is
       behind the hamburger, so these journeys open it to get about.
+      Built as a `phone` project in `frontend/playwright.config.ts`, a
+      Pixel 7 in Chromium, running only `*.phone.spec.ts`; the desktop
+      projects skip those. The journey is
+      `tests/edges/taking-a-module.phone.spec.ts`. On a phone the results
+      by question are cards rather than a table, so it reads them as
+      cards.
 - [x] 8. As a TA, I want to filter all delegates by trust and by clinical
       lead, so that I can find the delegates I am responsible for.
       The "All delegates" card promises both; the test checks each filter
@@ -756,6 +762,28 @@ a TD unless it names one.
       which carries the same unsubscribe link for anybody sent news. The
       test reopens the account afterwards and finds news off in settings.
       Stories 6, 8, 9 and 10 are in `tests/edges/account-edges.spec.ts`.
+
+- [ ] Found while building story 7, for Mark: on a phone, tapping the
+      menu entry for the page already open leaves the menu open over it.
+      The menu closes when the page changes, and tapping the current
+      page changes nothing, so the person has to find the close control.
+      Small, and worth fixing by closing the menu on any tap of an entry.
+
+- [ ] Found while running the journeys side by side, for Mark: two
+      requests making accounts with the same address at the same moment
+      get a 500, not a refusal. The users route checks the address is
+      free and then inserts, and the database's unique constraint is
+      what catches the second, as an unhandled `IntegrityError`. Nobody
+      meets this by hand; worth answering it as the duplicate it is.
+
+- [x] Found in CI: YouTube sends nothing to CI's data-centre runners, so
+      the lecture's clock never moved there and story 7 of Phase 5 failed
+      on every retry. The video test now checks Quill's player starting
+      everywhere, and the clock moving only in Chromium on a developer's
+      machine. Also found in CI: the Playwright container could not see
+      `.e2e-teaching/`, so `e2e/fixtures/answers.ts` failed there. CI
+      now mounts it read-only where `../.e2e-teaching` reaches from the
+      container's `/work`.
 
 ## Phase 10: Every module of teaching content
 
