@@ -48,15 +48,20 @@ variable "vpc_egress" {
     Which traffic leaves through the VPC connector.
 
     PRIVATE_RANGES_ONLY, the default, sends only private-range traffic
-    through the connector and lets public traffic leave directly. That is
-    what the transcode and caption jobs need: they reach the public GCS
-    endpoint and call back to the app's public domain.
+    through the connector and lets public traffic leave directly. Right
+    for a job that calls nothing inside the project: its public calls
+    skip the connector and the NAT.
 
     ALL_TRAFFIC routes everything through the connector, so requests
     arrive as internal VPC traffic. A job that has to reach a Cloud Run
     service set to INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER needs this,
     because that setting accepts same-project VPC traffic but not a
-    request that has been out to the internet and back.
+    request that has been out to the internet and back. Every job that
+    calls the backend is set this way: the admin job for the deploy's
+    smoke test, and the transcode and caption jobs for their completion
+    reports. Google APIs such as GCS are still reached on Google's own
+    network, through the subnet's Private Google Access, and only
+    genuinely public destinations go out through the NAT.
   EOT
   type        = string
   default     = "PRIVATE_RANGES_ONLY"
