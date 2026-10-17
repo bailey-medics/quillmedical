@@ -71,6 +71,16 @@ describe("TotpSetup", () => {
     });
   });
 
+  it("names the QR code, so a screen reader says what it is", async () => {
+    renderWithRouter(<TotpSetup />);
+
+    expect(
+      await screen.findByRole("img", {
+        name: "QR code for your authenticator app",
+      }),
+    ).toBeInTheDocument();
+  });
+
   it("shows error when setup API fails", async () => {
     (apiModule.api.post as ReturnType<typeof vi.fn>).mockRejectedValue(
       new Error("Server error"),
