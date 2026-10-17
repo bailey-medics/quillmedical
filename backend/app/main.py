@@ -89,7 +89,6 @@ from app.marketing.router import router as marketing_router
 from app.marketing.subscribers import fold_into_account
 from app.messaging_router import router as messaging_router
 from app.models import (
-    OrgUnit,
     OrgUnitFeature,
     User,
     normalise_email,
@@ -97,9 +96,6 @@ from app.models import (
 )
 from app.org_units.errors import OrgUnitError
 from app.org_units.router import router as org_units_router
-from app.org_units.tree import (
-    organisation_org_unit_ids,
-)
 from app.organisations import (
     feature_holder_ids_of,
 )
@@ -115,8 +111,6 @@ from app.schemas.auth import (
     LoginIn,
     LoginOut,
     MeOut,
-    OrganisationListItem,
-    OrganisationsOut,
     RefreshOut,
     RegisterIn,
     ResendVerificationIn,
@@ -614,41 +608,6 @@ def login(
     return LoginOut(
         detail="ok",
         user={"username": user.username, "roles": roles},
-    )
-
-
-@router.get("/auth/organisations", response_model=OrganisationsOut)
-def list_organisations_public(
-    db: Session = DEP_GET_SESSION,
-) -> OrganisationsOut:
-    """List organisations for registration.
-
-    Public endpoint that returns organisation names and org_unit ids for
-    the registration form dropdown. No authentication required. Only
-    exposes the minimum fields needed.
-
-    An organisation is an org_unit at the top of a tree, so the id is a
-    org_unit id - the same number the registration this feeds sends back.
-
-    Returns:
-        dict with key ``organisations`` containing a list of
-        ``{org_unit_id, name}`` objects.
-    """
-    organisations = (
-        db.execute(
-            select(OrgUnit)
-            .where(OrgUnit.id.in_(organisation_org_unit_ids()))
-            .order_by(OrgUnit.name)
-        )
-        .scalars()
-        .all()
-    )
-
-    return OrganisationsOut(
-        organisations=[
-            OrganisationListItem(org_unit_id=place.id, name=place.name)
-            for place in organisations
-        ]
     )
 
 
