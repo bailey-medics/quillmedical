@@ -474,6 +474,7 @@ def send_email(
     from_name: str | None = None,
     headers: Mapping[str, str] | None = None,
     from_address: str | None = None,
+    rate_limited: bool = True,
 ) -> None:
     """Send a single email, or log it when in dry-run mode.
 
@@ -496,9 +497,20 @@ def send_email(
         headers: Extra headers. A newsletter passes ``List-Unsubscribe``
             and ``List-Unsubscribe-Post``, which mailbox providers
             require of bulk mail.
+        rate_limited: Whether the hourly limit on one address applies,
+            and whether this email counts against it. True unless a
+            caller says otherwise by name. The limit stops somebody being
+            mailed too often by something a person can set off at will,
+            a password reset or a resent invite. A clinical lead's copy
+            of a certificate is sent once for each real pass and nobody
+            can ask for one, so a cohort passing together would run past
+            the limit and lose copies for no protection at all. Every
+            other rule still applies: the allow-list, dry run and the
+            provider's refusals.
 
     Raises:
-        EmailRateLimitError: If the recipient has exceeded the hourly limit.
+        EmailRateLimitError: If the recipient has exceeded the hourly
+            limit, and *rate_limited* is true.
         EmailNotAllowedError: If an allow-list is set and the recipient is
             not on it.
         EmailSendError: If the mail provider refuses the send or cannot
@@ -509,7 +521,9 @@ def send_email(
     _check_allowed(to)
     sender = _from_header(from_name, from_address)
     extra_headers = _checked_headers(headers)
-    _check_rate_limit(to)
+
+    if rate_limited:
+        _check_rate_limit(to)
 
     # Counted for the log, never named in it. Neither is the subject. A
     # certificate's subject and its file name both carry the person's
@@ -532,7 +546,8 @@ def send_email(
                 text_body=text_body,
             )
 
-        _record_send(to)
+        if rate_limited:
+            _record_send(to)
         return
 
     sent = _send_with_ses(
@@ -552,7 +567,9 @@ def send_email(
 
     if not sent:
         return
-    _record_send(to)
+
+    if rate_limited:
+        _record_send(to)
 
     logger.info(
         "Email sent - to=%s attachments=%d",

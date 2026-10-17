@@ -1004,10 +1004,13 @@ def _send_certificate_email(**kwargs: Any) -> None:
 
     A pass queues an email to the candidate and one to each clinical lead
     as background tasks, and Starlette runs them one after another,
-    stopping at the first that raises. One that was refused - an address
-    over its hourly allowance, say - used to stop every email queued after
-    it, so other people silently got nothing. A refusal or a failed send
-    is logged, without the address, and the next email goes out.
+    stopping at the first that raises. One that was refused - a candidate's
+    address over its hourly allowance, or one not on the allow-list - used
+    to stop every email queued after it, so other people silently got
+    nothing. A refusal or a failed send is logged, without the address,
+    and the next email goes out. A lead's copy is sent outside the hourly
+    allowance (``rate_limited=False``), so a cohort passing together
+    reaches its lead in full; the candidate's own email keeps it.
     """
     from app.email_send import (
         EmailNotAllowedError,
@@ -1232,9 +1235,13 @@ def _maybe_enqueue_certificate_emails(
                         if coord_template["attach_certificate"]
                         else []
                     )
+                    # Outside the hourly allowance on one address: a
+                    # lead is sent a copy for each delegate who passes,
+                    # and a cohort passing together would run past it.
                     background_tasks.add_task(
                         _send_certificate_email,
                         to=lead.email,
+                        rate_limited=False,
                         attachments=att,
                         **in_branded_layout(
                             rendered,

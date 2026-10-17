@@ -362,6 +362,75 @@ class TestFailedSendsDoNotCountAgainstTheLimit:
         assert len(_rate_log["logged@example.com"]) == 1
 
 
+class TestOutsideTheHourlyLimit:
+    """``rate_limited=False``: for a send nobody can ask for, such as a
+    clinical lead's copy of each certificate."""
+
+    def setup_method(self) -> None:
+        _rate_log.clear()
+
+    @patch("app.email_send.settings")
+    def test_an_eleventh_email_in_the_hour_is_sent(
+        self, mock_settings: MagicMock
+    ) -> None:
+        mock_settings.EMAIL_DRY_RUN = True
+        mock_settings.EMAIL_CAPTURE_DIR = None
+        mock_settings.EMAIL_ALLOWED_RECIPIENTS = ""
+
+        for i in range(11):
+            send_email(
+                to="lead@example.com",
+                subject=f"Certificate {i}",
+                html_body="<p>Passed</p>",
+                rate_limited=False,
+            )
+
+    @patch("app.email_send.settings")
+    def test_it_does_not_count_against_the_address(
+        self, mock_settings: MagicMock
+    ) -> None:
+        """So a limited send afterwards still gets its full ten."""
+        mock_settings.EMAIL_DRY_RUN = True
+        mock_settings.EMAIL_CAPTURE_DIR = None
+        mock_settings.EMAIL_ALLOWED_RECIPIENTS = ""
+
+        for i in range(11):
+            send_email(
+                to="lead@example.com",
+                subject=f"Certificate {i}",
+                html_body="<p>Passed</p>",
+                rate_limited=False,
+            )
+
+        assert _rate_log.get("lead@example.com", []) == []
+        for i in range(10):
+            send_email(
+                to="lead@example.com",
+                subject=f"Reset {i}",
+                html_body="<p>Reset</p>",
+            )
+        with pytest.raises(EmailRateLimitError):
+            send_email(
+                to="lead@example.com", subject="One too many", html_body="x"
+            )
+
+    @patch("app.email_send.settings")
+    def test_the_allow_list_still_applies(
+        self, mock_settings: MagicMock
+    ) -> None:
+        mock_settings.EMAIL_DRY_RUN = True
+        mock_settings.EMAIL_CAPTURE_DIR = None
+        mock_settings.EMAIL_ALLOWED_RECIPIENTS = "me@example.com"
+
+        with pytest.raises(EmailNotAllowedError):
+            send_email(
+                to="lead@example.com",
+                subject="x",
+                html_body="<p>x</p>",
+                rate_limited=False,
+            )
+
+
 class TestAllowedRecipients:
     """Which addresses this environment may write to at all."""
 
