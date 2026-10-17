@@ -1,0 +1,37 @@
+{#-
+  Tells the operator that a delegate passed a module and no clinical lead
+  was sent the certificate: the delegate's site has no lead, the lead has
+  no address, or the delegate belongs to no site. So somebody can name a
+  lead, or send the certificate on.
+
+  Who and where, never the result. The score and the certificate stay in
+  Quill. Context:
+    username      the delegate's username
+    module_title  the module they passed
+    organisation  the organisation that served it
+    site          their site's name, or None when they belong to none
+    reason        why nobody was told, in words
+    url           where to put it right: the site's admin page, or the
+                  delegate's when there is no site
+-#}
+{% extends "base.html.j2" %}
+{% import "_components.html.j2" as c with context %}
+{% block subject %}No clinical lead was told that {{ username }} passed{% endblock subject %}
+{% block preheader %}{{ reason }}{% endblock preheader %}
+{% block body %}
+{{ c.heading("No clinical lead *was told*") }}
+{{ c.paragraph(username ~ " has passed " ~ module_title ~ " at " ~ organisation ~ ", and no clinical lead was sent the certificate.") }}
+{{ c.paragraph("Site: " ~ (site if site else "none")) }}
+{{ c.paragraph("Why: " ~ reason) }}
+{{ c.button("Put it right", url) }}
+{% endblock body %}
+{% block reason %}You are receiving this because this address is set to be told when a pass reaches no clinical lead on Quill.{% endblock reason %}
+
+{% block text %}
+{{ username }} has passed {{ module_title }} at {{ organisation }}, and no clinical lead was sent the certificate.
+
+Site: {{ site if site else "none" }}
+Why: {{ reason }}
+
+Put it right: {{ url }}
+{% endblock text %}

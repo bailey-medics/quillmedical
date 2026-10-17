@@ -611,3 +611,107 @@ class TestALeadIsSentEveryCopy:
 
         assert self._sent_to(captured, "candidate@example.test") == 0
         assert self._sent_to(captured, "lead@example.test") == 1
+
+
+class TestTheOperatorIsToldWhenNoLeadIs:
+    """A pass that reaches no clinical lead is told to the operator.
+
+    At the addresses in ``FEEDBACK_NOTIFY_EMAIL``, so somebody can name a
+    lead or send the certificate on. Phase 19 of the teaching E2E
+    coverage plan.
+    """
+
+    OPERATOR = "operator@example.test"
+
+    @pytest.fixture(autouse=True)
+    def operator_address(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(
+            "app.config.settings.FEEDBACK_NOTIFY_EMAIL", self.OPERATOR
+        )
+
+    @staticmethod
+    def _notices(sent: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        return [task for task in sent if "context" in task]
+
+    def test_a_site_with_no_lead(self, db_session) -> None:
+        org, candidate, assessment, config_row = _setup(
+            db_session, coordinator=True
+        )
+        site = _site_of(db_session, org, "Ward 1")
+        _put_at(db_session, site, candidate)
+
+        [notice] = self._notices(
+            _sent(db_session, assessment, config_row, candidate)
+        )
+
+        assert notice["to"] == self.OPERATOR
+        assert notice["context"]["username"] == "candidate"
+        assert notice["context"]["site"] == "Ward 1"
+        assert notice["context"]["reason"] == "Ward 1 has no clinical lead."
+        assert notice["context"]["url"].endswith(f"/admin/sites/{site.id}")
+
+    def test_a_lead_with_no_address(self, db_session) -> None:
+        org, candidate, assessment, config_row = _setup(
+            db_session, coordinator=True
+        )
+        site = _site_of(db_session, org, "Ward 1")
+        _put_at(db_session, site, candidate)
+        _make_lead(db_session, site, _user(db_session, "dr_no_email", ""))
+
+        [notice] = self._notices(
+            _sent(db_session, assessment, config_row, candidate)
+        )
+
+        assert notice["context"]["reason"] == (
+            "The clinical lead of Ward 1 has no email address."
+        )
+
+    def test_a_delegate_at_no_site(self, db_session) -> None:
+        _org, candidate, assessment, config_row = _setup(
+            db_session, coordinator=True
+        )
+
+        [notice] = self._notices(
+            _sent(db_session, assessment, config_row, candidate)
+        )
+
+        assert notice["context"]["site"] is None
+        assert notice["context"]["url"].endswith(
+            f"/admin/users/{candidate.id}"
+        )
+
+    def test_nobody_is_told_when_a_lead_was(self, db_session) -> None:
+        org, candidate, assessment, config_row = _setup(
+            db_session, coordinator=True
+        )
+        site = _site_of(db_session, org, "Ward 1")
+        _put_at(db_session, site, candidate)
+        _make_lead(
+            db_session, site, _user(db_session, "dr_lead", "lead@example.test")
+        )
+
+        sent = _sent(db_session, assessment, config_row, candidate)
+
+        assert self._notices(sent) == []
+        assert [task["to"] for task in sent] == ["lead@example.test"]
+
+    def test_nobody_is_told_with_no_address_configured(
+        self, db_session, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr("app.config.settings.FEEDBACK_NOTIFY_EMAIL", "")
+        _org, candidate, assessment, config_row = _setup(
+            db_session, coordinator=True
+        )
+
+        assert _sent(db_session, assessment, config_row, candidate) == []
+
+    def test_nobody_is_told_when_the_module_emails_no_coordinator(
+        self, db_session
+    ) -> None:
+        _org, candidate, assessment, config_row = _setup(
+            db_session, student=True
+        )
+
+        sent = _sent(db_session, assessment, config_row, candidate)
+
+        assert self._notices(sent) == []
