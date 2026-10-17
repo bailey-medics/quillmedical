@@ -1409,7 +1409,7 @@ Decided by Mark on 2026-10-17:
       Playwright container keeps its read-only mount: it only reads the
       answers, and the upload is written by the backend.
 
-- [ ] Test the real gate, not a way round it. A first attempt let a
+- [x] Test the real gate, not a way round it. A first attempt let a
       hand-placed `learning/{ref}.mp4` count as servable where content is
       on disk (`hand_placed_media_keys` in `media.py`); it kept the
       module visible but made the gate untestable, so it is undone.
@@ -1418,6 +1418,28 @@ Decided by Mark on 2026-10-17:
       marks it transcoded and its captions reviewed, so every existing
       journey sees the module as before. Move `PINNED_SHA` in
       `.github/scripts/ci/fetch-e2e-teaching.sh` to `a00d608`.
+
+      Built in `seed_videos` in `backend/scripts/seed_ci.py`, called by
+      `seed_teaching` for each module it opens, so `seed_guides.py` gets
+      the video too. The source is the module's own
+      `learning/{ref}.mp4` (`resolve_module_dir`, not
+      `resolve_local_bank`, which gives the assessment folder). Where a
+      transcode or caption job is configured it also writes what the job
+      would, the `-720p.mp4` rendition and a `.vtt`, and marks the
+      captions as read, ready for the step below. For now both teaching
+      organisations are seeded: CI Second Hospital is left without a
+      video by the journey step further down, which also has to run
+      before the tests that expect the module there, such as the leak
+      test's "View module" count.
+
+      The new "Lungs in motion" slide moved two specs.
+      `teaching-journeys.spec.ts` reads where "Summary" is from the side
+      list rather than hard-coding slide 5, and clicks Next again only
+      while the slide has not changed: the YouTube player grows as it
+      loads and moved Next from under the click, failing one run in
+      three. `content.spec.ts` no longer counts a video download the
+      browser cancels on leaving a slide as a failure; a missing file
+      still answers 404 and is caught.
 
 - [ ] Turn the jobs on in the stack, so the gate asks what it asks in
       App production: `TEACHING_TRANSCODE_JOB` and `TEACHING_CAPTION_JOB`

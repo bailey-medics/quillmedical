@@ -29,7 +29,7 @@ set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/../shared/logging.sh" "fetch-e2e-teaching"
 
 REPO_URL="https://github.com/bailey-medics/respiratory-teaching.git"
-PINNED_SHA="3165ba07136af56591bff8853d4c2a95554da97e"
+PINNED_SHA="a00d6084f33678691af0fa3257a1cde8dbe2dfbd"
 
 # Check out one commit of a repository into a directory, with no history.
 #

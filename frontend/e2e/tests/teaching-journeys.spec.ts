@@ -37,8 +37,16 @@ test.describe("Teaching module journeys", () => {
     // Exact, or "Next" also matches the "Next steps" slide in the side list
     const next = page.getByRole("button", { name: "Next", exact: true });
     for (let slide = 1; slide < slideCount; slide += 1) {
-      await next.click();
-      await expect(page).toHaveURL(new RegExp(`/slide/${slide}$`));
+      const there = new RegExp(`/slide/${slide}$`);
+
+      // A video slide's player grows as it loads, which moves Next down
+      // the page between Playwright finding the button and clicking it,
+      // so a click can land where Next was. Clicked again only while the
+      // slide has not changed, so a slide is never skipped.
+      await expect(async () => {
+        if (!there.test(page.url())) await next.click();
+        await expect(page).toHaveURL(there, { timeout: 2_000 });
+      }).toPass({ timeout: 15_000 });
     }
 
     // The last slide offers Finish, which returns to the module page
@@ -54,8 +62,18 @@ test.describe("Teaching module journeys", () => {
     await page.goto(`/teaching/learn/${MODULE_ID}/slide/0`);
     const sideList = page.getByRole("complementary");
 
+    // Where "Summary" sits is read from the list rather than written
+    // here, so a slide added to the content does not move it under the
+    // test.
+    await expect(
+      sideList.getByRole("button", { name: "Summary" }),
+    ).toBeVisible();
+    const titles = await sideList.getByRole("button").allInnerTexts();
+    const summary = titles.findIndex((title) => title.trim() === "Summary");
+    expect(summary, titles.join(", ")).toBeGreaterThan(0);
+
     await sideList.getByRole("button", { name: "Summary" }).click();
-    await expect(page).toHaveURL(/\/slide\/5$/);
+    await expect(page).toHaveURL(new RegExp(`/slide/${summary}$`));
     await expect(page.getByRole("heading", { name: "Summary" })).toBeVisible();
 
     await sideList.getByRole("button", { name: "Exit lesson" }).click();
