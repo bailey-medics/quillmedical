@@ -541,6 +541,41 @@ describe("useModuleMedia", () => {
     expect((api.get as Mock).mock.calls.length).toBe(2);
   });
 
+  it("names the organisation in every request when given one", async () => {
+    // A video is stored once for each organisation running the module,
+    // so a card for one organisation must load, upload, link and delete
+    // that organisation's files and no other.
+    stubUpload();
+    (api.get as Mock).mockResolvedValue(media);
+    (api.post as Mock).mockResolvedValue({
+      upload_url: "https://storage.example/upload",
+      asset_id: "asset-1",
+    });
+    (api.del as Mock).mockResolvedValue(undefined);
+    (api.put as Mock).mockResolvedValue({});
+
+    const { result } = renderHook(() => useModuleMedia("mod-1", 20, 7));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    await act(async () => {
+      await result.current.upload(
+        "lecture-01",
+        new File(["x"], "lecture.mp4", { type: "video/mp4" }),
+      );
+      await result.current.remove("asset-1");
+      await result.current.savePosterFrame("asset-1", 3);
+    });
+
+    const urls = [
+      ...(api.get as Mock).mock.calls,
+      ...(api.post as Mock).mock.calls,
+      ...(api.del as Mock).mock.calls,
+      ...(api.put as Mock).mock.calls,
+    ].map(([url]) => url as string);
+    expect(urls.length).toBeGreaterThan(4);
+    for (const url of urls) expect(url).toMatch(/\?org_unit_id=7$/);
+  });
+
   it("says why a poster second did not save", async () => {
     (api.get as Mock).mockResolvedValue(media);
     (api.put as Mock).mockRejectedValue(

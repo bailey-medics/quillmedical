@@ -95,6 +95,23 @@ export const SomethingMissing: Story = {
   ),
 };
 
+export const ForOneOrganisation: Story = {
+  args: {
+    media: incomplete,
+    organisation: "East of England ETA",
+    liveOrganisations: ["East of England ETA"],
+  },
+  render: (args) => (
+    <Stack gap="sm">
+      <ModuleMediaCard {...args} />
+      <StoryNote>
+        A video is stored once for each organisation running the module, so the
+        module page shows one card for each, named in its heading.
+      </StoryNote>
+    </Stack>
+  ),
+};
+
 export const NothingUploadedYet: Story = {
   args: {
     media: {

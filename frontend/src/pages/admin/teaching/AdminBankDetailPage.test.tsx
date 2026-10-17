@@ -91,6 +91,7 @@ const mockOrgs = [
     org_unit_id: 11,
     organisation_name: "Test Hospital",
     is_live: true,
+    may_upload_videos: true,
   },
   {
     org_unit_id: 12,
@@ -279,9 +280,46 @@ describe("AdminBankDetailPage media card", () => {
     renderWithRouter(<AdminBankDetailPage />);
 
     await waitFor(() => {
-      expect(screen.getByText("Videos")).toBeTruthy();
+      expect(screen.getByText("Videos for Test Hospital")).toBeTruthy();
     });
     expect(screen.getByText("lecture-01")).toBeTruthy();
+  });
+
+  it("shows one card for each organisation the admin may upload for", async () => {
+    // A video is stored once for each organisation running the module,
+    // so each gets its own card, asked for by its own org_unit_id.
+    (api.get as Mock).mockImplementation((url: string) => {
+      if (url.includes("/media")) return Promise.resolve(mockMedia);
+      if (url.includes("/organisations"))
+        return Promise.resolve([
+          ...mockOrgs.map((org) => ({ ...org, may_upload_videos: true })),
+          {
+            org_unit_id: 13,
+            organisation_name: "Not Yours",
+            is_live: true,
+            may_upload_videos: false,
+          },
+        ]);
+      return Promise.resolve(mockBank);
+    });
+    renderWithRouter(<AdminBankDetailPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Videos for Test Hospital")).toBeTruthy();
+    });
+    expect(screen.getByText("Videos for Another Clinic")).toBeTruthy();
+    expect(screen.queryByText("Videos for Not Yours")).toBeNull();
+
+    const mediaUrls = (api.get as Mock).mock.calls
+      .map(([url]) => url as string)
+      .filter((url) => url.includes("/media"));
+    expect(mediaUrls).toContain(
+      "/teaching/admin/modules/test-bank/media?org_unit_id=11",
+    );
+    expect(mediaUrls).toContain(
+      "/teaching/admin/modules/test-bank/media?org_unit_id=12",
+    );
+    expect(mediaUrls.some((url) => url.includes("org_unit_id=13"))).toBe(false);
   });
 
   it("hides the card for a module of pure text", async () => {
@@ -298,7 +336,7 @@ describe("AdminBankDetailPage media card", () => {
     await waitFor(() => {
       expect(screen.getByText("Test Bank")).toBeTruthy();
     });
-    expect(screen.queryByText("Videos")).toBeNull();
+    expect(screen.queryByText(/^Videos/)).toBeNull();
   });
 
   it("warns that an incomplete module is hidden from learners", async () => {
@@ -331,7 +369,7 @@ describe("AdminBankDetailPage media card", () => {
     await waitFor(() => {
       expect(screen.getByText("Test Bank")).toBeTruthy();
     });
-    expect(screen.queryByText("Videos")).toBeNull();
+    expect(screen.queryByText(/^Videos/)).toBeNull();
   });
 
   it("does not block navigation when nothing is uploading", async () => {

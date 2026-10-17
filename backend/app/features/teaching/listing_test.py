@@ -14,6 +14,7 @@ from app.features.teaching.listing import (
     bank_organisation_rows,
     delegate_rows,
     learning_module_rows,
+    media_org_unit_ids,
     question_bank_rows,
 )
 from app.features.teaching.models import (
@@ -1448,3 +1449,56 @@ def test_only_the_organisations_handed_in_are_listed(
     rows = bank_organisation_rows(db_session, BANK, [listed])
 
     assert [row.organisation_name for row in rows] == ["Listed Trust"]
+
+
+def test_each_organisation_says_whether_the_caller_may_upload_its_videos(
+    db_session: Session,
+) -> None:
+    yours = _organisation(db_session, "Your Trust")
+    theirs = _organisation(db_session, "Their Trust")
+
+    rows = bank_organisation_rows(
+        db_session, BANK, [yours, theirs], may_upload_videos_at={yours.id}
+    )
+
+    assert [row.may_upload_videos for row in rows] == [True, False]
+
+
+# --- media_org_unit_ids -----------------------------------------------------
+
+
+def test_a_member_manages_the_videos_of_their_own_organisation_only(
+    db_session: Session,
+) -> None:
+    yours = _organisation(db_session, "Your Trust")
+    theirs = _organisation(db_session, "Their Trust")
+    _synced(db_session, yours)
+    _synced(db_session, theirs)
+    admin = _person(db_session, "admin")
+    add_org_unit_member(db_session, yours.id, admin.id, "staff")
+
+    assert media_org_unit_ids(db_session, admin, BANK) == {yours.id}
+
+
+def test_an_operator_manages_the_videos_of_every_organisation_holding_it(
+    db_session: Session,
+) -> None:
+    holding = _organisation(db_session, "Holding Trust")
+    other_bank = _organisation(db_session, "Other Bank Trust")
+    _organisation(db_session, "Empty Trust")
+    _synced(db_session, holding)
+    _synced(db_session, other_bank, OTHER_BANK)
+    operator = _person(db_session, "operator")
+    operator.platform_role = "superadmin"
+
+    assert media_org_unit_ids(db_session, operator, BANK) == {holding.id}
+
+
+def test_belonging_to_an_organisation_without_the_module_gives_nothing(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    admin = _person(db_session, "admin")
+    add_org_unit_member(db_session, org.id, admin.id, "staff")
+
+    assert media_org_unit_ids(db_session, admin, BANK) == set()

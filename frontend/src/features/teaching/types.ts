@@ -293,6 +293,12 @@ export interface BankOrganisation {
   organisation_name: string;
   is_live: boolean;
   site_registration: boolean;
+  /**
+   * Whether the caller may upload this organisation's videos of the
+   * module: it holds the content, and they operate Quill or belong to it.
+   * The module page shows a video card for each one that says so.
+   */
+  may_upload_videos?: boolean;
 }
 
 export interface QuestionBankOrgStatusInput {

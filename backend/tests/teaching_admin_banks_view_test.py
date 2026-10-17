@@ -427,12 +427,16 @@ def test_every_teaching_organisation_is_listed_with_how_the_bank_stands(
             "organisation_name": "Another Trust",
             "is_live": True,
             "site_registration": True,
+            # Not theirs to upload for.
+            "may_upload_videos": False,
         },
         {
             "org_unit_id": trust.id,
             "organisation_name": "Our Trust",
             "is_live": False,
             "site_registration": False,
+            # Theirs, but it does not hold the bank.
+            "may_upload_videos": False,
         },
     ]
 

@@ -44,6 +44,7 @@ from app.features.teaching.schemas import (
     DelegateOut,
 )
 from app.models import OrgUnit, User, org_unit_member
+from app.organisations import get_member_org_unit_ids
 
 logger = logging.getLogger(__name__)
 
@@ -538,8 +539,42 @@ def admin_bank_rows(
     return rows
 
 
+def media_org_unit_ids(db: Session, user: User, bank_id: str) -> set[int]:
+    """The organisations whose videos of one module this user may manage.
+
+    A video is stored once for each organisation holding the module's
+    content. A superadmin manages every one of them; anybody else only
+    those they belong to, so a teaching admin acts for their own.
+
+    Args:
+        db: Core database session.
+        user: Who is asking.
+        bank_id: The module.
+
+    Returns:
+        The org_unit ids, empty when the module is held nowhere the user
+        may act.
+    """
+    holding = set(
+        db.scalars(
+            select(QuestionBankConfig.org_unit_id).where(
+                QuestionBankConfig.question_bank_id == bank_id
+            )
+        ).all()
+    )
+
+    if user.platform_role == "superadmin":
+        return holding
+
+    return holding & set(get_member_org_unit_ids(db, user.id))
+
+
 def bank_organisation_rows(
-    db: Session, bank_id: str, organisations: list[OrgUnit]
+    db: Session,
+    bank_id: str,
+    organisations: list[OrgUnit],
+    *,
+    may_upload_videos_at: set[int] | None = None,
 ) -> list[BankOrgRow]:
     """How one bank stands at each of the organisations handed in.
 
@@ -552,6 +587,8 @@ def bank_organisation_rows(
         db: Core database session.
         bank_id: The question bank.
         organisations: What ``organisations_with_teaching_on`` gave.
+        may_upload_videos_at: What ``media_org_unit_ids`` gave for the
+            caller, so the page shows a video card for each of them.
 
     Returns:
         One row for each organisation, in the order they were given.
@@ -570,6 +607,7 @@ def bank_organisation_rows(
         .scalars()
         .all()
     }
+    upload_at = may_upload_videos_at or set()
     rows: list[BankOrgRow] = []
 
     for place in organisations:
@@ -582,6 +620,7 @@ def bank_organisation_rows(
                 site_registration=(
                     status.site_registration if status else False
                 ),
+                may_upload_videos=place.id in upload_at,
             )
         )
 

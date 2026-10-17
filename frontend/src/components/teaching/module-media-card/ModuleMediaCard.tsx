@@ -38,6 +38,14 @@ export interface ModuleMediaCardProps {
   /** References and uploads for one module, from the media endpoint. */
   media: ModuleMedia;
   /**
+   * The organisation these videos are for, named in the heading.
+   *
+   * A video is stored once for each organisation running the module, so
+   * the module page shows one card for each, and the heading is what
+   * tells them apart.
+   */
+  organisation?: string;
+  /**
    * Organisations the module is live for.
    *
    * Named in the delete confirmation, because deleting a file hides the
@@ -104,6 +112,7 @@ interface Row {
 
 export default function ModuleMediaCard({
   media,
+  organisation,
   liveOrganisations = [],
   uploadProgress = {},
   uploadNames = {},
@@ -135,7 +144,9 @@ export default function ModuleMediaCard({
   return (
     <BaseCard>
       <Stack gap="sm">
-        <Heading>Videos</Heading>
+        <Heading>
+          {organisation ? `Videos for ${organisation}` : "Videos"}
+        </Heading>
 
         {/* The gate fails safe, but it must not fail invisibly: without
             this line a typo in a reference hides the module from every

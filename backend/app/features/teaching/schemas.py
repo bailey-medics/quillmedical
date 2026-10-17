@@ -646,6 +646,9 @@ class BankOrgRow(BaseModel):
     organisation_name: str
     is_live: bool = False
     site_registration: bool = False
+    #: Whether the caller may upload this organisation's videos of the
+    #: bank: it holds the content, and they operate Quill or belong to it.
+    may_upload_videos: bool = False
 
 
 class VideoAccessOut(BaseModel):
