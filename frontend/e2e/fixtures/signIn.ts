@@ -19,6 +19,11 @@ export const PEOPLE = {
   /** Operates Quill: `superadmin`. */
   superuser: "admin",
   /**
+   * Operates Quill and runs teaching, so may upload a module's video for
+   * any organisation holding it. A member of "CI Teaching Hospital".
+   */
+  operator: "ci_operator",
+  /**
    * A `teaching_admin`: holds `manage_teaching` and not `manage_users`,
    * as a teaching admin at a partner does. The default signed-in user.
    */

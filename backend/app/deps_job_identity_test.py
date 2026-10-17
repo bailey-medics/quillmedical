@@ -8,7 +8,9 @@ server, which a test has no business reaching.
 
 from __future__ import annotations
 
+import time
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -216,3 +218,143 @@ def test_google_being_unreachable_refuses_rather_than_raises(
     verifier(_raising(TransportError("could not fetch certificates")))
 
     assert _refusal("Bearer a-token").status_code == 401
+
+
+def jwt_header(fields: dict[str, Any]) -> str:
+    """A token's first part, as it is written."""
+    import base64
+    import json
+
+    raw = json.dumps(fields).encode()
+
+    return base64.urlsafe_b64encode(raw).rstrip(b"=").decode()
+
+
+# --- The end-to-end stack's own signing key ---
+#
+# In the test stack the token is signed with a key made for the run,
+# not by Google. These sign real tokens with a key made here, so the
+# signature, audience, expiry and issuer are all checked for real.
+
+
+@pytest.fixture()
+def test_key(
+    identity_configured: None,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> Callable[..., str]:
+    """Point the guard at a fresh public key; return a token signer."""
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric import rsa
+    from google.auth import crypt, jwt
+
+    private = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    pem = private.private_bytes(
+        serialization.Encoding.PEM,
+        serialization.PrivateFormat.PKCS8,
+        serialization.NoEncryption(),
+    ).decode()
+    public = tmp_path / "public.pem"
+    public.write_bytes(
+        private.public_key().public_bytes(
+            serialization.Encoding.PEM,
+            serialization.PublicFormat.SubjectPublicKeyInfo,
+        )
+    )
+    monkeypatch.setattr(
+        settings, "TEACHING_JOB_CALLBACK_TEST_KEY_FILE", str(public)
+    )
+    signer = crypt.RSASigner.from_string(pem)
+
+    def sign(**overrides: Any) -> str:
+        now = int(time.time())
+        payload: dict[str, Any] = {
+            "iss": "https://accounts.google.com",
+            "aud": AUDIENCE,
+            "email": TRANSCODE_JOB,
+            "email_verified": True,
+            "iat": now,
+            "exp": now + 300,
+        }
+        payload.update(overrides)
+        token: bytes = jwt.encode(signer, payload)  # type: ignore[no-untyped-call]
+
+        return token.decode()
+
+    return sign
+
+
+def test_a_token_signed_with_the_test_key_passes(
+    test_key: Callable[..., str],
+) -> None:
+    caller = require_job_identity(_request(f"Bearer {test_key()}"))
+
+    assert caller == TRANSCODE_JOB
+
+
+def test_a_token_signed_with_another_key_is_refused(
+    test_key: Callable[..., str],
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric import rsa
+
+    other = tmp_path / "other.pem"
+    other.write_bytes(
+        rsa.generate_private_key(public_exponent=65537, key_size=2048)
+        .public_key()
+        .public_bytes(
+            serialization.Encoding.PEM,
+            serialization.PublicFormat.SubjectPublicKeyInfo,
+        )
+    )
+    token = test_key()
+    monkeypatch.setattr(
+        settings, "TEACHING_JOB_CALLBACK_TEST_KEY_FILE", str(other)
+    )
+
+    assert _refusal(f"Bearer {token}").status_code == 401
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {"aud": "https://somewhere-else.run.app"},
+        {"iss": "https://example.com"},
+        {"exp": 1_000},
+        {"email": "someone@example.com"},
+        {"email_verified": False},
+    ],
+    ids=["audience", "issuer", "expired", "unlisted", "unverified"],
+)
+def test_a_test_signed_token_is_checked_as_googles_are(
+    test_key: Callable[..., str], overrides: dict[str, Any]
+) -> None:
+    assert _refusal(f"Bearer {test_key(**overrides)}").status_code == 401
+
+
+def test_a_test_signed_token_naming_another_algorithm_is_refused(
+    test_key: Callable[..., str],
+) -> None:
+    """Only RS256: the header is checked before the signature is."""
+    header, claims, signature = test_key().split(".")
+    other = jwt_header({"alg": "ES256", "typ": "JWT"})
+
+    assert _refusal(f"Bearer {other}.{claims}.{signature}").status_code == 401
+    assert header != other
+
+
+def test_a_test_key_that_cannot_be_read_refuses_rather_than_raises(
+    test_key: Callable[..., str],
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    token = test_key()
+    monkeypatch.setattr(
+        settings,
+        "TEACHING_JOB_CALLBACK_TEST_KEY_FILE",
+        str(tmp_path / "missing.pem"),
+    )
+
+    assert _refusal(f"Bearer {token}").status_code == 401

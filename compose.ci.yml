@@ -34,13 +34,18 @@ services:
       TEACHING_IMAGES_BASE_URL: /api/teaching/images
       # A transcode and a caption job, so the media gate asks what it asks
       # in App production: a module is hidden until its video is
-      # transcoded and a person has read its captions. Names nothing
-      # runs: the tests stand in for each job by calling its callback
-      # with this token, and seed_ci.py writes what the jobs would for
-      # the videos it uploads.
+      # transcoded and its captions are dealt with. Names nothing runs:
+      # the tests stand in for each job by reporting to its callback, and
+      # seed_ci.py writes what the jobs would for the videos it uploads.
       TEACHING_TRANSCODE_JOB: projects/ci/locations/none/jobs/transcode
       TEACHING_CAPTION_JOB: projects/ci/locations/none/jobs/caption
-      TEACHING_TRANSCODE_CALLBACK_TOKEN: ci-transcode-callback-token
+      # Who may report, and the address their tokens must name, as in App
+      # production. The tokens are signed with a key made for the run
+      # (.github/scripts/ci/prepare-e2e-job-key.sh) rather than by Google,
+      # and e2e/fixtures/mediaJobs.ts signs them. Allowed only in testing.
+      TEACHING_JOB_CALLBACK_AUDIENCE: https://quill-ci.invalid
+      TEACHING_JOB_CALLBACK_CALLERS: transcode-job@quill-ci.iam.gserviceaccount.com,caption-job@quill-ci.iam.gserviceaccount.com
+      TEACHING_JOB_CALLBACK_TEST_KEY_FILE: /e2e-job-key/public.pem
       # Starting one of those jobs asks Google for credentials, which
       # first looks for a metadata server. Pointed at a closed port, the
       # look is refused at once instead of waiting out its timeouts.
@@ -69,6 +74,9 @@ services:
       - ./.e2e-teaching:/teaching-repos
       # The emails the tests read, through e2e/fixtures/mail.ts
       - ./frontend/e2e/.mail:/e2e-mail
+      # The public half of the run's job key, made by
+      # .github/scripts/ci/prepare-e2e-job-key.sh
+      - ./frontend/e2e/.job-key:/e2e-job-key:ro
     expose:
       - "8000"
     depends_on:

@@ -821,6 +821,11 @@ jobs:
       - name: Prepare the E2E mail folder
         run: .github/scripts/ci/prepare-e2e-mail.sh
 
+      # The key pair the tests stand in for the video jobs with. Made per
+      # run and never committed; compose.ci.yml mounts the public half.
+      - name: Prepare the E2E job key
+        run: .github/scripts/ci/prepare-e2e-job-key.sh
+
       # Before the stack starts: Postgres and Caddy come from this
       # repository's own copies where it has them, pulled with the login
       # above, and not from the public registry, which refuses a runner
@@ -867,6 +872,9 @@ jobs:
       # The pinned teaching module is mounted too, at the path
       # `../.e2e-teaching` reaches from /work, so e2e/fixtures/answers.ts
       # can read its answers as it does on a developer's machine.
+      # Writable, because e2e/fixtures/mediaJobs.ts stands in for the
+      # transcode and caption jobs by writing their files beside an
+      # upload, as they would.
       - name: Run E2E tests
         working-directory: frontend
         run: >-
@@ -874,7 +882,7 @@ jobs:
           --user "$(id -u):$(id -g)"
           -e CI -e HOME=/tmp
           -v "$PWD:/work" -w /work
-          -v "$PWD/../.e2e-teaching:/.e2e-teaching:ro"
+          -v "$PWD/../.e2e-teaching:/.e2e-teaching"
           "mcr.microsoft.com/playwright:v${{ steps.playwright_version.outputs.version }}-noble"
           npx playwright test
 

@@ -85,6 +85,7 @@ from app.features.teaching.manual_sync import (
 from app.features.teaching.media_uploads import (
     delete_upload,
     link_upload,
+    local_captions_file,
     local_upload_file,
     local_upload_root,
     new_upload_target,
@@ -2719,12 +2720,27 @@ def get_media_captions(
     bucket = settings.TEACHING_VIDEOS_BUCKET
 
     if not bucket:
-        # Development, where the caption job has never run and there is
-        # no processed bucket to read. Reported as "none yet" rather
-        # than a 503, so the card renders the same everywhere.
+        # Development and the test stack: no processed bucket, so the
+        # captions are beside the upload on disk, where the caption job
+        # stand-in and a saved edit both put them. None where there are
+        # none yet, rather than a 503, so the card renders the same
+        # everywhere.
+        local = local_captions_file(module_id, asset_id)
+        try:
+            webvtt = (
+                local.read_text(encoding="utf-8")
+                if local is not None and local.is_file()
+                else None
+            )
+        except OSError:
+            logger.exception(
+                "captions not read module=%s asset=%s", module_id, asset_id
+            )
+            webvtt = None
+
         return CaptionsOut(
             asset_id=asset_id,
-            webvtt=None,
+            webvtt=webvtt,
             reviewed_at=link.captions_reviewed_at,
         )
 

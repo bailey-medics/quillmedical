@@ -10,6 +10,7 @@ keeps that a one-way import rather than a cycle back into app.cbac.
 import logging
 from collections.abc import Callable, Mapping
 from functools import wraps
+from pathlib import Path
 from typing import Any
 
 from fastapi import Depends, HTTPException, Request
@@ -30,6 +31,49 @@ logger = logging.getLogger(__name__)
 DEP_GET_SESSION = Depends(get_core_db)
 
 
+#: Who issues a Google identity token, as ``id_token`` itself accepts.
+_GOOGLE_ISSUERS = ("accounts.google.com", "https://accounts.google.com")
+
+
+def _verify_test_signed_token(
+    token: str, audience: str, key_file: str
+) -> Mapping[str, Any]:
+    """The claims of a token signed with the end-to-end run's own key.
+
+    The test stack's stand-in for Google's signature, and nothing else:
+    the token is checked for its signature, expiry, audience and issuer
+    as Google's are. ``TEACHING_JOB_CALLBACK_TEST_KEY_FILE`` is refused
+    at startup outside the test stack.
+
+    Raises ``ValueError`` when the key cannot be read or the token does
+    not verify.
+    """
+    from google.auth import jwt
+
+    try:
+        public_key = Path(key_file).read_text(encoding="utf-8")
+    except OSError as exc:
+        raise ValueError(f"Test signing key not readable: {exc}") from exc
+
+    header = jwt.decode_header(token)  # type: ignore[no-untyped-call]
+
+    if header.get("alg") != "RS256":
+        raise ValueError("Token is not signed with RS256")
+
+    # google-auth's decode takes no list of algorithms. The one allowed is
+    # checked just above, and it verifies only RS256 and ES256, each
+    # against its own kind of key, so an RSA key admits nothing else.
+    # nosemgrep: py.jwt.algorithms-not-named
+    claims: Mapping[str, Any] = jwt.decode(  # type: ignore[no-untyped-call]
+        token, certs=public_key, audience=audience
+    )
+
+    if claims.get("iss") not in _GOOGLE_ISSUERS:
+        raise ValueError("Token was not issued by Google")
+
+    return claims
+
+
 def _verify_google_id_token(token: str, audience: str) -> Mapping[str, Any]:
     """The claims of a Google-signed identity token minted for *audience*.
 
@@ -38,9 +82,17 @@ def _verify_google_id_token(token: str, audience: str) -> Mapping[str, Any]:
     ``GoogleAuthError`` when Google's signing certificates cannot be
     fetched. Its own function so a test can stand in for it without a
     real token.
+
+    In the end-to-end stack only, the signature is checked against the
+    run's own key instead (``_verify_test_signed_token``).
     """
     from google.auth.transport import requests as auth_requests
     from google.oauth2 import id_token
+
+    test_key_file = settings.TEACHING_JOB_CALLBACK_TEST_KEY_FILE
+
+    if test_key_file:
+        return _verify_test_signed_token(token, audience, test_key_file)
 
     claims: Mapping[str, Any] = id_token.verify_oauth2_token(  # type: ignore[no-untyped-call]
         token, auth_requests.Request(), audience

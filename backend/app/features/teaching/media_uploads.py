@@ -606,7 +606,9 @@ def save_captions(
         MediaAssetNotHeldHere: The organisation holds no upload of that
             module by that id.
         CaptionsNotWebVTT: The text does not begin ``WEBVTT``.
-        CaptionsCannotBeSaved: No bucket of processed video is set.
+        CaptionsCannotBeSaved: No bucket of processed video is set, and
+            no content on disk to save them beside either, or the file
+            could not be written there.
     """
     link = upload_held_by(db, org_unit_id, module_id, asset_id)
 
@@ -617,12 +619,12 @@ def save_captions(
 
     bucket = settings.TEACHING_VIDEOS_BUCKET
 
-    if not bucket:
-        raise CaptionsCannotBeSaved()
-
-    storage.write_caption_object(
-        bucket, org_unit_id, module_id, asset_id, text
-    )
+    if bucket:
+        storage.write_caption_object(
+            bucket, org_unit_id, module_id, asset_id, text
+        )
+    else:
+        _write_local_captions(module_id, asset_id, text)
 
     # Recorded only once the write succeeded: claiming a review for text
     # that never reached the bucket would tell the next person the
@@ -714,6 +716,59 @@ def set_poster_frame(
     )
 
     return link
+
+
+def local_captions_file(module_id: str, asset_id: str) -> Path | None:
+    """Where one upload's captions are kept when there is no bucket.
+
+    ``{module}/learning/{asset_id}.vtt``, beside the upload, where the
+    local video route serves them from: the development and test-stack
+    counterpart of the processed bucket, as ``local_upload_file`` is of
+    the source one. None where a bucket is set, where no content is on
+    disk, or where the module is not there.
+
+    Raises:
+        InvalidAssetId: The id holds anything but letters, digits,
+            hyphens and underscores.
+    """
+    base_path = settings.TEACHING_QUESTION_BANK_PATH
+
+    if settings.TEACHING_VIDEOS_BUCKET or not base_path:
+        return None
+
+    # Lands in a file name, so held to the shape every other path
+    # component is, as an upload's id is.
+    if not _SAFE_ASSET_ID.fullmatch(asset_id):
+        raise InvalidAssetId()
+
+    module_dir = storage.resolve_module_dir(base_path, module_id)
+
+    if module_dir is None:
+        return None
+
+    return module_dir / "learning" / f"{asset_id}.vtt"
+
+
+def _write_local_captions(module_id: str, asset_id: str, text: str) -> None:
+    """Save captions beside the upload, where there is no bucket.
+
+    Raises:
+        CaptionsCannotBeSaved: There is nowhere on disk to save them, or
+            the file could not be written.
+    """
+    path = local_captions_file(module_id, asset_id)
+
+    if path is None:
+        raise CaptionsCannotBeSaved()
+
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(f"{text}\n", encoding="utf-8")
+    except OSError as exc:
+        logger.exception(
+            "captions not written module=%s asset=%s", module_id, asset_id
+        )
+        raise CaptionsCannotBeSaved() from exc
 
 
 def local_upload_root() -> str:
