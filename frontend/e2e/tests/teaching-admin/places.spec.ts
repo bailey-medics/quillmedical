@@ -163,28 +163,22 @@ test.describe("A teaching admin and the organisation", () => {
     await expect(await searchRow(card(page, "Sites"), name)).toBeVisible();
   });
 
-  test("deletes a site on the organisation's page, after a warning", async ({
+  // Deleting a site would leave its people belonging nowhere, so a
+  // teaching admin deactivates one from its edit page instead (Phase 15).
+  test("is not offered deleting a site, and the API refuses it", async ({
     page,
   }, testInfo) => {
-    const name = freshUsername("Doomed site", testInfo.project.name);
+    const name = freshUsername("Kept site", testInfo.project.name);
     const id = await createSite(page, name);
 
     await openOrganisation(page);
-    const sites = card(page, "Sites");
-    await searchRow(sites, name);
-    await page.getByLabel(`Actions for ${name}`).click();
-    await page.getByText("Delete site").click();
+    await expect(await searchRow(card(page, "Sites"), name)).toBeVisible();
+    await expect(page.getByLabel(`Actions for ${name}`)).toHaveCount(0);
 
-    const dialog = page.getByRole("dialog").filter({ hasText: "Delete site" });
-    await expect(dialog).toContainText("This cannot be undone");
-    await dialog.getByRole("button", { name: "Delete" }).click();
-
-    await expect(page.getByText("Site deleted")).toBeVisible();
-    await expect(
-      sites.getByRole("row", { name: new RegExp(name) }),
-    ).toHaveCount(0);
-    const gone = await page.request.get(`/api/org-units/${id}`);
-    expect(gone.status()).toBe(404);
+    const refused = await send(page, "DELETE", `/org-units/${id}`);
+    expect(refused.status()).toBe(403);
+    const kept = await page.request.get(`/api/org-units/${id}`);
+    expect(kept.status()).toBe(200);
   });
 });
 
