@@ -8,12 +8,25 @@
  * way somebody on a phone does: by opening the menu.
  */
 
+import type { Page } from "@playwright/test";
 import { test, expect } from "../../fixtures/axe";
 import { sitTheAssessment } from "../../fixtures/assessment";
 import { makeLearner } from "../../fixtures/people";
 import { freshUsername, signIn } from "../../fixtures/signIn";
 
 test.use({ storageState: { cookies: [], origins: [] } });
+
+/**
+ * Check the menu has closed. It slides out of view rather than leaving
+ * the page, so closed is read from `inert`, which takes it out of reach
+ * of a tap, the keyboard and a screen reader alike.
+ */
+async function expectMenuClosed(page: Page): Promise<void> {
+  await expect(
+    page.getByRole("dialog", { name: "Navigation" }),
+  ).toHaveAttribute("inert", "");
+}
+
 test.describe.configure({ timeout: 120_000 });
 
 test("a TD signs in, takes the module and sees the result", async ({
@@ -38,10 +51,17 @@ test("a TD signs in, takes the module and sees the result", async ({
       .getByRole("link", { name: link })
       .click();
     await expect(page).toHaveURL(address);
-    await expect(
-      page.getByRole("button", { name: "Open navigation" }),
-    ).toBeVisible();
+    await expectMenuClosed(page);
   }
+
+  // Tapping the page already open closes the menu too, rather than
+  // leaving it over the page.
+  await page.getByRole("button", { name: "Open navigation" }).click();
+  await page
+    .getByRole("dialog", { name: "Navigation" })
+    .getByRole("link", { name: "Teaching" })
+    .click();
+  await expectMenuClosed(page);
 
   await page.getByRole("link", { name: "View module" }).click();
   await expect(

@@ -343,6 +343,22 @@ describe("NestedNavLink Component", () => {
       });
     });
 
+    it("closes the drawer when the heading's own page is already open", async () => {
+      // Tapping it changes nothing, so the open drawer is only in the way.
+      const user = userEvent.setup();
+      const onNavigate = vi.fn();
+      renderWithRouter(
+        <NestedNavLink item={heading} onNavigate={onNavigate} />,
+        { initialRoute: "/patients" },
+      );
+
+      await user.click(screen.getByText("Patients"));
+
+      await waitFor(() => {
+        expect(onNavigate).toHaveBeenCalledTimes(1);
+      });
+    });
+
     describe("across a change of layout", () => {
       beforeEach(() => {
         mockNavCollapsed.value = false;

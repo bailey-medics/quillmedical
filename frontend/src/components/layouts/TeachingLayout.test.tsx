@@ -8,6 +8,7 @@
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { renderWithMantine } from "@/test/test-utils";
 import TeachingLayout from "./TeachingLayout";
 import type { User } from "@/auth/AuthContext";
@@ -33,6 +34,7 @@ vi.mock("@components/ribbon/TopRibbon", () => ({
     showSearch,
     isNarrow,
     rightSection,
+    onBurgerClick,
   }: {
     onBurgerClick?: () => void;
     isLoading: boolean;
@@ -48,6 +50,9 @@ vi.mock("@components/ribbon/TopRibbon", () => ({
       data-show-search={showSearch}
       data-narrow={isNarrow}
     >
+      <button type="button" onClick={onBurgerClick}>
+        Open navigation
+      </button>
       {rightSection}
     </div>
   ),
@@ -78,8 +83,11 @@ vi.mock("@/components/status-strip/StatusStrip", () => ({
   ),
 }));
 
+// The key changes on every navigation, even to the address already open
+const mockLocation = { pathname: "/teaching", key: "first" };
+
 vi.mock("react-router-dom", () => ({
-  useLocation: () => ({ pathname: "/teaching" }),
+  useLocation: () => mockLocation,
 }));
 
 const mockConnectivity: {
@@ -213,6 +221,28 @@ describe("TeachingLayout", () => {
         "data-narrow",
         "true",
       );
+    });
+
+    // The page already open: only the location's key changes, and the
+    // drawer was left open over the page
+    it("closes the drawer when its link to the page already open is tapped", async () => {
+      const user = userEvent.setup();
+
+      // A fresh element each time, or React skips the render
+      const layout = () => (
+        <TeachingLayout sidebar={<div>Nav</div>}>
+          <div>Content</div>
+        </TeachingLayout>
+      );
+      const { rerender } = renderWithMantine(layout());
+
+      const drawer = screen.getByTestId("navigation-drawer");
+      await user.click(screen.getByRole("button", { name: "Open navigation" }));
+      expect(drawer).toHaveAttribute("data-opened", "true");
+
+      mockLocation.key = "second";
+      rerender(layout());
+      expect(drawer).toHaveAttribute("data-opened", "false");
     });
 
     // The assessment attempt: a hamburger here would open nothing

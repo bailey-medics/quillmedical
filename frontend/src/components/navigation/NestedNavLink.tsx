@@ -122,7 +122,14 @@ export default function NestedNavLink({
   const shouldExpand = isActiveOrParent(item, location.pathname);
   const hasChildren = item.children && item.children.length > 0;
 
-  const afterNavigate = item.keepsDrawerOpen ? undefined : onNavigate;
+  // A heading keeps the drawer open so its pages can be picked, but
+  // only when it leads somewhere new. Tapped while its own page is open,
+  // nothing changes, and a drawer left open over the page is just in the
+  // way, so it closes.
+  const isCurrentPage =
+    item.href !== undefined && location.pathname === item.href;
+  const afterNavigate =
+    item.keepsDrawerOpen && !isCurrentPage ? undefined : onNavigate;
 
   // Not calling `onNavigate` keeps the drawer open only while the layout
   // stays the same. Where the link leads to another layout, that one
