@@ -372,26 +372,32 @@ then four stories test every case.
       page is left saying "Reset password", as it did; that was not
       asked for.
 
-- [ ] 10. As a uTD who has forgotten I never registered, I want forgot
+- [x] 10. As a uTD who has forgotten I never registered, I want forgot
       password to email me that I have no account and how to register,
       so that I am not left waiting for a reset that never comes.
       Tested: the page says "Check your inbox", and the captured email
       names no account and links to `/register`.
-- [ ] 11. As a TD who registered and never confirmed my address, I want
+- [x] 11. As a TD who registered and never confirmed my address, I want
       forgot password to confirm it and set my password in one email, so
       that I can get in without a second round.
       Tested: the email asks to confirm and set a password, following it
       sets one, and the TD then signs in with no `email_not_verified`
       refusal and no second email.
-- [ ] 12. As a TD or a TA, I want forgot password to email me a link to
+- [x] 12. As a TD or a TA, I want forgot password to email me a link to
       set a new password, so that I can get back in.
       Tested: the reset email's link sets a new password, the old one no
       longer works, and the new one signs in.
-- [ ] 13. As Quill, I want a deactivated TD or TA who asks for a reset to
+- [x] 13. As Quill, I want a deactivated TD or TA who asks for a reset to
       be sent nothing, so that a closed account cannot be opened again
       this way.
       Tested: the page says "Check your inbox" as for anybody, and no
-      email is captured for that address.
+      email is captured for that address after the notice that closed
+      it, which deactivating sends. Stories 10 to 13 are in
+      `getting-in/forgot-password.spec.ts`. Found on the way: forgot
+      password refuses a reserved address such as `.test`, as
+      registration does, so the accounts these stories reset are made
+      with an `example.com` address through `createAccount`'s new
+      `email`.
 
 ## Phase 5: Taking a module, for a teaching admin and a teaching delegate
 

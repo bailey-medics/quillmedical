@@ -73,6 +73,12 @@ export interface NewAccount {
   profession: string;
   orgUnitIds: number[];
   password?: string;
+  /**
+   * The address, when not `emailOf(username)`. Forgot password checks an
+   * address could receive mail and refuses `.test`, so an account a test
+   * will reset needs one that passes, such as `example.com`.
+   */
+  email?: string;
 }
 
 /**
@@ -89,7 +95,7 @@ export async function createAccount(
   const response = await send(page, "POST", "/users", {
     name: account.name,
     username: account.username,
-    email: emailOf(account.username),
+    email: account.email ?? emailOf(account.username),
     password: account.password ?? `${account.username}Pass123!`,
     base_profession: account.profession,
     org_unit_ids: account.orgUnitIds,
