@@ -398,8 +398,9 @@ class Settings(BaseSettings):
     FEEDBACK_NOTIFY_EMAIL: str = Field(
         "",
         description=(
-            "The addresses told when somebody sends feedback, separated "
-            "by commas. Empty, the default, sends nothing, which is what "
+            "The operator's addresses, told when somebody sends feedback "
+            "and when a pass reaches no clinical lead, separated by "
+            "commas. Empty, the default, sends nothing, which is what "
             "development and the tests want; production refuses to start "
             "without at least one. Named addresses, not every operator: "
             "test operator accounts exist in every environment and should "

@@ -359,6 +359,19 @@ def previews() -> list[Preview]:
             },
         ),
         Preview(
+            id="no-lead-told",
+            label="No clinical lead told of a pass",
+            template="no_lead_told.html.j2",
+            context={
+                "username": "john.smith",
+                "module_title": "Chest X-ray Interpretation",
+                "organisation": "East of England Teaching Hospital",
+                "site": "Ward 9",
+                "reason": "Ward 9 has no clinical lead.",
+                "url": "https://quill-medical.com/admin/sites/9",
+            },
+        ),
+        Preview(
             id="feedback-reply",
             label="Feedback reply",
             template="feedback_reply.html.j2",

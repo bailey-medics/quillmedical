@@ -1254,6 +1254,96 @@ def _maybe_enqueue_certificate_emails(
                         ),
                     )
 
+            # Nobody told: the operator is, so somebody can name a lead
+            # or send the certificate on by hand.
+            if not any(lead.email for lead in clinical_leads):
+                _queue_no_lead_notice(
+                    background_tasks,
+                    db,
+                    user=user,
+                    organisation_id=org_org_unit_id,
+                    site_ids=their_site_ids,
+                    has_lead=bool(clinical_leads),
+                    module_title=config_row.title,
+                )
+
+
+def _queue_no_lead_notice(
+    background_tasks: BackgroundTasks,
+    db: Session,
+    *,
+    user: User,
+    organisation_id: int | None,
+    site_ids: list[int],
+    has_lead: bool,
+    module_title: str,
+) -> None:
+    """Queue an email to the operator: a pass reached no clinical lead.
+
+    Sent to each address in ``FEEDBACK_NOTIFY_EMAIL``, the named
+    addresses the operator is told of feedback at; none where it is
+    empty, as in development and the tests. Says who passed, where and
+    why nobody was told, and links to where it is put right. Never the
+    result or the certificate.
+    """
+    from app.config import parse_address_list
+    from app.config import settings as app_settings
+    from app.models import OrgUnit
+
+    addresses = parse_address_list(app_settings.FEEDBACK_NOTIFY_EMAIL)
+
+    if not addresses:
+        return
+
+    organisation = (
+        db.get(OrgUnit, organisation_id)
+        if organisation_id is not None
+        else None
+    )
+    site = db.get(OrgUnit, site_ids[0]) if site_ids else None
+    base = app_settings.FRONTEND_URL
+
+    if site is None:
+        reason = "They belong to no site, so there was no site's lead to tell."
+        url = f"{base}/admin/users/{user.id}"
+    elif has_lead:
+        reason = f"The clinical lead of {site.name} has no email address."
+        url = f"{base}/admin/sites/{site.id}"
+    else:
+        reason = f"{site.name} has no clinical lead."
+        url = f"{base}/admin/sites/{site.id}"
+
+    context = {
+        "username": user.username,
+        "module_title": module_title,
+        "organisation": organisation.name if organisation else "",
+        "site": site.name if site else None,
+        "reason": reason,
+        "url": url,
+    }
+
+    for address in addresses:
+        background_tasks.add_task(
+            _send_no_lead_notice, to=address, context=context
+        )
+
+
+def _send_no_lead_notice(*, to: str, context: dict[str, Any]) -> None:
+    """Send one no-lead notice, in the background, and never raise.
+
+    A failure is logged, without the address, and swallowed: the pass is
+    recorded and the delegate has their certificate either way.
+    """
+    from app.email.render import render_email as render_notice
+    from app.email.render import send_args
+    from app.email_send import send_email
+
+    try:
+        rendered = render_notice("no_lead_told.html.j2", "quill", context)
+        send_email(to=to, **send_args(rendered))
+    except Exception:
+        logger.exception("no-lead notice not sent")
+
 
 def finish_and_tell_if_out_of_time(
     db: Session, user: User, assessment: Assessment

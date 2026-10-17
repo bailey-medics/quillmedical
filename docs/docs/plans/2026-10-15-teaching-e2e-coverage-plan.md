@@ -1438,6 +1438,44 @@ on top, leaving #2050 as it is.
       it off in settings (which asks for their password), signs out, and
       signs in again with their password alone: no code is asked for.
 
+## Phase 19: Telling the operator when no clinical lead is told of a pass
+
+Asked for by Mark on 2026-10-17. Since Phase 10 a pass emails the
+clinical lead of the delegate's own site, and nobody else. Where that
+site has no lead, the lead has no address, or the delegate belongs to no
+site, nobody is told and nobody knows: the lead never gets the
+certificate and nothing says so.
+
+- [x] Email the operator when a pass reaches no clinical lead: a module
+      that emails its coordinator on a pass (`email_coordinator_on_pass`)
+      where no lead with an address was found. Sent to the addresses in
+      `FEEDBACK_NOTIFY_EMAIL`, the named addresses the operator is
+      already told of feedback at. Decided while building it rather than
+      a new setting: it is the same person, the setting is already a
+      runtime secret in every environment (`runtime-identities.tf`), and
+      it is deliberately named addresses, not every operator account,
+      since test operator accounts exist everywhere and should get no
+      mail. Its description is widened to say so. Empty, as in
+      development and the tests, sends nothing.
+
+      A new template, `no_lead_told.html.j2`, saying which delegate (by
+      username), which module, which organisation, which site or that
+      they belong to none, and why nobody was told: no lead there, or
+      the lead has no address. It links to the site's admin page, where
+      a lead is named, or to the user's page when there is no site. No
+      score and no certificate: the operator needs to know who to chase,
+      not the result. Its preview is committed with `just email-preview`.
+
+      Tests in `backend/tests/certificate_email_recipients_test.py`: a
+      pass at a site with no lead, with a lead who has no address, and by
+      a delegate at no site each send the notice to each configured
+      address and nobody else; a pass that reaches a lead sends none; no
+      configured address sends none; a module that emails no coordinator
+      sends none.
+
+      Built as described. The three cases that send a notice were run
+      with the notice switched off, and failed.
+
 ## Decisions
 
 - **Refusals are checked at the API as well as on screen** - several

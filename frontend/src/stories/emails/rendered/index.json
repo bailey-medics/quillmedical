@@ -288,6 +288,24 @@
     }
   },
   {
+    "id": "no-lead-told",
+    "label": "No clinical lead told of a pass",
+    "quill": {
+      "file": "no-lead-told--quill.html",
+      "subject": "No clinical lead was told that john.smith passed",
+      "preheader": "Ward 9 has no clinical lead.",
+      "fromName": "Quill Medical",
+      "replyTo": null
+    },
+    "ldd": {
+      "file": "no-lead-told--ldd.html",
+      "subject": "No clinical lead was told that john.smith passed",
+      "preheader": "Ward 9 has no clinical lead.",
+      "fromName": "Let's Do Digital",
+      "replyTo": null
+    }
+  },
+  {
     "id": "feedback-reply",
     "label": "Feedback reply",
     "quill": {
