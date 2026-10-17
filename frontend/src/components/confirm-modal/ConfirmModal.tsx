@@ -115,7 +115,17 @@ export default function ConfirmModal({
             <Icon icon={icon} size="xl" colour="var(--alert-color)" />
           </Box>
         )}
-        {title && <Heading justify="centre">{title}</Heading>}
+        {/*
+          Mantine's modal title, so the dialog is named by it
+          (`aria-labelledby`) and a screen reader announces "Delete site,
+          dialog" rather than an unnamed dialog. Drawn as a plain wrapper
+          round our own heading, which stays the h2.
+        */}
+        {title && (
+          <Modal.Title renderRoot={(props) => <div {...props} />}>
+            <Heading justify="centre">{title}</Heading>
+          </Modal.Title>
+        )}
         <BodyText justify="centre">{children}</BodyText>
         {destructive ? (
           <ButtonPairRed
