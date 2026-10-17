@@ -1821,6 +1821,35 @@ stack-refresh:
     python3 "{{stack_scripts}}"/stack-status.py
 
 
+alias strl := stack-relink
+# Make the open pull requests one stack on GitHub again, in order
+stack-relink:
+    #!/usr/bin/env bash
+    {{initialise}} "stack-relink"
+    just _host-python-guard
+    {{stack_repo}}
+    set -euo pipefail
+
+    # For when GitHub's stack has drifted from this one: split in two,
+    # missing pull requests, or holding one that was closed. Nothing is
+    # pushed and no branch is touched. Every stack on GitHub holding
+    # these pull requests is unstacked, the open ones are linked bottom
+    # to top as one, and the local record is pointed at the new stack.
+    # See scripts/stack-relink.py.
+    branches="$(python3 "{{stack_scripts}}"/stack-status.py --rebuild-order)"
+
+    if [ -z "${branches}" ]; then
+        echo "✗ No unmerged branches in this stack to relink." >&2
+        exit 1
+    fi
+
+    # shellcheck disable=SC2086
+    python3 "{{stack_scripts}}"/stack-relink.py --repair ${branches}
+
+    # shellcheck disable=SC2086
+    python3 "{{stack_scripts}}"/stack-relink.py --check ${branches}
+
+
 alias stsu := stack-submit
 # Rebase onto the latest trunk, then push and open or update the drafts
 stack-submit:
@@ -1849,6 +1878,18 @@ stack-submit:
     # --open here; `gh pr ready` or /nst-crp final is how a branch leaves draft.
     gh stack submit --auto
     python3 "{{stack_scripts}}"/stack-status.py --prs
+
+    # GitHub keeps its own record of which pull requests are one stack,
+    # and `gh stack submit` reports one it could not add only as a
+    # warning. A closed pull request left in GitHub's stack refuses
+    # every addition after it, and on 2026-10-16 a stack of 24 was found
+    # split in two with eight in neither. So the result is checked, and
+    # a mismatch fails here, naming the pull requests, rather than
+    # waiting to be noticed in a browser.
+    branches="$(python3 "{{stack_scripts}}"/stack-status.py --rebuild-order)"
+
+    # shellcheck disable=SC2086
+    python3 "{{stack_scripts}}"/stack-relink.py --check ${branches}
 
 
 alias stsy := stack-sync
@@ -1996,6 +2037,19 @@ stack-sync scope="":
         # is run from and no other. That is exactly why a sweep has to visit
         # each one rather than tidying up centrally.
         python3 "{{stack_scripts}}"/stack-forget-merged.py || return 1
+
+        # A merge is when GitHub's stack drifts from this one: the merged
+        # or closed pull request can stay in GitHub's stack and refuse
+        # what is added after it. So it is checked now, and relinked if
+        # it no longer matches. See `stack-relink`.
+        local branches=""
+        branches="$(python3 "{{stack_scripts}}"/stack-status.py --rebuild-order 2>/dev/null)" || branches=""
+
+        # shellcheck disable=SC2086
+        if [ -n "${branches}" ] && ! python3 "{{stack_scripts}}"/stack-relink.py --check ${branches} >/dev/null 2>&1; then
+            echo "  GitHub's stack no longer matches this one; relinking it."
+            python3 "{{stack_scripts}}"/stack-relink.py --repair ${branches} || return 1
+        fi
 
         # Exit 1 means "no stack here". That is the ordinary ending for a sync
         # - the last branch merging deletes the stack, so the run that tidies

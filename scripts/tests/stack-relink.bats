@@ -35,6 +35,14 @@ case "$1 $2" in
         [ -f "${STUB}/link-fails" ] && exit 1
         exit 0
         ;;
+    "stack unstack")
+        # As gh does for the stack checked out: GitHub's goes, and so
+        # does the local record.
+        echo "$3" >> "${STUB}/unstacked"
+        rm -f .git/gh-stack
+        [ -f "${STUB}/unstack-fails-$3" ] && exit 1
+        exit 0
+        ;;
     "api repos/{owner}/{repo}/pulls/"*)
         answer "pull-${2##*/}"
         ;;
@@ -185,4 +193,118 @@ print(repr(stack.get("id")), repr(stack.get("number")))
     run python3 "${SCRIPT}" --link feature/b
     [ "$status" -eq 0 ]
     [ ! -f "${STUB}/linked" ]
+}
+
+# Gives feature/b and feature/c open pull requests 1386 and 1364.
+two_open() {
+    echo '[{"number": 1386}]' > "${STUB}/open-feature_b"
+    echo '[{"number": 1364}]' > "${STUB}/open-feature_c"
+}
+
+@test "check passes when GitHub has them as one stack, in order" {
+    write_record
+    two_open
+    echo '{"stack": {"number": 1414, "position": 1}}' > "${STUB}/pull-1386"
+    echo '{"stack": {"number": 1414, "position": 2}}' > "${STUB}/pull-1364"
+    echo '{"pull_requests": [{"number": 1386, "state": "open"}, {"number": 1364, "state": "open"}]}' \
+        > "${STUB}/stack-1414"
+
+    run python3 "${SCRIPT}" --check feature/b feature/c
+    [ "$status" -eq 0 ]
+}
+
+@test "check fails on a pull request in no stack, and names it" {
+    write_record
+    two_open
+    echo '{"stack": {"number": 1414, "position": 1}}' > "${STUB}/pull-1386"
+    echo '{"stack": null}' > "${STUB}/pull-1364"
+
+    run python3 "${SCRIPT}" --check feature/b feature/c
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"#1364 is in no stack on GitHub"* ]]
+    [[ "$output" == *"just stack-relink"* ]]
+}
+
+@test "check fails when GitHub has split them into two stacks" {
+    write_record
+    two_open
+    echo '{"stack": {"number": 1414, "position": 1}}' > "${STUB}/pull-1386"
+    echo '{"stack": {"number": 1500, "position": 1}}' > "${STUB}/pull-1364"
+
+    run python3 "${SCRIPT}" --check feature/b feature/c
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"stack #1414 on GitHub holds #1386"* ]]
+    [[ "$output" == *"stack #1500 on GitHub holds #1364"* ]]
+}
+
+@test "check fails when GitHub's stack has them out of order" {
+    write_record
+    two_open
+    echo '{"stack": {"number": 1414, "position": 2}}' > "${STUB}/pull-1386"
+    echo '{"stack": {"number": 1414, "position": 1}}' > "${STUB}/pull-1364"
+
+    run python3 "${SCRIPT}" --check feature/b feature/c
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"in another order"* ]]
+}
+
+@test "check fails on a closed pull request left in GitHub's stack" {
+    write_record
+    two_open
+    echo '{"stack": {"number": 1414, "position": 1}}' > "${STUB}/pull-1386"
+    echo '{"stack": {"number": 1414, "position": 2}}' > "${STUB}/pull-1364"
+    echo '{"pull_requests": [{"number": 1386, "state": "open"}, {"number": 1364, "state": "open"}, {"number": 1350, "state": "closed", "merged_at": null}]}' \
+        > "${STUB}/stack-1414"
+
+    run python3 "${SCRIPT}" --check feature/b feature/c
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"holds #1350, closed without merging"* ]]
+}
+
+@test "check does not count a merged pull request in GitHub's stack" {
+    write_record
+    two_open
+    echo '{"stack": {"number": 1414, "position": 2}}' > "${STUB}/pull-1386"
+    echo '{"stack": {"number": 1414, "position": 3}}' > "${STUB}/pull-1364"
+    echo '{"pull_requests": [{"number": 1350, "state": "closed", "merged_at": "2026-10-16T10:00:00Z"}, {"number": 1386, "state": "open"}, {"number": 1364, "state": "open"}]}' \
+        > "${STUB}/stack-1414"
+
+    run python3 "${SCRIPT}" --check feature/b feature/c
+    [ "$status" -eq 0 ]
+}
+
+@test "repair unstacks each stack holding them, then links them as one" {
+    write_record '{"id": "5", "number": 1300}'
+    two_open
+    echo '{"stack": {"id": 1700305, "number": 1414}}' > "${STUB}/pull-1386"
+    echo '{"stack": {"id": 1700400, "number": 1500}}' > "${STUB}/pull-1364"
+
+    run python3 "${SCRIPT}" --repair feature/b feature/c
+    [ "$status" -eq 0 ]
+    [ "$(tr '\n' ' ' < "${STUB}/unstacked")" = "1414 1500 " ]
+    [ "$(cat "${STUB}/linked")" = "1386 1364" ]
+}
+
+@test "repair keeps the local record that unstacking deletes" {
+    write_record '{"id": "5", "number": 1300}'
+    two_open
+    echo '{"stack": {"id": 1700305, "number": 1414}}' > "${STUB}/pull-1386"
+    echo '{"stack": {"id": 1700305, "number": 1414}}' > "${STUB}/pull-1364"
+
+    run python3 "${SCRIPT}" --repair feature/b feature/c
+    [ "$status" -eq 0 ]
+    [ "$(live_stack)" = "'1700305' 1414" ]
+}
+
+@test "repair carries on past a stack GitHub will not unstack" {
+    write_record '{"id": "5", "number": 1300}'
+    two_open
+    echo '{"stack": {"id": 1700305, "number": 1414}}' > "${STUB}/pull-1386"
+    echo '{"stack": {"id": 1700305, "number": 1414}}' > "${STUB}/pull-1364"
+    touch "${STUB}/unstack-fails-1414"
+
+    run python3 "${SCRIPT}" --repair feature/b feature/c
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"would not unstack #1414"* ]]
+    [ "$(cat "${STUB}/linked")" = "1386 1364" ]
 }

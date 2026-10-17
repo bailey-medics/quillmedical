@@ -23,14 +23,32 @@ record without touching GitHub (`gh stack unstack --local`, then
 Pull requests are linked by number, never by branch name: given a
 branch, `gh stack link` pushes it first, and a refresh must not push.
 
-Two modes:
+It also checks, and repairs, GitHub's stack for a stack that has only
+drifted. `gh stack submit` only ever adds to GitHub's stack, and reports
+a pull request it could not add as a warning, exiting 0. On 2026-10-16
+a 24-branch stack was found split in two on GitHub, with eight pull
+requests in neither: a closed pull request left at the top of GitHub's
+stack refused every addition after it, since each must be based on the
+one below. Nothing said so until the stack was opened in a browser.
 
-    stack-relink.py --needed            exit 0 when GitHub's stack for
-                                        the current branch holds a merged
-                                        pull request, 1 when it does not
-    stack-relink.py --link <branch>...  link and repoint, as above
+Four modes:
 
-Exit codes for `--link`: 0 linked and recorded, 1 it could not be done.
+    stack-relink.py --needed              exit 0 when GitHub's stack for
+                                          the current branch holds a
+                                          merged pull request, 1 when it
+                                          does not
+    stack-relink.py --link <branch>...    link and repoint, as above
+    stack-relink.py --check <branch>...   exit 0 when the open pull
+                                          requests are one stack on
+                                          GitHub, in this order, with no
+                                          closed one in it; 1 when not,
+                                          saying what is wrong
+    stack-relink.py --repair <branch>...  unstack every stack on GitHub
+                                          holding them, keeping the local
+                                          record, then link and repoint
+
+Exit codes for `--link` and `--repair`: 0 linked and recorded, 1 it
+could not be done.
 """
 
 from __future__ import annotations
@@ -273,6 +291,163 @@ def link(branches: list[str]) -> int:
     return 0
 
 
+def open_pull_requests(branches: list[str]) -> list[int] | None:
+    """The open pull request for each branch, in order, or None."""
+    numbers: list[int] = []
+
+    for branch in branches:
+        number = open_pull_request(branch)
+        if number is None:
+            print(
+                f"✗ {branch} does not have exactly one open pull request.",
+                file=sys.stderr,
+            )
+            return None
+        numbers.append(number)
+
+    return numbers
+
+
+def stack_of(number: int) -> dict[str, object] | None:
+    """GitHub's stack for a pull request, as its API gives it, or None."""
+    pull_request = gh_json(["api", f"repos/{{owner}}/{{repo}}/pulls/{number}"])
+    stack = (
+        pull_request.get("stack") if isinstance(pull_request, dict) else None
+    )
+
+    return stack if isinstance(stack, dict) else None
+
+
+def closed_unmerged(github_stack: dict[str, object]) -> list[int]:
+    """The pull requests in a stack that were closed without merging."""
+    pull_requests = github_stack.get("pull_requests")
+
+    if not isinstance(pull_requests, list):
+        return []
+
+    return [
+        pr["number"]
+        for pr in pull_requests
+        if isinstance(pr, dict)
+        and pr.get("state") == "closed"
+        and not pr.get("merged_at")
+        and isinstance(pr.get("number"), int)
+    ]
+
+
+def problems(numbers: list[int]) -> list[str]:
+    """What is wrong with GitHub's stack for these pull requests, in order.
+
+    None of them in a stack, more than one stack among them, an order
+    that is not theirs, or a pull request closed without merging inside
+    the stack: the last is what refuses every addition after it.
+    """
+    if len(numbers) < 2:
+        return []
+
+    found: list[str] = []
+    stacks: dict[int, list[int]] = {}
+    positions: list[int] = []
+
+    for number in numbers:
+        stack = stack_of(number)
+        stack_number = stack.get("number") if stack is not None else None
+        position = stack.get("position") if stack is not None else None
+
+        if not isinstance(stack_number, int):
+            found.append(f"#{number} is in no stack on GitHub")
+            continue
+        stacks.setdefault(stack_number, []).append(number)
+        if isinstance(position, int):
+            positions.append(position)
+
+    if len(stacks) > 1:
+        for stack_number, members in sorted(stacks.items()):
+            listed = ", ".join(f"#{n}" for n in members)
+            found.append(f"stack #{stack_number} on GitHub holds {listed}")
+
+    if len(stacks) == 1 and positions != sorted(positions):
+        found.append("GitHub's stack holds them in another order")
+
+    for stack_number in sorted(stacks):
+        github_stack = gh_json(
+            ["api", f"repos/{{owner}}/{{repo}}/stacks/{stack_number}"]
+        )
+        if not isinstance(github_stack, dict):
+            continue
+        for closed in closed_unmerged(github_stack):
+            found.append(
+                f"stack #{stack_number} on GitHub holds #{closed}, "
+                "closed without merging"
+            )
+
+    return found
+
+
+def check(branches: list[str]) -> int:
+    numbers = open_pull_requests(branches)
+
+    if numbers is None:
+        return 1
+
+    found = problems(numbers)
+
+    if not found:
+        print(f"  GitHub has the {len(numbers)} open as one stack.")
+        return 0
+
+    print("✗ GitHub's stack does not match this one:", file=sys.stderr)
+    for problem in found:
+        print(f"    {problem}", file=sys.stderr)
+    print(
+        "  Run `just stack-relink` to make them one stack again.",
+        file=sys.stderr,
+    )
+
+    return 1
+
+
+def repair(branches: list[str]) -> int:
+    """Unstack what GitHub holds them in, keeping the record, then link.
+
+    `gh stack unstack <number>` also deletes the local record's entry
+    when the stack is the one checked out here, so the record is read
+    first and written back before linking. A stack GitHub will not
+    unstack, because part of it has merged, is reported and left; the
+    link then says whether the open pull requests could be gathered.
+    """
+    numbers = open_pull_requests(branches)
+    path = record_path()
+
+    if numbers is None:
+        return 1
+    if path is None:
+        print("✗ No local stack record to keep.", file=sys.stderr)
+        return 1
+
+    kept = path.read_text()
+    stack_numbers = set()
+
+    for number in numbers:
+        stack = stack_of(number)
+        stack_number = stack.get("number") if stack is not None else None
+        if isinstance(stack_number, int):
+            stack_numbers.add(stack_number)
+
+    for stack_number in sorted(stack_numbers):
+        if gh(["stack", "unstack", str(stack_number)]) is None:
+            print(
+                f"  GitHub would not unstack #{stack_number}; leaving it.",
+                file=sys.stderr,
+            )
+        else:
+            print(f"  Unstacked #{stack_number} on GitHub.")
+
+    path.write_text(kept)
+
+    return link(branches)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     group = parser.add_mutually_exclusive_group(required=True)
@@ -287,9 +462,28 @@ def main() -> int:
         metavar="BRANCH",
         help="the stack's unmerged branches, bottom to top",
     )
+    group.add_argument(
+        "--check",
+        nargs="+",
+        metavar="BRANCH",
+        help="exit 0 when GitHub has these as one stack, in this order",
+    )
+    group.add_argument(
+        "--repair",
+        nargs="+",
+        metavar="BRANCH",
+        help="unstack what holds them on GitHub, then link them as one",
+    )
     args = parser.parse_args()
 
-    return needed() if args.needed else link(args.link)
+    if args.needed:
+        return needed()
+    if args.check:
+        return check(args.check)
+    if args.repair:
+        return repair(args.repair)
+
+    return link(args.link)
 
 
 if __name__ == "__main__":
