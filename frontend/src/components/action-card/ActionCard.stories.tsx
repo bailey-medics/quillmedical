@@ -49,6 +49,22 @@ export const Default: Story = {
 };
 
 /**
+ * Destructive: the button is red, for an action that takes something
+ * away, as the edit site page's "Deactivate site" card is.
+ */
+export const Destructive: Story = {
+  args: {
+    icon: <IconUserPlus />,
+    title: "Deactivate site",
+    subtitle:
+      "Stop this site taking part. It takes no more registrations and nobody can be added to it. Results are kept.",
+    buttonLabel: "Deactivate site",
+    buttonDestructive: true,
+    onClick: () => undefined,
+  },
+};
+
+/**
  * Without subtitle
  *
  * The title and the action say enough, as on the passport specialty card,

@@ -76,6 +76,15 @@ export const GUIDES = [
     feature: "teaching",
   },
   {
+    slug: "deactivate-a-site",
+    title: "Deactivate a site",
+    summary:
+      "Stop a site taking part, and close the accounts of people who belong nowhere else.",
+    audience: "admin",
+    public: false,
+    feature: "teaching",
+  },
+  {
     slug: "join-a-course",
     title: "Join a course",
     summary: "Register, confirm your email address and sign in.",

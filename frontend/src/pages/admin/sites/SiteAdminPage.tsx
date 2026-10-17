@@ -212,7 +212,10 @@ export default function SiteAdminPage() {
 
           <Group gap="xs">
             <BodyTextBold>Status:</BodyTextBold>
-            <ActiveStatusBadge active={site.is_active} />
+            <ActiveStatusBadge
+              active={site.is_active}
+              inactiveLabel="Deactivated"
+            />
           </Group>
 
           <Stack gap="xs">
@@ -273,8 +276,11 @@ export default function SiteAdminPage() {
           <DataTableControlled<OrgUnitMember>
             data={site.members}
             columns={staffTableColumns}
+            // Nobody joins a deactivated site, so it offers no way to add
+            // anybody; the API refuses it too.
             action={
-              mayManageStaff && (
+              mayManageStaff &&
+              site.is_active && (
                 <ExtraButton
                   aria-label="Add staff"
                   icon={<IconUserPlus />}

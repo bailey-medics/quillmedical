@@ -277,6 +277,12 @@ export interface MemberLookup {
   user: MemberLookupUser | null;
 }
 
+/** What deactivating a site does, or did, to accounts. */
+export interface SiteDeactivation {
+  /** How many accounts are, or were, deactivated with it. */
+  accounts: number;
+}
+
 export const orgUnits = {
   /**
    * List org_units.
@@ -308,9 +314,23 @@ export const orgUnits = {
   update: (id: number, changes: OrgUnitChanges) =>
     api.put<OrgUnit>(`/org-units/${id}`, changes),
 
-  /** Put an org_unit in or out of use. */
+  /**
+   * Put an org_unit back in use. Taking a site out of use is `deactivate`,
+   * which the API insists on, since it deals with the site's people too.
+   */
   setActive: (id: number, isActive: boolean) =>
     api.patch<OrgUnit>(`/org-units/${id}/active`, { is_active: isActive }),
+
+  /** How many accounts deactivating a site would deactivate with it. */
+  deactivation: (id: number) =>
+    api.get<SiteDeactivation>(`/org-units/${id}/deactivation`),
+
+  /**
+   * Deactivate a site, and the accounts of people who belong to no other
+   * organisation or site. Answers how many accounts were deactivated.
+   */
+  deactivate: (id: number) =>
+    api.post<SiteDeactivation>(`/org-units/${id}/deactivate`, {}),
 
   /** Delete an org_unit. */
   remove: (id: number) => api.del<StatusResponse>(`/org-units/${id}`),

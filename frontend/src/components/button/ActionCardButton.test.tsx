@@ -30,6 +30,34 @@ describe("ActionCardButton", () => {
       expect(link).toHaveAttribute("href", "/patients/123");
     });
 
+    it("is red when destructive, for an action that takes something away", () => {
+      renderWithMantine(
+        <ActionCardButton
+          label="Deactivate site"
+          onClick={() => {}}
+          destructive
+        />,
+      );
+
+      expect(
+        screen
+          .getByRole("button", { name: "Deactivate site" })
+          .getAttribute("style"),
+      ).toContain("var(--alert-color)");
+    });
+
+    it("is not red unless destructive", () => {
+      renderWithMantine(
+        <ActionCardButton label="View details" onClick={() => {}} />,
+      );
+
+      expect(
+        screen
+          .getByRole("button", { name: "View details" })
+          .getAttribute("style") ?? "",
+      ).not.toContain("var(--alert-color)");
+    });
+
     it("renders as a button when onClick is provided", () => {
       const handleClick = vi.fn();
       renderWithMantine(

@@ -13,7 +13,11 @@ import { test, expect } from "../../fixtures/axe";
 import { makePerson } from "../../fixtures/people";
 import { signIn } from "../../fixtures/signIn";
 
-const FOR_ADMINS = ["Add a delegate by hand", "See delegates' results"];
+const FOR_ADMINS = [
+  "Add a delegate by hand",
+  "Deactivate a site",
+  "See delegates' results",
+];
 const FOR_EVERYONE = ["Join a course", "Take a module and its assessment"];
 const NOT_FOUND = "404 - Page not found";
 

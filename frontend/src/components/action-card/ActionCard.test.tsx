@@ -41,6 +41,23 @@ describe("ActionCard", () => {
       ).toBeInTheDocument();
     });
 
+    it("makes its button red when the action takes something away", () => {
+      renderWithMantine(
+        <ActionCard
+          title="Deactivate site"
+          buttonLabel="Deactivate site"
+          buttonDestructive
+          onClick={() => {}}
+        />,
+      );
+
+      expect(
+        screen
+          .getByRole("button", { name: "Deactivate site" })
+          .getAttribute("style"),
+      ).toContain("var(--alert-color)");
+    });
+
     it("renders icon", () => {
       renderWithRouter(<ActionCard {...defaultProps} />);
       expect(screen.getByTestId("test-icon")).toBeInTheDocument();

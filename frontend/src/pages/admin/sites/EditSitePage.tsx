@@ -4,14 +4,22 @@
  * Form for editing an existing site's details.
  * Loads current details and allows updating name, type, location, and clinical lead.
  * Only accessible to admin/superadmin users.
+ *
+ * Below the form, a card of its own deactivates the site: a red button and
+ * a modal saying how many accounts go with it. Deactivating is not a
+ * switch in the form, because it also deactivates the accounts of people
+ * who belong nowhere else (`app/org_units/deactivation.py`).
  */
 
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import {
+  IconBuildingHospital,
+  IconBuildingOff,
+} from "@components/icons/appIcons";
 import { Stack, Skeleton } from "@mantine/core";
 import { Controller } from "react-hook-form";
 import BaseCard from "@/components/base-card/BaseCard";
-import SolidSwitch from "@/components/form/SolidSwitch";
 import TextField from "@/components/form/TextField";
 import SelectField from "@/components/form/SelectField";
 import PageHeader from "@/components/page-header";
@@ -29,6 +37,8 @@ import {
   type OrgUnitDetail,
 } from "@/domains/orgUnit";
 import ErrorState from "@/components/error-state/ErrorState";
+import ActionCard from "@/components/action-card";
+import { ConfirmModal } from "@/components/confirm-modal";
 
 interface ApiUser {
   id: number;
@@ -47,14 +57,10 @@ function EditSiteFields({
   siteId,
   users,
   usersLoading,
-  siteActive,
-  onToggleActive,
 }: {
   siteId: string;
   users: ApiUser[];
   usersLoading: boolean;
-  siteActive: boolean;
-  onToggleActive: (active: boolean) => void;
 }) {
   const navigate = useNavigate();
   const { methods } = useFormContext();
@@ -64,13 +70,6 @@ function EditSiteFields({
       <FormStatus />
       <BaseCard>
         <Stack gap="md">
-          <SolidSwitch
-            label="Site status"
-            checked={siteActive}
-            onChange={(e) => onToggleActive(e.currentTarget.checked)}
-            onLabel="Active"
-            offLabel="Inactive"
-          />
           <Controller
             name="name"
             control={methods.control}
@@ -155,7 +154,8 @@ export default function EditSitePage() {
   const [siteData, setSiteData] = useState<OrgUnitDetail | null>(null);
   const [users, setUsers] = useState<ApiUser[]>([]);
   const [usersLoading, setUsersLoading] = useState(true);
-  const [isActive, setIsActive] = useState(true);
+  const [changingStatus, setChangingStatus] = useState(false);
+  const [accountsGoing, setAccountsGoing] = useState<number | null>(null);
 
   useEffect(() => {
     async function fetchData() {
@@ -170,7 +170,6 @@ export default function EditSitePage() {
           api.get<{ users: ApiUser[] }>("/users"),
         ]);
         setSiteData(site);
-        setIsActive(site.is_active);
         setUsers(usersResponse.users);
       } catch (err) {
         setLoadError(
@@ -185,19 +184,52 @@ export default function EditSitePage() {
     void fetchData();
   }, [id]);
 
-  function handleToggleActive(active: boolean) {
-    setIsActive(active);
+  // The count is asked for as the modal opens, so it is the number as it
+  // stands when somebody is deciding, not when the page loaded.
+  function openStatusChange() {
+    setChangingStatus(true);
+
+    if (siteData?.is_active) {
+      setAccountsGoing(null);
+      orgUnits
+        .deactivation(Number(id))
+        .then((answer) => setAccountsGoing(answer.accounts))
+        .catch(() => setAccountsGoing(null));
+    }
+  }
+
+  async function changeStatus() {
+    if (siteData?.is_active) {
+      const done = await orgUnits.deactivate(Number(id));
+      navigate(`/admin/sites/${id}`, {
+        state: {
+          flash: {
+            variant: "success",
+            title: "Site deactivated",
+            description: accountsDeactivated(done.accounts),
+          },
+        },
+      });
+      return;
+    }
+
+    await orgUnits.setActive(Number(id), true);
+    navigate(`/admin/sites/${id}`, {
+      state: {
+        flash: {
+          variant: "success",
+          title: "Site reactivated",
+          description:
+            "No account was reactivated with it. Reactivate each from its own page.",
+        },
+      },
+    });
   }
 
   async function handleSubmit(
     data: EditSiteFormValues,
   ): Promise<FormSubmitResult> {
     try {
-      // Update site status if changed
-      if (siteData && isActive !== siteData.is_active) {
-        await orgUnits.setActive(Number(id), isActive);
-      }
-
       await orgUnits.update(Number(id), {
         name: data.name.trim(),
         type: data.type as string,
@@ -227,9 +259,6 @@ export default function EditSitePage() {
 
       // Build description of what changed
       const changes: string[] = [];
-      if (siteData && isActive !== siteData.is_active) {
-        changes.push(isActive ? "Site activated" : "Site deactivated");
-      }
       if (data.name.trim() !== siteData!.name) {
         changes.push("Name updated");
       }
@@ -294,8 +323,6 @@ export default function EditSitePage() {
     (member) => member.id === siteData.clinical_lead_id,
   );
 
-  const statusChanged = siteData ? isActive !== siteData.is_active : false;
-
   return (
     <Stack gap="lg">
       <PageHeader title="Edit site" />
@@ -310,26 +337,68 @@ export default function EditSitePage() {
         onSubmit={handleSubmit}
         submitLabel="Save changes"
         submittingLabel="Saving…"
-        confirm={
-          statusChanged
-            ? {
-                title: isActive ? "Activate site" : "Deactivate site",
-                children: isActive
-                  ? "Are you sure you want to activate this site?"
-                  : "Are you sure you want to deactivate this site?",
-                acceptLabel: isActive ? "Activate" : "Deactivate",
-              }
-            : undefined
-        }
       >
         <EditSiteFields
           siteId={id!}
           users={users}
           usersLoading={usersLoading}
-          siteActive={isActive}
-          onToggleActive={handleToggleActive}
         />
       </Form>
+
+      {siteData.is_active ? (
+        <ActionCard
+          icon={<IconBuildingOff />}
+          title="Deactivate site"
+          subtitle="Stop this site taking part. It takes no more registrations and nobody can be added to it. Results are kept."
+          buttonLabel="Deactivate site"
+          buttonDestructive
+          onClick={openStatusChange}
+        />
+      ) : (
+        <ActionCard
+          icon={<IconBuildingHospital />}
+          title="Reactivate site"
+          subtitle="This site is deactivated. Making it active again brings back no account: reactivate each from its own page."
+          buttonLabel="Reactivate site"
+          onClick={openStatusChange}
+        />
+      )}
+
+      <ConfirmModal
+        opened={changingStatus}
+        onClose={() => setChangingStatus(false)}
+        onAccept={changeStatus}
+        title={siteData.is_active ? "Deactivate site" : "Reactivate site"}
+        acceptLabel={siteData.is_active ? "Deactivate" : "Reactivate"}
+        submittingLabel={siteData.is_active ? "Deactivating…" : "Reactivating…"}
+        destructive={siteData.is_active}
+      >
+        {siteData.is_active ? (
+          <>
+            Deactivating this site will also deactivate the accounts of anyone
+            that does not belong to a second organisation or site.{" "}
+            {accountsGoing === null
+              ? "Counting the accounts…"
+              : `${accountsDeactivated(accountsGoing, "will be")}, and each is emailed to say so.`}
+          </>
+        ) : (
+          <>
+            Reactivating <strong>{siteData.name}</strong> lets people be added
+            to it again. No account is reactivated with it.
+          </>
+        )}
+      </ConfirmModal>
     </Stack>
   );
+}
+
+/** How many accounts are, or were, deactivated, as a sentence. */
+function accountsDeactivated(
+  count: number,
+  tense: "were" | "will be" = "were",
+): string {
+  const accounts = count === 1 ? "1 account" : `${count} accounts`;
+  const verb = count === 1 ? tense.replace("were", "was") : tense;
+
+  return `${accounts} ${verb} deactivated`;
 }
