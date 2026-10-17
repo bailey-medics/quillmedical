@@ -54,40 +54,50 @@ shared secret, its Secret Manager entry and both job mounts go.
 
 ## Phase 2: The backend accepts the job's identity, alongside the token
 
-- [ ] Add `require_job_identity` to `backend/app/deps.py`. It reads the
+- [x] Add `require_job_identity` to `backend/app/deps.py`. It reads the
       `Authorization` bearer, calls
       `google.oauth2.id_token.verify_oauth2_token` with
       `settings.TEACHING_JOB_CALLBACK_AUDIENCE`, and checks the token's
       `email` claim is in `settings.TEACHING_JOB_CALLBACK_CALLERS` and
-      `email_verified` is true. Any failure is 401; either setting unset
+      `email_verified` is true. Any failure is 401; nothing configured
       is 503, as the token check answers today. `google-auth` is already
       a dependency, used by `features/teaching/storage.py`, so nothing
       new is installed. The verifier fetches Google's signing
-      certificates over the internet, which the backend's
-      `PRIVATE_RANGES_ONLY` egress allows; it is passed one
-      `google.auth.transport.requests.Request` held at module level so
-      the certificates are cached between calls. Google's
-      service-to-service guide is the pattern:
+      certificates over the internet on each call, which the backend's
+      `PRIVATE_RANGES_ONLY` egress allows; `google-auth` does not cache
+      them, and a report lands a few times an hour at most, so that is
+      left as it is. Google's service-to-service guide is the pattern:
       [authenticating service-to-service](https://docs.cloud.google.com/run/docs/authenticating/service-to-service).
 
-- [ ] For the transition only, let the three callback routes accept
+- [x] For the transition only, let the three callback routes accept
       either credential: a Google token that verifies, or the existing
       shared token. The jobs cannot switch at the same moment as the
       backend, since the backend deploys from `deploy.yml` and each job
       picks up its image from the same run but starts only when next
       asked to encode; and a job already running when the backend
-      changes still holds the old token. The shared-token branch is
-      removed in Phase 4.
+      changes still holds the old token. Done inside
+      `require_job_identity` itself, which the three routes now take as
+      a dependency in place of the check each had copied: the shared
+      token is tried first, then the identity. So the guard is already
+      the one place, and Phase 4 removes the shared branch from it. One
+      visible change: a guard that is a dependency answers before the
+      body is read, so a caller with no token gets 401 where it used to
+      get 422 for a malformed body. The 503 now reads "Job callback not
+      configured", since the token is no longer the only thing it could
+      be missing.
 
-- [ ] Add the two settings to `backend/app/config.py`, beside
+- [x] Add the two settings to `backend/app/config.py`, beside
       `TEACHING_TRANSCODE_CALLBACK_TOKEN`: `TEACHING_JOB_CALLBACK_AUDIENCE`,
       the backend's own `run.app` URL, and `TEACHING_JOB_CALLBACK_CALLERS`,
       the service account emails allowed to report, separated by
       commas. Both unset in development, where the routes answer 503
       and nothing calls them, which is the arrangement the token has
-      now.
+      now. The callers list is parsed with `parse_address_list`, as
+      `FEEDBACK_NOTIFY_EMAIL` is, and a list that is set but malformed
+      or empty fails at startup, so a slip stops the deploy rather than
+      refusing every report in silence.
 
-- [ ] Set them on the backend in `infra/main.tf`. The audience cannot be
+- [x] Set them on the backend in `infra/main.tf`. The audience cannot be
       `module.cloud_run_backend.service_url`, which would make the
       module read its own output; Cloud Run URLs are deterministic, so
       it is built as
@@ -98,14 +108,18 @@ shared secret, its Secret Manager entry and both job mounts go.
       `google_service_account.runtime["caption"].email`, from
       `infra/runtime-identities.tf`.
 
-- [ ] Test the dependency in `backend/app/deps_test.py`, patching the
-      verifier: a verified token from a listed caller passes; a token
-      from an unlisted caller, an unverified email, a verifier that
-      raises, a missing header and a non-bearer header each give 401;
-      either setting unset gives 503. The three routes' tests in
-      `backend/app/features/teaching/ci_router_test.py` gain a case each
-      for the identity path and keep their shared-token cases until
-      Phase 4.
+- [x] Test the dependency in `backend/app/deps_job_identity_test.py`,
+      beside `deps_csrf_test.py`, patching the verifier: a verified
+      token from a listed caller passes and is named; a token from an
+      unlisted caller, an unverified email, a verifier that raises
+      (Google refusing the token, or being unreachable), a missing
+      header and a non-bearer header each give 401; nothing configured,
+      or only one of the two identity settings, gives 503; the shared
+      token passes without Google being consulted. The three routes'
+      tests in `backend/tests/ci_media_callback_refusals_test.py` gain a
+      case each for a listed and an unlisted identity, and keep their
+      shared-token cases until Phase 4. `backend/app/config_test.py`
+      covers the callers list parsing and its startup refusals.
 
 ## Phase 3: The jobs present their identity
 
