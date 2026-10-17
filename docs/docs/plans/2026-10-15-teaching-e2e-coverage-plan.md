@@ -1017,7 +1017,7 @@ with a few requests through the real stack. `every_route_is_guarded_test.py`
 checks only that each route asks who is calling, not that a delegate is
 refused, so nothing checks this today.
 
-- [ ] Backend: every route refuses a delegate, unless it is theirs to
+- [x] Backend: every route refuses a delegate, unless it is theirs to
       use, in `backend/tests/a_delegate_reaches_only_their_own_test.py`.
       Walk `served_routes(app)`, call each as a teaching delegate with
       real ids filled in for its path (another delegate's assessment, a
@@ -1033,13 +1033,37 @@ refused, so nothing checks this today.
       admitted means a delegate may call it for their own, not for
       anybody's.
 
-- [ ] Frontend: every admin page shows a delegate the 404 page, in a
+      Built. The delegate is a real learner, enrolled on a live module,
+      so the teaching routes refuse them for being somebody else's and
+      not for having nothing; every id in a path is another person's or
+      a place. `THEIRS` names 21 routes, none taking another's id. A
+      route answering 422 counts as getting through, since every guard
+      in front of it has passed; the two answer routes, which check the
+      attempt is theirs only after reading the body, are sent a valid
+      one, and refuse.
+
+      Found, and left for Mark in `NOT_YET_REFUSED` rather than fixed,
+      since it is clinical and not teaching: sixteen patient and
+      messaging routes are guarded only by the clinical services gate
+      and sign-in. `GET /api/patients/{patient_id}` says "any role can
+      view patients", so where clinical services are on, any signed-in
+      account, a delegate included, can read any patient's demographics
+      by id. App production runs with clinical services off, where all
+      sixteen answer 503, so nothing is exposed today. The list fails
+      when one starts refusing, so it cannot outlive the gap.
+
+- [x] Frontend: every admin page shows a delegate the 404 page, in a
       vitest test beside `src/routes.tsx`. Walk the exported `routes`,
       take every path under `/admin` (about forty), render each as a
       teaching delegate and expect the 404 page. A floor on the count,
       and a new admin page is covered without anybody adding it.
+      Built as `src/adminRoutes.test.tsx`: 41 addresses, each shown to a
+      delegate holding exactly what `teaching_delegate` gives, and a
+      teaching admin let past the same guard so the 404 is the guard at
+      work. Rendering routes needed a router of the test's own, so
+      `renderRoutes` joins `renderWithRouter` in `src/test/test-utils.tsx`.
 
-- [ ] End to end: one delegate cannot open another's pages, in
+- [x] End to end: one delegate cannot open another's pages, in
       `tests/leaks/delegate-to-delegate.spec.ts`. Two learners at
       `TEACHING_SITES.centre` and one at `TEACHING_SITES.annexe`, made
       with `makeLearnerAt`; one passes, and each of the other two is
@@ -1047,6 +1071,9 @@ refused, so nothing checks this today.
       each first checked to open for its owner. Story 6 of Phase 8
       already shows a delegate the 404 page for `/admin`, `/admin/users`
       and `/admin/teaching` in a real browser, and stays as it is.
+      Built: run once for a delegate at the same site and once at the
+      Annexe, each refused at the API (403 or 404, not merely an error)
+      with nothing of the result or its answers on the page.
 
 ## Phase 13: Passport and safety places nobody in teaching can reach
 
