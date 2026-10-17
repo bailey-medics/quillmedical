@@ -80,11 +80,12 @@ export default function OrganisationAdminPage() {
   // routes behind each button. See
   // docs/docs/plans/2026-09-30-manage-teaching-competency-plan.md.
   const mayAdministerOrg = useHasCompetency("manage_users");
-  // Adding a site is the one piece of administering the organisation a
-  // scoped manager shares: a teaching body signs up member hospitals as
-  // it signs up their delegates. Editing and removing a site stay with
-  // `manage_users`.
+  // Adding and deleting a site are the pieces of administering the
+  // organisation a scoped manager shares: a teaching body signs up member
+  // hospitals as it signs up their delegates, and takes them off again.
+  // Editing the organisation itself stays with `manage_users`.
   const mayAddSite = useHasAnyCompetency("manage_users", ...SCOPED_MANAGER_IDS);
+  const mayDeleteSite = mayAddSite;
   const mayManageStaff = useHasAnyCompetency(
     "manage_staff_membership",
     ...SCOPED_MANAGER_IDS,
@@ -184,14 +185,14 @@ export default function OrganisationAdminPage() {
       await orgUnits.remove(removingSite.id);
       showMessage({
         variant: "success",
-        title: "Site removed",
-        description: `${removingSite.name} has been removed from this organisation`,
+        title: "Site deleted",
+        description: `${removingSite.name} has been deleted`,
       });
       await fetchOrganisationData();
     } catch (err) {
       showMessage({
         variant: "error",
-        title: "Failed to remove site",
+        title: "Failed to delete site",
         description:
           err instanceof Error ? err.message : "An unexpected error occurred",
       });
@@ -309,7 +310,8 @@ export default function OrganisationAdminPage() {
     { header: "Patient ID", render: (patient) => patient.patient_id },
   ];
 
-  // Removing a site edits the organisation, which is `manage_users`.
+  // Deleting a site takes `manage_users`, or a scoped manager such as
+  // `manage_teaching` in an organisation they belong to.
   const siteActionsColumn: Column<OrgUnitChild> = {
     header: "",
     width: "50px",
@@ -318,7 +320,7 @@ export default function OrganisationAdminPage() {
         aria-label={`Actions for ${site.name}`}
         items={[
           {
-            label: "Remove from organisation",
+            label: "Delete site",
             icon: <IconTrash />,
             color: "var(--alert-color)",
             onClick: () => setRemovingSite(site),
@@ -353,7 +355,7 @@ export default function OrganisationAdminPage() {
       render: (site) => <ActiveStatusBadge active={site.is_active} />,
       accessor: (site) => (site.is_active ? "active" : "inactive"),
     },
-    ...(mayAdministerOrg ? [siteActionsColumn] : []),
+    ...(mayDeleteSite ? [siteActionsColumn] : []),
   ];
 
   return (
@@ -514,13 +516,14 @@ export default function OrganisationAdminPage() {
         opened={removingSite !== null}
         onClose={() => setRemovingSite(null)}
         onAccept={confirmRemoveSite}
-        title="Remove site"
-        acceptLabel="Remove"
-        submittingLabel="Removing\u2026"
+        title="Delete site"
+        acceptLabel="Delete"
+        submittingLabel="Deleting…"
       >
-        Are you sure you want to remove <strong>{removingSite?.name}</strong>{" "}
-        from this organisation?
-      </ConfirmModal>{" "}
+        Deleting <strong>{removingSite?.name}</strong> takes it out of this
+        organisation for good. Its staff stop being members there, and what they
+        may practise there is withdrawn. This cannot be undone.
+      </ConfirmModal>
     </Stack>
   );
 }

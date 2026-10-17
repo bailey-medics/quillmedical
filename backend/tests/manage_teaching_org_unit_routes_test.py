@@ -17,6 +17,7 @@ from sqlalchemy import insert, select
 from sqlalchemy.orm import Session
 
 from app.cbac.positions import clinical_leads_of
+from app.features.teaching.models import Assessment
 from app.models import (
     OrgUnit,
     OrgUnitFeature,
@@ -642,18 +643,96 @@ class TestAddingASite:
             is None
         )
 
-    def test_still_cannot_delete_a_site(
-        self, client: TestClient, db_session: Session, trust: OrgUnit
-    ) -> None:
+
+class TestDeletingASite:
+    """A teaching admin deletes a site of their trust, and nothing more.
+
+    Whoever signs up a member hospital may take it off again. The trust
+    itself, and anybody else's sites, stay out of reach.
+    """
+
+    def _site(self, client: TestClient, trust: OrgUnit) -> int:
         created = client.post(
             "/api/org-units",
             json={"name": "Ward 9", "type": "ward", "parent_id": trust.id},
-        ).json()
+        )
+        assert created.status_code == 200, created.text
 
-        deleted = client.delete(f"/api/org-units/{created['id']}")
+        return int(created.json()["id"])
 
-        assert deleted.status_code == 403
-        assert db_session.get(OrgUnit, created["id"]) is not None
+    def test_deletes_a_site_of_their_trust(
+        self,
+        client: TestClient,
+        db_session: Session,
+        trust: OrgUnit,
+        delegate: User,
+    ) -> None:
+        site_id = self._site(client, trust)
+        add_org_unit_member(db_session, site_id, delegate.id, "staff")
+        db_session.commit()
+
+        response = client.delete(f"/api/org-units/{site_id}")
+
+        assert response.status_code == 200, response.text
+        db_session.expire_all()
+        assert db_session.get(OrgUnit, site_id) is None
+        # The delegate stays at the trust; only the site went.
+        assert get_member_org_unit_ids(db_session, delegate.id) == [trust.id]
+
+    def test_cannot_delete_their_own_organisation(
+        self, client: TestClient, db_session: Session, trust: OrgUnit
+    ) -> None:
+        response = client.delete(f"/api/org-units/{trust.id}")
+
+        assert response.status_code == 403
+        assert db_session.get(OrgUnit, trust.id) is not None
+
+    def test_cannot_delete_a_site_of_another_trust(
+        self, client: TestClient, db_session: Session, elsewhere: OrgUnit
+    ) -> None:
+        theirs = OrgUnit(
+            name="Their ward", type="ward", parent_id=elsewhere.id
+        )
+        db_session.add(theirs)
+        db_session.commit()
+
+        response = client.delete(f"/api/org-units/{theirs.id}")
+
+        assert response.status_code == 404
+        assert db_session.get(OrgUnit, theirs.id) is not None
+
+    def test_cannot_delete_a_site_holding_teaching_results(
+        self,
+        client: TestClient,
+        db_session: Session,
+        trust: OrgUnit,
+        delegate: User,
+    ) -> None:
+        site_id = self._site(client, trust)
+        db_session.add(
+            Assessment(
+                user_id=delegate.id,
+                org_unit_id=site_id,
+                question_bank_id="chest-xray",
+                bank_version=1,
+                time_limit_minutes=60,
+                total_items=3,
+                is_passed=True,
+            )
+        )
+        db_session.commit()
+
+        response = client.delete(f"/api/org-units/{site_id}")
+
+        assert response.status_code == 409
+        assert "Teaching results are kept" in response.json()["detail"]
+        assert db_session.get(OrgUnit, site_id) is not None
+        assert (
+            db_session.scalar(
+                select(Assessment).where(Assessment.org_unit_id == site_id)
+            )
+            is not None
+        )
 
 
 class TestEditingASite:
