@@ -1156,6 +1156,108 @@ and finish registering.
       test checks instead that each link opens a tab of its own, which
       is what a browser brings to the front.
 
+## Phase 15: Deactivating a site, and a teaching admin no longer deleting one
+
+Raised by Mark on 2026-10-17, and settled with him the same day. EoEETA will need to stop a
+whole site, say one that no longer wants the service. Deleting it is the
+wrong tool: its people would be left belonging nowhere. So a teaching
+admin may no longer delete a site, which overturns the decision in Phase
+2 (#2035) in a pull request of its own, and a site is deactivated
+instead.
+
+What is there today:
+
+- `OrgUnit.is_active` already exists, and the edit site page
+  (`pages/admin/sites/EditSitePage.tsx`) has a "Site status" switch,
+  Active or Inactive, saved with the rest of the form. Turning it off
+  changes the flag and nothing else: nobody's account is touched.
+- A registered delegate is made a trainee of the organisation as well as
+  the site (`_join_organisation` and `_join_site` in
+  `backend/app/users/register.py`), so almost every delegate belongs to
+  two org_units. Somebody added through the user form is made `staff` at
+  an organisation and `trainee` at anything inside one
+  (`capacity_at` in `backend/app/users/membership.py`), whatever their
+  profession, so a delegate a teaching admin placed at the organisation
+  too reads as staff there.
+- Deactivating an account (`deactivate_account` in
+  `backend/app/users/activation.py`) sets `is_active` false, sends the
+  closure email, and starts the clock on the 3.5 years EoEETA keeps
+  records after closure.
+
+- [x] Settle with Mark, before anything is built:
+      1. **Who counts as belonging elsewhere.** Decided with Mark on
+         2026-10-17: where the admin pages show somebody. An
+         organisation's page lists only its `staff` members (the filter
+         in `OrganisationAdminPage.tsx`), and a site's page lists
+         everybody there. So a person is spared when they are on any
+         other site's list, or on any organisation's staff list, this
+         site's own organisation included. The `trainee` membership of
+         the organisation that registering writes appears on no list,
+         and is not counted. Somebody a teaching admin added to the
+         organisation's staff list, through the organisation page or the
+         user form, is on that list and is spared, which is what the
+         admin would expect from what they can see. The modal says how
+         many accounts will be deactivated, and names nobody: at a site
+         of any size the list would be too long to read.
+      2. **The switch.** Decided by Mark on 2026-10-17: remove the "Site
+         status" switch. Deactivating is made prominent instead: red, a
+         button, a confirm modal, and it deactivates the accounts of
+         people with no second org_unit.
+      3. **Reactivating.** Not discussed; the recommendation is taken.
+         A deactivated site can be made active again from the same card,
+         and the accounts it deactivated are reactivated one by one by
+         an admin, not brought back in bulk. Bulk would need a record of
+         which accounts the site closed: a table, one row per account.
+      4. **Who may.** Decided: a teaching admin, for a site of their own
+         organisation, and a superadmin. The route checks the caller
+         with `require_editable`, as the delete route does now.
+      5. **Emails.** Decided: each account deactivated is sent the
+         closure email, as deactivating it by hand does.
+      6. **A deactivated site.** Decided, and called "deactivated" on
+         every page, not "inactive": it is offered for no further
+         module registration, so its clinical lead's address is refused
+         at registration, and nobody can be added to it, through the
+         site page, the user form or the API. Past results stay, since
+         they are kept.
+
+- [x] Stop a teaching admin deleting a site, overturning Phase 2: the
+      delete route goes back to `manage_users` only, the "Delete site"
+      action is drawn only for them, and `TestDeletingASite` is turned
+      round. Its own pull request, so the reversal reads on its own.
+      Decided by Mark on 2026-10-17: #2035 stays as it is, and its
+      description now says this later pull request will undo it.
+      Mark, 2026-10-17: no branch already in the stack is changed for
+      this, #2035 included. The work goes in new pull requests on top.
+      Built. The route is back on `DEP_REQUIRE_MANAGE_USERS`, keeping
+      `require_editable` and the refusal of an org_unit holding teaching
+      results, whose message now says to deactivate it. The page draws
+      the "Delete site" action for `manage_users` only. The unit tests
+      that had a teaching admin delete now have a user manager do it,
+      and a teaching admin is refused; the E2E journey checks a teaching
+      admin is not offered it and the API answers 403.
+
+- [ ] Deactivate a site: a red button in a card of its own on the edit
+      site page, and a confirm modal saying "Deactivating this site will
+      also deactivate the accounts of anyone that does not belong to a
+      second organisation or site", and how many accounts that is. The
+      "Site status" switch goes. Then the route, the refusals at
+      registration and on adding anybody, their tests, and an E2E
+      journey, in `tests/teaching-admin/`, asked for by Mark on
+      2026-10-17: a teaching admin deactivates a site, its delegates with
+      nowhere else are deactivated and emailed, one also on another
+      site is not, its lead's address is refused at registration, and
+      nobody can be added to it.
+
+- [ ] A guide for teaching admins, asked for by Mark on 2026-10-17:
+      `frontend/src/guides/content/deactivate-a-site.md`, registered in
+      `src/guides/registry.ts` for teaching admins beside "Add a delegate
+      by hand". It says how (the site's edit page, the red button, the
+      modal) and what it does: whose accounts are deactivated and who is
+      spared, that each is emailed, that the site takes no more
+      registrations and nobody can be added to it, that results are
+      kept, and how to make it active again. Its links are checked by
+      `links.test.ts`, as every guide's are.
+
 ## Decisions
 
 - **Refusals are checked at the API as well as on screen** - several

@@ -80,12 +80,13 @@ export default function OrganisationAdminPage() {
   // routes behind each button. See
   // docs/docs/plans/2026-09-30-manage-teaching-competency-plan.md.
   const mayAdministerOrg = useHasCompetency("manage_users");
-  // Adding and deleting a site are the pieces of administering the
-  // organisation a scoped manager shares: a teaching body signs up member
-  // hospitals as it signs up their delegates, and takes them off again.
-  // Editing the organisation itself stays with `manage_users`.
+  // Adding a site is the one piece of administering the organisation a
+  // scoped manager shares: a teaching body signs up member hospitals as
+  // it signs up their delegates. Deleting one stays with `manage_users`,
+  // since its people would be left belonging nowhere; a teaching admin
+  // deactivates a site from its edit page instead.
   const mayAddSite = useHasAnyCompetency("manage_users", ...SCOPED_MANAGER_IDS);
-  const mayDeleteSite = mayAddSite;
+  const mayDeleteSite = mayAdministerOrg;
   const mayManageStaff = useHasAnyCompetency(
     "manage_staff_membership",
     ...SCOPED_MANAGER_IDS,
@@ -310,8 +311,7 @@ export default function OrganisationAdminPage() {
     { header: "Patient ID", render: (patient) => patient.patient_id },
   ];
 
-  // Deleting a site takes `manage_users`, or a scoped manager such as
-  // `manage_teaching` in an organisation they belong to.
+  // Deleting a site takes `manage_users`.
   const siteActionsColumn: Column<OrgUnitChild> = {
     header: "",
     width: "50px",

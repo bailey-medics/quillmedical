@@ -1076,7 +1076,50 @@ describe("OrganisationAdminPage", () => {
       ).not.toBeInTheDocument();
     });
 
-    it("may delete a site, after a warning that says it is for good", async () => {
+    // Deleting a site would leave its people belonging nowhere, so a
+    // teaching admin deactivates one from its edit page instead.
+    it("is not offered deleting a site", async () => {
+      await screen.findByText("Ward B");
+      expect(
+        screen.queryByLabelText("Actions for Ward B"),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  describe("A user manager deleting a site", () => {
+    const org = {
+      id: 3,
+      name: "Teaching Trust",
+      members: [],
+      children: [
+        {
+          id: 7,
+          name: "Ward B",
+          type: "ward",
+          is_active: true,
+          clinical_lead_name: null,
+        },
+      ],
+    };
+
+    beforeEach(() => {
+      vi.spyOn(authContext, "useAuth").mockReturnValue({
+        state: {
+          status: "authenticated",
+          user: { ...mockAdminUser, competencies: ["manage_users"] },
+        },
+        login: vi.fn(),
+        logout: vi.fn(),
+        reload: vi.fn(),
+      });
+      mockOrgApi(org);
+      renderWithRouter(<OrganisationAdminPage />, {
+        routePath: "/admin/organisations/:id",
+        initialRoute: "/admin/organisations/3",
+      });
+    });
+
+    it("deletes a site, after a warning that says it is for good", async () => {
       const user = userEvent.setup();
       const delSpy = vi.spyOn(apiLib.api, "del").mockResolvedValue(undefined);
 
