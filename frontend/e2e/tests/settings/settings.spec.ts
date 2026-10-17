@@ -280,6 +280,59 @@ for (const { who, kind, profession } of TEACHING_PEOPLE) {
       await expect(page).toHaveURL(/\/login/);
     });
 
+    test("turns two-factor off with their password, then signs in without a code", async ({
+      page,
+      browser,
+    }, testInfo) => {
+      const username = await makePerson(
+        browser,
+        `totp_off_${kind}`,
+        testInfo.project.name,
+        profession,
+      );
+      const name = "Two-factor authentication (TOTP)";
+
+      // Set up as story 27 does.
+      await signIn(page, username);
+      await page.goto("/settings");
+      await flip(page, name);
+      await page.getByRole("button", { name: "Configure TOTP" }).click();
+      const link = page.getByText(/^otpauth:\/\//);
+      const secret = new URL(await link.innerText()).searchParams.get("secret");
+      await page.getByLabel("6-digit code").fill(totpCode(secret ?? ""));
+      await page.getByTestId("submit-button").click();
+      await expect(page.getByText("Two-factor enabled")).toBeVisible();
+
+      // Settings shows it on, as the account has it.
+      await page.goto("/settings");
+      await expect(page.getByRole("switch", { name })).toBeChecked();
+
+      // Turning it off asks for the password. A wrong one is refused and
+      // leaves it on; the right one turns it off, and that is kept.
+      await flip(page, name);
+      const dialog = page.getByRole("dialog", {
+        name: "Turn off two-factor authentication",
+      });
+      await dialog
+        .getByRole("textbox", { name: "Password" })
+        .fill("not-their-password");
+      await dialog.getByRole("button", { name: "Turn off" }).click();
+      await expect(dialog.getByText("Incorrect password")).toBeVisible();
+      await dialog
+        .getByRole("textbox", { name: "Password" })
+        .fill(`${username}123`);
+      await dialog.getByRole("button", { name: "Turn off" }).click();
+      await expect(dialog).toBeHidden();
+      await expect(page.getByRole("switch", { name })).not.toBeChecked();
+      await page.reload();
+      await expect(page.getByRole("switch", { name })).not.toBeChecked();
+
+      // Signing in again asks for the password alone.
+      await page.context().clearCookies();
+      await signIn(page, username);
+      await expect(page.getByLabel(/authenticator code/i)).toHaveCount(0);
+    });
+
     test("is shown no Clinician passport card", async ({
       page,
       browser,

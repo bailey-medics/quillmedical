@@ -23,6 +23,7 @@ import type { FormSubmitResult } from "@/components/form/Form";
 import QRCode from "qrcode";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/auth/AuthContext";
 import { api } from "../lib/api";
 
 interface TotpVerifyFormValues {
@@ -70,6 +71,7 @@ export default function TotpSetup() {
   const [provisionUri, setProvisionUri] = useState<string | null>(null);
   const [setupError, setSetupError] = useState<string | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const { reload } = useAuth();
 
   useEffect(() => {
     async function fetchUri() {
@@ -97,16 +99,26 @@ export default function TotpSetup() {
       await api.post("/auth/totp/verify", {
         code: withoutSpaces(data.code),
       });
-      return {
-        state: "success",
-        message: { title: "Two-factor enabled" },
-      };
     } catch {
       return {
         state: "error",
         message: { title: "Verification failed" },
       };
     }
+
+    // So the settings page's switch shows two-factor on. Not a reason to
+    // report the setup as failed if it does not answer: two-factor is on
+    // either way, and the next page load reads it afresh.
+    try {
+      await reload();
+    } catch {
+      // Left to the next load.
+    }
+
+    return {
+      state: "success",
+      message: { title: "Two-factor enabled" },
+    };
   }
 
   return (
