@@ -120,7 +120,13 @@ describe("SlideReader with no slide to show", () => {
   });
 });
 
-describe("SlideReader arrow keys", () => {
+// Ten seconds rather than five, and five for each wait rather than one.
+// The first render loads the slide page, and on a busy CI runner that
+// alone has taken most of the default five seconds, failing "moves back
+// on the left arrow" twice on 17 October 2026 with nothing wrong.
+const WAIT = { timeout: 5_000 };
+
+describe("SlideReader arrow keys", { timeout: 10_000 }, () => {
   beforeEach(() => {
     vi.clearAllMocks();
     (getModuleSlides as Mock).mockResolvedValue(slides);
@@ -143,23 +149,23 @@ describe("SlideReader arrow keys", () => {
 
   it("moves to the next slide on the right arrow", async () => {
     renderAt(0);
-    await screen.findByRole("heading", { name: "Introduction" });
+    await screen.findByRole("heading", { name: "Introduction" }, WAIT);
 
     fireEvent.keyDown(document.body, { key: "ArrowRight" });
 
     expect(
-      await screen.findByRole("heading", { name: "Systematic approach" }),
+      await screen.findByRole("heading", { name: "Systematic approach" }, WAIT),
     ).toBeInTheDocument();
   });
 
   it("moves back on the left arrow", async () => {
     renderAt(1);
-    await screen.findByRole("heading", { name: "Systematic approach" });
+    await screen.findByRole("heading", { name: "Systematic approach" }, WAIT);
 
     fireEvent.keyDown(document.body, { key: "ArrowLeft" });
 
     expect(
-      await screen.findByRole("heading", { name: "Introduction" }),
+      await screen.findByRole("heading", { name: "Introduction" }, WAIT),
     ).toBeInTheDocument();
   });
 
@@ -169,7 +175,7 @@ describe("SlideReader arrow keys", () => {
       // In a video the right arrow skips forward. It once changed the
       // slide as well, and took the delegate away from the video.
       renderAt(0);
-      await screen.findByRole("heading", { name: "Introduction" });
+      await screen.findByRole("heading", { name: "Introduction" }, WAIT);
       const within = onThePage(tag);
 
       const notPrevented = fireEvent.keyDown(within, { key: "ArrowRight" });
