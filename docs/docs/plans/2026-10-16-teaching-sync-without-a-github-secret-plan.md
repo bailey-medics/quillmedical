@@ -34,33 +34,78 @@ transcode, caption and poster jobs, which read it from Secret Manager.
       nothing to sync passes and says so; a sync that raises is rolled
       back and fails.
 
-## Phase 2: The pipeline starts the job
+## Phase 2: A job that can only sync
 
-- [ ] Check which service account each teaching repository passes as
-      `GCP_SERVICE_ACCOUNT`, and that it may run `quill-admin-app` with
-      an env override (`run.jobs.runWithOverrides`) in each environment
-      the pipeline syncs to. `accessibility-review.yml` already does
-      this, but possibly as a different account. Grant it in `infra/` if
-      it is missing; Terraform applies on merge.
+- [x] Check which service account the pipeline signs in as, and what it
+      may do. It is `content-sync@quill-medical-app.iam.gserviceaccount.com`
+      (`content_ci_service_account`, set in `infra/environments/app`
+      only), which may write the teaching bucket and nothing else.
+
+      Found on 2026-10-16: the plan as first written had the pipeline
+      start `quill-admin-app` with `ADMIN_ACTION` as an env override.
+      That needs `roles/run.jobsExecutorWithOverrides`, which lets the
+      caller choose **any** action, `create-superadmin` with a password
+      of its choosing among them. A teaching repository, where content
+      authors push, would then hold more than the bearer token gives it.
+      The admin job also has no `TEACHING_GCS_BUCKET`, which only the
+      backend service is given. Decided by Mark on 2026-10-17: a
+      dedicated job instead, below.
+
+- [x] Add `module "cloud_run_teaching_sync_job"` in `infra/main.tf`: the
+      `cloud-run-job` module again, named `teaching-sync`, the admin
+      image with `ADMIN_ACTION=sync-teaching` fixed in its env, the core
+      database settings and `TEACHING_GCS_BUCKET`. It runs as the admin
+      job's identity, mounting only `CORE_DB_PASSWORD` and `JWT_SECRET`
+      of that identity's secrets.
+
+- [x] Grant, in `infra/runtime-identities.tf`: the admin identity
+      `roles/storage.objectViewer` on the teaching bucket, as the
+      backend has; and `content-sync`, on the sync job alone,
+      `roles/run.invoker` and `roles/run.viewer`. Google's role
+      reference lists `invoker` as `run.instances.invoke`,
+      `run.jobs.run` and `run.routes.invoke`, with no
+      `runWithOverrides`, and its job guide gives `invoker` for
+      starting a job from gcloud. No run role carries
+      `run.executions.get`, which `gcloud run jobs execute --wait` needs
+      to watch the execution end, so `viewer` is added on that job:
+      read-only, and the job's env names its secrets without holding
+      them. Whether `viewer` is enough for `--wait` is checked by the
+      trial run below. Sources:
+      [Cloud Run roles](https://docs.cloud.google.com/iam/docs/roles-permissions/run),
+      [executing jobs](https://docs.cloud.google.com/run/docs/execute/jobs).
+
+      Lands on its own, before anything uses the job: Terraform applies
+      on merge, and a `deploy.yml` step naming a job Terraform has not
+      made yet would fail the deploy.
+
+## Phase 3: The pipeline starts the job
+
+- [ ] Point the job at each build in `.github/workflows/deploy.yml`,
+      with a `gcloud run jobs update quill-teaching-sync-<env> --image`
+      step beside the transcode and caption ones, using the admin image.
+      The admin job's own image is set by `run-migrations.sh`, so
+      without this the sync job would run whatever image it was last
+      given.
 
 - [ ] Replace the "Trigger backend sync" step in
-      `.github/workflows/teaching-pipeline.yml` with
-      `gcloud run jobs execute quill-admin-app --update-env-vars
-      "ADMIN_ACTION=sync-teaching" --wait`, with project and region from
-      secrets as `accessibility-review.yml` takes them. `--wait` makes
-      the step fail when the job fails.
+      `.github/workflows/teaching-pipeline.yml` with a script under
+      `.github/scripts/teaching-pipeline/`, with its `.bats`, that runs
+      `gcloud run jobs execute quill-teaching-sync-app --wait`. The
+      project is the one in the service account's email, so the
+      teaching repositories need no new secret.
 
-- [ ] Rework "Capture the sync response" so the Slack failure notice
-      still quotes the rejected banks. The HTTP body is gone, so read the
-      execution's log with `gcloud logging read` filtered to that
-      execution, truncated as now.
+- [ ] Rework "Capture the sync response". The HTTP body is gone, and
+      reading the job's log from GitHub would need `logging.viewer`,
+      which is project-wide. So the Slack failure notice names the
+      execution and says the rejected banks are in its log, rather
+      than quoting them.
 
-- [ ] Run the pipeline from one teaching repository against the dev
-      environment first, with one module changed, and
-      confirm the bank updates and a deliberately broken bank fails the
-      run with its name in Slack.
+- [ ] Run the pipeline from one teaching repository with one module
+      changed, and confirm the bank updates. Then with a deliberately
+      broken bank, and confirm the run fails and Slack names the
+      execution.
 
-## Phase 3: Remove the route and the secrets
+## Phase 4: Remove the route and the secrets
 
 - [ ] Remove `POST /api/ci/teaching/sync` from
       `backend/app/features/teaching/ci_router.py` and its entry in
@@ -68,7 +113,7 @@ transcode, caption and poster jobs, which read it from Secret Manager.
       a breaking API change: CI's `api_schema_diff` flags it, so add the
       decision file with `backend/scripts/new_compat_decision.py`
       (`forces_reload: false`, since no browser calls it) and approve it
-      in `api-breaking-change-review`. Lands only after Phase 2 is live
+      in `api-breaking-change-review`. Lands only after Phase 3 is live
       in every teaching repository, or a pipeline run between the two
       would fail.
 
@@ -77,7 +122,7 @@ transcode, caption and poster jobs, which read it from Secret Manager.
       are organisation secrets. Check `gh secret list` for each, and the
       organisation's list, before and after.
 
-## Phase 4: One guard for the three callbacks
+## Phase 5: One guard for the three callbacks
 
 - [ ] Move the bearer check copied into `transcode-complete`,
       `caption-complete` and `poster-complete` into one dependency,

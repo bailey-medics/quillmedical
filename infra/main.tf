@@ -533,6 +533,55 @@ module "cloud_run_admin_job" {
   ]
 }
 
+# ---------- Cloud Run Job: teaching sync (teaching only) ----------
+# The admin image, with its one action fixed: `sync-teaching`, which reads
+# every question bank from the teaching bucket into the core database. The
+# teaching pipeline starts it once content is in the bucket.
+#
+# A job of its own rather than the admin job, because of who starts it.
+# The pipeline signs in as `var.content_ci_service_account`, which a
+# teaching repository's workflow can act as. Starting the admin job means
+# naming the action by an env override, and the role that allows overrides
+# allows any action, `create-superadmin` among them. Here the action is in
+# the job's own env, so the pipeline needs only `roles/run.invoker`, which
+# starts the job as configured and nothing else. See
+# docs/docs/plans/2026-10-16-teaching-sync-without-a-github-secret-plan.md.
+#
+# It runs as the admin job's identity, which already reads the two secrets
+# it mounts; its read of the teaching bucket is in runtime-identities.tf.
+# The image is set by deploy.yml, as the admin job's is.
+module "cloud_run_teaching_sync_job" {
+  count  = local.is_teaching_product ? 1 : 0
+  source = "./modules/cloud-run-job"
+
+  service_account_email = google_service_account.runtime["admin"].email
+  project_id            = var.project_id
+  region                = var.region
+  environment           = var.environment
+
+  job_name         = "teaching-sync"
+  image            = var.admin_image
+  vpc_connector_id = module.networking.vpc_connector_id
+
+  env_vars = {
+    ADMIN_ACTION        = "sync-teaching"
+    CORE_DB_HOST        = module.cloud_sql_core.private_ip
+    CORE_DB_NAME        = module.cloud_sql_core.database_name
+    CORE_DB_USER        = module.cloud_sql_core.database_user
+    TEACHING_GCS_BUCKET = module.cloud_storage[0].bucket_name
+  }
+
+  secret_env_vars = {
+    CORE_DB_PASSWORD = local.admin_secret_env_vars["CORE_DB_PASSWORD"]
+    JWT_SECRET       = local.admin_secret_env_vars["JWT_SECRET"]
+  }
+
+  depends_on = [
+    google_secret_manager_secret_iam_member.runtime,
+    module.cloud_sql_core,
+  ]
+}
+
 # ---------- Cloud Run Job: video transcode (teaching only) ----------
 # Produces the renditions a learner is served, from one uploaded source
 # object. Gated on the environment for the same reason the pipeline module is:
