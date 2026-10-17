@@ -46,6 +46,22 @@ describe("ConfirmModal", () => {
     expect(screen.getByText("Remove member")).toBeInTheDocument();
   });
 
+  it("names its dialog by its title, so a screen reader announces it", () => {
+    renderWithMantine(<ConfirmModal {...defaultProps} title="Remove member" />);
+
+    expect(
+      screen.getByRole("dialog", { name: "Remove member" }),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps the title a level two heading inside the name", () => {
+    renderWithMantine(<ConfirmModal {...defaultProps} title="Remove member" />);
+
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Remove member" }),
+    ).toBeInTheDocument();
+  });
+
   it("renders icon when provided", () => {
     renderWithMantine(
       <ConfirmModal {...defaultProps} icon={<IconAlertTriangle />} />,

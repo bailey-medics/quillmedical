@@ -1273,10 +1273,13 @@ What is there today:
       users, patients and modules still show as "Inactive"), and the site
       page offers no "Add staff" on a deactivated site. The journey is
       `tests/teaching-admin/deactivating-a-site.spec.ts`.
-      Found while building it: `ConfirmModal` gives its dialog no
-      accessible name, so a screen reader announces an unnamed dialog;
-      the journey finds it by its words. Not fixed here, as every
-      confirm modal shares it.
+      Found while building it: `ConfirmModal` gave its dialog no
+      accessible name, so a screen reader announced an unnamed dialog.
+      Fixed afterwards, at Mark's request on 2026-10-17, for every
+      confirm modal: the title sits inside Mantine's `Modal.Title`, drawn
+      as a plain wrapper round our own `Heading`, so the dialog is named
+      by it through `aria-labelledby`. The journey now finds the modal
+      by that name.
 
 - [x] A guide for teaching admins, asked for by Mark on 2026-10-17:
       `frontend/src/guides/content/deactivate-a-site.md`, registered in
