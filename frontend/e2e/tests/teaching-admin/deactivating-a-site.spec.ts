@@ -86,10 +86,7 @@ test("deactivates a site, closing the accounts of people with nowhere else", asy
   // The red button, and a modal that says how many accounts go with it.
   await page.goto(`/admin/sites/${siteId}/edit`);
   await page.getByRole("button", { name: "Deactivate site" }).click();
-  // Found by its words: `ConfirmModal` gives its dialog no name.
-  const dialog = page
-    .getByRole("dialog")
-    .filter({ hasText: "Deactivating this site" });
+  const dialog = page.getByRole("dialog", { name: "Deactivate site" });
   await expect(dialog).toContainText(
     "Deactivating this site will also deactivate the accounts of anyone that does not belong to a second organisation or site.",
   );
