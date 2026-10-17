@@ -1,0 +1,19 @@
+# The public site, quill-medical.com, for the end-to-end stack only.
+#
+# Served the way the Cloud Storage bucket serves it in production: clean
+# addresses, so /about is the page built as about.html, and not-found.html
+# for anything else. See .github/scripts/public-site/deploy-to-gcs.sh.
+{
+	admin off
+}
+
+:8081 {
+	root * /srv/public
+	try_files {path} {path}.html {path}/index.html
+	file_server
+
+	handle_errors {
+		rewrite * /not-found.html
+		file_server
+	}
+}

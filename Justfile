@@ -85,8 +85,17 @@ _e2e-run *ARGS:
     # status Playwright produced survives the trap.
     trap 'just _e2e-down' EXIT
     base_url=$(just _e2e-up)
-    echo "End-to-end stack is up at ${base_url}" >&2
-    cd frontend && E2E_BASE_URL="${base_url}" npx playwright test {{ARGS}}
+    public_url=$(just _e2e-public-url)
+    echo "End-to-end stack is up at ${base_url}, public site at ${public_url}" >&2
+    cd frontend && E2E_BASE_URL="${base_url}" E2E_PUBLIC_URL="${public_url}" npx playwright test {{ARGS}}
+
+
+# The address of the public site in this worktree's end-to-end stack.
+_e2e-public-url:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    port=$(docker compose -p "$(just _e2e-project)" -f compose.ci.yml port public 8081 | sed 's/.*://')
+    echo "http://localhost:${port}"
 
 
 # Bring up this worktree's end-to-end stack the way CI does, and print its URL.
@@ -106,7 +115,7 @@ _e2e-up:
     .github/scripts/ci/fetch-e2e-teaching.sh >&2
     # The folder the stack writes its emails to, for the tests to read
     .github/scripts/ci/prepare-e2e-mail.sh >&2
-    E2E_PORT=0 ${compose} up --build --wait --wait-timeout 120 >&2
+    E2E_PORT=0 E2E_PUBLIC_PORT=0 ${compose} up --build --wait --wait-timeout 120 >&2
 
     # The prod image does not migrate on start-up, so the fresh database
     # needs the schema applied before it is seeded - as in ci.yml.

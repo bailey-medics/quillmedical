@@ -9,9 +9,10 @@
 # local run rehearses the CI job rather than the dev stack. To let several
 # worktrees run it side by side there are no fixed container names (compose
 # scopes them by project, and `just e2e` names the project after the
-# worktree) and the published port is E2E_PORT, default 80 for CI. `just e2e`
-# passes 0 so Docker picks a free port, then reads it back with
-# `docker compose port caddy 80`.
+# worktree) and the published ports are E2E_PORT, default 80 for CI, and
+# E2E_PUBLIC_PORT for the public site, default 8081. `just e2e` passes 0 for
+# both so Docker picks free ports, then reads them back with
+# `docker compose port`.
 
 services:
   backend:
@@ -78,6 +79,26 @@ services:
       - "8080"
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    networks:
+      - ci
+
+  # The public site, quill-medical.com, which production serves from Cloud
+  # Storage. Here so a test can open a public page and follow its buttons
+  # into the app. Its own port, E2E_PUBLIC_PORT, default 8081 for CI.
+  public:
+    image: quillmedical-ci_public:latest
+    build:
+      context: .
+      dockerfile: ./frontend/Dockerfile
+      target: public-ci
+    ports:
+      - "${E2E_PUBLIC_PORT:-8081}:8081"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8081/"]
       interval: 5s
       timeout: 3s
       retries: 10
