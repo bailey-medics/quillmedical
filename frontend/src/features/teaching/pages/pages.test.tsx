@@ -320,6 +320,23 @@ describe("AssessmentResultPage", () => {
       "/teaching/assessment/7/question-results",
     );
   });
+
+  it("offers Back to dashboard when opened from the dashboard", async () => {
+    // No `fromExam` state: an earlier attempt opened from the list.
+    mockResult();
+    renderWithRouter(<AssessmentResultPage />, {
+      routePath: "/teaching/assessment/:id/result",
+      initialRoute: "/teaching/assessment/7/result",
+    });
+
+    expect(
+      await screen.findByRole("button", { name: "Back to dashboard" }),
+    ).toBeInTheDocument();
+    // Trying again is still offered only straight after the exam.
+    expect(
+      screen.queryByRole("button", { name: "Try again" }),
+    ).not.toBeInTheDocument();
+  });
 });
 
 describe("AssessmentResultPage for somebody refused the module", () => {

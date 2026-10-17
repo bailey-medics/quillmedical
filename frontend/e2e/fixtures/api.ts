@@ -79,6 +79,12 @@ export interface NewAccount {
    * will reset needs one that passes, such as `example.com`.
    */
   email?: string;
+  /**
+   * Make them able to take a module: practising "Take Teaching Modules"
+   * at a site, and enrolled on the module at its organisation, as the
+   * user form's Practice and Enrolment steps do.
+   */
+  takesModule?: { siteId: number; organisationId: number; moduleId: string };
 }
 
 /**
@@ -99,6 +105,24 @@ export async function createAccount(
     password: account.password ?? `${account.username}Pass123!`,
     base_profession: account.profession,
     org_unit_ids: account.orgUnitIds,
+    ...(account.takesModule
+      ? {
+          practising: [
+            {
+              org_unit_id: account.takesModule.siteId,
+              competencies: ["take_teaching_modules"],
+            },
+          ],
+          teaching_enrolments: [
+            {
+              org_unit_id: account.takesModule.organisationId,
+              modules: [
+                { module_id: account.takesModule.moduleId, ends_on: null },
+              ],
+            },
+          ],
+        }
+      : {}),
   });
   expect(response.status(), await response.text()).toBe(200);
 
