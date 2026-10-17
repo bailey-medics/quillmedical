@@ -11,6 +11,7 @@ import { test, expect } from "../../fixtures/axe";
 import { read } from "../../fixtures/api";
 import { TEACHING_PEOPLE, makePerson } from "../../fixtures/people";
 import { signIn } from "../../fixtures/signIn";
+import { expectQrCodeHolds } from "../../fixtures/qr";
 import { totpCode } from "../../fixtures/totp";
 
 /**
@@ -106,7 +107,7 @@ for (const { who, kind, profession } of TEACHING_PEOPLE) {
       expect(await colourScheme(page)).toBe("light");
     });
 
-    test("turns off Help improve Quill", async ({
+    test("turns Help improve Quill off and on again", async ({
       page,
       browser,
     }, testInfo) => {
@@ -116,20 +117,46 @@ for (const { who, kind, profession } of TEACHING_PEOPLE) {
         testInfo.project.name,
         profession,
       );
+      const name = "Help improve Quill";
+
+      // Page views sent, counted as the browser sends them.
+      let sent = 0;
+      page.on("request", (request) => {
+        if (request.url().includes("/api/analytics/page-views")) sent += 1;
+      });
+
+      /** Open a page and say whether a page view was sent for it. */
+      async function countsAPageView(): Promise<boolean> {
+        const before = sent;
+        await page.goto("/guides");
+        await expect(
+          page.getByRole("heading", { level: 1, name: "Guides" }),
+        ).toBeVisible();
+        // Sent as the page settles, so given a moment to be.
+        await page.waitForTimeout(1_000);
+
+        return sent > before;
+      }
 
       await signIn(page, username);
       await page.goto("/settings");
-      const toggle = page.getByRole("switch", { name: "Help improve Quill" });
-      await expect(toggle).toBeChecked();
+      await expect(page.getByRole("switch", { name })).toBeChecked();
 
-      await flip(page, "Help improve Quill");
-      await expect(toggle).not.toBeChecked();
-
-      // The choice is kept, so a reload still shows it off.
+      // Off: the choice is kept, so a reload still shows it off, and no
+      // page view is sent.
+      await flip(page, name);
+      await expect(page.getByRole("switch", { name })).not.toBeChecked();
       await page.reload();
-      await expect(
-        page.getByRole("switch", { name: "Help improve Quill" }),
-      ).not.toBeChecked();
+      await expect(page.getByRole("switch", { name })).not.toBeChecked();
+      expect(await countsAPageView()).toBe(false);
+
+      // On again: kept as well, and page views are sent again.
+      await page.goto("/settings");
+      await flip(page, name);
+      await expect(page.getByRole("switch", { name })).toBeChecked();
+      await page.reload();
+      await expect(page.getByRole("switch", { name })).toBeChecked();
+      expect(await countsAPageView()).toBe(true);
     });
 
     test("turns news and updates on and off", async ({
@@ -191,11 +218,18 @@ for (const { who, kind, profession } of TEACHING_PEOPLE) {
       await expect(page).toHaveURL(/\/settings\/totp$/);
 
       // Story 27: the page shows the otpauth:// link an authenticator app
-      // reads from the QR code. Its secret gives the codes.
+      // reads from the QR code. Its secret gives the codes, and the QR
+      // code, named for a screen reader, holds that same link: the code
+      // an app scans is the one this test signs in with.
       const link = page.getByText(/^otpauth:\/\//);
       await expect(link).toBeVisible();
-      const secret = new URL(await link.innerText()).searchParams.get("secret");
+      const address = await link.innerText();
+      const secret = new URL(address).searchParams.get("secret");
       expect(secret).not.toBeNull();
+      await expectQrCodeHolds(
+        page.getByRole("img", { name: "QR code for your authenticator app" }),
+        address,
+      );
 
       const setUpWith = Date.now();
       await page
@@ -209,9 +243,27 @@ for (const { who, kind, profession } of TEACHING_PEOPLE) {
       await page.waitForTimeout(msUntilNextStep(setUpWith));
       const signInCode = totpCode(secret ?? "");
 
-      // Signing in again now asks for a code.
+      // Signing in again now asks for a code. A wrong one is refused with
+      // a message, and the page stays put; the right one then gets in.
+      // The wrong one is a code for no step in the window either side.
       await page.context().clearCookies();
-      await signInWithCode(page, username, signInCode);
+      const now = Date.now();
+      const inWindow = [-30_000, 0, 30_000].map((offset) =>
+        totpCode(secret ?? "", now + offset),
+      );
+      const wrong = ["000000", "111111", "222222", "333333"].find(
+        (candidate) => !inWindow.includes(candidate),
+      );
+      await signInWithCode(page, username, wrong ?? "000000");
+      await expect(
+        page.getByText(
+          "Wrong code entered, please try entering your 6-digit authenticator code again",
+        ),
+      ).toBeVisible();
+      await expect(page).toHaveURL(/\/login/);
+      const field = page.getByLabel(/authenticator code/i);
+      await field.fill(signInCode);
+      await field.press("Enter");
       await expect(page).not.toHaveURL(/\/login/, { timeout: 30_000 });
 
       // The same code a second time is refused (RFC 6238 section 5.2),

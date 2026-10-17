@@ -1413,7 +1413,7 @@ Decided by Mark on 2026-10-17:
 Asked for by Mark on 2026-10-17, about #2050. Built in a new pull request
 on top, leaving #2050 as it is.
 
-- [ ] Check the two-factor QR code, not only the link beside it. Story 27
+- [x] Check the two-factor QR code, not only the link beside it. Story 27
       reads the secret from the `otpauth://` text and never looks at the
       QR code, drawn on a `<canvas>` by the `qrcode` package in
       `src/pages/TotpSetup.tsx`. Decode the canvas in the browser and
@@ -1422,24 +1422,42 @@ on top, leaving #2050 as it is.
       The canvas has no accessible name either, so a screen reader
       passes over it without a word: worth giving it one, such as "QR
       code for your authenticator app", and finding it by that.
+      Built without a decoder: `e2e/fixtures/qr.ts` builds the code's grid
+      with the same `qrcode` package from the link's text, and reads the
+      centre of each cell off the canvas; they match only if the picture
+      holds that link. The canvas is now `role="img"` with that name.
 
-- [ ] Turn Help improve Quill off and back on. Today's test turns it off
+- [x] Turn Help improve Quill off and back on. Today's test turns it off
       and reloads. Add turning it on again, and check what the switch
       does, not only how it looks: with it off, moving between pages
       sends no `POST /api/analytics/page-views`; with it on again, it
       does. The choice is kept in the browser (`quill.pageViews.optOut`
       in `localStorage`), so a reload shows each state.
+      Built: the test counts requests to the page-views route while
+      opening the guides page, none with it off and some with it on.
 
-- [ ] A wrong two-factor code at sign-in, asked for by Mark on
+- [x] A wrong two-factor code at sign-in, asked for by Mark on
       2026-10-17. The backend refuses one (`test_login_with_invalid_totp`),
       but no browser test types one. A person with two-factor on enters
       their password, then a code that is wrong: the login page says so,
       they stay on it, and a right code then signs them in.
+      Built into story 27, just before its right code: the wrong one is
+      a code for no step in the window either side, and the page says
+      "Wrong code entered, please try entering your 6-digit authenticator
+      code again".
 
 - [ ] Signing in after two-factor is turned off, asked for by Mark on
       2026-10-17. A person sets two-factor up as story 27 does, turns
       it off in settings (which asks for their password), signs out, and
       signs in again with their password alone: no code is asked for.
+      Held, found while building it: the app has no way to turn
+      two-factor off. The "Two-factor authentication (TOTP)" switch in
+      `src/pages/Settings.tsx` is local state, off on every visit even
+      when two-factor is on, and turning it off only greys out "Configure
+      TOTP"; nothing calls `POST /api/auth/totp/disable`, which needs the
+      password. Building it means the switch reading `totp_enabled` from
+      `/api/auth/me`, and a modal asking for the password, which no
+      existing component is. That is new UI, so it waits for Mark.
 
 ## Phase 19: Telling the operator when no clinical lead is told of a pass
 
