@@ -13,7 +13,13 @@
 #
 # Used by the heavy_e2e job in .github/workflows/ci.yml and by `just e2e`,
 # so a local run tests the same content CI does. Safe to re-run: it does
-# nothing when the pinned commit is already checked out.
+# not fetch again when the pinned commit is already checked out.
+#
+# The checkout is left writable by anyone, because a video uploaded in the
+# stack is saved beside the module's content, as it is wherever content is
+# on disk. The backend runs as its own unprivileged user, so on a Linux
+# host it could write to neither a folder the runner made nor one Docker
+# made. Test machines only: App production keeps uploads in a bucket.
 #
 # Usage: fetch-e2e-teaching.sh
 
@@ -52,11 +58,27 @@ fetch_commit() {
   log "Fetched ${sha:0:7}"
 }
 
+# Let every user write anywhere under a checkout, so the stack's backend
+# can save an upload beside the content. Files that are executable stay
+# so and no others become so, which leaves git seeing no change.
+#
+# Args: <dest>
+open_for_uploads() {
+  local dest="$1"
+
+  chmod -R a+rwX "$dest"
+  log "Open for uploads"
+}
+
 main() {
   local root
+  local dest
+
   root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
-  fetch_commit "$REPO_URL" "$PINNED_SHA" \
-    "${root}/.e2e-teaching/respiratory-teaching"
+  dest="${root}/.e2e-teaching/respiratory-teaching"
+
+  fetch_commit "$REPO_URL" "$PINNED_SHA" "$dest"
+  open_for_uploads "$dest"
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then

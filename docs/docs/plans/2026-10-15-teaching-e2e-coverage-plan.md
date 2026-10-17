@@ -1398,11 +1398,16 @@ Decided by Mark on 2026-10-17:
       `may_upload_videos`, so the page shows a section only where the
       caller may act.
 
-- [ ] Make the end-to-end stack's content folder writable, decided by
+- [x] Make the end-to-end stack's content folder writable, decided by
       Mark on 2026-10-17. An upload saves the file beside the content,
-      and `compose.ci.yml` mounts `.e2e-teaching` read-only, as does
-      CI's Playwright container. Test machines only: App production
-      stores uploads in its bucket.
+      and `compose.ci.yml` mounted `.e2e-teaching` read-only. Test
+      machines only: App production stores uploads in its bucket. The
+      mount loses `:ro`, and `fetch-e2e-teaching.sh` opens the checkout
+      to every user (`open_for_uploads`), as `prepare-e2e-mail.sh` does
+      for the mail folder, because the backend runs as its own user and
+      on a Linux runner could write to nothing the runner made. CI's
+      Playwright container keeps its read-only mount: it only reads the
+      answers, and the upload is written by the backend.
 
 - [ ] Test the real gate, not a way round it. A first attempt let a
       hand-placed `learning/{ref}.mp4` count as servable where content is

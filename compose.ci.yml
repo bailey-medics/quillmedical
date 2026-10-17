@@ -49,8 +49,10 @@ services:
       # (`just guide-screenshots`). The end-to-end tests never run it.
       - ./backend/scripts/seed_guides.py:/app/scripts/seed_guides.py:ro
       # Teaching content for seed_ci.py to sync, fetched by
-      # .github/scripts/ci/fetch-e2e-teaching.sh before the stack starts
-      - ./.e2e-teaching:/teaching-repos:ro
+      # .github/scripts/ci/fetch-e2e-teaching.sh before the stack starts.
+      # Writable, because an uploaded video is saved beside the content;
+      # that script opens the folder to the backend's own user.
+      - ./.e2e-teaching:/teaching-repos
       # The emails the tests read, through e2e/fixtures/mail.ts
       - ./frontend/e2e/.mail:/e2e-mail
     expose:
