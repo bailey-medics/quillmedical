@@ -608,7 +608,7 @@ reader sees their own tier and every one below it, so a TA sees "For
 admins" and "For everyone", and a TD sees "For everyone" alone. Each
 teaching guide also needs the `teaching` feature.
 
-- [ ] Move "Join a course" to "For everyone": its `audience` in
+- [x] Move "Join a course" to "For everyone": its `audience` in
       `registry.ts` goes from `admin` to `everyone`. Decided by Mark on
       2026-10-16. The comment beside it gave the old reason, that
       somebody signed in has joined already so only an admin needs it;
@@ -617,25 +617,28 @@ teaching guide also needs the `teaching` feature.
       read signed out from the login page. Update the registry's tests
       for the new grouping.
 
-- [ ] 1. As a TA, I want to see both the "For admins" and the "For
+- [x] 1. As a TA, I want to see both the "For admins" and the "For
       everyone" guides, so that I can find how to run teaching and how
       delegates take part.
       Tested: "For admins" lists "Add a delegate by hand" and "See
       delegates' results"; "For everyone" lists "Join a course" and "Take
       a module and its assessment".
-- [ ] 2. As a TA, I want to open "Add a delegate by hand", so that I can
+- [x] 2. As a TA, I want to open "Add a delegate by hand", so that I can
       learn how to make an account for somebody who cannot register.
-- [ ] 3. As a TA, I want to open "See delegates' results", so that I can
+- [x] 3. As a TA, I want to open "See delegates' results", so that I can
       learn how to follow who has passed.
-- [ ] 4. As a TA or a TD, I want to open "Join a course", so that I can
+- [x] 4. As a TA or a TD, I want to open "Join a course", so that I can
       follow, or pass on, how to register.
-- [ ] 5. As a TA or a TD, I want to open "Take a module and its
+- [x] 5. As a TA or a TD, I want to open "Take a module and its
       assessment", so that I know how to work through a module.
-- [ ] 6. As Quill, I want a TD to see only the "For everyone" guides, so
+- [x] 6. As Quill, I want a TD to see only the "For everyone" guides, so
       that delegates are shown only what is theirs.
       Tested: no "For admins" heading, and neither admin guide in the
       list. Opening an admin guide's address directly is checked too, and
-      shows what the app shows for any page that is not theirs.
+      shows what the app shows for any page that is not theirs: the 404
+      page. Tests are in `tests/guides/guides.spec.ts`. With one group,
+      the list leaves out its heading, so a TD sees the two guides with
+      no "For everyone" heading above them.
 
 ## Phase 8: What is not theirs, feedback, and signing out
 
