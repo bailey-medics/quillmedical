@@ -1118,6 +1118,44 @@ near these places, so moving them would test nothing new.
       another tree and naming a lead there, and refusal turns on the
       tree, not on what the place runs.
 
+## Phase 14: The terms of service and privacy policy while registering
+
+Asked for by Mark on 2026-10-17. The registration form's last view says
+"By creating an account you agree to our terms of service and have read
+our privacy policy" (`components/registration/LegalNotice.tsx`), each a
+link that opens in a new tab (`ExternalTextLink`, `target="_blank"`,
+`rel="noopener noreferrer"`). Nothing tests that they are there, that
+they open the right page, or that somebody who reads them can come back
+and finish registering.
+
+- [x] Add story 10 to `tests/getting-in/registering.spec.ts`, as a uTD
+      registering from the login page:
+      - both links are on the form, named "terms of service" and
+        "privacy policy";
+      - each opens a new tab, caught as Playwright's `popup` event, on
+        the public site's `/terms-of-service` and `/privacy-policy`, with
+        the page's heading shown. The links name the live public site,
+        `https://quill-medical.com`, so the test routes requests for it
+        to the stack's own public site (`E2E_PUBLIC_URL`), as
+        `fixtures/publicSite.ts` already does the other way round;
+      - the new tab is the one in front: `document.visibilityState` is
+        `visible` in it. A browser brings a tab opened by a click to the
+        front by itself; the test checks it did, and if headless
+        Chromium or WebKit cannot report it reliably, the step says so
+        here rather than asserting something the browser cannot tell;
+      - each tab is closed, and the registration tab still holds
+        everything typed into the form, and registering goes on to the
+        confirmation email as story 8 does.
+      Opening both tabs before closing either is the case most likely to
+      lose the form, so it is the order the test uses.
+      Built. Each link is found by its full name, "terms of service
+      (opens in a new tab)", since `ExternalTextLink` tells a screen
+      reader what it does. The front-tab check was tried and dropped:
+      headless Chromium and WebKit report every tab visible and focused,
+      the form's tab included, so `visibilityState` proves nothing. The
+      test checks instead that each link opens a tab of its own, which
+      is what a browser brings to the front.
+
 ## Decisions
 
 - **Refusals are checked at the API as well as on screen** - several
