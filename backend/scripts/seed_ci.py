@@ -199,10 +199,19 @@ def seed() -> None:
         seed_clinical_lead(db, admin)
         seed_out_of_time_learners(db)
 
+        # 5d. The rest of the world the teaching journeys run in: a
+        # second site here, and a second teaching organisation with two
+        # sites, each site with its own clinical lead, so the leak tests
+        # in e2e/tests/leaks/ can see what crosses a site or an
+        # organisation.
+        second = seed_teaching_world(db, org.id, admin)
+
         db.commit()
 
-        # 6. Open every teaching module mounted at /teaching-repos
+        # 6. Open every teaching module mounted at /teaching-repos, at
+        # both teaching organisations
         seed_teaching(db, org.id, admin.id)
+        seed_teaching(db, second.id, admin.id)
 
         # 7. A delegate with a result, for the teaching admin's list of
         # delegates in e2e/tests/teaching-admin/
@@ -368,6 +377,74 @@ def seed_clinical_lead(db: Session, appointed_by: User) -> None:
     set_clinical_lead(db, site, lead, appointed_by=appointed_by)
     db.flush()
     print("Seeded the clinical lead of CI Teaching Centre")
+
+
+#: The second teaching organisation, and its teaching admin.
+SECOND_ORGANISATION = "CI Second Hospital"
+SECOND_TEACHING_ADMIN = "educator_second"
+
+#: The sites of the world besides ``CI Teaching Centre``, each with the
+#: organisation it is in and the username of its clinical lead.
+WORLD_SITES = (
+    ("CI Teaching Annexe", "CI Teaching Hospital", "ci_annexe_lead"),
+    ("CI Second Centre", SECOND_ORGANISATION, "ci_second_lead"),
+    ("CI Second Annexe", SECOND_ORGANISATION, "ci_second_annexe_lead"),
+)
+
+
+def seed_teaching_world(
+    db: Session, organisation_id: int, appointed_by: User
+) -> OrgUnit:
+    """Seed the second site, and the second teaching organisation.
+
+    With ``CI Teaching Centre`` this makes two teaching organisations of
+    two sites each, every site with a clinical lead of its own, and the
+    second organisation with a teaching admin of its own. ``CI Other
+    Hospital``, which runs no teaching, stays as the place nobody may
+    move a delegate to.
+
+    Returns:
+        The second teaching organisation, for ``seed_teaching`` to open
+        the modules at.
+    """
+    second = _ensure_org_unit(
+        db, SECOND_ORGANISATION, "teaching_establishment", None
+    )
+    teaching_on = db.scalar(
+        select(OrgUnitFeature.id).where(
+            OrgUnitFeature.org_unit_id == second.id,
+            OrgUnitFeature.feature_key == "teaching",
+        )
+    )
+
+    if teaching_on is None:
+        db.add(
+            OrgUnitFeature(
+                org_unit_id=second.id,
+                feature_key="teaching",
+                enabled_by=appointed_by.id,
+            )
+        )
+
+    admin = _ensure_user(db, SECOND_TEACHING_ADMIN, "teaching_admin")
+    add_org_unit_member(db, second.id, admin.id, "staff")
+    give_place(db, admin, second.id)
+
+    parents = {
+        "CI Teaching Hospital": organisation_id,
+        SECOND_ORGANISATION: second.id,
+    }
+
+    for site_name, organisation, lead_name in WORLD_SITES:
+        site = _ensure_org_unit(db, site_name, "site", parents[organisation])
+        lead = _ensure_user(db, lead_name, "teaching_clinical_lead")
+        add_org_unit_member(db, site.id, lead.id, "staff")
+        set_clinical_lead(db, site, lead, appointed_by=appointed_by)
+
+    db.flush()
+    print("Seeded the second site and the second teaching organisation")
+
+    return second
 
 
 #: The learners whose attempt has run out of time, one per browser project,
