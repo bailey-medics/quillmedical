@@ -117,22 +117,38 @@ Each item is one Playwright test, grouped in specs under
 checks the API as well as the screen: a hidden button proves nothing if
 the request behind it still succeeds.
 
-- [ ] 1. A superuser logs in.
-- [ ] 2. A teaching admin logs in.
-- [ ] 3. A superuser creates an admin account for someone else.
-- [ ] 4. A teaching admin creates an admin account for someone else.
-- [ ] 5. A teaching admin creates a teaching delegate account, setting
-     the organisation, site, practice and enrolment.
-- [ ] 6. A teaching admin sends a join invite to the new user, and the
-     link in the email opens the join page (needs the email step from
-     Phase 1).
-- [ ] 7. A teaching admin deactivates an account, and that account can
-     no longer log in.
-- [ ] 8. A teaching admin changes a user's profile (name, email and the
-     other fields on the edit page).
-- [ ] 9. A teaching admin cannot move a teaching delegate to an
-     organisation or site the admin is not a member of. The option is not
-     offered, and a forged request is refused.
+- [x] 1. A superuser logs in. In `teaching-admin/sign-in.spec.ts`, with
+      item 2. Found on the way: the seeded `admin` had the `superadmin`
+      platform role and no profession, so no competencies, and the admin
+      area was a 404 to them. A real operator is given
+      `superadmin_profession`, as `seed_guides.py` gives `guide_operator`,
+      so `seed_ci.py` now does the same.
+- [x] 2. A teaching admin logs in, lands on teaching, opens admin, and is
+      shown a 404 on the operator's feedback page.
+- [x] 3. A superuser creates an admin account for someone else: a teaching
+      admin at "CI Teaching Hospital". Items 3 to 9 are in
+      `teaching-admin/accounts.spec.ts`.
+- [x] 4. A teaching admin creates an admin account for someone else.
+- [x] 5. A teaching admin creates a teaching delegate account, setting
+     the organisation, site, practice and enrolment. Checked afterwards on
+     the delegate's page at the site: taking modules is switched on there,
+     and the module is ticked.
+- [x] 6. A teaching admin sends a join invite to the new user, and the
+     link in the email sets a password the new user then signs in with,
+     in a browser of their own.
+- [x] 7. A teaching admin deactivates an account, and that account can
+     no longer log in: the login form is answered 400.
+- [x] 8. A teaching admin changes a user's name and email through the
+     edit form, read back from the API.
+- [x] 9. A teaching admin cannot move a teaching delegate to an
+     organisation or site the admin is not a member of. Neither is offered
+     in the form, and a forged `PATCH /api/users/{id}` naming either is
+     refused, with the delegate's places unchanged afterwards.
+
+      Items 6 to 9 make the account they act on through the API
+      (`e2e/fixtures/api.ts`), so each tests its own action rather than
+      the user form again. Tables are paged at ten rows, and each run adds
+      accounts, so rows are found by searching (`e2e/fixtures/tables.ts`).
 - [ ] 10. A teaching admin cannot add a new organisation.
 - [ ] 11. A teaching admin can add a new site.
 - [ ] 12. A teaching admin cannot change the details of their
