@@ -19,6 +19,9 @@ export default function ResetPasswordPage() {
   // never saw the registration form, so the marketing question is asked
   // here. A forgotten-password link does not, and is not asked.
   const isInvite = searchParams.get("invite") === "1";
+  // A reset for an address not yet confirmed says so: following the link
+  // confirms the address and sets the password at once.
+  const isConfirming = searchParams.get("confirm") === "1";
 
   async function handleSubmit(
     newPassword: string,
@@ -58,5 +61,11 @@ export default function ResetPasswordPage() {
     }
   }
 
-  return <ResetPasswordForm onSubmit={handleSubmit} isInvite={isInvite} />;
+  return (
+    <ResetPasswordForm
+      onSubmit={handleSubmit}
+      isInvite={isInvite}
+      isConfirming={isConfirming}
+    />
+  );
 }

@@ -47,14 +47,28 @@ export interface ResetPasswordFormProps {
    * marketing question, and the legal notice. Never for an ordinary reset.
    */
   isInvite?: boolean;
+  /**
+   * Somebody whose email address was not confirmed asked for a reset. The
+   * same link confirms the address and sets the password, so the page
+   * says "Set your password" rather than "Reset password".
+   */
+  isConfirming?: boolean;
 }
 
-function ResetPasswordFields({ isInvite }: { isInvite: boolean }) {
+function ResetPasswordFields({
+  isInvite,
+  isConfirming,
+}: {
+  isInvite: boolean;
+  isConfirming: boolean;
+}) {
   const { methods } = useFormContext();
 
   return (
     <Stack>
-      <PageHeader title="Reset password" />
+      <PageHeader
+        title={isConfirming ? "Set your password" : "Reset password"}
+      />
       <PasswordField
         label="New password"
         {...methods.register("password", {
@@ -100,6 +114,7 @@ function ResetPasswordFields({ isInvite }: { isInvite: boolean }) {
 export default function ResetPasswordForm({
   onSubmit,
   isInvite = false,
+  isConfirming = false,
 }: ResetPasswordFormProps) {
   async function handleSubmit(
     data: ResetPasswordFormValues,
@@ -121,10 +136,13 @@ export default function ResetPasswordForm({
         <Form<ResetPasswordFormValues>
           defaultValues={{ password: "", confirm: "", marketingOptOut: false }}
           onSubmit={handleSubmit}
-          submitLabel="Reset password"
-          submittingLabel="Resetting…"
+          submitLabel={isConfirming ? "Set password" : "Reset password"}
+          submittingLabel={isConfirming ? "Setting…" : "Resetting…"}
         >
-          <ResetPasswordFields isInvite={isInvite} />
+          <ResetPasswordFields
+            isInvite={isInvite}
+            isConfirming={isConfirming}
+          />
         </Form>
       </BaseCard>
     </>

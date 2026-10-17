@@ -61,6 +61,7 @@ from app.email.render import RenderedEmail, render_email, send_args
 from app.email_send import (
     EmailNotAllowedError,
     EmailRateLimitError,
+    EmailSendError,
     send_email,
 )
 from app.features.passport.errors import PassportError
@@ -852,6 +853,24 @@ def resend_verification(
     return DetailResponse(detail="ok")
 
 
+def _send_forgot_password_email(to: str, rendered: RenderedEmail) -> None:
+    """Send one of the forgot password emails, and never fail the request.
+
+    Whatever becomes of the email, the route answers the same, so a send
+    that is refused or fails cannot show whether the address has an
+    account. A failure is logged, without the address, and the person can
+    ask again.
+    """
+    try:
+        send_email(to=to, **send_args(rendered))
+    except EmailRateLimitError:
+        logger.warning("forgot password mail not sent: address rate limited")
+    except EmailNotAllowedError:
+        logger.warning("forgot password mail not sent: recipient not allowed")
+    except EmailSendError:
+        logger.exception("forgot password mail could not be sent")
+
+
 @router.post("/auth/forgot-password", response_model=DetailResponse)
 @limiter.limit("3/minute")
 def forgot_password(
@@ -861,9 +880,18 @@ def forgot_password(
 ) -> DetailResponse:
     """Request a password reset email.
 
-    Accepts an email address and, if a matching active account exists, sends a
-    password reset link. Always returns a success response regardless of
-    whether the email exists, to prevent account enumeration.
+    Always returns the same success response, whatever the address, so the
+    page never shows who has an account. The email says what is true,
+    since only the address's owner reads it, as the OWASP Forgot Password
+    Cheat Sheet advises:
+
+    - an active account with a confirmed address is sent a reset link;
+    - one whose address is not confirmed yet is sent a link that confirms
+      it and sets the password, rather than a reset that would leave them
+      refused at login as unconfirmed;
+    - an address with no account is told so, with a link to register;
+    - a deactivated account is sent nothing. It is treated as unknown,
+      and a "register" email would invite a second account.
 
     The reset link contains a time-limited signed token (default 30 min).
 
@@ -877,27 +905,48 @@ def forgot_password(
     email = normalise_email(data.email)
     user = db.scalar(select(User).where(User.email == email))
 
-    # A deactivated account is treated as an unknown address: no email,
-    # and the same reply.
-    if user and user.is_active:
-        token = create_password_reset_token(email, user.token_version)
-        reset_url = f"{settings.FRONTEND_URL}/reset-password?token={token}"
-        send_email(
-            to=email,
-            **send_args(
-                render_email(
-                    "password_reset.html.j2",
-                    "quill",
-                    {
-                        **account_email_values(user),
-                        "reset_url": reset_url,
-                        "ttl_minutes": settings.PASSWORD_RESET_TTL_MIN,
-                    },
-                )
+    if user is None:
+        _send_forgot_password_email(
+            email,
+            render_email(
+                "no_account.html.j2",
+                "quill",
+                {
+                    "email": email,
+                    "register_url": f"{settings.FRONTEND_URL}/register",
+                },
             ),
         )
 
-        # Always return ok to prevent account enumeration
+        return DetailResponse(detail="ok")
+
+    # A deactivated account is treated as an unknown address would have
+    # been before: no email, and the same reply.
+    if not user.is_active:
+        return DetailResponse(detail="ok")
+
+    token = create_password_reset_token(email, user.token_version)
+    reset_url = f"{settings.FRONTEND_URL}/reset-password?token={token}"
+    template = "password_reset.html.j2"
+
+    # `confirm=1` is what makes the page say "Set your password".
+    if not user.email_verified:
+        reset_url = f"{reset_url}&confirm=1"
+        template = "confirm_and_set_password.html.j2"
+
+    _send_forgot_password_email(
+        email,
+        render_email(
+            template,
+            "quill",
+            {
+                **account_email_values(user),
+                "reset_url": reset_url,
+                "ttl_minutes": settings.PASSWORD_RESET_TTL_MIN,
+            },
+        ),
+    )
+
     return DetailResponse(detail="ok")
 
 
@@ -955,6 +1004,10 @@ def reset_password(
 
     user.password_hash = hash_password(data.new_password)
     user.token_version += 1  # Invalidate all existing sessions
+    # The link was emailed to this address and followed, which proves the
+    # address is theirs as the verification link does. So a reset confirms
+    # it, and nobody is refused at login as unconfirmed straight after.
+    user.email_verified = True
     db.add(user)
 
     # Somebody whose account was made for them never saw a registration

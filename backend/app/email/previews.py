@@ -136,6 +136,30 @@ def previews() -> list[Preview]:
             },
         ),
         Preview(
+            id="confirm-and-set-password",
+            label="Confirm email and set password",
+            template="confirm_and_set_password.html.j2",
+            context={
+                "name": "John Smith",
+                "username": "john.smith",
+                "email": "john.smith@example.org",
+                "reset_url": (
+                    "https://quill-medical.com/reset-password"
+                    "?token=example&confirm=1"
+                ),
+                "ttl_minutes": 30,
+            },
+        ),
+        Preview(
+            id="no-account",
+            label="No account for this address",
+            template="no_account.html.j2",
+            context={
+                "email": "john.smith@example.org",
+                "register_url": "https://quill-medical.com/register",
+            },
+        ),
+        Preview(
             id="email-verification",
             label="Email verification",
             template="email_verification.html.j2",

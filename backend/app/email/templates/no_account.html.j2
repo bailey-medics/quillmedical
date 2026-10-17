@@ -1,0 +1,40 @@
+{#-
+  Sent when somebody asks to reset the password of an address that has no
+  account. The forgot password page says "check your inbox" whatever the
+  address, so it never shows who has an account; this email, which only
+  the address's owner reads, says what is true. Context:
+    register_url  the page to make an account on
+    email         the address this is sent to, said back to them: many
+                  people read several addresses in one mailbox
+-#}
+{% extends "base.html.j2" %}
+{% import "_components.html.j2" as c with context %}
+
+{% block subject %}You do not have a Quill account yet{% endblock subject %}
+{% block preheader %}Nobody has a Quill account with this address.{% endblock preheader %}
+
+{% block body %}
+{{ c.heading("No *account* here yet") }}
+{{ c.paragraph("Hello,") }}
+{{ c.paragraph("Somebody asked to reset the Quill password for this address, but nobody has a Quill account with it.") }}
+{{ c.paragraph("If you meant to join a course, you can make an account now.") }}
+{{ c.button("Register for Quill", register_url) }}
+{{ c.small("This email was sent to " ~ email ~ ".") }}
+{{ c.small("If you did not ask for this, you can ignore this email. Nothing has been changed.") }}
+{% endblock body %}
+
+{% block reason %}You are receiving this because a password reset was requested for this address on Quill.{% endblock reason %}
+
+{% block text %}
+Hello,
+
+Somebody asked to reset the Quill password for this address, but nobody has a Quill account with it.
+
+If you meant to join a course, you can make an account now.
+
+Register for Quill: {{ register_url }}
+
+This email was sent to {{ email }}.
+
+If you did not ask for this, you can ignore this email. Nothing has been changed.
+{% endblock text %}

@@ -104,4 +104,29 @@ describe("ResetPasswordPage", () => {
       expect.objectContaining({ marketing_opt_out: true }),
     );
   });
+
+  it("says Set your password on a link that confirms the address", () => {
+    renderWithRouter(<ResetPasswordPage />, {
+      routePath: "/reset-password",
+      initialRoute: "/reset-password?token=abc&confirm=1",
+    });
+
+    expect(
+      screen.getByRole("heading", { name: "Set your password" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "Reset password" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("says Reset password on an ordinary link", () => {
+    renderWithRouter(<ResetPasswordPage />, {
+      routePath: "/reset-password",
+      initialRoute: "/reset-password?token=abc",
+    });
+
+    expect(
+      screen.getByRole("heading", { name: "Reset password" }),
+    ).toBeInTheDocument();
+  });
 });

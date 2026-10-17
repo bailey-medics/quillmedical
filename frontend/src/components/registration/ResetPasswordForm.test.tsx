@@ -251,4 +251,33 @@ describe("ResetPasswordForm", () => {
       ).toHaveAttribute("href", PRIVACY_POLICY_URL);
     });
   });
+
+  describe("confirming an address", () => {
+    it("is headed Set your password, with a Set password button", () => {
+      renderWithRouter(
+        <ResetPasswordForm
+          onSubmit={() => new Promise(() => {})}
+          isConfirming
+        />,
+      );
+
+      expect(
+        screen.getByRole("heading", { name: "Set your password" }),
+      ).toBeInTheDocument();
+      expect(screen.getByTestId("submit-button")).toHaveTextContent(
+        "Set password",
+      );
+    });
+
+    it("asks nothing about marketing", () => {
+      renderWithRouter(
+        <ResetPasswordForm
+          onSubmit={() => new Promise(() => {})}
+          isConfirming
+        />,
+      );
+
+      expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+    });
+  });
 });
