@@ -150,6 +150,41 @@ resource "google_storage_bucket_iam_member" "runtime_backend_passports" {
   member = "serviceAccount:${google_service_account.runtime["backend"].email}"
 }
 
+# The teaching sync job runs as the admin identity and reads the banks the
+# backend reads. Silent when missing, as the backend's is: the sync lists
+# an unreadable bucket as empty and reports "No banks found".
+resource "google_storage_bucket_iam_member" "runtime_admin_teaching_banks" {
+  count = local.is_teaching_product ? 1 : 0
+
+  bucket = module.cloud_storage[0].bucket_name
+  role   = "roles/storage.objectViewer"
+  member = "serviceAccount:${google_service_account.runtime["admin"].email}"
+}
+
+# The teaching pipeline may start the sync job, as configured, and watch
+# it finish, and nothing else. On that one job only.
+#
+# `invoker` (`run.jobs.run`) and not `jobsExecutorWithOverrides`: the
+# action is fixed in the job's env, so the pipeline has nothing to
+# override, and the override role would let it name any action. Google's
+# guide gives `invoker` for starting a job from gcloud.
+#
+# `viewer` because `gcloud run jobs execute --wait` reads the execution
+# until it ends, and no run role carries `run.executions.get`. Read-only,
+# and the job's env holds no secret values, only their names.
+resource "google_cloud_run_v2_job_iam_member" "content_ci_runs_teaching_sync" {
+  for_each = local.is_teaching_product && var.content_ci_service_account != "" ? toset([
+    "roles/run.invoker",
+    "roles/run.viewer",
+  ]) : toset([])
+
+  project  = var.project_id
+  location = var.region
+  name     = module.cloud_run_teaching_sync_job[0].job_name
+  role     = each.value
+  member   = "serviceAccount:${var.content_ci_service_account}"
+}
+
 # The admin job's `delete-passport` action reads a test holder's passport,
 # copies it to the archive, then removes it. Object admin on both, because
 # it creates in one and deletes in the other. It acts only on holders named
