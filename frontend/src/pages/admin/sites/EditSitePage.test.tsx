@@ -12,7 +12,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithRouter } from "@/test/test-utils";
 import EditSitePage from "./EditSitePage";
@@ -67,14 +67,13 @@ function place(overrides: Record<string, unknown> = {}) {
   };
 }
 
-function mockLoad(overrides: Record<string, unknown> = {}) {
-  return vi
-    .spyOn(apiLib.api, "get")
-    .mockImplementation((path: string) =>
-      path === "/users"
-        ? Promise.resolve({ users: [lead, other] })
-        : Promise.resolve(place(overrides)),
-    );
+function mockLoad(overrides: Record<string, unknown> = {}, accounts = 3) {
+  return vi.spyOn(apiLib.api, "get").mockImplementation((path: string) => {
+    if (path === "/users") return Promise.resolve({ users: [lead, other] });
+    if (path.endsWith("/deactivation")) return Promise.resolve({ accounts });
+
+    return Promise.resolve(place(overrides));
+  });
 }
 
 async function renderPage() {
@@ -189,38 +188,100 @@ describe("EditSitePage", () => {
     });
   });
 
-  describe("Whether the place is in use", () => {
-    it("is only sent when it changed", async () => {
+  describe("Deactivating the site", () => {
+    it("has no switch on the form, and saving changes nothing about it", async () => {
       const user = userEvent.setup();
       mockLoad();
       vi.spyOn(apiLib.api, "put").mockResolvedValue({ id: 1 });
       const patch = vi.spyOn(apiLib.api, "patch").mockResolvedValue({ id: 1 });
       await renderPage();
 
+      expect(screen.queryByRole("switch")).not.toBeInTheDocument();
       await user.click(screen.getByTestId("submit-button"));
 
       expect(patch).not.toHaveBeenCalled();
     });
 
-    it("is sent when it changed", async () => {
+    it("asks first, saying how many accounts go with it", async () => {
+      const user = userEvent.setup();
+      mockLoad({}, 3);
+      const post = vi
+        .spyOn(apiLib.api, "post")
+        .mockResolvedValue({ accounts: 3 });
+      await renderPage();
+
+      await user.click(screen.getByRole("button", { name: "Deactivate site" }));
+
+      const dialog = await screen.findByRole("dialog");
+      expect(dialog).toHaveTextContent(
+        "Deactivating this site will also deactivate the accounts of anyone that does not belong to a second organisation or site.",
+      );
+      expect(
+        await screen.findByText(/3 accounts will be deactivated/),
+      ).toBeInTheDocument();
+      expect(post).not.toHaveBeenCalled();
+    });
+
+    it("deactivates it once somebody says yes, and says how many went", async () => {
+      const user = userEvent.setup();
+      mockLoad({}, 1);
+      const post = vi
+        .spyOn(apiLib.api, "post")
+        .mockResolvedValue({ accounts: 1 });
+      await renderPage();
+
+      await user.click(screen.getByRole("button", { name: "Deactivate site" }));
+      await screen.findByText(/1 account will be deactivated/);
+      await user.click(screen.getByRole("button", { name: "Deactivate" }));
+
+      await waitFor(() => {
+        expect(post).toHaveBeenCalledWith("/org-units/1/deactivate", {});
+      });
+      expect(mockNavigate).toHaveBeenCalledWith("/admin/sites/1", {
+        state: {
+          flash: {
+            variant: "success",
+            title: "Site deactivated",
+            description: "1 account was deactivated",
+          },
+        },
+      });
+    });
+
+    it("keeps the site when the question is cancelled", async () => {
       const user = userEvent.setup();
       mockLoad();
-      vi.spyOn(apiLib.api, "put").mockResolvedValue({ id: 1 });
+      const post = vi
+        .spyOn(apiLib.api, "post")
+        .mockResolvedValue({ accounts: 0 });
+      await renderPage();
+
+      await user.click(screen.getByRole("button", { name: "Deactivate site" }));
+      // The form has a Cancel too: this is the modal's.
+      const dialog = await screen.findByRole("dialog");
+      await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
+
+      expect(post).not.toHaveBeenCalled();
+    });
+
+    it("offers a deactivated site making active again, bringing back no account", async () => {
+      const user = userEvent.setup();
+      mockLoad({ is_active: false });
       const patch = vi.spyOn(apiLib.api, "patch").mockResolvedValue({ id: 1 });
       await renderPage();
 
-      await user.click(screen.getByRole("switch"));
-      await user.click(screen.getByTestId("submit-button"));
-
-      // Taking an org_unit out of use asks first, so the request only goes
-      // once somebody has said yes.
-      await user.click(
-        await screen.findByRole("button", { name: "Deactivate" }),
+      expect(
+        screen.queryByRole("button", { name: "Deactivate site" }),
+      ).not.toBeInTheDocument();
+      await user.click(screen.getByRole("button", { name: "Reactivate site" }));
+      expect(await screen.findByRole("dialog")).toHaveTextContent(
+        "No account is reactivated with it",
       );
+      await user.click(screen.getByRole("button", { name: "Reactivate" }));
 
       await waitFor(() => {
         expect(patch).toHaveBeenCalledWith("/org-units/1/active", {
-          is_active: false,
+          is_active: true,
         });
       });
     });

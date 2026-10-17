@@ -2,7 +2,9 @@
  * ActionCardButton Component
  *
  * A light-variant, full-width button used inside ActionCard components.
- * Supports either an onClick handler or a URL link destination.
+ * Supports either an onClick handler or a URL link destination. A
+ * destructive one is red, for an action such as deactivating a site that
+ * takes something away.
  *
  * @example
  * ```tsx
@@ -25,6 +27,8 @@ interface ActionCardButtonProps {
   disabled?: boolean;
   /** Mantine button variant (default: "light") */
   variant?: "light" | "filled";
+  /** Red, for an action that takes something away (default: false) */
+  destructive?: boolean;
 }
 
 export default function ActionCardButton({
@@ -33,7 +37,12 @@ export default function ActionCardButton({
   onClick,
   disabled = false,
   variant = "filled",
+  destructive = false,
 }: ActionCardButtonProps) {
+  // The status alert red, as `ButtonPairRed` and `ConfirmModal` use: not
+  // Mantine's "red", which this theme does not define.
+  const color = destructive ? "var(--alert-color)" : undefined;
+
   if (onClick) {
     return (
       <Button
@@ -42,6 +51,7 @@ export default function ActionCardButton({
         fullWidth
         disabled={disabled}
         size="md"
+        color={color}
       >
         {label}
       </Button>
@@ -50,7 +60,7 @@ export default function ActionCardButton({
 
   if (disabled) {
     return (
-      <Button variant={variant} fullWidth disabled size="md">
+      <Button variant={variant} fullWidth disabled size="md" color={color}>
         {label}
       </Button>
     );
@@ -63,6 +73,7 @@ export default function ActionCardButton({
       variant={variant}
       fullWidth
       size="md"
+      color={color}
     >
       {label}
     </Button>

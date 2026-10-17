@@ -1236,7 +1236,7 @@ What is there today:
       and a teaching admin is refused; the E2E journey checks a teaching
       admin is not offered it and the API answers 403.
 
-- [ ] Deactivate a site: a red button in a card of its own on the edit
+- [x] Deactivate a site: a red button in a card of its own on the edit
       site page, and a confirm modal saying "Deactivating this site will
       also deactivate the accounts of anyone that does not belong to a
       second organisation or site", and how many accounts that is. The
@@ -1261,8 +1261,24 @@ What is there today:
       another site that is itself deactivated does not count as
       belonging there. Only the site's own members are considered, not
       those of anything inside it.
+      The second is the page. The "Site status" switch is gone from the
+      edit site page; below the form, an `ActionCard` titled "Deactivate
+      site" has a red button (a new `buttonDestructive` option on
+      `ActionCard`, and `destructive` on `ActionCardButton`, the name
+      `ConfirmModal` already uses), and a deactivated site shows a
+      "Reactivate site" card instead. The modal asks for the count as it
+      opens and says "N accounts will be deactivated", naming nobody.
+      The site page and the organisation's sites table call it
+      "Deactivated" (an `inactiveLabel` on `ActiveStatusBadge`, which
+      users, patients and modules still show as "Inactive"), and the site
+      page offers no "Add staff" on a deactivated site. The journey is
+      `tests/teaching-admin/deactivating-a-site.spec.ts`.
+      Found while building it: `ConfirmModal` gives its dialog no
+      accessible name, so a screen reader announces an unnamed dialog;
+      the journey finds it by its words. Not fixed here, as every
+      confirm modal shares it.
 
-- [ ] A guide for teaching admins, asked for by Mark on 2026-10-17:
+- [x] A guide for teaching admins, asked for by Mark on 2026-10-17:
       `frontend/src/guides/content/deactivate-a-site.md`, registered in
       `src/guides/registry.ts` for teaching admins beside "Add a delegate
       by hand". It says how (the site's edit page, the red button, the
@@ -1270,7 +1286,9 @@ What is there today:
       spared, that each is emailed, that the site takes no more
       registrations and nobody can be added to it, that results are
       kept, and how to make it active again. Its links are checked by
-      `links.test.ts`, as every guide's are.
+      `links.test.ts`, as every guide's are. Built, without screenshots, which the
+      other guides have; `tests/guides/guides.spec.ts` now lists it among
+      a teaching admin's guides.
 
 ## Decisions
 

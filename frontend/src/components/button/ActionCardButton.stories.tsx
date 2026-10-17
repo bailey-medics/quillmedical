@@ -49,6 +49,19 @@ export const Default: Story = {
 };
 
 /**
+ * Destructive: red, for an action that takes something away, such as
+ * deactivating a site.
+ */
+export const Destructive: Story = {
+  args: {
+    label: "Deactivate site",
+    onClick: () => undefined,
+    destructive: true,
+  },
+  decorators: Default.decorators,
+};
+
+/**
  * All interaction states side-by-side.
  *
  * Constrained to 18rem here for display purposes.

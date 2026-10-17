@@ -50,6 +50,23 @@ describe("ActiveStatusBadge", () => {
   });
 
   describe("Loading state", () => {
+    it("calls an inactive one what it is told to: a site is Deactivated", () => {
+      renderWithMantine(
+        <ActiveStatusBadge active={false} inactiveLabel="Deactivated" />,
+      );
+
+      expect(screen.getByText("Deactivated")).toBeInTheDocument();
+      expect(screen.queryByText("Inactive")).not.toBeInTheDocument();
+    });
+
+    it("keeps Active for an active one, whatever the inactive word", () => {
+      renderWithMantine(
+        <ActiveStatusBadge active={true} inactiveLabel="Deactivated" />,
+      );
+
+      expect(screen.getByText("Active")).toBeInTheDocument();
+    });
+
     it("shows skeleton when loading", () => {
       const { container } = renderWithMantine(
         <ActiveStatusBadge active={true} isLoading />,

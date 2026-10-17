@@ -171,6 +171,22 @@ describe("SiteAdminPage staff members", () => {
     expect(mockNavigate).toHaveBeenCalledWith("/admin/sites/1/members/7");
   });
 
+  it("calls a deactivated site Deactivated, and offers adding nobody to it", async () => {
+    signedIn(["manage_teaching"]);
+    vi.spyOn(apiLib.api, "get").mockResolvedValue({
+      ...site(null),
+      is_active: false,
+      members: [{ ...lead, authorised_here: 0 }],
+    });
+
+    renderWithRouter(<SiteAdminPage />, { initialRoute: "/admin/sites/1" });
+
+    expect(await screen.findByText("Deactivated")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Add staff" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("lets a teaching admin add and remove staff and edit the site, and not its features", async () => {
     signedIn(["manage_teaching"]);
 

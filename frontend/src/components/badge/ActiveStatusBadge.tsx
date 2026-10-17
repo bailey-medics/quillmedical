@@ -18,6 +18,9 @@ type Props = {
   active: boolean;
   /** Show loading skeleton instead of badge */
   isLoading?: boolean;
+  /** What an inactive one is called where "Inactive" is not the word: a
+   * site is "Deactivated" */
+  inactiveLabel?: string;
 };
 
 const STATUS_CONFIG: Record<
@@ -31,12 +34,15 @@ const STATUS_CONFIG: Record<
 export default function ActiveStatusBadge({
   active,
   isLoading = false,
+  inactiveLabel,
 }: Props) {
   if (isLoading) {
     return <BadgeSkeleton />;
   }
 
-  const { label, colour } = STATUS_CONFIG[active ? "active" : "inactive"];
+  const { label: named, colour } =
+    STATUS_CONFIG[active ? "active" : "inactive"];
+  const label = !active && inactiveLabel ? inactiveLabel : named;
 
   return (
     <Badge color={colour.bg} c={colour.text} variant={BADGE_VARIANT}>

@@ -35,6 +35,8 @@ interface ActionCardProps {
   fullWidth?: boolean;
   /** Button variant (default: "filled") */
   buttonVariant?: "light" | "filled";
+  /** Make the button red, for an action that takes something away */
+  buttonDestructive?: boolean;
   /** Custom action element (e.g. SolidSwitch) - replaces the button */
   action?: ReactElement;
 }
@@ -60,6 +62,7 @@ export default function ActionCard({
   disabled = false,
   fullWidth = false,
   buttonVariant = "filled",
+  buttonDestructive = false,
   action,
 }: ActionCardProps) {
   return (
@@ -95,6 +98,7 @@ export default function ActionCard({
             onClick={onClick}
             disabled={disabled}
             variant={buttonVariant}
+            destructive={buttonDestructive}
           />
         )}
       </Stack>

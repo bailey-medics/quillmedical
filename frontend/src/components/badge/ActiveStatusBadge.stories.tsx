@@ -33,6 +33,7 @@ export const Default: Story = {
     <Group gap="md">
       <ActiveStatusBadge active={true} />
       <ActiveStatusBadge active={false} />
+      <ActiveStatusBadge active={false} inactiveLabel="Deactivated" />
     </Group>
   ),
 };
