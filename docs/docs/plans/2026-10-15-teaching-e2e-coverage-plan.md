@@ -1085,13 +1085,13 @@ each place covers both, and a third kind of place later is one more
 entry in it. The teaching journeys stay where they are: they never go
 near these places, so moving them would test nothing new.
 
-- [ ] Seed "CI Passport Hospital" with "CI Passport Centre", the passport
+- [x] Seed "CI Passport Hospital" with "CI Passport Centre", the passport
       feature on, and a member holding a passport record; and "CI Safety
       Hospital" with "CI Safety Centre", the safety feature on, and a
       member holding a safety post. Real data in each, so a refusal is
       protecting something rather than an empty place.
 
-- [ ] Write `tests/leaks/other-features.spec.ts`, one parametrised list
+- [x] Write `tests/leaks/other-features.spec.ts`, one parametrised list
       run against each place, as the seeded teaching admin and as a
       delegate at a teaching site:
       - the organisation is not in the teaching admin's list;
@@ -1102,6 +1102,21 @@ near these places, so moving them would test nothing new.
       as Phase 12 decided: the org-scoping tests in `backend/tests/`
       already refuse a teaching admin outside their own tree, and get a
       case for each new kind of place if one is missing.
+
+      Built. `seed_other_feature_places` in `seed_ci.py` makes both, the
+      passport member (`ci_passport`, a `passport_delegate`) holding a
+      passport made through `service.create_passport`, and the safety
+      member (`ci_safety`, a `safety_officer`) appointed clinical safety
+      officer at the site. The spec takes the ids as the operator sees
+      them, then as the seeded teaching admin checks neither place is in
+      their list and that the organisation, site and member pages are
+      refused at the API with a 403 or 404 and show nothing; and as a
+      delegate that there is no link to the feature, and its page and
+      the three admin pages are the 404 page. No backend case was
+      missing: `manage_teaching_org_unit_routes_test.py` already refuses
+      a teaching admin adding, editing, moving or deleting a site in
+      another tree and naming a lead there, and refusal turns on the
+      tree, not on what the place runs.
 
 ## Decisions
 

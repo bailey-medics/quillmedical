@@ -206,6 +206,11 @@ def seed() -> None:
         # organisation.
         second = seed_teaching_world(db, org.id, admin)
 
+        # 5e. A passport place and a safety place, each with somebody's
+        # data in it, that nobody in teaching may reach, for
+        # e2e/tests/leaks/other-features.spec.ts.
+        seed_other_feature_places(db, admin)
+
         db.commit()
 
         # 6. Open every teaching module mounted at /teaching-repos, at
@@ -445,6 +450,114 @@ def seed_teaching_world(
     print("Seeded the second site and the second teaching organisation")
 
     return second
+
+
+#: The places that run passport and safety, not teaching: each its
+#: organisation, its site, the feature it runs, and the member there with
+#: their base profession.
+OTHER_FEATURE_PLACES = (
+    (
+        "CI Passport Hospital",
+        "CI Passport Centre",
+        "passport",
+        "ci_passport",
+        "passport_delegate",
+    ),
+    (
+        "CI Safety Hospital",
+        "CI Safety Centre",
+        "safety",
+        "ci_safety",
+        "safety_officer",
+    ),
+)
+
+
+def seed_other_feature_places(db: Session, enabled_by: User) -> None:
+    """Seed a passport place and a safety place nobody in teaching reaches.
+
+    Each is an organisation with a site, its feature on, and a member at
+    the site with something of theirs there: the passport member holds a
+    passport, and the safety member the clinical safety officer post. So
+    a refusal to a teaching admin or delegate protects a record rather
+    than an empty place.
+    """
+    from app.cbac.positions import appoint
+    from app.features.passport import ids, service
+    from app.features.passport.commits import Actor
+    from app.features.passport.models import Passport
+    from app.models import Position
+    from app.passport_storage import get_passport_store
+
+    for (
+        organisation,
+        site_name,
+        feature,
+        member_name,
+        profession,
+    ) in OTHER_FEATURE_PLACES:
+        org = _ensure_org_unit(db, organisation, "organisation", None)
+        site = _ensure_org_unit(db, site_name, "site", org.id)
+        feature_on = db.scalar(
+            select(OrgUnitFeature.id).where(
+                OrgUnitFeature.org_unit_id == org.id,
+                OrgUnitFeature.feature_key == feature,
+            )
+        )
+
+        if feature_on is None:
+            db.add(
+                OrgUnitFeature(
+                    org_unit_id=org.id,
+                    feature_key=feature,
+                    enabled_by=enabled_by.id,
+                )
+            )
+
+        member = _ensure_user(db, member_name, profession)
+        add_org_unit_member(db, site.id, member.id, "staff")
+        db.flush()
+
+        if feature == "passport":
+            held = db.scalar(
+                select(Passport.id).where(Passport.user_id == member.id)
+            )
+            if held is None:
+                passport_id = ids.new_passport_id()
+                commit = service.create_passport(
+                    get_passport_store(),
+                    passport_id,
+                    Actor(
+                        name=member.username,
+                        role=member.base_profession or "",
+                        email=member.email,
+                    ),
+                    user_id=str(member.id),
+                )
+                db.add(
+                    Passport(
+                        id=passport_id, user_id=member.id, head_commit=commit
+                    )
+                )
+        else:
+            post = db.scalar(
+                select(Position).where(
+                    Position.org_unit_id == site.id,
+                    Position.kind == "clinical_safety_officer",
+                )
+            )
+            if post is None:
+                post = Position(
+                    org_unit_id=site.id,
+                    kind="clinical_safety_officer",
+                    title="Clinical safety officer",
+                )
+                db.add(post)
+                db.flush()
+                appoint(db, post, member, appointed_by=enabled_by)
+
+    db.flush()
+    print("Seeded the passport and safety places")
 
 
 #: The learners whose attempt has run out of time, one per browser project,
