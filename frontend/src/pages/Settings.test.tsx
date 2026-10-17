@@ -96,6 +96,24 @@ function optionLabels(): string[] {
   return screen.getAllByRole("option").map((o) => o.textContent ?? "");
 }
 
+describe("the dark mode switch", () => {
+  beforeEach(() => {
+    authUser.enabled_features = [];
+    authUser.competencies = [];
+  });
+
+  it("is named for what it switches, not for its state", () => {
+    renderWithRouter(<Settings />);
+
+    expect(
+      screen.getByRole("switch", { name: "Dark mode" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("switch", { name: /^(Yes|No)$/ }),
+    ).not.toBeInTheDocument();
+  });
+});
+
 describe("the page-view opt-out", () => {
   beforeEach(() => {
     authUser.enabled_features = [];

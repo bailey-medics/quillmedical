@@ -254,6 +254,9 @@ export default function Settings() {
               subtitle="Switch between light and dark colour schemes."
               action={
                 <SolidSwitch
+                  // As for the other cards: the title is not tied to the
+                  // switch, and without this it was announced as "No".
+                  aria-label="Dark mode"
                   checked={colorScheme === "dark"}
                   onChange={() =>
                     setColorScheme(colorScheme === "dark" ? "light" : "dark")
