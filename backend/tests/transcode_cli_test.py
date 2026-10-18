@@ -143,7 +143,8 @@ def fake_gcs():
 
 @pytest.fixture
 def stub_ffmpeg():
-    """Replace both encode helpers, writing a placeholder output file."""
+    """Replace both encode helpers, writing a placeholder output file,
+    and the probe, answering that the source is an MP4 with video."""
 
     def _write(*args) -> None:
         # Both helpers take the destination as their second argument.
@@ -154,8 +155,121 @@ def stub_ffmpeg():
             "scripts.transcode_cli.build_rendition", side_effect=_write
         ) as r,
         patch("scripts.transcode_cli.build_poster", side_effect=_write) as p,
+        patch(
+            "scripts.transcode_cli.probe_container",
+            return_value=("mov,mp4,m4a,3gp,3g2,mj2", True),
+        ),
     ):
         yield r, p
+
+
+class TestProbeBeforeEncoding:
+    """A file that only claimed to be a video is refused by name, not
+    left to fail inside the 720p encode."""
+
+    def _run(self, probed) -> tuple[int, MagicMock]:
+        def _write(*args) -> None:
+            Path(args[1]).write_bytes(b"encoded")
+
+        with patch.dict(os.environ, BASE_ENV, clear=False):
+            from scripts.transcode_cli import transcode
+
+            with (
+                patch(
+                    "scripts.transcode_cli.build_rendition",
+                    side_effect=_write,
+                ) as rendition,
+                patch(
+                    "scripts.transcode_cli.build_poster", side_effect=_write
+                ),
+                patch(
+                    "scripts.transcode_cli.probe_container",
+                    return_value=probed,
+                ),
+            ):
+                return transcode(), rendition
+
+    def test_an_mp4_with_video_is_encoded(self, fake_gcs) -> None:
+        code, rendition = self._run(("mov,mp4,m4a,3gp,3g2,mj2", True))
+
+        assert code == 0
+        assert rendition.called
+
+    def test_a_webm_with_video_is_encoded(self, fake_gcs) -> None:
+        code, rendition = self._run(("matroska,webm", True))
+
+        assert code == 0
+        assert rendition.called
+
+    def test_an_image_is_refused_before_any_encode(
+        self, fake_gcs, capsys
+    ) -> None:
+        code, rendition = self._run(("image2", False))
+
+        assert code == 1
+        assert not rendition.called
+        assert (
+            "Not a supported video (format: image2" in capsys.readouterr().err
+        )
+
+    def test_a_container_with_no_video_stream_is_refused(
+        self, fake_gcs, capsys
+    ) -> None:
+        # An audio-only MP4, say: the right container, nothing to show.
+        code, rendition = self._run(("mov,mp4,m4a,3gp,3g2,mj2", False))
+
+        assert code == 1
+        assert not rendition.called
+        assert "video stream: no" in capsys.readouterr().err
+
+    def test_a_probe_that_cannot_answer_lets_the_encode_try(
+        self, fake_gcs
+    ) -> None:
+        """FFmpeg's own error is then the one in the log."""
+        code, rendition = self._run(None)
+
+        assert code == 0
+        assert rendition.called
+
+
+class TestProbeContainer:
+    """FFprobe's answer, and what is assumed when it has none."""
+
+    def _probe(self, returncode: int, stdout: str):
+        from scripts.transcode_cli import probe_container
+
+        result = MagicMock(returncode=returncode, stdout=stdout)
+
+        with patch("subprocess.run", return_value=result):
+            return probe_container(Path("video.mp4"))
+
+    def test_reads_the_container_and_the_video_stream(self) -> None:
+        report = (
+            '{"streams": [{"codec_type": "video"}, {"codec_type": "audio"}],'
+            ' "format": {"format_name": "mov,mp4,m4a,3gp,3g2,mj2"}}'
+        )
+
+        assert self._probe(0, report) == ("mov,mp4,m4a,3gp,3g2,mj2", True)
+
+    def test_an_audio_only_file_has_no_video_stream(self) -> None:
+        report = (
+            '{"streams": [{"codec_type": "audio"}],'
+            ' "format": {"format_name": "matroska,webm"}}'
+        )
+
+        assert self._probe(0, report) == ("matroska,webm", False)
+
+    def test_a_probe_that_fails_answers_nothing(self) -> None:
+        assert self._probe(1, "") is None
+
+    def test_a_report_that_is_not_json_answers_nothing(self) -> None:
+        assert self._probe(0, "not json") is None
+
+    def test_no_ffprobe_answers_nothing(self) -> None:
+        from scripts.transcode_cli import probe_container
+
+        with patch("subprocess.run", side_effect=FileNotFoundError):
+            assert probe_container(Path("video.mp4")) is None
 
 
 class TestTranscode:

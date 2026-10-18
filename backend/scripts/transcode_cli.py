@@ -246,6 +246,65 @@ def _run_ffmpeg(args: list[str]) -> None:
         raise RuntimeError(msg)
 
 
+#: The containers an upload may arrive in, as FFprobe names them. The
+#: first is every MP4 and QuickTime file; the second is WebM. These are
+#: the three types `ALLOWED_MEDIA_TYPES` admits, seen from inside.
+ALLOWED_CONTAINERS: frozenset[str] = frozenset(
+    {"mov,mp4,m4a,3gp,3g2,mj2", "matroska,webm"}
+)
+
+
+def probe_container(path: Path) -> tuple[str, bool] | None:
+    """What container a file is, and whether it has a video stream.
+
+    Asked before the encode, because the encode cannot answer it: given
+    a file that only claimed to be a video, FFmpeg fails part-way with
+    its own message, which reads as a broken job rather than a wrong
+    file. The backend never sees these bytes in production, since the
+    browser uploads straight to the source bucket, so this job is the
+    first place the file can be looked at.
+
+    Returns None where FFprobe itself cannot answer, and the caller lets
+    the encode try. Its own error is then the one in the log, which is
+    more use than a guess.
+    """
+    # A fixed argument list and no shell.
+    try:
+        result = subprocess.run(  # noqa: S603  # nosec B607 B603
+            [  # noqa: S607
+                "ffprobe",
+                "-v",
+                "error",
+                "-show_entries",
+                "format=format_name:stream=codec_type",
+                "-of",
+                "json",
+                str(path),
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except OSError:
+        return None
+
+    if result.returncode != 0:
+        return None
+
+    try:
+        report = json.loads(result.stdout)
+    except ValueError:
+        return None
+
+    container = str(report.get("format", {}).get("format_name", ""))
+    has_video = any(
+        stream.get("codec_type") == "video"
+        for stream in report.get("streams", [])
+    )
+
+    return container, has_video
+
+
 def build_rendition(
     source: Path, dest: Path, height: int, bitrate: str
 ) -> None:
@@ -388,6 +447,23 @@ def transcode() -> int:
         local_source = tmpdir / "source"
         print(f"Downloading {source_path}...")
         source_blob.download_to_filename(str(local_source))
+
+        # Refused deliberately, naming the cause, rather than left to
+        # fail inside the 720p encode. The source is kept: nothing has
+        # been verified, and the lifecycle rule sweeps it.
+        probed = probe_container(local_source)
+
+        if probed is not None:
+            container, has_video = probed
+
+            if container not in ALLOWED_CONTAINERS or not has_video:
+                print(
+                    f"ERROR: Not a supported video (format: "
+                    f"{container or 'unknown'}, video stream: "
+                    f"{'yes' if has_video else 'no'})",
+                    file=sys.stderr,
+                )
+                return 1
 
         outputs: list[tuple[Path, str, str]] = []
 

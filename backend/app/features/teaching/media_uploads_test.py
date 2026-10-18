@@ -33,6 +33,7 @@ from app.features.teaching.media_uploads import (
     link_upload,
     local_upload_file,
     local_upload_root,
+    looks_like_video,
     new_upload_target,
     save_captions,
     upload_held_by,
@@ -1422,3 +1423,23 @@ def test_a_module_id_of_two_dots_is_looked_for_like_any_other(
     assert destination.resolve() == (repo / "learning").resolve() / (
         f"{ASSET}.mp4"
     )
+
+
+class TestLooksLikeVideo:
+    """The first bytes, against the declared type."""
+
+    def test_an_mp4_begins_with_a_box_length_then_ftyp(self) -> None:
+        assert looks_like_video(b"\x00\x00\x00\x18ftypmp42", "video/mp4")
+        assert looks_like_video(b"\x00\x00\x00\x14ftypqt  ", "video/quicktime")
+
+    def test_a_webm_begins_with_the_ebml_header(self) -> None:
+        assert looks_like_video(b"\x1a\x45\xdf\xa3\x01", "video/webm")
+
+    def test_the_wrong_signature_for_the_type_is_refused(self) -> None:
+        assert not looks_like_video(b"\x1a\x45\xdf\xa3", "video/mp4")
+        assert not looks_like_video(b"\x00\x00\x00\x18ftypmp42", "video/webm")
+
+    def test_anything_else_is_refused(self) -> None:
+        assert not looks_like_video(b"<html>", "video/mp4")
+        assert not looks_like_video(b"", "video/mp4")
+        assert not looks_like_video(b"\x00\x00\x00\x18ftypmp42", "image/png")

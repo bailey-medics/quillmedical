@@ -141,7 +141,7 @@ Decisions.
 
 ## Phase 3: The transcode job confirms a file is a video before encoding it
 
-- [ ] Add `probe_container(path) -> tuple[str, bool]` to
+- [x] Add `probe_container(path) -> tuple[str, bool]` to
       `backend/scripts/transcode_cli.py`, returning FFprobe's
       `format_name` and whether a video stream is present, in the shape
       of `has_audio_stream` in `caption_cli.py`. `transcode()` calls it
@@ -154,16 +154,19 @@ Decisions.
       from parsing a file that only claimed to be a video. The backend
       never sees these bytes in production, since the browser uploads
       straight to the source bucket on a resumable URL, so the job is the
-      first place the file can be looked at.
+      first place the file can be looked at. As built, FFprobe answers in
+      JSON (`-of json`) rather than CSV, so the container and the stream
+      types are read by name rather than by line order, and the function
+      returns None where FFprobe cannot answer.
 
-- [ ] Test it in `backend/tests/transcode_cli_test.py` with
+- [x] Test it in `backend/tests/transcode_cli_test.py` with
       `subprocess.run` patched, as the caption tests do: a `mov,mp4`
       format with a video stream proceeds; a `matroska,webm` one
       proceeds; `image2` is refused before any encode runs; a format with
       no video stream is refused; and a probe that fails lets the encode
       try, so FFmpeg's error is the one logged.
 
-- [ ] Check the first bytes in the local development upload route
+- [x] Check the first bytes in the local development upload route
       (`upload_media_content` in
       `backend/app/features/teaching/router.py`): `ftyp` at offset 4 for
       `video/mp4` and `video/quicktime`, the EBML header
@@ -171,7 +174,9 @@ Decisions.
       enough. This route only exists on a developer's machine, so it is
       the smallest step here, but it keeps the two paths honest with each
       other: the production path refuses in the job, the local path
-      refuses at the door.
+      refuses at the door. The check is `looks_like_video` in
+      `media_uploads.py`, and the route's existing tests now send bytes
+      that begin as an MP4 or a WebM does.
 
 ## Phase 4: Antivirus scanning, designed and not started
 
