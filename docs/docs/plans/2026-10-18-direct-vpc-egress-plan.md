@@ -87,7 +87,7 @@ keeps the whole series in one view.
 
 ## Phase 4: The admin and teaching-sync jobs move
 
-- [ ] The same change for `module "cloud_run_admin_job"` and
+- [x] The same change for `module "cloud_run_admin_job"` and
       `module "cloud_run_teaching_sync_job"`. The admin job keeps
       `ALL_TRAFFIC`: the deploy's smoke test reaches a tagged revision's
       `run.app` address, which must arrive as internal traffic, and

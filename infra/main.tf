@@ -489,16 +489,18 @@ module "cloud_run_admin_job" {
   region                = var.region
   environment           = var.environment
 
-  job_name         = "admin"
-  image            = var.admin_image
-  vpc_connector_id = module.networking.vpc_connector_id
+  job_name          = "admin"
+  image             = var.admin_image
+  vpc_subnetwork_id = module.networking.cloud_run_subnet_id
 
   # All egress through the VPC, so the deploy's smoke test, which runs in
   # this job, reaches a revision's *.run.app URL as internal traffic. That
   # is what lets the backend's ingress close without the check going blind:
   # closing it on 2026-09-21 broke every deploy because the smoke test
   # curled that URL from the internet. Public calls still leave, through
-  # the Cloud NAT in modules/networking.
+  # the Cloud NAT in modules/networking. Onto the VPC by Direct VPC egress
+  # since 2026-10-18, as every workload is; see
+  # docs/docs/plans/2026-10-18-direct-vpc-egress-plan.md.
   vpc_egress = "ALL_TRAFFIC"
 
   env_vars = merge(
@@ -559,9 +561,9 @@ module "cloud_run_teaching_sync_job" {
   region                = var.region
   environment           = var.environment
 
-  job_name         = "teaching-sync"
-  image            = var.admin_image
-  vpc_connector_id = module.networking.vpc_connector_id
+  job_name          = "teaching-sync"
+  image             = var.admin_image
+  vpc_subnetwork_id = module.networking.cloud_run_subnet_id
 
   env_vars = {
     ADMIN_ACTION        = "sync-teaching"
