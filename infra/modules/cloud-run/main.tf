@@ -12,11 +12,20 @@ resource "google_cloud_run_v2_service" "service" {
       max_instance_count = var.max_instances
     }
 
+    # One of two ways onto the VPC: a connector, or Direct VPC egress with
+    # an address on a subnet. The variables refuse both at once.
     dynamic "vpc_access" {
-      for_each = var.vpc_connector_id != "" ? [1] : []
+      for_each = var.vpc_connector_id != "" || var.vpc_subnetwork_id != "" ? [1] : []
       content {
-        connector = var.vpc_connector_id
+        connector = var.vpc_connector_id != "" ? var.vpc_connector_id : null
         egress    = "PRIVATE_RANGES_ONLY"
+
+        dynamic "network_interfaces" {
+          for_each = var.vpc_subnetwork_id != "" ? [1] : []
+          content {
+            subnetwork = var.vpc_subnetwork_id
+          }
+        }
       }
     }
 

@@ -18,9 +18,18 @@ resource "google_cloud_run_v2_job" "job" {
       # every job ran as before infra/runtime-identities.tf.
       service_account = var.service_account_email != "" ? var.service_account_email : null
 
+      # One of two ways onto the VPC: a connector, or Direct VPC egress
+      # with an address on a subnet. The variables insist on exactly one.
       vpc_access {
-        connector = var.vpc_connector_id
+        connector = var.vpc_connector_id != "" ? var.vpc_connector_id : null
         egress    = var.vpc_egress
+
+        dynamic "network_interfaces" {
+          for_each = var.vpc_subnetwork_id != "" ? [1] : []
+          content {
+            subnetwork = var.vpc_subnetwork_id
+          }
+        }
       }
 
       containers {

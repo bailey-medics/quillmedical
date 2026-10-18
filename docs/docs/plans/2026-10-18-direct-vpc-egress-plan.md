@@ -48,13 +48,16 @@ keeps the whole series in one view.
 
 ## Phase 2: The modules learn Direct VPC
 
-- [ ] Give `infra/modules/cloud-run-job` and `infra/modules/cloud-run` a
+- [x] Give `infra/modules/cloud-run-job` and `infra/modules/cloud-run` a
       `vpc_subnetwork_id` variable beside `vpc_connector_id`, defaulting
       to empty, with a validation that at most one is set. When the
       subnet is given, the `vpc_access` block carries
       `network_interfaces { network, subnetwork }` and the egress
       setting instead of `connector`; the two are exclusive on a
-      revision. No network tags for now: Direct VPC instances can carry
+      revision. Only `subnetwork` is given: the API looks the network
+      up from it, per the
+      [NetworkInterface reference](https://docs.cloud.google.com/dotnet/docs/reference/Google.Cloud.Run.V2/latest/Google.Cloud.Run.V2.VpcAccess.Types.NetworkInterface).
+      No network tags for now: Direct VPC instances can carry
       them, but the only firewall rule that would read one does not
       exist yet, and an ingress rule cannot use a tag anyway, only the
       subnet's range. The job module's `vpc_egress` description, which
