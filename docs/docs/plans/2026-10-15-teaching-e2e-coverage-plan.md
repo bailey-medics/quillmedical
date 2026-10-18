@@ -1441,7 +1441,7 @@ Decided by Mark on 2026-10-17:
       browser cancels on leaving a slide as a failure; a missing file
       still answers 404 and is caught.
 
-- [ ] Turn the jobs on in the stack, so the gate asks what it asks in
+- [x] Turn the jobs on in the stack, so the gate asks what it asks in
       App production: `TEACHING_TRANSCODE_JOB` and `TEACHING_CAPTION_JOB`
       set in `compose.ci.yml` to names nothing runs, with the callback
       token set too. The test stands in for each job by doing what the
@@ -1449,6 +1449,20 @@ Decided by Mark on 2026-10-17:
       media from, and calling `/api/ci/teaching/transcode-complete` and
       `/api/ci/teaching/caption-complete` with the token. What exactly
       each callback expects on disk is checked before building.
+
+      Checked: the transcode callback (`record_transcode` in
+      `ci_media.py`) takes the files' names, sets a flag for each
+      rendition named, stamps `transcoded_at`, and asks for captions
+      when a `-720p.mp4` is among them. The caption callback sets
+      `has_captions` only; `captions_reviewed_at` is a person saving the
+      captions in the editor. Both callbacks address the upload by the
+      organisation's media prefix, not its org_unit id. Locally the
+      player then asks for `{asset}-720p.mp4` and `{asset}.vtt` beside
+      the upload in `learning/`. Starting a job that does not exist is
+      caught and logged, but first asks Google for credentials, so
+      `GCE_METADATA_IP` and `GCE_METADATA_HOST` point at a closed port
+      and the lookup is refused at once instead of waiting out its
+      timeouts.
 
 - [ ] A journey at "CI Second Hospital", which has no upload, in
       `tests/teaching-admin/`:
