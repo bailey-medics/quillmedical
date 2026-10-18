@@ -127,6 +127,7 @@ from . import (
     assessor_invites,
     definitions,
     email_templates,
+    evidence,
     export,
     frameworks,
     ids,
@@ -2120,6 +2121,25 @@ async def upload_evidence(
             f"That file does not look like {media_type}",
         )
 
+    # A PDF is the one evidence type whose contents can act rather than
+    # show, and an assessor's browser is what opens it. Refused with the
+    # token named, so the holder knows what to strip. No filename in the
+    # log: the one uploaded may carry a patient identifier.
+    if media_type == "application/pdf":
+        token = evidence.pdf_active_content(data)
+
+        if token is not None:
+            logger.info(
+                "Passport evidence refused: passport=%s active=%s",
+                row.id,
+                token,
+            )
+            raise HTTPException(
+                400,
+                f"That PDF contains active content ({token}), "
+                "which evidence may not",
+            )
+
     try:
         attachment = blobs.put(
             row.id,
@@ -2318,6 +2338,13 @@ def get_certificate_attachment(
     page can show it, with ``nosniff`` so a browser cannot decide an
     image is something else, and ``private`` so no shared cache keeps a
     copy.
+
+    ``Content-Security-Policy: sandbox`` makes the document an opaque
+    origin, so a PDF whose script the upload scan missed (see
+    ``evidence.pdf_active_content`` for what it cannot see) runs with no
+    access to this origin's cookies or API. Browsers still show an image
+    and a PDF inline under it. ``Cross-Origin-Resource-Policy`` keeps
+    another site from embedding the bytes at all.
     """
     row = _require_holder(db, passport_id, user)
     certificate = _existing_certificate(store, row.id, name)
@@ -2348,6 +2375,8 @@ def get_certificate_attachment(
             # URL.
             "Content-Disposition": "inline",
             "X-Content-Type-Options": "nosniff",
+            "Content-Security-Policy": "sandbox",
+            "Cross-Origin-Resource-Policy": "same-origin",
             "Cache-Control": "private, max-age=3600",
         },
     )
