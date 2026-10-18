@@ -25,11 +25,6 @@ output "cloud_run_subnet_id" {
   value       = google_compute_subnetwork.cloud_run.id
 }
 
-output "vpc_connector_id" {
-  description = "Serverless VPC connector ID for Cloud Run"
-  value       = google_vpc_access_connector.connector.id
-}
-
 output "private_vpc_connection" {
   description = "Private VPC connection (for Cloud SQL dependency)"
   value       = google_service_networking_connection.private_vpc_connection

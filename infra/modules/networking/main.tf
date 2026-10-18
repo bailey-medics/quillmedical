@@ -1,4 +1,4 @@
-# modules/networking/main.tf - VPC, subnets, NAT, firewall, VPC connector
+# modules/networking/main.tf - VPC, subnets, NAT, firewall
 
 # ---------- VPC ----------
 resource "google_compute_network" "vpc" {
@@ -26,11 +26,11 @@ resource "google_compute_subnetwork" "private" {
 # addresses out in blocks of sixteen. A /24 is roomy for five instances of
 # the backend, four jobs and a revision rollout, and costs nothing.
 #
-# 10.9.0.0/24 sits clear of the private subnet (10.0.0.0/20), the connector
-# (10.8.0.0/28) and the Cloud SQL peering range Google chose (10.185.0.0/16,
-# read from `gcloud compute addresses describe quill-private-ip-app --global`
-# on 2026-10-18). See
-# docs/docs/plans/2026-10-18-direct-vpc-egress-plan.md.
+# 10.9.0.0/24 sits clear of the private subnet (10.0.0.0/20), the range the
+# Serverless VPC Access connector held until it was deleted (10.8.0.0/28)
+# and the Cloud SQL peering range Google chose (10.185.0.0/16, read from
+# `gcloud compute addresses describe quill-private-ip-app --global` on
+# 2026-10-18). See docs/docs/plans/2026-10-18-direct-vpc-egress-plan.md.
 resource "google_compute_subnetwork" "cloud_run" {
   project       = var.project_id
   name          = "quill-run-${var.environment}"
@@ -80,18 +80,6 @@ resource "google_service_networking_connection" "private_vpc_connection" {
   network                 = google_compute_network.vpc.id
   service                 = "servicenetworking.googleapis.com"
   reserved_peering_ranges = [google_compute_global_address.private_ip_range.name]
-}
-
-# ---------- Serverless VPC connector (Cloud Run → private network) ----------
-resource "google_vpc_access_connector" "connector" {
-  project       = var.project_id
-  name          = "quill-vpc-cx-${var.environment}"
-  region        = var.region
-  network       = google_compute_network.vpc.id
-  ip_cidr_range = "10.8.0.0/28"
-
-  min_instances = 2
-  max_instances = 3
 }
 
 # ---------- Firewall rules ----------

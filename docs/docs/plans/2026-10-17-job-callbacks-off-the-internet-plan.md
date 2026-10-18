@@ -1,5 +1,7 @@
 # Job callbacks off the internet plan
 
+<!-- cspell:ignore mgwc trs5t -->
+
 The transcode and caption jobs report back to the backend at
 `/api/ci/teaching/*-complete` over the public app domain, presenting a
 shared secret. Both jobs run with `PRIVATE_RANGES_ONLY` egress, so the
@@ -44,8 +46,11 @@ shared secret, its Secret Manager entry and both job mounts go.
       gives the transcode and caption jobs as the example of needing
       `PRIVATE_RANGES_ONLY`.
 
-- [ ] Run one transcode in App production after the apply, and confirm
-      `transcoded_at` is set. An internal-ingress service answers a
+- [x] Run one transcode in App production after the apply, and confirm
+      `transcoded_at` is set. Done on 2026-10-18 after all four units had
+      applied together: execution `quill-transcode-app-trs5t` reported to
+      the backend's `run.app` address and was answered 200, so the
+      report arrived as internal traffic. An internal-ingress service answers a
       request that arrived from the internet with 404, not 401, so a
       404 in the job's log means the egress change did not take and the
       report is still leaving directly. Then one caption job, which
@@ -158,8 +163,13 @@ shared secret, its Secret Manager entry and both job mounts go.
       The two maps stay, empty, because `runtime_workload_secrets` is
       built from them and is what gives each job its service account.
 
-- [ ] Run a transcode and a caption job in App production and confirm
-      both reports land. The backend still holds the shared token at
+- [x] Run a transcode and a caption job in App production and confirm
+      both reports land. Done on 2026-10-18 on asset
+      `81d2b3821b6b4ddaaa6adf48c61cfd99`: the transcode above and caption
+      execution `quill-caption-app-6mgwc`, both answered 200 by a backend
+      revision holding the audience and callers and no shared token.
+      The caption job the backend fires itself after a transcode
+      reported too. The backend still holds the shared token at
       this point, so a job on the old image keeps working meanwhile.
 
 ## Phase 4: Remove the shared secret

@@ -25,11 +25,6 @@ output "fhir_vm_ip" {
   value       = var.enable_fhir ? module.compute_fhir[0].internal_ip : null
 }
 
-output "vpc_connector_id" {
-  description = "Serverless VPC connector ID"
-  value       = module.networking.vpc_connector_id
-}
-
 output "dns_zone_name_servers" {
   description = "The nameservers Cloud DNS assigned to the quill-medical.com zone. GoDaddy must list exactly these for the zone to be live."
   value       = var.manage_dns_zone ? google_dns_managed_zone.primary[0].name_servers : []

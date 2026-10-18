@@ -82,8 +82,10 @@ keeps the whole series in one view.
       apply, and confirm both reports land and the encode is faster
       than the last one on the connector. Google warns an instance may
       wait a minute for its first connection on Direct VPC, which is
-      lost in a twenty-minute job timeout. This also stands in for the
-      two production checks still open in the job callbacks plan.
+      lost in a twenty-minute job timeout. The figure to beat, from
+      2026-10-18 on the connector: asset
+      `81d2b3821b6b4ddaaa6adf48c61cfd99` took 4 min 17 s start to finish
+      (execution `quill-transcode-app-trs5t`).
 
 ## Phase 4: The admin and teaching-sync jobs move
 
@@ -128,16 +130,22 @@ keeps the whole series in one view.
 
 ## Phase 6: The connector goes
 
-- [ ] Only once Phase 5 is live and serving: delete
+- [x] Only once Phase 5 is live and serving: delete
       `google_vpc_access_connector.connector` from the networking module,
-      its `vpc_connector_id` output, and the `vpc_connector_id` variable
-      and its branch from both Cloud Run modules, so the modules know
-      Direct VPC alone. Its own unit, after the workloads have moved, so
-      Terraform never tries to delete a connector a live revision still
-      names. Update the three "VPC connector" mentions in
-      `docs/docs/infrastructure/gcp.md`, and the `_dev-stack` comments in
-      `infra/main.tf` that explain egress by the connector. The
-      `10.8.0.0/28` range is freed with it; the new subnet stays.
+      its `vpc_connector_id` output (and the root one in
+      `infra/outputs.tf`), and the `vpc_connector_id` variable and its
+      branch from both Cloud Run modules, so the modules know Direct VPC
+      alone. Its own unit, after the workloads have moved, so Terraform
+      never tries to delete a connector a live revision still names.
+      Built on 2026-10-18 as the unit above the backend's move; **its
+      pull request must not merge until #2105 is live and a deploy has
+      passed on it**, which is written in that pull request. Of the
+      three "VPC connector" mentions in `docs/docs/infrastructure/gcp.md`
+      only the module table changed; the other two are the record of
+      the first applies and stay as history. The comments in
+      `infra/main.tf` that name the connector do so as history too and
+      stay. The `10.8.0.0/28` range is freed with it; the new subnet
+      stays.
 
 - [ ] Confirm the apply deleted the connector and nothing else, and that
       a deploy and one transcode still pass afterwards.
