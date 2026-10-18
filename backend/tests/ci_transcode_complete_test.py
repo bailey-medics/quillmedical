@@ -18,7 +18,6 @@ from datetime import UTC, datetime
 
 import pytest
 from fastapi.testclient import TestClient
-from pydantic import SecretStr
 from sqlalchemy.orm import Session
 
 from app.config import settings
@@ -26,7 +25,9 @@ from app.features.teaching.models import ModuleMediaLink
 
 ENDPOINT = "/api/ci/teaching/transcode-complete"
 
-TOKEN = "callback-token-for-tests"
+TOKEN = "an-identity-token-for-tests"
+AUDIENCE = "https://quill-backend-test-123.europe-west2.run.app"
+TRANSCODE_JOB = "run-transcode@project.iam.gserviceaccount.com"
 
 
 def _body(**overrides: object) -> dict[str, object]:
@@ -67,12 +68,31 @@ def link(db_session: Session) -> ModuleMediaLink:
     return row
 
 
+def _verify(token: str, audience: str) -> dict[str, object]:
+    """Google's verifier stood in for: `TOKEN` is the one token it signs."""
+    assert audience == AUDIENCE
+
+    if token != TOKEN:
+        raise ValueError("Could not verify token signature.")
+
+    return {"email": TRANSCODE_JOB, "email_verified": True}
+
+
 @pytest.fixture
 def configured(monkeypatch) -> None:
-    """A token set on both ends, as Terraform arranges in teaching."""
+    """The audience and callers set, as Terraform arranges in teaching."""
+    monkeypatch.setattr(settings, "TEACHING_JOB_CALLBACK_AUDIENCE", AUDIENCE)
     monkeypatch.setattr(
-        settings, "TEACHING_TRANSCODE_CALLBACK_TOKEN", SecretStr(TOKEN)
+        settings, "TEACHING_JOB_CALLBACK_CALLERS", TRANSCODE_JOB
     )
+    monkeypatch.setattr("app.deps._verify_google_id_token", _verify)
+
+
+@pytest.fixture
+def unconfigured(monkeypatch) -> None:
+    """Development, where nothing calls this and no job is listed."""
+    monkeypatch.setattr(settings, "TEACHING_JOB_CALLBACK_AUDIENCE", None)
+    monkeypatch.setattr(settings, "TEACHING_JOB_CALLBACK_CALLERS", None)
 
 
 def _post(client: TestClient, token: str | None = TOKEN, **overrides: object):
@@ -82,17 +102,13 @@ def _post(client: TestClient, token: str | None = TOKEN, **overrides: object):
 
 
 class TestAuthorisation:
-    """The token is the entire boundary - there is no session here."""
+    """The identity token is the entire boundary - there is no session."""
 
     def test_unconfigured_refuses(
-        self, test_client: TestClient, monkeypatch
+        self, test_client: TestClient, unconfigured
     ) -> None:
-        # Development, where nothing calls this and no secret exists.
         # Refused rather than allowed through, so a misconfigured
         # deployment cannot be written to by anyone who finds the path.
-        monkeypatch.setattr(
-            settings, "TEACHING_TRANSCODE_CALLBACK_TOKEN", None
-        )
         assert _post(test_client).status_code == 503
 
     def test_missing_bearer_token(
@@ -224,11 +240,8 @@ class TestCaptionCallback:
     """The caption job's own report, deliberately a separate endpoint."""
 
     def test_unconfigured_refuses(
-        self, test_client: TestClient, monkeypatch
+        self, test_client: TestClient, unconfigured
     ) -> None:
-        monkeypatch.setattr(
-            settings, "TEACHING_TRANSCODE_CALLBACK_TOKEN", None
-        )
         assert _post_caption(test_client).status_code == 503
 
     def test_wrong_token(self, test_client: TestClient, configured) -> None:
@@ -368,10 +381,6 @@ class TestPosterComplete:
         assert _post_poster(test_client, token="wrong").status_code == 401
 
     def test_refuses_when_unconfigured(
-        self, test_client: TestClient, monkeypatch
+        self, test_client: TestClient, unconfigured
     ) -> None:
-        monkeypatch.setattr(
-            settings, "TEACHING_TRANSCODE_CALLBACK_TOKEN", None
-        )
-
         assert _post_poster(test_client).status_code == 503

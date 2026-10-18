@@ -55,9 +55,6 @@ locals {
     local.is_teaching_product ? {
       TEACHING_SYNC_TOKEN        = "teaching-sync-token"
       TEACHING_VIDEO_SIGNING_KEY = "teaching-video-signing-key"
-      # The other end of the transcode job's completion report. Same
-      # secret on both sides - the job presents it, this verifies it.
-      TEACHING_TRANSCODE_CALLBACK_TOKEN = "teaching-transcode-callback-token"
     } : {}
   )
 

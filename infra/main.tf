@@ -115,7 +115,6 @@ module "secrets" {
     local.is_teaching_product ? [
       "teaching-video-signing-key",
       "teaching-sync-token",
-      "teaching-transcode-callback-token",
     ] : []
   )
 }
@@ -286,26 +285,6 @@ resource "random_password" "jwt_secret" {
 resource "google_secret_manager_secret_version" "jwt_secret" {
   secret      = "projects/${var.project_id}/secrets/jwt-secret"
   secret_data = random_password.jwt_secret.result
-  depends_on  = [module.secrets]
-}
-
-# The transcode job's completion report is authenticated with a shared
-# secret, so Terraform both generates and fills it - the same reasoning as
-# the video signing key, and the same exception to modules/secrets'
-# usual convention that Terraform creates containers and humans add
-# versions. Two ends must hold identical bytes; a human typing it into
-# both is a transcription error waiting to happen, and there is nothing
-# to be gained by anyone ever seeing it.
-resource "random_password" "transcode_callback_token" {
-  count   = local.is_teaching_product ? 1 : 0
-  length  = 48
-  special = false
-}
-
-resource "google_secret_manager_secret_version" "transcode_callback_token" {
-  count       = local.is_teaching_product ? 1 : 0
-  secret      = "projects/${var.project_id}/secrets/teaching-transcode-callback-token"
-  secret_data = random_password.transcode_callback_token[0].result
   depends_on  = [module.secrets]
 }
 

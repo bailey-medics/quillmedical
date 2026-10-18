@@ -164,7 +164,7 @@ shared secret, its Secret Manager entry and both job mounts go.
 
 ## Phase 4: Remove the shared secret
 
-- [ ] Remove the shared-token branch from the three routes, leaving
+- [x] Remove the shared-token branch from the three routes, leaving
       `require_job_identity` as their one guard. Delete
       `TEACHING_TRANSCODE_CALLBACK_TOKEN` from `backend/app/config.py`,
       from `backend_secret_env_vars` in `infra/runtime-identities.tf`,
@@ -173,13 +173,15 @@ shared secret, its Secret Manager entry and both job mounts go.
       describe the shared token, are rewritten to describe the identity
       check.
 
-- [ ] Teach `backend/tests/every_route_is_guarded_test.py` the new
+- [x] Teach `backend/tests/every_route_is_guarded_test.py` the new
       guard: a `SERVICE_CALLER` set holding
       `app.deps.require_job_identity`, counted as settling who the
       caller is, and the three callback routes taken out of `PUBLIC`.
       The test then sees the check in the dependency tree rather than
       trusting a reason string, which is what Phase 5 of the sync plan
-      asked for.
+      asked for. A service call is kept apart from a signed-in one for
+      the CSRF rule: a job has no cookie for another site to ride on,
+      so the three `POST` routes are not asked for a CSRF check.
 
 ## Phase 5: Refuse `/api/ci/` at the edge
 

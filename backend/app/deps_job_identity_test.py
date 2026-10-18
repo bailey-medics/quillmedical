@@ -14,13 +14,11 @@ from typing import Any
 import pytest
 from fastapi import HTTPException
 from google.auth.exceptions import TransportError
-from pydantic import SecretStr
 from starlette.requests import Request
 
 from app.config import settings
-from app.deps import SHARED_CREDENTIAL_CALLER, require_job_identity
+from app.deps import require_job_identity
 
-SHARED = "the-shared-token"
 AUDIENCE = "https://quill-backend-test-123.europe-west2.run.app"
 TRANSCODE_JOB = "run-transcode@project.iam.gserviceaccount.com"
 CAPTION_JOB = "run-caption@project.iam.gserviceaccount.com"
@@ -68,18 +66,8 @@ def _never_called(token: str, audience: str) -> dict[str, Any]:
 
 @pytest.fixture()
 def nothing_configured(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(settings, "TEACHING_TRANSCODE_CALLBACK_TOKEN", None)
     monkeypatch.setattr(settings, "TEACHING_JOB_CALLBACK_AUDIENCE", None)
     monkeypatch.setattr(settings, "TEACHING_JOB_CALLBACK_CALLERS", None)
-
-
-@pytest.fixture()
-def shared_configured(
-    nothing_configured: None, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    monkeypatch.setattr(
-        settings, "TEACHING_TRANSCODE_CALLBACK_TOKEN", SecretStr(SHARED)
-    )
 
 
 @pytest.fixture()
@@ -92,13 +80,6 @@ def identity_configured(
         "TEACHING_JOB_CALLBACK_CALLERS",
         f"{TRANSCODE_JOB}, {CAPTION_JOB}",
     )
-
-
-@pytest.fixture()
-def both_configured(
-    shared_configured: None, identity_configured: None
-) -> None:
-    """The transition: the shared token still accepted beside identity."""
 
 
 @pytest.fixture()
@@ -124,7 +105,7 @@ def test_with_nothing_configured_every_caller_gets_503(
 ) -> None:
     verifier(_claims())
 
-    exc = _refusal(f"Bearer {SHARED}")
+    exc = _refusal("Bearer a-token")
 
     assert exc.status_code == 503
     assert exc.detail == "Job callback not configured"
@@ -151,7 +132,9 @@ def test_callers_with_no_audience_are_not_configured(
 # --- The header itself ---
 
 
-def test_no_authorization_header_is_refused(both_configured: None) -> None:
+def test_no_authorization_header_is_refused(
+    identity_configured: None,
+) -> None:
     exc = _refusal(None)
 
     assert exc.status_code == 401
@@ -159,45 +142,12 @@ def test_no_authorization_header_is_refused(both_configured: None) -> None:
 
 
 def test_a_header_that_is_not_bearer_is_refused(
-    both_configured: None,
+    identity_configured: None,
 ) -> None:
-    exc = _refusal(f"Basic {SHARED}")
+    exc = _refusal("Basic a-token")
 
     assert exc.status_code == 401
     assert exc.detail == "Missing Bearer token"
-
-
-# --- The shared token ---
-
-
-def test_the_shared_token_passes_without_consulting_google(
-    both_configured: None, verifier: Callable[[Verifier], None]
-) -> None:
-    verifier(_never_called)
-
-    assert require_job_identity(_request(f"Bearer {SHARED}")) == (
-        SHARED_CREDENTIAL_CALLER
-    )
-
-
-def test_the_shared_token_passes_when_it_is_the_only_way(
-    shared_configured: None,
-) -> None:
-    assert require_job_identity(_request(f"Bearer {SHARED}")) == (
-        SHARED_CREDENTIAL_CALLER
-    )
-
-
-def test_a_wrong_token_with_only_the_shared_way_is_refused(
-    shared_configured: None, verifier: Callable[[Verifier], None]
-) -> None:
-    # No identity settings, so the verifier is never a fallback.
-    verifier(_never_called)
-
-    exc = _refusal("Bearer not-the-token")
-
-    assert exc.status_code == 401
-    assert exc.detail == "Invalid token"
 
 
 # --- The job's identity ---
@@ -220,14 +170,6 @@ def test_callers_match_whatever_case_the_token_uses(
     verifier(_claims(email=CAPTION_JOB.upper()))
 
     assert _refusal("Bearer a-token").status_code == 401
-
-
-def test_the_identity_is_tried_when_the_shared_token_does_not_match(
-    both_configured: None, verifier: Callable[[Verifier], None]
-) -> None:
-    verifier(_claims())
-
-    assert require_job_identity(_request("Bearer a-token")) == TRANSCODE_JOB
 
 
 def test_an_unlisted_caller_is_refused(
