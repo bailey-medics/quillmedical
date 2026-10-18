@@ -587,10 +587,14 @@ module "cloud_run_teaching_sync_job" {
 # object. Gated on the environment for the same reason the pipeline module is:
 # prod and staging have no video buckets for it to read or write.
 #
-# No VPC connector is wanted here - unlike the admin job, which reaches Cloud
-# SQL on a private address, this one talks only to GCS and holds no database
-# connection at all. It is given one regardless because the module requires it,
-# and `PRIVATE_RANGES_ONLY` egress leaves the public GCS endpoint reachable.
+# All egress through the VPC, as the admin job's is, so that the job's
+# completion report reaches the backend as internal traffic rather than
+# leaving Google's network and coming back in through the load balancer.
+# GCS is reached the same way: the subnet has Private Google Access, so
+# the bucket reads and writes stay on Google's network and never touch the
+# NAT. Until 2026-10-17 this job used `PRIVATE_RANGES_ONLY` and reported to
+# the public app domain; see
+# docs/docs/plans/2026-10-17-job-callbacks-off-the-internet-plan.md.
 #
 # Terraform does not track the image: CI pushes it and
 # `gcloud run jobs execute --image` sets it at call time, as it already does
@@ -609,6 +613,7 @@ module "cloud_run_transcode_job" {
   job_name         = "transcode"
   image            = var.transcode_image
   vpc_connector_id = module.networking.vpc_connector_id
+  vpc_egress       = "ALL_TRAFFIC"
 
   # Encoding is CPU-bound and the whole source file is held on local disk
   # while FFmpeg works on it, so both are sized above the module defaults.
@@ -628,10 +633,13 @@ module "cloud_run_transcode_job" {
     # lands `transcoded_at` stays null and the module stays hidden, so
     # this is what turns a finished encode into a playable module.
     #
-    # The public app domain rather than an internal address: the job's
-    # VPC egress is PRIVATE_RANGES_ONLY, so public traffic leaves
-    # directly and this resolves the same way a browser would.
-    TRANSCODE_CALLBACK_URL = "https://${var.app_domain}/api/ci/teaching/transcode-complete"
+    # The backend's own run.app address, not the public app domain. The
+    # backend admits only the load balancer and same-project VPC traffic,
+    # and this job's egress all goes through the VPC, so the report
+    # arrives as internal traffic. An internal-ingress service answers a
+    # request that came in from the internet with 404, so a 404 in the
+    # job's log means the egress setting has not taken.
+    TRANSCODE_CALLBACK_URL = "${module.cloud_run_backend.service_url}/api/ci/teaching/transcode-complete"
   }
 
   secret_env_vars = local.transcode_secret_env_vars
@@ -666,6 +674,10 @@ module "cloud_run_caption_job" {
   image            = var.caption_image
   vpc_connector_id = module.networking.vpc_connector_id
 
+  # All egress through the VPC, for the reason the transcode job's is:
+  # the completion report must arrive at the backend as internal traffic.
+  vpc_egress = "ALL_TRAFFIC"
+
   cpu     = "4"
   memory  = "10Gi"
   timeout = "3600s"
@@ -677,8 +689,9 @@ module "cloud_run_caption_job" {
     # single output, and the transcode callback rewrites every rendition
     # flag from the list it is given - so sending captions there would
     # clear `has_1080p` and `has_poster` and claim a transcode that did
-    # not happen.
-    CAPTION_CALLBACK_URL = "https://${var.app_domain}/api/ci/teaching/caption-complete"
+    # not happen. The backend's run.app address, as the transcode
+    # callback is, so the report never leaves Google's network.
+    CAPTION_CALLBACK_URL = "${module.cloud_run_backend.service_url}/api/ci/teaching/caption-complete"
   }
 
   secret_env_vars = local.caption_secret_env_vars

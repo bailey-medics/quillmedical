@@ -124,12 +124,13 @@ transcode, caption and poster jobs, which read it from Secret Manager.
 
 ## Phase 5: One guard for the three callbacks
 
-- [ ] Move the bearer check copied into `transcode-complete`,
-      `caption-complete` and `poster-complete` into one dependency,
-      `require_teaching_sync_token` in `backend/app/deps.py`. Teach
-      `every_route_is_guarded_test.py` to accept it the way it accepts
-      `get_current_user`, and drop the three routes from `PUBLIC`, so
-      the test sees the check rather than trusting a reason string.
+- [ ] Superseded on 2026-10-17 by
+      `2026-10-17-job-callbacks-off-the-internet-plan.md`, which replaces
+      the shared token with the jobs' own identity and gives the three
+      routes one guard, `require_job_identity`, that
+      `every_route_is_guarded_test.py` recognises. Its Phase 5 also
+      depends on Phase 4 here: the `/api/ci/` prefix is refused at the
+      load balancer only once the sync route is gone.
 
 ## Decisions
 
@@ -141,5 +142,5 @@ transcode, caption and poster jobs, which read it from Secret Manager.
 - **`TEACHING_SYNC_TOKEN` stays for the callbacks** - its other callers
   are GCP jobs reading it from Secret Manager, which is where the rule
   says a secret belongs. Replacing it with Cloud Run's own identity
-  tokens is possible, but is a separate change with no GitHub exposure
-  to remove.
+  tokens is a separate change with no GitHub exposure to remove, now
+  planned in `2026-10-17-job-callbacks-off-the-internet-plan.md`.

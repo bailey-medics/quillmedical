@@ -110,3 +110,4 @@
 - [Security Module Tidy](2026-10-15-security-module-tidy-plan.md)
 - [Teaching E2E Coverage](2026-10-15-teaching-e2e-coverage-plan.md)
 - [Teaching Sync Without a GitHub Secret](2026-10-16-teaching-sync-without-a-github-secret-plan.md)
+- [Job Callbacks off the Internet](2026-10-17-job-callbacks-off-the-internet-plan.md)
