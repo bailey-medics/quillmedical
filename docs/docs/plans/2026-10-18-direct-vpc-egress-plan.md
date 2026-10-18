@@ -67,7 +67,7 @@ keeps the whole series in one view.
 
 ## Phase 3: The transcode and caption jobs move
 
-- [ ] Pass `vpc_subnetwork_id` instead of `vpc_connector_id` to
+- [x] Pass `vpc_subnetwork_id` instead of `vpc_connector_id` to
       `module "cloud_run_transcode_job"` and `module "cloud_run_caption_job"`
       in `infra/main.tf`, keeping `ALL_TRAFFIC`: their reports must
       still arrive at the backend as internal traffic, and the caption
