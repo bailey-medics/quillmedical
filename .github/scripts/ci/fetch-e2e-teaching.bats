@@ -91,6 +91,25 @@ setup() {
   [ ! -e "$DEST" ]
 }
 
+@test "opens a checkout for every user to write to" {
+  fetch_commit "file://$SOURCE_REPO" "$FIRST_SHA" "$DEST"
+  chmod -R go-w "$DEST"
+
+  run open_for_uploads "$DEST"
+
+  [ "$status" -eq 0 ]
+  [ "$(stat -c '%a' "$DEST/modules/chest-xray")" = "777" ]
+  [ "$(stat -c '%a' "$DEST/modules/chest-xray/module.yaml")" = "666" ]
+}
+
+@test "opening a checkout for uploads leaves git seeing no change" {
+  fetch_commit "file://$SOURCE_REPO" "$FIRST_SHA" "$DEST"
+
+  open_for_uploads "$DEST"
+
+  [ -z "$(git -C "$DEST" status --porcelain)" ]
+}
+
 @test "pins a full commit id, not a branch" {
   [[ "$PINNED_SHA" =~ ^[0-9a-f]{40}$ ]]
 }
