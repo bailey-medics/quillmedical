@@ -7,11 +7,14 @@ a competency dependency needs the User model, and centralising here
 keeps that a one-way import rather than a cycle back into app.cbac.
 """
 
-from collections.abc import Callable
+import hmac
+import logging
+from collections.abc import Callable, Mapping
 from functools import wraps
 from typing import Any
 
 from fastapi import Depends, HTTPException, Request
+from google.auth.exceptions import GoogleAuthError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -23,7 +26,88 @@ from app.log_context import user_id_var
 from app.models import User
 from app.security import decode_token, verify_csrf
 
+logger = logging.getLogger(__name__)
+
 DEP_GET_SESSION = Depends(get_core_db)
+
+#: What `require_job_identity` returns when the caller proved itself with
+#: the shared token rather than an identity token. Goes with that token
+#: in Phase 4 of docs/docs/plans/2026-10-17-job-callbacks-off-the-internet-plan.md.
+SHARED_CREDENTIAL_CALLER = "shared-credential"
+
+
+def _verify_google_id_token(token: str, audience: str) -> Mapping[str, Any]:
+    """The claims of a Google-signed identity token minted for *audience*.
+
+    Raises ``ValueError`` when the token is malformed, expired, signed by
+    somebody else or minted for another audience, and a
+    ``GoogleAuthError`` when Google's signing certificates cannot be
+    fetched. Its own function so a test can stand in for it without a
+    real token.
+    """
+    from google.auth.transport import requests as auth_requests
+    from google.oauth2 import id_token
+
+    claims: Mapping[str, Any] = id_token.verify_oauth2_token(  # type: ignore[no-untyped-call]
+        token, auth_requests.Request(), audience
+    )
+
+    return claims
+
+
+def require_job_identity(request: Request) -> str:
+    """FastAPI dependency: the guard on the video jobs' completion reports.
+
+    A Cloud Run job has no session, so it proves itself another way. The
+    way being moved to is its own identity: a Google-signed token minted
+    by the metadata server for the backend's address, whose ``email`` is
+    one of the service accounts in ``TEACHING_JOB_CALLBACK_CALLERS``.
+    Until every job presents one, the shared
+    ``TEACHING_TRANSCODE_CALLBACK_TOKEN`` is accepted as well, so a job
+    started before the switch still lands its report.
+
+    Returns who called: the service account email, or
+    ``SHARED_CREDENTIAL_CALLER``. Answers 503 when neither way is configured,
+    which is development, and 401 for anything that proves nothing.
+    """
+    shared = settings.TEACHING_TRANSCODE_CALLBACK_TOKEN
+    audience = settings.TEACHING_JOB_CALLBACK_AUDIENCE
+    callers = settings.teaching_job_callback_callers
+    identity_configured = bool(audience) and bool(callers)
+
+    if not shared and not identity_configured:
+        raise HTTPException(503, "Job callback not configured")
+
+    auth_header = request.headers.get("Authorization", "")
+
+    if not auth_header.startswith("Bearer "):
+        raise HTTPException(401, "Missing Bearer token")
+
+    provided = auth_header.removeprefix("Bearer ").strip()
+
+    if shared and hmac.compare_digest(provided, shared.get_secret_value()):
+        return SHARED_CREDENTIAL_CALLER
+
+    if identity_configured and audience:
+        try:
+            claims = _verify_google_id_token(provided, audience)
+        except (ValueError, GoogleAuthError) as exc:
+            # The reason, never the token: a token is a credential.
+            logger.warning("Job identity token refused: %s", exc)
+        else:
+            email = claims.get("email")
+            if claims.get("email_verified") is True and email in callers:
+                return str(email)
+
+            logger.warning(
+                "Job identity token from %s is not a listed caller",
+                email or "<no email claim>",
+            )
+
+    raise HTTPException(401, "Invalid token")
+
+
+DEP_REQUIRE_JOB_IDENTITY = Depends(require_job_identity)
 
 
 def require_clinical_services() -> None:

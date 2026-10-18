@@ -434,6 +434,20 @@ module "cloud_run_backend" {
         "jobs", "quill-caption-${var.environment}",
       ])
 
+      # How the transcode and caption jobs prove themselves when they
+      # report back: a Google identity token minted for this audience,
+      # from one of these service accounts. The audience is this very
+      # service's run.app URL, written out from the project number
+      # because the module cannot read its own `service_url` output.
+      # Cloud Run's URLs are deterministic, so the two agree; the plan
+      # output shows `service_url` to compare against. See
+      # docs/docs/plans/2026-10-17-job-callbacks-off-the-internet-plan.md.
+      TEACHING_JOB_CALLBACK_AUDIENCE = "https://quill-backend-${var.environment}-${data.google_project.project.number}.${var.region}.run.app"
+      TEACHING_JOB_CALLBACK_CALLERS = join(",", [
+        google_service_account.runtime["transcode"].email,
+        google_service_account.runtime["caption"].email,
+      ])
+
       # Same host as the app, deliberately: the load balancer routes
       # /videos/* to the backend bucket, so the signed cookie is same-origin
       # and the browser sends it on media requests with no cross-site

@@ -2,14 +2,17 @@
 
 ``ci_transcode_complete_test.py`` pins the status of most of these.
 These pin the words with it, through the real routes, so neither can
-drift. Every route shares one token and one set of refusals, so every
-test here runs against each.
+drift. The routes share one guard, ``require_job_identity``, and so one
+set of refusals, so every test here runs against each. The guard's own
+branches are covered in ``app/deps_job_identity_test.py``; here it is
+enough that each route is behind it, in both of the ways it accepts.
 
 Three refusals are about the request and are answered by the route
 itself. The fourth, an upload that is not there, is about the content
 and comes from ``app.features.teaching.ci_media``.
 """
 
+from collections.abc import Callable
 from datetime import UTC, datetime
 
 import pytest
@@ -92,7 +95,7 @@ def test_with_no_token_configured_nobody_may_report(
     resp = test_client.post(endpoint, json=body, headers=_bearer("anything"))
 
     assert resp.status_code == 503
-    assert resp.json() == {"detail": "Transcode callback token not configured"}
+    assert resp.json() == {"detail": "Job callback not configured"}
 
 
 @each_callback
@@ -214,10 +217,27 @@ def test_a_report_with_a_field_nobody_asked_for_is_refused_as_malformed(
     endpoint: str,
     body: dict[str, object],
 ) -> None:
-    """The body is read before the token, so this is said first."""
-    resp = test_client.post(endpoint, json={**body, "extra": "field"})
+    """Said once the caller has proved itself: the guard is a dependency,
+    so it answers before the body is read, and a caller with nothing to
+    show learns nothing about the shape of a report."""
+    resp = test_client.post(
+        endpoint, json={**body, "extra": "field"}, headers=_bearer(TOKEN)
+    )
 
     assert resp.status_code == 422
+
+
+@each_callback
+def test_the_guard_answers_before_the_body_is_read(
+    test_client: TestClient,
+    configured: None,
+    endpoint: str,
+    body: dict[str, object],
+) -> None:
+    resp = test_client.post(endpoint, json={**body, "extra": "field"})
+
+    assert resp.status_code == 401
+    assert resp.json() == {"detail": "Missing Bearer token"}
 
 
 def test_a_transcode_report_answers_with_the_flags_it_set(
@@ -250,3 +270,69 @@ def test_a_caption_report_answers_that_it_was_recorded(
 
     assert resp.status_code == 200
     assert resp.json() == {"recorded": True}
+
+
+# --- The job's own identity, the way the shared token is being replaced ---
+
+AUDIENCE = "https://quill-backend-test-123.europe-west2.run.app"
+TRANSCODE_JOB = "run-transcode@project.iam.gserviceaccount.com"
+
+
+@pytest.fixture()
+def identity_configured(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The identity settings on, and the shared token off, as after Phase 4."""
+    monkeypatch.setattr(settings, "TEACHING_TRANSCODE_CALLBACK_TOKEN", None)
+    monkeypatch.setattr(settings, "TEACHING_JOB_CALLBACK_AUDIENCE", AUDIENCE)
+    monkeypatch.setattr(
+        settings, "TEACHING_JOB_CALLBACK_CALLERS", TRANSCODE_JOB
+    )
+
+
+def _verifier_returning(email: str) -> Callable[[str, str], dict[str, object]]:
+    def verify(token: str, audience: str) -> dict[str, object]:
+        assert audience == AUDIENCE
+
+        return {"email": email, "email_verified": True}
+
+    return verify
+
+
+@each_callback
+def test_a_listed_job_identity_reaches_the_route(
+    test_client: TestClient,
+    identity_configured: None,
+    monkeypatch: pytest.MonkeyPatch,
+    upload: ModuleMediaLink,
+    endpoint: str,
+    body: dict[str, object],
+) -> None:
+    monkeypatch.setattr(
+        "app.deps._verify_google_id_token", _verifier_returning(TRANSCODE_JOB)
+    )
+
+    resp = test_client.post(
+        endpoint, json=body, headers=_bearer("a-google-id-token")
+    )
+
+    assert resp.status_code == 200
+
+
+@each_callback
+def test_an_unlisted_job_identity_is_refused(
+    test_client: TestClient,
+    identity_configured: None,
+    monkeypatch: pytest.MonkeyPatch,
+    endpoint: str,
+    body: dict[str, object],
+) -> None:
+    monkeypatch.setattr(
+        "app.deps._verify_google_id_token",
+        _verifier_returning("somebody-else@project.iam.gserviceaccount.com"),
+    )
+
+    resp = test_client.post(
+        endpoint, json=body, headers=_bearer("a-google-id-token")
+    )
+
+    assert resp.status_code == 401
+    assert resp.json() == {"detail": "Invalid token"}

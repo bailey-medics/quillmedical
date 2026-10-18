@@ -318,6 +318,23 @@ class Settings(BaseSettings):
             "and nothing calls it."
         ),
     )
+    TEACHING_JOB_CALLBACK_AUDIENCE: str | None = Field(
+        None,
+        description=(
+            "The audience a job's Google identity token must name when it "
+            "reports to a /api/ci/teaching/*-complete route: the backend's "
+            "own run.app URL, which Terraform builds from the project "
+            "number. Unset in development, where no job reports."
+        ),
+    )
+    TEACHING_JOB_CALLBACK_CALLERS: str | None = Field(
+        None,
+        description=(
+            "The service account emails whose identity tokens the "
+            "/api/ci/teaching/*-complete routes accept, separated by "
+            "commas: the transcode and caption jobs. Unset in development."
+        ),
+    )
 
     # --- In-app guides ---
     GUIDE_ASSETS_GCS_BUCKET: str | None = Field(
@@ -571,6 +588,44 @@ class Settings(BaseSettings):
             )
 
         return self
+
+    @model_validator(mode="after")
+    def _validate_teaching_job_callback_callers(self) -> Settings:
+        """Refuse a callers list that is set but names nobody usable.
+
+        The list says which service accounts may report a finished
+        transcode or caption. A slip in it would refuse every report and
+        leave each new module hidden, with nothing saying why, so it
+        fails at startup instead, where a deploy stops and the old
+        revision keeps serving.
+        """
+        raw = self.TEACHING_JOB_CALLBACK_CALLERS
+
+        if raw is None:
+            return self
+
+        try:
+            callers = parse_address_list(raw)
+        except ValueError as exc:
+            raise ValueError(f"TEACHING_JOB_CALLBACK_CALLERS: {exc}") from exc
+
+        if not callers:
+            raise ValueError(
+                "TEACHING_JOB_CALLBACK_CALLERS is set but names no service "
+                "account; give at least one, or leave it unset"
+            )
+
+        return self
+
+    @property
+    def teaching_job_callback_callers(self) -> frozenset[str]:
+        """The service account emails whose job reports are accepted."""
+        raw = self.TEACHING_JOB_CALLBACK_CALLERS
+
+        if raw is None:
+            return frozenset()
+
+        return frozenset(parse_address_list(raw))
 
     # --- Computed Database URLs ---
     @computed_field  # type: ignore[prop-decorator]

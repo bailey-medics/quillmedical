@@ -336,3 +336,42 @@ class TestValidationErrorsHideWhatWasGiven:
         assert "CORS_ORIGINS" in message
         assert "a_jwt_secret_that_must_not_be_printed_1234" not in message
         assert "a-database-password-not-to-print" not in message
+
+
+class TestTeachingJobCallbackCallers:
+    """The callers list is parsed once, at startup, and refused if wrong."""
+
+    @staticmethod
+    def _settings(**overrides: object) -> Settings:
+        return Settings(
+            JWT_SECRET="test_secret_long_enough_32_chars_min",
+            CORE_DB_PASSWORD="auth_pass",
+            VAPID_PRIVATE="vapid_key",
+            **overrides,
+        )
+
+    def test_unset_means_nobody(self) -> None:
+        assert self._settings().teaching_job_callback_callers == frozenset()
+
+    def test_a_list_is_split_trimmed_and_lower_cased(self) -> None:
+        settings = self._settings(
+            TEACHING_JOB_CALLBACK_CALLERS=(
+                " Run-Transcode@p.iam.gserviceaccount.com ,"
+                "run-caption@p.iam.gserviceaccount.com"
+            )
+        )
+
+        assert settings.teaching_job_callback_callers == frozenset(
+            {
+                "run-transcode@p.iam.gserviceaccount.com",
+                "run-caption@p.iam.gserviceaccount.com",
+            }
+        )
+
+    def test_an_entry_that_is_not_an_address_fails_at_startup(self) -> None:
+        with pytest.raises(ValidationError, match="not an email address"):
+            self._settings(TEACHING_JOB_CALLBACK_CALLERS="run-transcode")
+
+    def test_set_but_naming_nobody_fails_at_startup(self) -> None:
+        with pytest.raises(ValidationError, match="names no service account"):
+            self._settings(TEACHING_JOB_CALLBACK_CALLERS=" , ")
