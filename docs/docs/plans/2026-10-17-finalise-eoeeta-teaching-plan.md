@@ -107,35 +107,144 @@ in this repository changes.
 
 ## Phase 4: Load the full question bank from EoEETA's spreadsheet
 
-- [ ] Read the spreadsheet with a script kept outside the repository, not
+- [x] Read the spreadsheet with a script kept outside the repository, not
       committed: the import is a one-off, and the repository is content.
       The script lists each row's two images and its answer, and stops
       on any row with a missing image, an answer other than `adenoma`
       or `serrated`, or a duplicate pair. Report those rows to Mark
       rather than guessing.
+      The file holds 299 numbered rows, each image stored inside its
+      cell (Excel's rich value images, read from `xl/richData/` with the
+      standard library). Found: 17 unnumbered rows of stray image copies
+      at the foot; no answer on #61 and #65; "Hyperplastic" on #270 and
+      "Normal" on #297; the same image as both pictures on #282; #187 an
+      exact copy of #186; and images shared between #22 and #23, #79 and
+      #80 (with different answers), and #117 and #118.
 
-- [ ] Delete `question_001` to `question_004` and write the bank afresh
+- [x] Remove the bad rows, Mark's decision on 17 October: all 12
+      numbered rows above, both rows of each shared pair since which
+      image is wrong cannot be told, and the 17 stray rows. That leaves
+      287 pairs, 235 adenoma and 52 serrated. Written to
+      `local/... CLEANED.xlsx` beside the untouched original, each kept
+      row identical to its original, and the serial numbers turned from
+      formulas into fixed values so they keep their original numbers.
+      Mark then edited this copy by hand in Excel. Sent back to EoEETA
+      for sign-off; the bank is built from whatever they return.
+
+- [x] Crop every image to the endoscope's octagonal view, in the
+      spreadsheet itself so EoEETA sign off the images that will be
+      used. Two faults, one fix:
+      327 of the 574 images carry a solid black border, 28 pixels down
+      the right of #1's NBI image for one; and about 50 (#41, #81 to
+      #100, #165 to #173, #180) carry the endoscope's information panel
+      on the left, showing the procedure date and time and the scope's
+      serial number. Name, ID and date of birth are blank, but date,
+      time and scope serial together could be matched to a patient's
+      record, so the panel must not reach the bank. Both sit outside
+      the octagon, so cropping to it removes them and loses nothing of
+      the picture. Written to a new `CLEANED v2` copy, with
+      before-and-after contact sheets for Mark to check every image by
+      eye: a dark lumen at the edge of the view is the case an
+      automatic crop could cut into.
+      Done on 17 October: 403 of 574 images cropped, into
+      `local/... CLEANED v2.xlsx` with contact sheets in
+      `local/contact-sheets-v2/`. A pixel counts as picture when it has
+      some colour (channel spread of 4 or more) and is not near black;
+      a row or column is kept from the first run of 24 in which a
+      quarter of the pixels are picture. Brightness alone failed both
+      ways: it kept grey caption text and a narrow column of panel
+      icons, and a stricter colour test cut into dark lumen on #10 and
+      #257. The crop also took off the site captions printed under
+      some images ("Site 3. Mid transverse colon", #106 to #120, #185,
+      #221 to #239), and a second form of panel on #180's NBI image
+      reading "Issuing temporary patient ID". Every row, image
+      placement and answer is unchanged from Mark's edited copy.
+      Mark then spotted a thin dark edge left on #1's NBI image: the
+      sources were enlarged before pasting, so the line between picture
+      and black is a blur several pixels wide, and the crop stopped at
+      the first line that was mostly picture. 162 images had 2 pixels
+      or more of it. `CLEANED v3` trims each side while its edge line is
+      under 60% as bright as the picture 12 to 20 pixels in, up to 10
+      pixels a pass and three passes. Lumen at the edge is as dark
+      further in, so it stays (#10, #13, #257 checked). Written as v3
+      because Excel had v2 open.
+
+- [x] Fix the faint edges and the squashed pair Mark listed on
+      18 October. Thin right borders on #15, #41, #77, #226, #234, #236
+      and #240 were fades of one to three pixels, too faint for the
+      60% test, and tightening the test to 90% trimmed 289 images by
+      its full limit because most pictures darken naturally towards
+      their edges. So every image loses a flat three pixels from each
+      side, about half a percent of the picture. #60 had been pasted
+      squashed to about 1/1.6 of its height: both pictures were twice
+      as wide as tall against about 1.2 for the rest of the bank, and
+      the octagon's corner cuts and the "Near Focus" label agreed. Both
+      are stretched back by 1.6. Rebuilt into `CLEANED v3`; Mark may
+      also ask EoEETA for the original images of #60.
+
+- [x] Convert the spreadsheet's images to JPEG, as `CLEANED v4`, so the
+      copy EoEETA sign off holds the same images the bank will. Quality
+      92 with no colour subsampling, so fine red vessels keep their
+      colour. Each image is renamed `.jpeg`, the targets in
+      `xl/richData/_rels/richValueRel.xml.rels` follow, and
+      `[Content_Types].xml` declares the type. 249 MB to 54 MB. Against
+      the v3 PNGs, all 574 images: median 45.5 dB PSNR, worst 36.3 dB
+      (#93, from the panel group whose fine grain is hardest to
+      compress), which at twice size shows no visible difference.
+
+- [x] Delete `question_001` to `question_004` and write the bank afresh
       as `question_001` upwards, one folder per row in spreadsheet
-      order: `wli.png`, `nbi.png` and a `question.yaml` holding
-      `diagnosis:`. Convert to PNG where the source is not one, and crop
-      any white border, as was done by hand for the first four in
-      eoeeta-teaching#12.
+      order: `wli.jpg`, `nbi.jpg` and a `question.yaml` holding
+      `diagnosis:`, with the `images` keys in `assessment.yaml` changed
+      to match. The images are already cropped by the steps above.
+      Keep their size and save them as JPEG at quality 92, which the
+      validator accepts (`ALLOWED_IMAGE_EXTENSIONS`). Measured on 40
+      images: PNG median 345 KB, JPEG 54 KB, with a difference from
+      the PNG of 43.6 dB PSNR, above the 40 dB at which a difference
+      cannot be seen. Lossless WebP saves only a third. Scaling down,
+      the first idea here, was dropped: the median image is already
+      590 pixels wide, and while most were enlarged from smaller
+      originals (shrinking to 75% and back changes them by a median of
+      48.7 dB), some carry real detail (worst 29.6 dB), so shrinking
+      would cost those. Two rows, #54 and #275, have an arrow drawn over
+      the white light image as an Excel shape, not part of the picture;
+      ask Mark whether to draw it into the image.
+      Done on 18 October from `CLEANED v4`, on a branch
+      `feature/colonoscopy-full-question-bank` built on #15's branch,
+      since both change `assessment.yaml`. 287 folders in serial order,
+      each `question.yaml` opening with a comment naming its serial in
+      EoEETA's spreadsheet, so a question can be traced back to its
+      row; serials skip where rows were removed, so `question_054` is
+      serial 56. Every folder was compared byte for byte with its row's
+      images and answer. `*.jpg -text` added to `.gitattributes` beside
+      the PNG line. The arrows on #54 and #275 are not drawn in yet.
 
-- [ ] Check the images by eye on a sample, at least the first, last and
+- [x] Check the images by eye on a sample, at least the first, last and
       every twentieth pair, against the spreadsheet: a swapped WLI and
       NBI image, or an answer on the wrong row, passes every automated
       check.
+      Mark checked every image in the spreadsheet through three rounds
+      of contact sheets, and the bank was then compared with the
+      spreadsheet byte for byte, which is stronger than a sample.
 
-- [ ] Update `assessment/assessment.yaml` for a real bank: a
+- [x] Update `assessment/assessment.yaml` for a real bank: a
       `description` and intro page that no longer say "test assessment
-      with 4 polyp image pairs", `items_per_attempt`,
-      `time_limit_minutes` and `min_pool_size` set to EoEETA's figures.
-      Bump `version`, which the version lock requires when the bank
-      changes.
+      with 4 polyp image pairs", and EoEETA's figures as Mark gave them
+      on 18 October: `items_per_attempt: 120` drawn at random from the
+      bank, `time_limit_minutes: 60`, and `min_pool_size: 120` so the
+      bank can never shrink below one attempt's worth. `randomise_order`
+      stays on. Bump `version`, which the version lock requires when
+      the bank changes.
+      Version 10, one above #15's 9: the content validator passes
+      against #15's branch, and fails against `main` (8 to 10) until #15
+      merges, so #15 merges first. The intro page now gives the pass
+      rules too. One validator warning stands: 82% of the bank is
+      adenoma, over its 80% skew threshold, which is EoEETA's case mix
+      rather than a fault.
 
-- [ ] Expect the pull request to be large: about 120 KB a pair, so
-      roughly 25 MB for 200 pairs. The PNGs are plain git blobs, not
-      LFS (see `.gitattributes`), which is fine at this size.
+- [x] Expect the pull request to be large: about 110 KB a pair as JPEG,
+      so roughly 30 MB for 287 pairs. Plain git blobs, not LFS (see
+      `.gitattributes`), which is fine at this size.
 
 ## Decisions
 
