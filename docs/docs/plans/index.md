@@ -112,3 +112,4 @@
 - [Teaching Sync Without a GitHub Secret](2026-10-16-teaching-sync-without-a-github-secret-plan.md)
 - [Job Callbacks off the Internet](2026-10-17-job-callbacks-off-the-internet-plan.md)
 - [Finalise EoEETA Teaching](2026-10-17-finalise-eoeeta-teaching-plan.md)
+- [Direct VPC Egress](2026-10-18-direct-vpc-egress-plan.md)

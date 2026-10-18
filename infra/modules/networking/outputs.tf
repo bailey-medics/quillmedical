@@ -20,6 +20,11 @@ output "subnet_name" {
   value       = google_compute_subnetwork.private.name
 }
 
+output "cloud_run_subnet_id" {
+  description = "Subnet Cloud Run workloads use for Direct VPC egress"
+  value       = google_compute_subnetwork.cloud_run.id
+}
+
 output "vpc_connector_id" {
   description = "Serverless VPC connector ID for Cloud Run"
   value       = google_vpc_access_connector.connector.id
