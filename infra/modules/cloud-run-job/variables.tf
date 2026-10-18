@@ -45,15 +45,15 @@ variable "timeout" {
 
 variable "vpc_egress" {
   description = <<-EOT
-    Which traffic leaves through the VPC connector.
+    Which traffic leaves through the VPC.
 
     PRIVATE_RANGES_ONLY, the default, sends only private-range traffic
-    through the connector and lets public traffic leave directly. Right
-    for a job that calls nothing inside the project: its public calls
-    skip the connector and the NAT.
+    through the VPC and lets public traffic leave directly. Right for a
+    job that calls nothing inside the project: its public calls skip the
+    VPC and the NAT.
 
-    ALL_TRAFFIC routes everything through the connector, so requests
-    arrive as internal VPC traffic. A job that has to reach a Cloud Run
+    ALL_TRAFFIC routes everything through the VPC, so requests arrive as
+    internal VPC traffic. A job that has to reach a Cloud Run
     service set to INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER needs this,
     because that setting accepts same-project VPC traffic but not a
     request that has been out to the internet and back. Every job that
@@ -75,8 +75,27 @@ variable "vpc_egress" {
 }
 
 variable "vpc_connector_id" {
-  description = "Serverless VPC connector ID for private database access"
+  description = <<-EOT
+    Serverless VPC connector ID. Give this or vpc_subnetwork_id: a job
+    always reaches the VPC one way or the other, never both ways.
+  EOT
   type        = string
+  default     = ""
+}
+
+variable "vpc_subnetwork_id" {
+  description = <<-EOT
+    Subnet for Direct VPC egress: each task takes an address on it and
+    reaches the VPC with no connector in between. Give this or
+    vpc_connector_id.
+  EOT
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = (var.vpc_subnetwork_id != "") != (var.vpc_connector_id != "")
+    error_message = "Give exactly one of vpc_subnetwork_id and vpc_connector_id."
+  }
 }
 
 variable "env_vars" {
