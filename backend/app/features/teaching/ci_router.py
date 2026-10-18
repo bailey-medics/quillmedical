@@ -25,6 +25,7 @@ from app.config import settings
 from app.db import get_core_db
 from app.features.teaching.ci_media import (
     record_captions,
+    record_no_speech,
     record_poster,
     record_transcode,
 )
@@ -190,6 +191,47 @@ def ci_caption_complete(
         raise HTTPException(401, "Invalid token")
 
     record_captions(db, body.org_id, body.module_id, body.asset_id)
+
+    return CaptionCompleteOut(recorded=True)
+
+
+# --- No-speech callback (service token auth) ---
+#
+# The caption job's other report: it ran and found nothing to caption.
+# Its own endpoint rather than a flag on the one above, so a report of
+# a track and a report of no track cannot be confused. The job works
+# this address out from the caption one, by its last part, as the
+# poster report does from the transcode one.
+@router.post(
+    "/ci/teaching/no-speech",
+    response_model=CaptionCompleteOut,
+)
+def ci_no_speech(
+    request: Request,
+    body: CaptionCompleteIn,
+    db: Session = Depends(get_core_db),
+) -> CaptionCompleteOut:
+    """Record that the caption job found no speech in one asset.
+
+    Shares the transcode callback's token, as the caption callback does:
+    the same job reporting on work the backend asked it to do.
+    """
+    token = settings.TEACHING_TRANSCODE_CALLBACK_TOKEN
+
+    if not token:
+        raise HTTPException(503, "Transcode callback token not configured")
+
+    auth_header = request.headers.get("Authorization", "")
+
+    if not auth_header.startswith("Bearer "):
+        raise HTTPException(401, "Missing Bearer token")
+
+    provided = auth_header.removeprefix("Bearer ").strip()
+
+    if not hmac.compare_digest(provided, token.get_secret_value()):
+        raise HTTPException(401, "Invalid token")
+
+    record_no_speech(db, body.org_id, body.module_id, body.asset_id)
 
     return CaptionCompleteOut(recorded=True)
 

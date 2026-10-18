@@ -277,6 +277,9 @@ def link_upload(
     # reach learners as soon as it was transcoded, with captions nobody
     # had read.
     link.captions_reviewed_at = None
+    # And the finding that there was no speech: the new file may have
+    # some, and left behind it would reach learners with no captions.
+    link.no_speech_found_at = None
 
     db.flush()
     db.refresh(link)

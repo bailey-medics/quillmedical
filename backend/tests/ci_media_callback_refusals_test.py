@@ -1,8 +1,8 @@
-"""The exact words the two video job callbacks refuse a caller in.
+"""The exact words the video job callbacks refuse a caller in.
 
 ``ci_transcode_complete_test.py`` pins the status of most of these.
 These pin the words with it, through the real routes, so neither can
-drift. Both routes share one token and one set of refusals, so every
+drift. Every route shares one token and one set of refusals, so every
 test here runs against each.
 
 Three refusals are about the request and are answered by the route
@@ -24,6 +24,7 @@ TOKEN = "callback-token-for-tests"
 
 TRANSCODE = "/api/ci/teaching/transcode-complete"
 CAPTION = "/api/ci/teaching/caption-complete"
+NO_SPEECH = "/api/ci/teaching/no-speech"
 POSTER = "/api/ci/teaching/poster-complete"
 
 _IDS: dict[str, object] = {
@@ -38,6 +39,7 @@ CALLBACKS = [
         TRANSCODE, {**_IDS, "outputs": ["asset-1-720p.mp4"]}, id="transcode"
     ),
     pytest.param(CAPTION, dict(_IDS), id="caption"),
+    pytest.param(NO_SPEECH, dict(_IDS), id="no-speech"),
     pytest.param(
         POSTER, {**_IDS, "outputs": ["asset-1-poster.jpg"]}, id="poster"
     ),

@@ -280,6 +280,43 @@ class TestCaptionCallback:
         assert _post_caption(test_client, asset_id="nope").status_code == 404
 
 
+NO_SPEECH_ENDPOINT = "/api/ci/teaching/no-speech"
+
+
+def _post_no_speech(client: TestClient, token: str | None = TOKEN):
+    body = {"org_id": 1, "module_id": "test-bank", "asset_id": "asset-1"}
+    headers = {"Authorization": f"Bearer {token}"} if token else {}
+
+    return client.post(NO_SPEECH_ENDPOINT, json=body, headers=headers)
+
+
+class TestNoSpeechCallback:
+    """The caption job reporting that it found nothing to caption."""
+
+    def test_records_when_no_speech_was_found(
+        self, test_client: TestClient, configured, link, db_session
+    ) -> None:
+        assert link.no_speech_found_at is None
+
+        assert _post_no_speech(test_client).status_code == 200
+
+        db_session.refresh(link)
+        assert link.no_speech_found_at is not None
+
+    def test_it_claims_no_track_and_no_review(
+        self, test_client: TestClient, configured, link, db_session
+    ) -> None:
+        """No WebVTT was written, so the player must not ask for one."""
+        _post_no_speech(test_client)
+
+        db_session.refresh(link)
+        assert link.has_captions is False
+        assert link.captions_reviewed_at is None
+
+    def test_wrong_token(self, test_client: TestClient, configured) -> None:
+        assert _post_no_speech(test_client, token="nope").status_code == 401
+
+
 POSTER_ENDPOINT = "/api/ci/teaching/poster-complete"
 
 

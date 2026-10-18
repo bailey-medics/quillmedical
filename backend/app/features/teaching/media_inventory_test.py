@@ -462,6 +462,25 @@ class TestCaptionsMustBeCheckedFirst:
 
         assert inv.is_servable
 
+    def test_a_video_with_no_speech_needs_no_check(
+        self,
+        db_session: Session,
+        transcode_configured: None,
+        caption_configured: None,
+    ):
+        # A silent video has no captions to read, so waiting for a
+        # review of them would hide its module for good.
+        org = _org(db_session, "Trust Silent")
+        link = _upload(db_session, org.id, "lecture-01", "asset-1")
+        link.no_speech_found_at = datetime.now(UTC)
+        db_session.flush()
+
+        inv = get_media_inventory(
+            db_session, org.id, "test-bank", ["lecture-01"]
+        )
+
+        assert inv.is_servable
+
     def test_one_unchecked_video_of_two_hides_the_module(
         self,
         db_session: Session,

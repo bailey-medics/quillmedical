@@ -813,6 +813,20 @@ class ModuleMediaLink(Base):
     captions_reviewed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    #: When the caption job found nothing to caption, or None where it
+    #: has not.
+    #:
+    #: A video with no sound, such as an animation of a structure, has
+    #: no speech to write down and needs no captions. Without this the
+    #: job had nothing to report, the card said captions had failed, and
+    #: the module waited for ever on a review of captions that could
+    #: never exist.
+    #:
+    #: Set by the job, never by a person, and cleared when a reference
+    #: is re-linked, since a new file may well have speech.
+    no_speech_found_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
 
 def _fill_the_storage_address(

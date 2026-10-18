@@ -18,6 +18,10 @@ Environment Variables:
     CAPTION_CALLBACK_URL:   Optional.  Where to report the track exists.
     CAPTION_CALLBACK_TOKEN: Optional.  Bearer token for that report.
 
+A video with nothing to caption - no audio track, or sound with no words
+in it - is reported too, to the ``no-speech`` address beside the caption
+one, so its module is not left waiting for captions that cannot exist.
+
 Both callback variables are optional together: unset means development,
 where there is no backend to tell. Set in teaching, where the report is
 what turns ``has_captions`` true - the player composes the track's URL
@@ -49,6 +53,7 @@ from __future__ import annotations
 
 import json
 import os
+import subprocess
 import sys
 import tempfile
 import urllib.request
@@ -69,8 +74,18 @@ CACHE_CONTROL = "public, max-age=86400"
 SOURCE_SUFFIX = "-720p.mp4"
 
 
-def _report_captions(org_id: int, module_id: str, asset_id: str) -> None:
-    """Tell the backend a caption track now exists.
+def _report_captions(
+    org_id: int,
+    module_id: str,
+    asset_id: str,
+    *,
+    no_speech: bool = False,
+) -> None:
+    """Tell the backend a caption track now exists, or that none can.
+
+    ``no_speech`` sends the other report: there was nothing to caption.
+    Without it a silent video left the backend waiting, the card said
+    captions had failed, and the module stayed hidden for good.
 
     The player composes the track's URL from ``has_captions``, not by
     listing the bucket, so a WebVTT nobody recorded is never offered to
@@ -88,6 +103,12 @@ def _report_captions(org_id: int, module_id: str, asset_id: str) -> None:
     """
     url = os.environ.get("CAPTION_CALLBACK_URL", "").strip()
     token = os.environ.get("CAPTION_CALLBACK_TOKEN", "").strip()
+
+    # Its own report, beside the caption one, so it is worked out from
+    # that address rather than configured as a second one - as the
+    # transcode job's poster report is.
+    if no_speech and url:
+        url = f"{url.rsplit('/', 1)[0]}/no-speech"
 
     if not url or not token:
         print(
@@ -146,7 +167,10 @@ def _report_captions(org_id: int, module_id: str, asset_id: str) -> None:
         )
         return
 
-    print(f"✓ Reported captions for {asset_id}")
+    if no_speech:
+        print(f"✓ Reported no speech for {asset_id}")
+    else:
+        print(f"✓ Reported captions for {asset_id}")
 
 
 def _require_env(*names: str) -> dict[str, str]:
@@ -221,6 +245,46 @@ def to_webvtt(segments: list[dict[str, Any]]) -> str:
         lines.append("")
 
     return "\n".join(lines)
+
+
+def has_audio_stream(path: Path) -> bool:
+    """Whether a video file carries any audio at all.
+
+    Asked before Whisper, because Whisper cannot answer it: given a file
+    with no audio track its FFmpeg call fails with "Output file does not
+    contain any stream", which reads as a broken job rather than a
+    silent video.
+
+    Where FFprobe itself cannot answer, this says True and lets Whisper
+    try. Its own error is then the one in the log, which is more use
+    than a guess.
+    """
+    # A fixed argument list and no shell.
+    try:
+        result = subprocess.run(  # noqa: S603  # nosec B607 B603
+            [  # noqa: S607
+                "ffprobe",
+                "-v",
+                "error",
+                "-select_streams",
+                "a",
+                "-show_entries",
+                "stream=index",
+                "-of",
+                "csv=p=0",
+                str(path),
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except OSError:
+        return True
+
+    if result.returncode != 0:
+        return True
+
+    return bool(result.stdout.strip())
 
 
 def transcribe(path: Path, model_name: str) -> list[dict[str, Any]]:
@@ -306,6 +370,12 @@ def caption() -> int:
         print(f"Downloading {source_key}...")
         source_blob.download_to_filename(str(local_source))
 
+        if not has_audio_stream(local_source):
+            print("No audio track; there is nothing to caption")
+            _report_captions(org_id, module_id, asset_id, no_speech=True)
+
+            return 0
+
         print(f"Transcribing with Whisper ({model_name})...")
         try:
             segments = transcribe(local_source, model_name)
@@ -315,11 +385,14 @@ def caption() -> int:
 
         if not segments:
             # Not an error: a lecture with no speech has no captions,
-            # and writing an empty track would claim otherwise.
+            # and writing an empty track would claim otherwise. Still
+            # reported, or the module waits for captions for ever.
             print(
                 "WARNING: no speech detected; writing no captions",
                 file=sys.stderr,
             )
+            _report_captions(org_id, module_id, asset_id, no_speech=True)
+
             return 0
 
         local_vtt = tmpdir / f"{asset_id}.vtt"

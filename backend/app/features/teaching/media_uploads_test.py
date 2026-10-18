@@ -417,6 +417,24 @@ def test_linking_again_forgets_that_the_old_uploads_captions_were_checked(
     assert link.captions_reviewed_at is None
 
 
+def test_linking_again_forgets_that_the_old_upload_had_no_speech(
+    db_session: Session, transcodes: Transcodes
+) -> None:
+    """The new video may have speech, so it must be captioned afresh.
+
+    Left behind, it would reach learners with no captions at all.
+    """
+    org = _organisation(db_session)
+    old = _upload(db_session, org, asset_id="old")
+    old.no_speech_found_at = datetime(2026, 1, 1, tzinfo=UTC)
+    db_session.flush()
+
+    link = _link(db_session, org, _person(db_session), asset_id="new")
+
+    assert link.asset_id == "new"
+    assert link.no_speech_found_at is None
+
+
 def test_a_new_video_is_hidden_until_its_own_jobs_and_review_are_done(
     db_session: Session,
     monkeypatch: pytest.MonkeyPatch,

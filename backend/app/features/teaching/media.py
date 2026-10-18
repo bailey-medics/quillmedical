@@ -137,6 +137,16 @@ def describe_progress(
             is_final=True,
         )
 
+    if link.no_speech_found_at is not None:
+        return MediaProgress(
+            stage=4,
+            total_stages=_TOTAL_STAGES,
+            label="Ready - no speech, so no captions needed",
+            in_progress=False,
+            stalled=False,
+            is_final=True,
+        )
+
     if link.has_captions:
         return MediaProgress(
             stage=3,
@@ -329,8 +339,14 @@ class MediaReference:
         # so there is nothing to check, the same reasoning as the transcode
         # branch above; otherwise every video in development would hide its
         # module for good.
+        #
+        # A video the job found no speech in has nothing to caption, so
+        # nothing to check either.
         if caption_is_configured():
-            return self.link.captions_reviewed_at is not None
+            return (
+                self.link.captions_reviewed_at is not None
+                or self.link.no_speech_found_at is not None
+            )
 
         return True
 

@@ -178,7 +178,9 @@ class TestCaptionJob:
 
         return bucket
 
-    def _run(self, bucket: MagicMock, segments=None) -> int:
+    def _run(
+        self, bucket: MagicMock, segments=None, *, has_audio: bool = True
+    ) -> int:
         client = MagicMock()
         client.bucket.return_value = bucket
         storage_module = MagicMock()
@@ -189,14 +191,23 @@ class TestCaptionJob:
             from scripts.caption_cli import caption
 
             with modules_patch, attr_patch:
-                with patch(
-                    "scripts.caption_cli.transcribe",
-                    return_value=(
-                        segments
-                        if segments is not None
-                        else [{"start": 0.0, "end": 1.0, "text": "Hello"}]
+                with (
+                    patch(
+                        "scripts.caption_cli.has_audio_stream",
+                        return_value=has_audio,
                     ),
+                    patch(
+                        "scripts.caption_cli.transcribe",
+                        return_value=(
+                            segments
+                            if segments is not None
+                            else [{"start": 0.0, "end": 1.0, "text": "Hello"}]
+                        ),
+                    ) as self.transcribe,
+                    patch("scripts.caption_cli._report_captions") as report,
                 ):
+                    self.report = report
+
                     return caption()
 
     def test_it_reads_the_720p_rendition(self) -> None:
@@ -234,6 +245,38 @@ class TestCaptionJob:
         assert self._run(bucket, segments=[]) == 0
 
         assert "7/colonoscopy-basics/a1b2c3d4.vtt" not in bucket.blobs
+
+    def test_no_speech_is_reported(self) -> None:
+        """Unreported, the module waited for captions that cannot exist,
+        and the card said captions had failed."""
+        bucket = self._bucket()
+        assert self._run(bucket, segments=[]) == 0
+
+        self.report.assert_called_once_with(
+            7, "colonoscopy-basics", "a1b2c3d4", no_speech=True
+        )
+
+    def test_no_audio_track_is_reported_without_running_whisper(
+        self,
+    ) -> None:
+        """Whisper's FFmpeg fails outright on a file with no audio, so
+        a silent video read as a broken job."""
+        bucket = self._bucket()
+        assert self._run(bucket, has_audio=False) == 0
+
+        self.transcribe.assert_not_called()
+        self.report.assert_called_once_with(
+            7, "colonoscopy-basics", "a1b2c3d4", no_speech=True
+        )
+        assert "7/colonoscopy-basics/a1b2c3d4.vtt" not in bucket.blobs
+
+    def test_speech_is_reported_as_captions(self) -> None:
+        bucket = self._bucket()
+        assert self._run(bucket) == 0
+
+        self.report.assert_called_once_with(
+            7, "colonoscopy-basics", "a1b2c3d4"
+        )
 
     @pytest.mark.parametrize(
         "field,value",
@@ -324,6 +367,28 @@ class TestCaptionReport:
         assert "caption-complete" in str(captured["url"])
         assert "outputs" not in captured["json"]
 
+    def test_no_speech_goes_to_its_own_endpoint(self) -> None:
+        from scripts.caption_cli import _report_captions
+
+        env = {
+            "CAPTION_CALLBACK_URL": (
+                "https://api.test/api/ci/teaching/caption-complete"
+            ),
+            "CAPTION_CALLBACK_TOKEN": "tok",
+        }
+
+        with patch.dict(os.environ, env, clear=False):
+            stub, captured = _stub_urlopen()
+            with stub:
+                _report_captions(7, "mod", "asset-1", no_speech=True)
+
+        assert captured["url"] == "https://api.test/api/ci/teaching/no-speech"
+        assert captured["json"] == {
+            "org_id": 7,
+            "module_id": "mod",
+            "asset_id": "asset-1",
+        }
+
     def test_a_refusal_does_not_raise(self, capsys) -> None:
         from scripts.caption_cli import _report_captions
 
@@ -355,3 +420,35 @@ class TestCaptionReport:
                 _report_captions(7, "mod", "asset-1")
 
         assert "callback failed" in capsys.readouterr().err
+
+
+class TestHasAudioStream:
+    """FFprobe's answer, and what is assumed when it has none."""
+
+    def _probe(self, returncode: int, stdout: str) -> bool:
+        from pathlib import Path
+
+        from scripts.caption_cli import has_audio_stream
+
+        result = MagicMock(returncode=returncode, stdout=stdout)
+
+        with patch("subprocess.run", return_value=result):
+            return has_audio_stream(Path("video.mp4"))
+
+    def test_an_audio_stream_is_found(self) -> None:
+        assert self._probe(0, "1\n") is True
+
+    def test_no_audio_stream_is_found(self) -> None:
+        assert self._probe(0, "") is False
+
+    def test_a_probe_that_fails_lets_whisper_try(self) -> None:
+        # Whisper's own error is then the one in the log.
+        assert self._probe(1, "") is True
+
+    def test_no_ffprobe_lets_whisper_try(self) -> None:
+        from pathlib import Path
+
+        from scripts.caption_cli import has_audio_stream
+
+        with patch("subprocess.run", side_effect=FileNotFoundError):
+            assert has_audio_stream(Path("video.mp4")) is True
