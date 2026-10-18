@@ -596,6 +596,11 @@ module "cloud_run_teaching_sync_job" {
 # the public app domain; see
 # docs/docs/plans/2026-10-17-job-callbacks-off-the-internet-plan.md.
 #
+# Direct VPC egress rather than the connector, since 2026-10-18: a lecture
+# master is gigabytes, and through the connector it moved at the relay
+# machines' speed. Each task takes an address on the Cloud Run subnet and
+# moves at its own. See docs/docs/plans/2026-10-18-direct-vpc-egress-plan.md.
+#
 # Terraform does not track the image: CI pushes it and
 # `gcloud run jobs execute --image` sets it at call time, as it already does
 # for the admin job. The module's `ignore_changes` on the image is what makes
@@ -610,10 +615,10 @@ module "cloud_run_transcode_job" {
   region                = var.region
   environment           = var.environment
 
-  job_name         = "transcode"
-  image            = var.transcode_image
-  vpc_connector_id = module.networking.vpc_connector_id
-  vpc_egress       = "ALL_TRAFFIC"
+  job_name          = "transcode"
+  image             = var.transcode_image
+  vpc_subnetwork_id = module.networking.cloud_run_subnet_id
+  vpc_egress        = "ALL_TRAFFIC"
 
   # Encoding is CPU-bound and the whole source file is held on local disk
   # while FFmpeg works on it, so both are sized above the module defaults.
@@ -676,12 +681,16 @@ module "cloud_run_caption_job" {
   region                = var.region
   environment           = var.environment
 
-  job_name         = "caption"
-  image            = var.caption_image
-  vpc_connector_id = module.networking.vpc_connector_id
+  job_name          = "caption"
+  image             = var.caption_image
+  vpc_subnetwork_id = module.networking.cloud_run_subnet_id
 
-  # All egress through the VPC, for the reason the transcode job's is:
-  # the completion report must arrive at the backend as internal traffic.
+  # All egress through the VPC, for the reason the transcode job's is: the
+  # completion report must arrive at the backend as internal traffic. The
+  # Whisper model it fetches on each run comes in through Cloud NAT, as it
+  # did on the connector. Direct VPC rather than the connector, as on the
+  # transcode job, so the 720p rendition and the model move at the task's
+  # own speed.
   vpc_egress = "ALL_TRAFFIC"
 
   cpu     = "4"
