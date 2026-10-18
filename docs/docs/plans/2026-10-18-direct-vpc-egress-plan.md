@@ -102,7 +102,7 @@ keeps the whole series in one view.
 
 ## Phase 5: The backend moves
 
-- [ ] Pass `vpc_subnetwork_id` to `module "cloud_run_backend"`, keeping
+- [x] Pass `vpc_subnetwork_id` to `module "cloud_run_backend"`, keeping
       the module's `PRIVATE_RANGES_ONLY`: the backend reaches Cloud SQL
       on its private address and, in EHR production, the FHIR machine,
       and its public calls (SES, Google's signing certificates) leave

@@ -331,8 +331,16 @@ module "cloud_run_backend" {
   memory            = "1Gi"
   cpu               = "1"
   max_instances     = var.cloud_run_max_instances
-  vpc_connector_id  = module.networking.vpc_connector_id
   health_check_path = "/api/health"
+
+  # Onto the VPC by Direct VPC egress, for Cloud SQL's private address and,
+  # in EHR production, the FHIR machine. The module keeps egress at
+  # PRIVATE_RANGES_ONLY, so public calls (SES, Google's signing
+  # certificates) leave directly and never touch Cloud NAT, which Google
+  # warns can add half a minute to a Direct VPC cold start. The startup
+  # probe already waits for egress, not just boot: /api/health opens the
+  # core database. See docs/docs/plans/2026-10-18-direct-vpc-egress-plan.md.
+  vpc_subnetwork_id = module.networking.cloud_run_subnet_id
 
   # Only the load balancer and the VPC may reach it, so the *.run.app URL
   # can no longer skip Cloud Armor. The deploy's smoke test still reaches a
