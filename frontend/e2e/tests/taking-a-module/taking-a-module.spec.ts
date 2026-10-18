@@ -107,7 +107,7 @@ for (const { who, kind, profession } of LEARNERS) {
         .getByRole("button", { name: "Recorded lecture" })
         .click();
 
-      // The module's one video, a YouTube lecture played in Quill's own
+      // The module's YouTube lecture, played in Quill's own
       // player. Playing means the button turns to Pause and the clock
       // moves off zero.
       const player = page.getByRole("group", { name: "Media player" });

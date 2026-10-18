@@ -8,7 +8,8 @@
  * `.github/scripts/ci/fetch-e2e-teaching.sh` moves to it.
  *
  * On the way, nothing of Quill's may log an error to the console, and no
- * picture or video it serves may fail to arrive. Requests to YouTube are
+ * picture or video it serves may fail to arrive, other than a download
+ * the browser cancels on leaving the slide. Requests to YouTube are
  * left out: CI's runners are sent nothing by it, as `taking-a-module.spec.ts`
  * explains, and that is not the module's fault.
  */
@@ -45,7 +46,14 @@ function watchForProblems(page: Page): string[] {
     }
   });
   page.on("requestfailed", (request) => {
+    // A video still downloading when the test moves to the next slide
+    // is cancelled by the browser, which is not the file failing. One
+    // that does not exist answers 404, caught below.
+    const cancelled = /ERR_ABORTED|cancelled|NS_BINDING_ABORTED/i.test(
+      request.failure()?.errorText ?? "",
+    );
     if (
+      !cancelled &&
       ["image", "media"].includes(request.resourceType()) &&
       ours(request.url())
     ) {

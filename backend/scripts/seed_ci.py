@@ -11,6 +11,7 @@ Usage (inside the backend container after migrations):
 from __future__ import annotations
 
 import os
+import shutil
 import sys
 from datetime import UTC, datetime, timedelta
 
@@ -27,14 +28,26 @@ from app.features.teaching.access import (  # noqa: E402
     enrol_everyone_with_a_place,
     give_place,
 )
+from app.features.teaching.media import (  # noqa: E402
+    caption_is_configured,
+    get_referenced_media_keys,
+    transcode_is_configured,
+)
+from app.features.teaching.media_uploads import (  # noqa: E402
+    link_upload,
+    local_upload_file,
+    new_upload_target,
+)
 from app.features.teaching.models import (  # noqa: E402
     Assessment,
+    ModuleMediaLink,
     QuestionBankConfig,
     QuestionBankOrgStatus,
 )
 from app.features.teaching.storage import (  # noqa: E402
     discover_local_banks,
     resolve_local_bank,
+    resolve_module_dir,
 )
 from app.features.teaching.sync import sync_question_bank  # noqa: E402
 from app.models import (  # noqa: E402
@@ -646,6 +659,10 @@ def seed_teaching(db: Session, org_unit_id: int, admin_id: int) -> None:
     closed and has no version promoted, so candidates see nothing until
     both are set, as an admin would through the bank's settings page.
 
+    Each module's videos are uploaded too (``seed_videos``), because a
+    module whose content names a video is hidden from learners until it
+    has been.
+
     Raises:
         RuntimeError: If a module fails validation, so a content problem
             stops the run here rather than surfacing as an empty dashboard
@@ -705,6 +722,7 @@ def seed_teaching(db: Session, org_unit_id: int, admin_id: int) -> None:
         status.active_version_set_by = admin_id
         status.active_version_set_at = datetime.now(UTC)
         db.flush()
+        seed_videos(db, org_unit_id, bank_id, admin_id)
         # Every module needs an enrolment, so the people already given a
         # place are enrolled on each one as it opens.
         enrolled = enrol_everyone_with_a_place(
@@ -716,6 +734,100 @@ def seed_teaching(db: Session, org_unit_id: int, admin_id: int) -> None:
         db.commit()
         print(f"Opened teaching module {bank_id} at version {version}")
         print(f"Enrolled {len(enrolled)} on {bank_id}")
+
+
+#: The captions a seeded video is given where a caption job is
+#: configured, standing in for what that job would write.
+SEEDED_CAPTIONS = "WEBVTT\n\n00:00:00.000 --> 00:00:08.000\nLungs in motion.\n"
+
+
+def seed_videos(
+    db: Session, org_unit_id: int, bank_id: str, admin_id: int
+) -> None:
+    """Upload each video a module's content names, for one organisation.
+
+    A module whose content names a video is hidden from learners until
+    the organisation has uploaded it, so every journey through the
+    module needs this. The video is the content's own
+    ``learning/{ref}.mp4``, uploaded through the code the admin page's
+    upload uses: an upload address from ``new_upload_target``, the bytes
+    to ``local_upload_file``, then ``link_upload``.
+
+    Where a transcode or caption job is configured, the gate asks for
+    its work too, so what the job would write is written here and the
+    captions are marked as checked by a person.
+
+    A reference already linked is left alone, so a re-run uploads
+    nothing new.
+
+    Raises:
+        RuntimeError: If the content names a video it does not carry.
+    """
+    base_path = settings.TEACHING_QUESTION_BANK_PATH or ""
+    module_dir = resolve_module_dir(base_path, bank_id)
+
+    if module_dir is None:
+        return
+
+    for ref in get_referenced_media_keys(bank_id):
+        linked = db.scalar(
+            select(ModuleMediaLink.id).where(
+                ModuleMediaLink.org_unit_id == org_unit_id,
+                ModuleMediaLink.question_bank_id == bank_id,
+                ModuleMediaLink.media_key == ref,
+            )
+        )
+
+        if linked is not None:
+            continue
+
+        source = module_dir / "learning" / f"{ref}.mp4"
+
+        if not source.is_file():
+            raise RuntimeError(
+                f"Teaching module {bank_id} names video {ref} but has no "
+                f"learning/{ref}.mp4"
+            )
+
+        target = new_upload_target(db, org_unit_id)
+        stored = local_upload_file(
+            base_path,
+            bank_id,
+            target.asset_id,
+            "video/mp4",
+        )
+        shutil.copyfile(source, stored)
+
+        link = link_upload(
+            db,
+            user_id=admin_id,
+            org_unit_id=org_unit_id,
+            module_id=bank_id,
+            media_key=ref,
+            asset_id=target.asset_id,
+            original_filename=source.name,
+            content_type="video/mp4",
+            size_bytes=source.stat().st_size,
+        )
+
+        # What the transcode job writes: the rendition the player asks
+        # for once a video is transcoded.
+        if transcode_is_configured():
+            shutil.copyfile(
+                source, stored.with_name(f"{target.asset_id}-720p.mp4")
+            )
+            link.transcoded_at = datetime.now(UTC)
+
+        # What the caption job writes, and a person having read it.
+        if caption_is_configured():
+            stored.with_name(f"{target.asset_id}.vtt").write_text(
+                SEEDED_CAPTIONS
+            )
+            link.has_captions = True
+            link.captions_reviewed_at = datetime.now(UTC)
+
+        db.flush()
+        print(f"Uploaded video {ref} of {bank_id} for org_unit {org_unit_id}")
 
 
 def seed_delegate_result(db: Session, org_unit_id: int) -> None:
