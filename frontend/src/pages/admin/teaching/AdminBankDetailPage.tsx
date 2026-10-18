@@ -35,17 +35,29 @@ import type {
   MediaAsset,
 } from "@/features/teaching/types";
 
-export default function AdminBankDetailPage() {
-  const { bankId } = useParams<{ bankId: string }>();
-  const navigate = useNavigate();
-  const [bank, setBank] = useState<AdminBankDetail | null>(null);
-  const [orgs, setOrgs] = useState<BankOrganisation[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+interface OrganisationVideosProps {
+  bankId: string;
+  organisation: BankOrganisation;
+  /** Told whenever an upload starts or ends, so the page can guard it. */
+  onUploadingChange: (orgUnitId: number, uploading: boolean) => void;
+}
 
-  // Its own fetch rather than another leg of the page's Promise.all:
-  // the media list is the one thing that changes while the admin is
-  // here, so it refreshes after each upload without reloading the rest.
+/**
+ * One organisation's videos of the module: the card, and the caption and
+ * poster editors it opens.
+ *
+ * A video is stored once for each organisation running the module, so
+ * the page holds one of these for each organisation the caller may
+ * upload for, each with its own fetch. The media list is the one thing
+ * that changes while the admin is here, so it refreshes after each
+ * upload without reloading the rest of the page.
+ */
+function OrganisationVideos({
+  bankId,
+  organisation,
+  onUploadingChange,
+}: OrganisationVideosProps) {
+  const orgUnitId = organisation.org_unit_id;
   const {
     media,
     loading: mediaLoading,
@@ -59,7 +71,128 @@ export default function AdminBankDetailPage() {
     loadCaptions,
     saveCaptions,
     savePosterFrame,
-  } = useModuleMedia(bankId ?? null);
+  } = useModuleMedia(bankId, undefined, orgUnitId);
+
+  // The page guards navigation for every section at once, so each says
+  // when its own upload starts and ends, and stops counting on unmount.
+  useEffect(() => {
+    onUploadingChange(orgUnitId, uploading);
+    return () => onUploadingChange(orgUnitId, false);
+  }, [onUploadingChange, orgUnitId, uploading]);
+
+  // Which asset's captions are open, and the text once fetched. Held
+  // here rather than in the card so the card stays presentational and
+  // drivable from Storybook with no network.
+  const [captionAsset, setCaptionAsset] = useState<MediaAsset | null>(null);
+  const [posterAsset, setPosterAsset] = useState<MediaAsset | null>(null);
+  const [captionText, setCaptionText] = useState<string | null>(null);
+  const [captionsLoading, setCaptionsLoading] = useState(false);
+
+  const openCaptions = useCallback(
+    async (asset: MediaAsset) => {
+      // Opened first, so the modal appears with a spinner rather than
+      // after a silent pause the admin reads as a dead button.
+      setCaptionAsset(asset);
+      setCaptionText(null);
+      setCaptionsLoading(true);
+      try {
+        const loaded = await loadCaptions(asset.asset_id);
+        setCaptionText(loaded?.webvtt ?? null);
+      } finally {
+        setCaptionsLoading(false);
+      }
+    },
+    [loadCaptions],
+  );
+
+  // Only when the content references media. `references` comes from the
+  // MDX itself, so a module of pure text shows no card and there is no
+  // flag for an author to set - and therefore none to fall out of step
+  // with the slides.
+  if (!media?.references?.length) return null;
+
+  return (
+    <>
+      <ModuleMediaCard
+        media={media}
+        organisation={organisation.organisation_name}
+        liveOrganisations={
+          organisation.is_live ? [organisation.organisation_name] : []
+        }
+        uploadProgress={uploadProgress}
+        uploadNames={uploadNames}
+        uploadErrors={uploadErrors}
+        onUpload={upload}
+        onDelete={remove}
+        onEditCaptions={openCaptions}
+        onChoosePoster={setPosterAsset}
+        loading={mediaLoading}
+        error={mediaError}
+      />
+
+      {/*
+        Fetched when the editor opens rather than with the media list: a
+        WebVTT is a whole lecture transcript, and loading one per row
+        would cost several requests to render a card whose captions are
+        usually not being looked at.
+      */}
+      <CaptionEditorModal
+        opened={captionAsset !== null}
+        onClose={() => setCaptionAsset(null)}
+        filename={captionAsset?.original_filename}
+        webvtt={captionText}
+        loading={captionsLoading}
+        onSave={(webvtt) =>
+          captionAsset
+            ? saveCaptions(captionAsset.asset_id, webvtt)
+            : Promise.resolve(false)
+        }
+        error={mediaError}
+      />
+
+      <PosterFrameModal
+        opened={posterAsset !== null}
+        onClose={() => setPosterAsset(null)}
+        filename={posterAsset?.original_filename}
+        currentSeconds={posterAsset?.poster_at_seconds ?? null}
+        onSave={(seconds) =>
+          posterAsset
+            ? savePosterFrame(posterAsset.asset_id, seconds)
+            : Promise.resolve(false)
+        }
+        error={mediaError}
+      />
+    </>
+  );
+}
+
+export default function AdminBankDetailPage() {
+  const { bankId } = useParams<{ bankId: string }>();
+  const navigate = useNavigate();
+  const [bank, setBank] = useState<AdminBankDetail | null>(null);
+  const [orgs, setOrgs] = useState<BankOrganisation[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Which organisations have a video still going up. One section each,
+  // so the guard below asks whether any of them has.
+  const [uploadingAt, setUploadingAt] = useState<ReadonlySet<number>>(
+    () => new Set(),
+  );
+  const uploading = uploadingAt.size > 0;
+
+  const handleUploadingChange = useCallback(
+    (orgUnitId: number, isUploading: boolean) => {
+      setUploadingAt((current) => {
+        if (current.has(orgUnitId) === isUploading) return current;
+        const next = new Set(current);
+        if (isUploading) next.add(orgUnitId);
+        else next.delete(orgUnitId);
+        return next;
+      });
+    },
+    [],
+  );
 
   // Leaving mid-upload loses the file, so both ways out are guarded.
   //
@@ -89,31 +222,6 @@ export default function AdminBankDetailPage() {
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [uploading]);
-
-  // Which asset's captions are open, and the text once fetched. Held
-  // here rather than in the card so the card stays presentational and
-  // drivable from Storybook with no network.
-  const [captionAsset, setCaptionAsset] = useState<MediaAsset | null>(null);
-  const [posterAsset, setPosterAsset] = useState<MediaAsset | null>(null);
-  const [captionText, setCaptionText] = useState<string | null>(null);
-  const [captionsLoading, setCaptionsLoading] = useState(false);
-
-  const openCaptions = useCallback(
-    async (asset: MediaAsset) => {
-      // Opened first, so the modal appears with a spinner rather than
-      // after a silent pause the admin reads as a dead button.
-      setCaptionAsset(asset);
-      setCaptionText(null);
-      setCaptionsLoading(true);
-      try {
-        const loaded = await loadCaptions(asset.asset_id);
-        setCaptionText(loaded?.webvtt ?? null);
-      } finally {
-        setCaptionsLoading(false);
-      }
-    },
-    [loadCaptions],
-  );
 
   const fetchData = useCallback(async () => {
     if (!bankId) {
@@ -318,65 +426,27 @@ export default function AdminBankDetailPage() {
       )}
 
       {/*
-        Only when the content references media. `references` comes from
-        the MDX itself, so a module of pure text shows no card and there
-        is no flag for an author to set - and therefore none to fall out
-        of step with the slides.
+        One card for each organisation whose videos the caller may upload,
+        which is every organisation holding the module. Each card shows
+        only when the content references media.
 
-        No route guard of its own: the whole /admin subtree sits under
-        one <RequireCompetency competency="manage_users"> in routes.tsx,
-        and this page is inside it.
+        No route guard of its own: the module pages sit under
+        <RequireOperator> in routes.tsx, so only a superadmin reaches this
+        page. The API also lets a teaching admin manage their own
+        organisation's videos, but not through here.
       */}
-      {media?.references?.length ? (
-        <ModuleMediaCard
-          media={media}
-          liveOrganisations={orgs
-            .filter((o) => o.is_live)
-            .map((o) => o.organisation_name)}
-          uploadProgress={uploadProgress}
-          uploadNames={uploadNames}
-          uploadErrors={uploadErrors}
-          onUpload={upload}
-          onDelete={remove}
-          onEditCaptions={openCaptions}
-          onChoosePoster={setPosterAsset}
-          loading={mediaLoading}
-          error={mediaError}
-        />
-      ) : null}
-
-      {/*
-        Fetched when the editor opens rather than with the media list: a
-        WebVTT is a whole lecture transcript, and loading one per row
-        would cost several requests to render a card whose captions are
-        usually not being looked at.
-      */}
-      <CaptionEditorModal
-        opened={captionAsset !== null}
-        onClose={() => setCaptionAsset(null)}
-        filename={captionAsset?.original_filename}
-        webvtt={captionText}
-        loading={captionsLoading}
-        onSave={(webvtt) =>
-          captionAsset
-            ? saveCaptions(captionAsset.asset_id, webvtt)
-            : Promise.resolve(false)
-        }
-        error={mediaError}
-      />
-
-      <PosterFrameModal
-        opened={posterAsset !== null}
-        onClose={() => setPosterAsset(null)}
-        filename={posterAsset?.original_filename}
-        currentSeconds={posterAsset?.poster_at_seconds ?? null}
-        onSave={(seconds) =>
-          posterAsset
-            ? savePosterFrame(posterAsset.asset_id, seconds)
-            : Promise.resolve(false)
-        }
-        error={mediaError}
-      />
+      {bankId
+        ? orgs
+            .filter((org) => org.may_upload_videos)
+            .map((org) => (
+              <OrganisationVideos
+                key={org.org_unit_id}
+                bankId={bankId}
+                organisation={org}
+                onUploadingChange={handleUploadingChange}
+              />
+            ))
+        : null}
     </Stack>
   );
 }

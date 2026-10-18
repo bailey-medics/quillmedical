@@ -72,6 +72,7 @@ from app.features.teaching.listing import (
     bank_organisation_rows,
     delegate_rows,
     learning_module_rows,
+    media_org_unit_ids,
     question_bank_rows,
 )
 from app.features.teaching.manual_sync import (
@@ -231,6 +232,41 @@ def _require_place_for_attempt(
         question_bank_id=assessment.question_bank_id,
     ):
         raise HTTPException(404, "Assessment not found")
+
+
+def _media_org_unit_id(
+    user: User, db: Session, module_id: str, org_unit_id: int | None
+) -> int:
+    """The organisation a module's video is uploaded, captioned or shown for.
+
+    A video is stored once for each organisation running the module, so a
+    superadmin filling in the module's video card says which organisation
+    each upload is for. Without one, the caller's own, as these routes
+    have always taken it (``_get_user_org_id``).
+
+    Named, the organisation must hold the module's content, and the
+    caller must either operate Quill or belong to it: a teaching admin
+    still acts for their own organisation only. Refused as not found
+    either way, so the answer does not say which organisations hold a
+    module.
+
+    The content, not the module's live status: that status row is made
+    when an admin first saves the module's settings there, and the video
+    is uploaded before the module goes live, not after.
+
+    Raises:
+        HTTPException: 404 if the organisation does not hold the module or
+            is not the caller's to act for, or 403 from
+            ``_get_user_org_id`` when none is named and the caller belongs
+            to none.
+    """
+    if org_unit_id is None:
+        return _get_user_org_id(user, db)
+
+    if org_unit_id not in media_org_unit_ids(db, user, module_id):
+        raise HTTPException(404, "Module not found")
+
+    return org_unit_id
 
 
 def _get_user_org_id(user: User, db: Session) -> int:
@@ -1729,6 +1765,14 @@ def list_results(
 def create_media_upload_url(
     module_id: str,
     body: MediaUploadUrlIn,
+    org_unit_id: int | None = Query(
+        default=None,
+        ge=1,
+        description=(
+            "The organisation the module's video is for. Left out, the "
+            "caller's own, as before."
+        ),
+    ),
     user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> MediaUploadUrlOut:
@@ -1767,7 +1811,7 @@ def create_media_upload_url(
             400, f"Content type does not match {ext} (expected {expected})"
         )
 
-    org_id = _get_user_org_id(user, db)
+    org_id = _media_org_unit_id(user, db, module_id, org_unit_id)
     target = new_upload_target(db, org_id)
     asset_id = target.asset_id
 
@@ -1825,6 +1869,14 @@ def create_media_upload_url(
 )
 def get_module_media(
     module_id: str,
+    org_unit_id: int | None = Query(
+        default=None,
+        ge=1,
+        description=(
+            "The organisation the module's video is for. Left out, the "
+            "caller's own, as before."
+        ),
+    ),
     user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> ModuleMediaOut:
@@ -1845,7 +1897,7 @@ def get_module_media(
         get_referenced_media_keys,
     )
 
-    org_id = _get_user_org_id(user, db)
+    org_id = _media_org_unit_id(user, db, module_id, org_unit_id)
     keys = get_referenced_media_keys(module_id)
     inventory = get_media_inventory(db, org_id, module_id, keys)
 
@@ -1891,6 +1943,14 @@ def link_module_media(
     module_id: str,
     media_key: str,
     body: MediaLinkIn,
+    org_unit_id: int | None = Query(
+        default=None,
+        ge=1,
+        description=(
+            "The organisation the module's video is for. Left out, the "
+            "caller's own, as before."
+        ),
+    ),
     user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> MediaAssetOut:
@@ -1916,7 +1976,7 @@ def link_module_media(
         allowed = ", ".join(sorted(set(ALLOWED_MEDIA_TYPES.values())))
         raise HTTPException(400, f"Unsupported type (allowed: {allowed})")
 
-    org_id = _get_user_org_id(user, db)
+    org_id = _media_org_unit_id(user, db, module_id, org_unit_id)
 
     link = link_upload(
         db,
@@ -1944,6 +2004,14 @@ def link_module_media(
 def unlink_module_media(
     module_id: str,
     media_key: str,
+    org_unit_id: int | None = Query(
+        default=None,
+        ge=1,
+        description=(
+            "The organisation the module's video is for. Left out, the "
+            "caller's own, as before."
+        ),
+    ),
     user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> Response:
@@ -1954,7 +2022,7 @@ def unlink_module_media(
     today may well return - and that is someone's 900 MB either way.
     Removing the file is a separate, destructive call.
     """
-    org_id = _get_user_org_id(user, db)
+    org_id = _media_org_unit_id(user, db, module_id, org_unit_id)
 
     link = db.execute(
         select(ModuleMediaLink).where(
@@ -2244,7 +2312,10 @@ def list_bank_organisations(
     _get_user_org_id(user, db)
 
     return bank_organisation_rows(
-        db, bank_id, organisations_with_teaching_on(db)
+        db,
+        bank_id,
+        organisations_with_teaching_on(db),
+        may_upload_videos_at=media_org_unit_ids(db, user, bank_id),
     )
 
 
@@ -2573,6 +2644,14 @@ async def upload_media_content_locally(
 def delete_media_asset(
     module_id: str,
     asset_id: str,
+    org_unit_id: int | None = Query(
+        default=None,
+        ge=1,
+        description=(
+            "The organisation the module's video is for. Left out, the "
+            "caller's own, as before."
+        ),
+    ),
     user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> Response:
@@ -2589,7 +2668,7 @@ def delete_media_asset(
     the transaction rolls back, so the row stays, and the answer is 502
     "The video could not be deleted".
     """
-    org_id = _get_user_org_id(user, db)
+    org_id = _media_org_unit_id(user, db, module_id, org_unit_id)
 
     delete_upload(
         db,
@@ -2610,6 +2689,14 @@ def delete_media_asset(
 def get_media_captions(
     module_id: str,
     asset_id: str,
+    org_unit_id: int | None = Query(
+        default=None,
+        ge=1,
+        description=(
+            "The organisation the module's video is for. Left out, the "
+            "caller's own, as before."
+        ),
+    ),
     user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> CaptionsOut:
@@ -2626,7 +2713,7 @@ def get_media_captions(
     from app.config import settings
     from app.features.teaching.storage import read_caption_object
 
-    org_id = _get_user_org_id(user, db)
+    org_id = _media_org_unit_id(user, db, module_id, org_unit_id)
     link = upload_held_by(db, org_id, module_id, asset_id)
 
     bucket = settings.TEACHING_VIDEOS_BUCKET
@@ -2657,6 +2744,14 @@ def put_media_captions(
     module_id: str,
     asset_id: str,
     body: CaptionsIn,
+    org_unit_id: int | None = Query(
+        default=None,
+        ge=1,
+        description=(
+            "The organisation the module's video is for. Left out, the "
+            "caller's own, as before."
+        ),
+    ),
     user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> CaptionsOut:
@@ -2674,7 +2769,7 @@ def put_media_captions(
     shows no captions and says nothing about why, so the cheap check
     earns its org_unit.
     """
-    org_id = _get_user_org_id(user, db)
+    org_id = _media_org_unit_id(user, db, module_id, org_unit_id)
 
     return save_captions(
         db,
@@ -2695,6 +2790,14 @@ def put_media_poster_frame(
     module_id: str,
     asset_id: str,
     body: PosterFrameIn,
+    org_unit_id: int | None = Query(
+        default=None,
+        ge=1,
+        description=(
+            "The organisation the module's video is for. Left out, the "
+            "caller's own, as before."
+        ),
+    ),
     user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> MediaAssetOut:
@@ -2705,7 +2808,7 @@ def put_media_poster_frame(
     they want. The poster is retaken in the background, and learners
     keep the one they had until the new one is written.
     """
-    org_id = _get_user_org_id(user, db)
+    org_id = _media_org_unit_id(user, db, module_id, org_unit_id)
 
     link = set_poster_frame(
         db,

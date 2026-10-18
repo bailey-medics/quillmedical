@@ -1369,6 +1369,41 @@ it, since uploads are per organisation.
 
 Decided by Mark on 2026-10-17:
 
+- [x] Let the superadmin upload a module's video for each organisation
+      running it, decided by Mark on 2026-10-17. Found while building
+      the steps below: a video is stored per organisation, but the
+      upload, link, caption and poster routes take the organisation from
+      `_get_user_org_id`, the caller's first membership, which the code
+      itself calls a known bug. So a module running at two organisations
+      could only ever have one filled, and a superadmin belonging to
+      none could fill neither. The video card on the module's admin page
+      (`/admin/teaching/modules/{module_id}`, `ModuleMediaCard`) gets a
+      section for each organisation, headed "Videos for" its name, each
+      with its own uploads, captions and poster. Two sites running one
+      module is unlikely as Quill is built today; sections per
+      organisation serve that too if it comes.
+
+      Built as an optional `org_unit_id` query on the eight media routes
+      rather than new routes with the organisation in the path: left
+      out, a route behaves exactly as before, so the change is additive
+      and there is nothing to retire later. `_media_org_unit_id` in the
+      router checks the named organisation against
+      `media_org_unit_ids` in `listing.py`: every organisation holding
+      the module's content for a superadmin, only their own for anybody
+      else, and 404 otherwise, so the answer does not say who holds a
+      module. "Holding the content" is a `QuestionBankConfig` row, not a
+      `QuestionBankOrgStatus` one: the status row is made when an admin
+      first saves the module's settings, and the video comes before the
+      module goes live. The organisations list on the page gains
+      `may_upload_videos`, so the page shows a section only where the
+      caller may act.
+
+- [ ] Make the end-to-end stack's content folder writable, decided by
+      Mark on 2026-10-17. An upload saves the file beside the content,
+      and `compose.ci.yml` mounts `.e2e-teaching` read-only, as does
+      CI's Playwright container. Test machines only: App production
+      stores uploads in its bucket.
+
 - [ ] Test the real gate, not a way round it. A first attempt let a
       hand-placed `learning/{ref}.mp4` count as servable where content is
       on disk (`hand_placed_media_keys` in `media.py`); it kept the
@@ -1458,6 +1493,12 @@ on top, leaving #2050 as it is.
       password. Building it means the switch reading `totp_enabled` from
       `/api/auth/me`, and a modal asking for the password, which no
       existing component is. That is new UI, so it waits for Mark.
+      Decided by Mark on 2026-10-17: the switch shows the account's real
+      state, `totp_enabled` from `/api/auth/me`, on after setup and off
+      otherwise; turning it off opens a modal asking for the password,
+      which calls `POST /api/auth/totp/disable`. The modal is a new
+      component, `PasswordConfirmModal`, built from `ConfirmModal` and
+      `PasswordField`, with a story and a test. Then this journey.
 
 ## Phase 19: Telling the operator when no clinical lead is told of a pass
 
@@ -1496,6 +1537,26 @@ certificate and nothing says so.
 
       Built as described. The three cases that send a notice were run
       with the notice switched off, and failed.
+
+## Phase 20: The stack repair works with pull requests queued
+
+Decided by Mark on 2026-10-17: whatever fix is best, as it has to work.
+GitHub twice dropped new pull requests from its record of the stack
+today. `just stack-relink` repairs that by unstacking every GitHub stack
+holding them and linking them again, but GitHub will not unstack a pull
+request queued to merge, so with twenty queued the repair would have
+failed. Adding the missing pull requests to the stack that already
+holds the rest (`gh stack link <stack> <prs>`) worked.
+
+- [ ] `stack-relink.py --repair` first adds what is missing to the stack
+      already holding the rest, when that stack holds them in order and
+      nothing closed sits above them, and only unstacks and relinks
+      when that cannot work. Either way it ends with `--check`.
+      `stack-submit` runs the repair itself when the check fails, rather
+      than only failing, so a dropped pull request is put back on the
+      push that dropped it; a repair that still fails stops the push
+      with the message it has today. Bats tests for each path, including
+      a stack with queued pull requests.
 
 ## Decisions
 

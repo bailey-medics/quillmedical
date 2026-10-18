@@ -236,10 +236,20 @@ async function putToBucket(
  */
 export const MEDIA_POLL_INTERVAL_MS = 10_000;
 
+/**
+ * One module's videos for one organisation running it.
+ *
+ * A video is stored once for each organisation running the module, so
+ * the module's admin page holds one of these for each. Without an
+ * organisation, the caller's own, as the routes have always taken it.
+ */
 export function useModuleMedia(
   moduleId: string | null,
   pollIntervalMs: number = MEDIA_POLL_INTERVAL_MS,
+  orgUnitId: number | null = null,
 ): ModuleMediaState {
+  // The organisation, added to every address below, or nothing.
+  const scope = orgUnitId === null ? "" : `?org_unit_id=${orgUnitId}`;
   const [media, setMedia] = useState<ModuleMedia | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -257,7 +267,7 @@ export function useModuleMedia(
       // one. Clearing the error alongside the new data says the same
       // thing a moment later.
       const next = await api.get<ModuleMedia>(
-        `/teaching/admin/modules/${moduleId}/media`,
+        `/teaching/admin/modules/${moduleId}/media${scope}`,
       );
       setMedia(next);
       setError(null);
@@ -266,7 +276,7 @@ export function useModuleMedia(
     } finally {
       setLoading(false);
     }
-  }, [moduleId]);
+  }, [moduleId, scope]);
 
   useEffect(() => {
     // No module means nothing to fetch. Returning early rather than
@@ -289,7 +299,7 @@ export function useModuleMedia(
     // one request, and the pair that drifts apart later.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void refresh();
-  }, [moduleId, refresh]);
+  }, [moduleId, refresh, scope]);
 
   // Whether bytes are still going to the bucket. Derived from the
   // progress record rather than a flag of its own, so it cannot be
@@ -320,7 +330,7 @@ export function useModuleMedia(
     }, pollIntervalMs);
 
     return () => clearInterval(timer);
-  }, [moduleId, anyInProgress, refresh, pollIntervalMs]);
+  }, [moduleId, anyInProgress, refresh, pollIntervalMs, scope]);
 
   const upload = useCallback(
     async (key: string, file: File) => {
@@ -338,7 +348,7 @@ export function useModuleMedia(
 
       try {
         const grant = await api.post<MediaUploadUrl>(
-          `/teaching/admin/modules/${moduleId}/media/upload-url`,
+          `/teaching/admin/modules/${moduleId}/media/upload-url${scope}`,
           {
             media_key: key,
             original_filename: file.name,
@@ -355,7 +365,7 @@ export function useModuleMedia(
         // they arrived. Until it runs the upload is invisible, and the
         // module stays incomplete.
         await api.post(
-          `/teaching/admin/modules/${moduleId}/media/${key}/link`,
+          `/teaching/admin/modules/${moduleId}/media/${key}/link${scope}`,
           {
             asset_id: grant.asset_id,
             original_filename: file.name,
@@ -387,7 +397,7 @@ export function useModuleMedia(
         });
       }
     },
-    [moduleId, refresh],
+    [moduleId, refresh, scope],
   );
 
   const remove = useCallback(
@@ -395,13 +405,15 @@ export function useModuleMedia(
       if (!moduleId) return;
       try {
         setError(null);
-        await api.del(`/teaching/admin/modules/${moduleId}/media/${assetId}`);
+        await api.del(
+          `/teaching/admin/modules/${moduleId}/media/${assetId}${scope}`,
+        );
         await refresh();
       } catch (err) {
         setError(err instanceof Error ? err.message : "Delete failed");
       }
     },
-    [moduleId, refresh],
+    [moduleId, refresh, scope],
   );
 
   // Captions are fetched on demand rather than with the media list: a
@@ -414,7 +426,7 @@ export function useModuleMedia(
       try {
         setError(null);
         return await api.get<Captions>(
-          `/teaching/admin/modules/${moduleId}/media/${assetId}/captions`,
+          `/teaching/admin/modules/${moduleId}/media/${assetId}/captions${scope}`,
         );
       } catch (err) {
         setError(
@@ -423,7 +435,7 @@ export function useModuleMedia(
         return null;
       }
     },
-    [moduleId],
+    [moduleId, scope],
   );
 
   const saveCaptions = useCallback(
@@ -432,7 +444,7 @@ export function useModuleMedia(
       try {
         setError(null);
         await api.put(
-          `/teaching/admin/modules/${moduleId}/media/${assetId}/captions`,
+          `/teaching/admin/modules/${moduleId}/media/${assetId}/captions${scope}`,
           { webvtt },
         );
         // Saving records the review, so the card's badge is stale until
@@ -446,7 +458,7 @@ export function useModuleMedia(
         return false;
       }
     },
-    [moduleId, refresh],
+    [moduleId, refresh, scope],
   );
 
   const savePosterFrame = useCallback(
@@ -456,7 +468,7 @@ export function useModuleMedia(
       try {
         setError(null);
         await api.put(
-          `/teaching/admin/modules/${moduleId}/media/${assetId}/poster-frame`,
+          `/teaching/admin/modules/${moduleId}/media/${assetId}/poster-frame${scope}`,
           { seconds },
         );
         // The card shows which second is in use, so it is stale until
@@ -472,7 +484,7 @@ export function useModuleMedia(
         return false;
       }
     },
-    [moduleId, refresh],
+    [moduleId, refresh, scope],
   );
 
   // Derived rather than stored, so a null module reports "nothing to

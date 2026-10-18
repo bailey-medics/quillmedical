@@ -1461,3 +1461,171 @@ def test_a_poster_second_out_of_range_is_refused(
 
     assert resp.status_code == 422
     assert started == []
+
+
+# --- The organisation a module's video is for ------------------------------
+#
+# A video is stored once for each organisation running the module. The
+# media routes take the organisation as `org_unit_id`; left out, the
+# caller's own, as before. Phase 17 of the teaching E2E coverage plan.
+
+
+@pytest.fixture
+def operator(db_session: Session, trust: OrgUnit) -> User:
+    """A superadmin who runs teaching, at the trust and not the other one.
+
+    As in production: every teaching route asks that the caller belong to
+    an organisation with teaching on, and the operator fills in the video
+    of an organisation they do not belong to.
+    """
+    user = _user(db_session, "operator", "teaching_admin")
+    user.platform_role = "superadmin"
+    add_org_unit_member(db_session, trust.id, user.id, "staff")
+    db_session.commit()
+
+    return user
+
+
+def _references(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "app.features.teaching.media.get_referenced_media_keys",
+        lambda _module_id: ["lecture-01"],
+    )
+
+
+def test_an_operator_sees_the_video_card_of_each_organisation_running_it(
+    test_client: TestClient,
+    db_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    trust: OrgUnit,
+    other_trust: OrgUnit,
+    operator: User,
+) -> None:
+    _references(monkeypatch)
+    _serve(db_session, trust)
+    _serve(db_session, other_trust)
+    _upload(db_session, other_trust, asset_id="theirs")
+    _login(test_client, operator)
+
+    ours = test_client.get(
+        f"/api/teaching/admin/modules/{MODULE}/media",
+        params={"org_unit_id": trust.id},
+    )
+    theirs = test_client.get(
+        f"/api/teaching/admin/modules/{MODULE}/media",
+        params={"org_unit_id": other_trust.id},
+    )
+
+    assert ours.status_code == 200, ours.text
+    assert ours.json()["references"][0]["asset"] is None
+    assert theirs.json()["references"][0]["asset"]["asset_id"] == "theirs"
+
+
+def test_an_operator_uploads_for_the_organisation_named(
+    test_client: TestClient,
+    db_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    trust: OrgUnit,
+    other_trust: OrgUnit,
+    operator: User,
+) -> None:
+    _references(monkeypatch)
+    _serve(db_session, trust)
+    _serve(db_session, other_trust)
+    _source_bucket(monkeypatch, None)
+    _content_path(monkeypatch, str(tmp_path))
+    _module_on_disk(tmp_path)
+    db_session.commit()
+    headers = _login(test_client, operator)
+
+    issued = test_client.post(
+        f"/api/teaching/admin/modules/{MODULE}/media/upload-url",
+        params={"org_unit_id": other_trust.id},
+        json=_upload_request(),
+        headers=headers,
+    )
+    assert issued.status_code == 200, issued.text
+    linked = test_client.post(
+        f"/api/teaching/admin/modules/{MODULE}/media/lecture-01/link",
+        params={"org_unit_id": other_trust.id},
+        json={
+            "asset_id": issued.json()["asset_id"],
+            "original_filename": "lecture.mp4",
+            "content_type": "video/mp4",
+            "size_bytes": 1024,
+        },
+        headers=headers,
+    )
+
+    assert linked.status_code == 200, linked.text
+    assert [link.org_unit_id for link in _links(db_session)] == [
+        other_trust.id
+    ]
+
+
+def test_an_organisation_not_running_the_module_is_not_found(
+    test_client: TestClient,
+    db_session: Session,
+    trust: OrgUnit,
+    other_trust: OrgUnit,
+    operator: User,
+) -> None:
+    _serve(db_session, trust)
+    db_session.commit()
+    _login(test_client, operator)
+
+    response = test_client.get(
+        f"/api/teaching/admin/modules/{MODULE}/media",
+        params={"org_unit_id": other_trust.id},
+    )
+
+    assert response.status_code == 404
+
+
+def test_a_teaching_admin_names_only_their_own_organisation(
+    test_client: TestClient,
+    db_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    trust: OrgUnit,
+    other_trust: OrgUnit,
+    admin: User,
+) -> None:
+    _references(monkeypatch)
+    _serve(db_session, trust)
+    _serve(db_session, other_trust)
+    db_session.commit()
+    _login(test_client, admin)
+
+    theirs = test_client.get(
+        f"/api/teaching/admin/modules/{MODULE}/media",
+        params={"org_unit_id": other_trust.id},
+    )
+    ours = test_client.get(
+        f"/api/teaching/admin/modules/{MODULE}/media",
+        params={"org_unit_id": trust.id},
+    )
+
+    assert theirs.status_code == 404
+    assert ours.status_code == 200
+
+
+def test_the_module_page_says_which_organisations_videos_the_operator_uploads(
+    test_client: TestClient,
+    db_session: Session,
+    trust: OrgUnit,
+    other_trust: OrgUnit,
+    operator: User,
+) -> None:
+    _serve(db_session, other_trust)
+    db_session.commit()
+    _login(test_client, operator)
+
+    response = test_client.get(
+        f"/api/teaching/admin/banks/{MODULE}/organisations"
+    )
+
+    assert response.status_code == 200, response.text
+    assert {
+        row["org_unit_id"]: row["may_upload_videos"] for row in response.json()
+    } == {trust.id: False, other_trust.id: True}

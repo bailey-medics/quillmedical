@@ -113,6 +113,22 @@ describe("ModuleMediaCard", () => {
     );
   }
 
+  it("is headed Videos when no organisation is named", () => {
+    renderWithMantine(<ModuleMediaCard media={complete} />);
+
+    expect(screen.getByRole("heading", { name: "Videos" })).toBeInTheDocument();
+  });
+
+  it("names the organisation the videos are for in its heading", () => {
+    renderWithMantine(
+      <ModuleMediaCard media={complete} organisation="East of England ETA" />,
+    );
+
+    expect(
+      screen.getByRole("heading", { name: "Videos for East of England ETA" }),
+    ).toBeInTheDocument();
+  });
+
   it("names the live organisations in the delete confirmation", async () => {
     const user = userEvent.setup();
     renderWithMantine(
