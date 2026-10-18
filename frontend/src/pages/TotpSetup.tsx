@@ -118,8 +118,12 @@ export default function TotpSetup() {
             Scan the QR code below with your authenticator app (or copy the
             provided URL into your app).
           </BodyText>
+          {/* Named, so a screen reader says what it is rather than
+              passing over it in silence. */}
           <canvas
             ref={canvasRef}
+            role="img"
+            aria-label="QR code for your authenticator app"
             style={{ display: "block", margin: "0 auto" }}
           />
           {provisionUri && (
