@@ -13,9 +13,12 @@ import json
 import os
 from pathlib import Path
 from unittest.mock import MagicMock, patch
+from urllib.parse import parse_qs, urlparse
 
 import google.cloud as _gc
 import pytest
+
+from app.features.teaching.job_identity import METADATA_IDENTITY_URL
 
 
 def _patch_storage(storage_module: MagicMock):
@@ -34,6 +37,9 @@ def _patch_storage(storage_module: MagicMock):
     )
 
 
+AUDIENCE = "https://quill-backend-test-123.europe-west2.run.app"
+
+
 def _stub_urlopen(status: int = 200, side_effect=None):
     """Patch `urlopen` and expose the Request it was handed.
 
@@ -47,6 +53,21 @@ def _stub_urlopen(status: int = 200, side_effect=None):
     captured: dict[str, object] = {}
 
     def _fake(request, timeout=None):  # noqa: ANN001
+        # The first call is to the metadata server, for the identity
+        # token the report carries. Played here so the report's own
+        # headers can be asserted on; a failure of this call has a test
+        # of its own and is stubbed differently there.
+        if request.full_url.startswith(METADATA_IDENTITY_URL):
+            captured["audience"] = parse_qs(urlparse(request.full_url).query)[
+                "audience"
+            ][0]
+            metadata = MagicMock()
+            metadata.read.return_value = b"signed-id-token"
+            metadata.__enter__ = lambda s: s
+            metadata.__exit__ = lambda *a: False
+
+            return metadata
+
         captured["url"] = request.full_url
         captured["headers"] = {k.lower(): v for k, v in request.header_items()}
         captured["json"] = json.loads(request.data.decode())
@@ -419,7 +440,7 @@ class TestCompletionReport:
         # Development: no backend to tell. Not an error.
         with patch.dict(os.environ, {}, clear=False):
             os.environ.pop("TRANSCODE_CALLBACK_URL", None)
-            os.environ.pop("TRANSCODE_CALLBACK_TOKEN", None)
+            os.environ.pop("TRANSCODE_CALLBACK_AUDIENCE", None)
             _report_complete(7, "mod", "asset-1", ["7/mod/asset-1.mp4"])
 
         assert "Callback not configured" in capsys.readouterr().err
@@ -429,7 +450,7 @@ class TestCompletionReport:
 
         env = {
             "TRANSCODE_CALLBACK_URL": "https://example.test/cb",
-            "TRANSCODE_CALLBACK_TOKEN": "tok",
+            "TRANSCODE_CALLBACK_AUDIENCE": AUDIENCE,
         }
 
         with patch.dict(os.environ, env, clear=False):
@@ -450,14 +471,39 @@ class TestCompletionReport:
             "asset-1-poster.jpg",
         ]
         assert sent["org_id"] == 7
-        assert captured["headers"]["authorization"] == "Bearer tok"
+        assert captured["headers"]["authorization"] == "Bearer signed-id-token"
+        assert captured["audience"] == AUDIENCE
+
+    def test_no_identity_token_means_no_report(self, capsys) -> None:
+        """A laptop, or a metadata server that is down: the report is
+        skipped and said so, and nothing is posted with no token."""
+        from scripts.transcode_cli import _report_complete
+
+        env = {
+            "TRANSCODE_CALLBACK_URL": "https://example.test/cb",
+            "TRANSCODE_CALLBACK_AUDIENCE": AUDIENCE,
+        }
+
+        with patch.dict(os.environ, env, clear=False):
+            stub, captured = _stub_urlopen()
+            with (
+                stub,
+                patch(
+                    "app.features.teaching.job_identity.mint_identity_token",
+                    return_value=None,
+                ),
+            ):
+                _report_complete(7, "mod", "asset-1", ["7/mod/a.mp4"])
+
+        assert "completion report was not sent" in capsys.readouterr().err
+        assert "url" not in captured
 
     def test_a_refusal_does_not_raise(self, capsys) -> None:
         from scripts.transcode_cli import _report_complete
 
         env = {
             "TRANSCODE_CALLBACK_URL": "https://example.test/cb",
-            "TRANSCODE_CALLBACK_TOKEN": "tok",
+            "TRANSCODE_CALLBACK_AUDIENCE": AUDIENCE,
         }
 
         with patch.dict(os.environ, env, clear=False):
@@ -472,7 +518,7 @@ class TestCompletionReport:
 
         env = {
             "TRANSCODE_CALLBACK_URL": "https://example.test/cb",
-            "TRANSCODE_CALLBACK_TOKEN": "tok",
+            "TRANSCODE_CALLBACK_AUDIENCE": AUDIENCE,
         }
 
         with patch.dict(os.environ, env, clear=False):
@@ -601,7 +647,7 @@ class TestRetakePoster:
             "TRANSCODE_CALLBACK_URL": (
                 "https://api.test/api/ci/teaching/transcode-complete"
             ),
-            "TRANSCODE_CALLBACK_TOKEN": "tok",
+            "TRANSCODE_CALLBACK_AUDIENCE": AUDIENCE,
         }
 
         with patch.dict(os.environ, env, clear=False):

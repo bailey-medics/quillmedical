@@ -123,7 +123,7 @@ shared secret, its Secret Manager entry and both job mounts go.
 
 ## Phase 3: The jobs present their identity
 
-- [ ] In `backend/scripts/transcode_cli.py` and `caption_cli.py`, mint
+- [x] In `backend/scripts/transcode_cli.py` and `caption_cli.py`, mint
       the token from the metadata server rather than read it from the
       environment: a GET to
       `http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/identity?audience=<TRANSCODE_CALLBACK_AUDIENCE>`
@@ -131,22 +131,32 @@ shared secret, its Secret Manager entry and both job mounts go.
       Google auth libraries do underneath and keeps the job images free
       of a new dependency. The audience comes from a new
       `TRANSCODE_CALLBACK_AUDIENCE` / `CAPTION_CALLBACK_AUDIENCE` env var,
-      set in `infra/main.tf` to the same value the backend checks.
-      Unconfigured stays a logged skip, as it is now; a metadata server
-      that cannot be reached is logged and skipped the same way, since
-      the report must never fail the job. The poster report derives its
-      address from the transcode one as before and uses the same token.
+      set in `infra/main.tf` to the same value the backend checks, both
+      from one local, `backend_run_app_url`. Unconfigured stays a logged
+      skip, as it is now; a metadata server that cannot be reached is
+      logged and skipped the same way, since the report must never fail
+      the job. The poster report derives its address from the transcode
+      one as before and uses the same token. The minting is one function,
+      `mint_identity_token` in `backend/app/features/teaching/job_identity.py`,
+      stdlib only, because the caption image copies `backend/app` and
+      `caption_cli.py` alone, so a helper shared with the transcode job
+      can live nowhere else; `object_paths.py` is the precedent.
 
-- [ ] Update `backend/tests/transcode_cli_test.py` and
+- [x] Update `backend/tests/transcode_cli_test.py` and
       `caption_cli_test.py`: the `urlopen` mocks now see two calls, the
       metadata fetch and the report, and assert the report carries the
-      minted token. Drop `TRANSCODE_CALLBACK_TOKEN` and
-      `CAPTION_CALLBACK_TOKEN` from the fixtures.
+      minted token and was minted for the configured audience. Drop
+      `TRANSCODE_CALLBACK_TOKEN` and `CAPTION_CALLBACK_TOKEN` from the
+      fixtures. Each gains a case where no token could be minted: the
+      report is skipped and said so, and nothing is posted.
+      `job_identity_test.py` covers the minting itself.
 
-- [ ] Remove `TRANSCODE_CALLBACK_TOKEN` and `CAPTION_CALLBACK_TOKEN` from
+- [x] Remove `TRANSCODE_CALLBACK_TOKEN` and `CAPTION_CALLBACK_TOKEN` from
       `transcode_secret_env_vars` and `caption_secret_env_vars` in
       `infra/runtime-identities.tf`, which also drops both identities'
       `secretAccessor` grants on `teaching-transcode-callback-token`.
+      The two maps stay, empty, because `runtime_workload_secrets` is
+      built from them and is what gives each job its service account.
 
 - [ ] Run a transcode and a caption job in App production and confirm
       both reports land. The backend still holds the shared token at

@@ -15,8 +15,10 @@ Environment Variables:
     TEACHING_VIDEOS_BUCKET:  Required.  Where renditions live, and where
                              the WebVTT is written.
     WHISPER_MODEL:      Optional.  Defaults to ``small``.
-    CAPTION_CALLBACK_URL:   Optional.  Where to report the track exists.
-    CAPTION_CALLBACK_TOKEN: Optional.  Bearer token for that report.
+    CAPTION_CALLBACK_URL:      Optional.  Where to report the track exists.
+    CAPTION_CALLBACK_AUDIENCE: Optional.  The audience of the identity
+                               token that report carries: the backend's
+                               own address.
 
 A video with nothing to caption - no audio track, or sound with no words
 in it - is reported too, to the ``no-speech`` address beside the caption
@@ -25,7 +27,9 @@ one, so its module is not left waiting for captions that cannot exist.
 Both callback variables are optional together: unset means development,
 where there is no backend to tell. Set in teaching, where the report is
 what turns ``has_captions`` true - the player composes the track's URL
-from that column, so a WebVTT nobody recorded is never offered.
+from that column, so a WebVTT nobody recorded is never offered. The job
+holds no secret for the report: the metadata server signs a token for
+its service account, and the backend checks who that is.
 
 Usage (Cloud Run Job):
     gcloud run jobs execute quill-caption-teaching \\
@@ -102,7 +106,7 @@ def _report_captions(
     reports failure and gets re-run over an hour of Whisper.
     """
     url = os.environ.get("CAPTION_CALLBACK_URL", "").strip()
-    token = os.environ.get("CAPTION_CALLBACK_TOKEN", "").strip()
+    audience = os.environ.get("CAPTION_CALLBACK_AUDIENCE", "").strip()
 
     # Its own report, beside the caption one, so it is worked out from
     # that address rather than configured as a second one - as the
@@ -110,10 +114,22 @@ def _report_captions(
     if no_speech and url:
         url = f"{url.rsplit('/', 1)[0]}/no-speech"
 
-    if not url or not token:
+    if not url or not audience:
         print(
             "Callback not configured; skipping caption report. The "
             "track exists but will not be offered.",
+            file=sys.stderr,
+        )
+        return
+
+    from app.features.teaching.job_identity import mint_identity_token
+
+    token = mint_identity_token(audience)
+
+    if token is None:
+        print(
+            "ERROR: no identity token, so the caption report was not "
+            "sent; track not offered",
             file=sys.stderr,
         )
         return

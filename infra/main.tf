@@ -321,6 +321,18 @@ resource "google_secret_manager_secret_version" "vapid_private" {
 }
 
 # ---------- Cloud Run: backend ----------
+
+locals {
+  # The backend's own run.app address, written out from the project number
+  # rather than read from the module: the backend's env needs it as the
+  # audience of a job's identity token, and a module cannot read its own
+  # `service_url` output. Cloud Run's URLs are deterministic, so this and
+  # `service_url` agree; the plan output shows the latter to compare. The
+  # jobs mint their tokens for the same string. See
+  # docs/docs/plans/2026-10-17-job-callbacks-off-the-internet-plan.md.
+  backend_run_app_url = "https://quill-backend-${var.environment}-${data.google_project.project.number}.${var.region}.run.app"
+}
+
 module "cloud_run_backend" {
   source = "./modules/cloud-run"
 
@@ -436,13 +448,8 @@ module "cloud_run_backend" {
 
       # How the transcode and caption jobs prove themselves when they
       # report back: a Google identity token minted for this audience,
-      # from one of these service accounts. The audience is this very
-      # service's run.app URL, written out from the project number
-      # because the module cannot read its own `service_url` output.
-      # Cloud Run's URLs are deterministic, so the two agree; the plan
-      # output shows `service_url` to compare against. See
-      # docs/docs/plans/2026-10-17-job-callbacks-off-the-internet-plan.md.
-      TEACHING_JOB_CALLBACK_AUDIENCE = "https://quill-backend-${var.environment}-${data.google_project.project.number}.${var.region}.run.app"
+      # this service's own address, from one of these service accounts.
+      TEACHING_JOB_CALLBACK_AUDIENCE = local.backend_run_app_url
       TEACHING_JOB_CALLBACK_CALLERS = join(",", [
         google_service_account.runtime["transcode"].email,
         google_service_account.runtime["caption"].email,
@@ -654,6 +661,12 @@ module "cloud_run_transcode_job" {
     # request that came in from the internet with 404, so a 404 in the
     # job's log means the egress setting has not taken.
     TRANSCODE_CALLBACK_URL = "${module.cloud_run_backend.service_url}/api/ci/teaching/transcode-complete"
+
+    # What the report's identity token is minted for. The job asks the
+    # metadata server for a token naming this audience, and the backend
+    # accepts a token for its own address from this job's account and
+    # no other. No secret is mounted for the report any more.
+    TRANSCODE_CALLBACK_AUDIENCE = local.backend_run_app_url
   }
 
   secret_env_vars = local.transcode_secret_env_vars
@@ -706,6 +719,9 @@ module "cloud_run_caption_job" {
     # not happen. The backend's run.app address, as the transcode
     # callback is, so the report never leaves Google's network.
     CAPTION_CALLBACK_URL = "${module.cloud_run_backend.service_url}/api/ci/teaching/caption-complete"
+
+    # As on the transcode job: the audience of the report's identity token.
+    CAPTION_CALLBACK_AUDIENCE = local.backend_run_app_url
   }
 
   secret_env_vars = local.caption_secret_env_vars
