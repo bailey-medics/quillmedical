@@ -172,6 +172,28 @@ describe("SlideReader arrow keys", { timeout: 10_000 }, () => {
     ).toBeInTheDocument();
   });
 
+  it("moves back on a left arrow pressed the moment the slide appears", async () => {
+    // Pressed in the same instant the slide is drawn, before React has
+    // run the effects that follow a paint. The listener must already be
+    // the one for this slide: one left over from the loading render
+    // believes it is on the first slide and ignores the left arrow. That
+    // is what failed "moves back on the left arrow" now and then.
+    const pressed = new MutationObserver(() => {
+      if (screen.queryByRole("heading", { name: "Systematic approach" })) {
+        pressed.disconnect();
+        fireEvent.keyDown(document.body, { key: "ArrowLeft" });
+      }
+    });
+    pressed.observe(document.body, { childList: true, subtree: true });
+
+    renderAt(1);
+
+    expect(
+      await screen.findByRole("heading", { name: "Introduction" }, WAIT),
+    ).toBeInTheDocument();
+    pressed.disconnect();
+  });
+
   it.each(["video", "input", "textarea"])(
     "leaves the slide alone when the arrow is pressed in a %s",
     async (tag) => {
