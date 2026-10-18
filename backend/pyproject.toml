@@ -52,6 +52,15 @@ google-cloud-storage = ">=3.17.0,<3.18.0"
 # job - see the trigger decision in the video auth gate plan.
 google-cloud-run = ">=0.16.1,<0.17.0"
 reportlab = ">=5.0.1,<5.1.0"
+# Passport evidence images are decoded and written out again at upload
+# (backend/app/features/passport/evidence.py), so nothing hidden in the
+# file is stored and the EXIF block, which carries a phone photo's GPS
+# position, is dropped. Already in the lock file as a dependency of
+# reportlab; named here because the application imports it itself.
+pillow = ">=12.3.0,<13.0.0"
+# Decodes HEIC, which phones write and which Pillow cannot read alone.
+# Ships its own libheif in the wheel, so the image gains no apt package.
+pillow-heif = ">=1.8.1,<2.0.0"
 # Amazon SES in London, which sends every email; see
 # docs/docs/plans/2026-10-06-amazon-ses-email-plan.md.
 boto3 = ">=1.40.0,<2.0.0"

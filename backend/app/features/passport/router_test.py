@@ -40,6 +40,7 @@ import jwt
 import pytest
 from fastapi.testclient import TestClient
 from httpx import Response
+from PIL import Image
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
@@ -3027,6 +3028,15 @@ class TestTheWholeLogbook:
         assert response.status_code == 404
 
 
+def _png() -> bytes:
+    """A real, tiny PNG. Since images are decoded and written again at
+    upload, a header with nothing behind it is no longer enough."""
+    out = io.BytesIO()
+    Image.new("RGB", (2, 2), "white").save(out, format="PNG")
+
+    return out.getvalue()
+
+
 class TestEvidence:
     """Uploading a file, and naming it in a record.
 
@@ -3131,6 +3141,56 @@ class TestEvidence:
         assert response.status_code == 400
         assert "does not look like" in response.text
 
+    def test_an_image_that_cannot_be_decoded_is_refused(
+        self, holder_client: TestClient
+    ) -> None:
+        """A PNG header with nothing behind it passes the first-bytes
+        check and fails the decode, which is the refusal that matters:
+        the bytes are rewritten before storing, so what cannot be
+        decoded cannot be stored."""
+        passport_id = _create_passport(holder_client)
+
+        response = self._upload(
+            holder_client,
+            passport_id,
+            content=b"\x89PNG\r\n\x1a\n" + b"\x00" * 64,
+            filename="scan.png",
+            media_type="image/png",
+        )
+
+        assert response.status_code == 400
+        assert "could not be read" in response.text
+
+    def test_a_stored_image_carries_no_exif(
+        self, holder_client: TestClient
+    ) -> None:
+        """Through the route and back: the bytes an assessor is shown
+        are the picture alone."""
+        exif = Image.Exif()
+        exif[0x010F] = "A phone"  # Make
+        out = io.BytesIO()
+        Image.new("RGB", (4, 4), "white").save(
+            out, format="JPEG", exif=exif.tobytes()
+        )
+        passport_id = _create_passport(holder_client)
+        uploaded = self._upload(
+            holder_client,
+            passport_id,
+            content=out.getvalue(),
+            filename="photo.jpg",
+            media_type="image/jpeg",
+        ).json()
+        name = self._certificate_with(holder_client, passport_id, uploaded)
+
+        response = holder_client.get(
+            f"/api/passport/{passport_id}/certificates/{name}"
+            f"/attachments/{uploaded['hash']}"
+        )
+
+        assert response.status_code == 200, response.text
+        assert b"A phone" not in response.content
+        assert hashlib.sha256(response.content).hexdigest() in uploaded["hash"]
+
     def test_a_pdf_with_active_content_is_refused(
         self, holder_client: TestClient
     ) -> None:
@@ -3165,7 +3225,7 @@ class TestEvidence:
         response = self._upload(
             holder_client,
             passport_id,
-            content=b"\x89PNG\r\n\x1a\n" + b"\x00" * 64,
+            content=_png(),
             filename="scan.png",
             media_type="image/png",
         )
@@ -3727,7 +3787,7 @@ class TestEvidence:
         uploaded = self._upload(
             holder_client,
             passport_id,
-            content=b"\x89PNG\r\n\x1a\n" + b"\x00" * 64,
+            content=_png(),
             filename="scan.png",
             media_type="image/png",
         ).json()
@@ -3756,7 +3816,7 @@ class TestEvidence:
         uploaded = self._upload(
             holder_client,
             passport_id,
-            content=b"\x89PNG\r\n\x1a\n" + b"\x00" * 64,
+            content=_png(),
             filename="scan.png",
             media_type="image/png",
         ).json()

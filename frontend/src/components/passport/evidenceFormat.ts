@@ -17,6 +17,10 @@
  *
  * Deliberately short: a scan, a photograph of a logbook page, or a PDF
  * of a course certificate is what this is for.
+ *
+ * Images are decoded and written again by the backend at upload, so what
+ * is stored carries no EXIF. A HEIC is stored as a JPEG, because only
+ * Safari displays HEIC, and the upload's response says `image/jpeg`.
  */
 export const ACCEPTED_EVIDENCE_TYPES = [
   "application/pdf",

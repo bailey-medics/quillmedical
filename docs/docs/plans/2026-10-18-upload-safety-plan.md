@@ -74,14 +74,16 @@ Decisions.
 
 ## Phase 2: Images are re-encoded at upload
 
-- [ ] Add `pillow` and `pillow-heif` to `backend/pyproject.toml`, pinned
+- [x] Add `pillow` and `pillow-heif` to `backend/pyproject.toml`, pinned
       in the same style as the other dependencies, with a comment saying
       why: evidence images are decoded and written again so nothing
       hidden in the file is stored, and so EXIF is dropped. Both ship
       wheels that bundle their native libraries, so `backend/Dockerfile`
       gains no apt package. Rebuild the test image with `just utr`.
+      Found on 2026-10-18: Pillow 12.3.0 was already in `poetry.lock` as
+      a dependency of reportlab, so only `pillow-heif` 1.8.1 is new.
 
-- [ ] Add `sanitise_image(data: bytes, media_type: str) -> tuple[bytes,
+- [x] Add `sanitise_image(data: bytes, media_type: str) -> tuple[bytes,
       str]` to `evidence.py`, returning the bytes to store and their
       type. It opens the image with Pillow, with
       `Image.MAX_IMAGE_PIXELS` set explicitly to 50 million so a
@@ -98,7 +100,17 @@ Decisions.
       therefore `image/jpeg` for a HEIC upload. Animation is dropped
       (first frame only); evidence is a still.
 
-- [ ] Call it from `upload_evidence` for the four image types, before
+      As built: `quality="keep"` cannot be used, because applying the
+      EXIF orientation makes a copy that is no longer a `JpegImageFile`;
+      the source's quantisation tables are read first and passed as
+      `qtables=` instead, which is what `keep` does underneath. HEIC and
+      WebP are saved at quality 95 rather than 90, since a scan is read
+      for its small print. The pixel limit is enforced by making
+      Pillow's own `DecompressionBombWarning` an error, which fires from
+      the header before a pixel is decoded, rather than by a second
+      check of the same numbers.
+
+- [x] Call it from `upload_evidence` for the four image types, before
       hashing, so the hash the holder is handed is the hash of what Quill
       stores. See Decisions for why the stored bytes may differ from the
       uploaded ones. A file Pillow cannot decode, or one over the pixel
@@ -109,16 +121,19 @@ Decisions.
       second `_looks_like` check when a certificate names its evidence
       passes against the JPEG bytes.
 
-- [ ] Test it in `evidence_test.py`: a JPEG written with EXIF GPS tags
+- [x] Test it in `evidence_test.py`: a JPEG written with EXIF GPS tags
       comes back without any EXIF; a PNG with a `tEXt` chunk comes back
       without it; a HEIC comes back as JPEG bytes with `image/jpeg`; an
       image over the pixel limit is refused; bytes that are not an image
       are refused; and the same input always produces the same output,
       since the blob store relies on a retried upload hashing the same.
       The HEIC fixture is a tiny file written by `pillow-heif` in the
-      test itself rather than a binary checked in.
+      test itself rather than a binary checked in. The three router
+      tests that uploaded a bare PNG header now upload a real two-pixel
+      PNG, since a header with nothing behind it no longer decodes; that
+      case became its own test of the refusal.
 
-- [ ] Update the comment on `ACCEPTED_EVIDENCE_TYPES` in
+- [x] Update the comment on `ACCEPTED_EVIDENCE_TYPES` in
       `frontend/src/components/passport/evidenceFormat.ts` and the
       certificate uploader's copy, if any, to say a HEIC is stored as a
       JPEG, and check `PassportCertificatePage.test.tsx` still passes
