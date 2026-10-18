@@ -121,9 +121,12 @@ describe("SlideReader with no slide to show", () => {
 });
 
 // Ten seconds rather than five, and five for each wait rather than one.
-// The first render loads the slide page, and on a busy CI runner that
-// alone has taken most of the default five seconds, failing "moves back
-// on the left arrow" twice on 17 October 2026 with nothing wrong.
+// These were raised after "moves back on the left arrow" failed twice on
+// 17 October 2026, on the belief that the first render was slow. It was
+// not: the key was pressed before the listener knew which slide was
+// showing, and was ignored. SlideReader now replaces the listener in a
+// layout effect; see the comment there. The longer waits stay, as they
+// cost nothing when the test passes.
 const WAIT = { timeout: 5_000 };
 
 describe("SlideReader arrow keys", { timeout: 10_000 }, () => {
