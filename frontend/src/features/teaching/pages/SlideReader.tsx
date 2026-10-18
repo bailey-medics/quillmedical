@@ -11,7 +11,13 @@
 
 import { Skeleton, Stack, useMantineTheme } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useState,
+} from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import SlideViewer from "@/components/teaching/slide-viewer/SlideViewer";
 import { TeachingProgressBar } from "@/components/teaching/teaching-progress-bar/TeachingProgressBar";
@@ -89,8 +95,14 @@ export default function SlideReader() {
     }
   }, [isFirst, currentIndex, goToSlide]);
 
-  // Keyboard navigation
-  useEffect(() => {
+  // Keyboard navigation.
+  //
+  // A layout effect, so the listener is replaced in the same commit that
+  // draws the slide. A plain effect runs a moment later, and a key
+  // pressed in that moment reached the listener from the loading render,
+  // which thought it was on the first slide: the left arrow did nothing.
+  // That is what failed "moves back on the left arrow" in CI.
+  useLayoutEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       // In a video the arrows skip back and forward, and in a text box
       // they move the cursor. Pressed there they are not for the slides.
