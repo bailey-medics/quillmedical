@@ -18,6 +18,31 @@ resource "google_compute_subnetwork" "private" {
   private_ip_google_access = true
 }
 
+# ---------- Subnet for Cloud Run (Direct VPC egress) ----------
+# Each Cloud Run instance that uses Direct VPC egress takes an address here
+# for as long as it runs: a service holds about twice its instance count and
+# keeps them for twenty minutes after scaling down; a job task holds one for
+# its run plus seven minutes. Google requires a /26 at least and hands
+# addresses out in blocks of sixteen. A /24 is roomy for five instances of
+# the backend, four jobs and a revision rollout, and costs nothing.
+#
+# 10.9.0.0/24 sits clear of the private subnet (10.0.0.0/20), the connector
+# (10.8.0.0/28) and the Cloud SQL peering range Google chose (10.185.0.0/16,
+# read from `gcloud compute addresses describe quill-private-ip-app --global`
+# on 2026-10-18). See
+# docs/docs/plans/2026-10-18-direct-vpc-egress-plan.md.
+resource "google_compute_subnetwork" "cloud_run" {
+  project       = var.project_id
+  name          = "quill-run-${var.environment}"
+  ip_cidr_range = "10.9.0.0/24"
+  region        = var.region
+  network       = google_compute_network.vpc.id
+
+  # GCS, Secret Manager and the backend's own run.app address all stay on
+  # Google's network from here, and never touch the NAT.
+  private_ip_google_access = true
+}
+
 # ---------- Cloud NAT (outbound internet for private resources) ----------
 resource "google_compute_router" "router" {
   project = var.project_id
