@@ -455,6 +455,21 @@ export const EveryProgressState: Story = {
             },
           },
         },
+        {
+          key: "no-speech",
+          asset: {
+            ...lecture,
+            asset_id: "s9",
+            progress: {
+              stage: 4,
+              total_stages: 4,
+              label: "Ready - no speech, so no captions needed",
+              in_progress: false,
+              stalled: false,
+              is_final: true,
+            },
+          },
+        },
       ],
       unattached: [],
       is_complete: false,

@@ -154,6 +154,42 @@ def record_captions(
     )
 
 
+def record_no_speech(
+    db: Session, org_id: int, module_id: str, asset_id: str
+) -> None:
+    """Record that the caption job found no speech in one upload.
+
+    A video with no audio track, or one whose sound has no words in it,
+    has nothing to caption. This is what lets its module reach learners
+    without a review of captions that can never exist.
+
+    Nothing else changes: ``has_captions`` stays as it was, since no
+    track was written.
+
+    The row is flushed, not committed.
+
+    Args:
+        db: Core database session.
+        org_id: The number the upload is stored under in the bucket.
+        module_id: The module the upload belongs to.
+        asset_id: The upload's own id.
+
+    Raises:
+        MediaAssetNotFound: no upload is recorded under those ids.
+    """
+    link = _media_link(db, org_id, module_id, asset_id)
+
+    link.no_speech_found_at = datetime.now(UTC)
+    db.flush()
+
+    logger.info(
+        "no speech recorded org=%s module=%s asset=%s",
+        org_id,
+        module_id,
+        asset_id,
+    )
+
+
 def record_poster(
     db: Session,
     org_id: int,

@@ -208,8 +208,25 @@ class TestFinished:
         assert p.stage == p.total_stages
         assert p.in_progress is False
         assert p.stalled is False
-        # The one production state where nothing further is expected,
-        # so the card drops the bar.
+        # One of the two production states where nothing further is
+        # expected, so the card drops the bar.
+        assert p.is_final is True
+
+    def test_no_speech_is_the_last_stage(self) -> None:
+        # A silent video: the caption job found nothing to write down.
+        # Without this it read as captions that had failed, for good.
+        p = describe_progress(
+            _link(
+                transcoded_at=NOW,
+                caption_started_at=NOW - timedelta(hours=3),
+                no_speech_found_at=NOW,
+            ),
+            now=NOW,
+        )
+
+        assert p.stage == p.total_stages
+        assert p.label == "Ready - no speech, so no captions needed"
+        assert p.stalled is False
         assert p.is_final is True
 
 
