@@ -23,6 +23,18 @@ on:
         type: choice
         default: all
         options: [all, app]
+      # Rotates a Terraform-generated secret: the apply runs with
+      # `-replace=<address>`, which regenerates it, and for a database
+      # password sets the new value on the database user in the same apply.
+      # Only the generated secrets are accepted; the allow-list is in
+      # .github/scripts/terraform/replace-argument.sh, and anything else
+      # fails before Terraform runs. See "Rotating a secret" in
+      # docs/docs/infrastructure/gcp.md.
+      replace:
+        description: "Address of one generated secret to regenerate, e.g. random_password.jwt_secret (optional)"
+        required: false
+        type: string
+        default: ""
 
   push:
     branches: [main]
@@ -175,14 +187,32 @@ jobs:
             echo "skip=false" >> "${GITHUB_OUTPUT}"
           fi
 
+      # Empty on a push and on an ordinary dispatch. Set, it is the one
+      # `-replace=` argument a dispatch may add, checked against the
+      # allow-list in the script, so the apply below never sees an address
+      # the script did not accept.
+      - name: Resolve the resource to replace
+        if: steps.scope.outputs.skip != 'true'
+        id: replace
+        env:
+          REPLACE: ${{ github.event.inputs.replace || '' }}
+        run: bash .github/scripts/terraform/replace-argument.sh "${REPLACE}"
+
       - name: Terraform apply
         if: steps.scope.outputs.skip != 'true'
         working-directory: infra
+        env:
+          REPLACE_ARGUMENT: ${{ steps.replace.outputs.argument }}
         run: |
+          # ${REPLACE_ARGUMENT} is unquoted on purpose: empty, it must vanish
+          # rather than hand Terraform an empty argument. It holds either
+          # nothing or `-replace=<one address from the allow-list>`.
+          # shellcheck disable=SC2086
           terraform apply \
             -var-file=environments/${{ matrix.environment }}/terraform.tfvars \
             -input=false \
-            -auto-approve
+            -auto-approve \
+            ${REPLACE_ARGUMENT}
 
   # ---------- Notify: apply failure ----------
   notify-teaching-failure:

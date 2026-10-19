@@ -141,7 +141,7 @@ on that stack's code.
       Landed with the procedures above, in the same unit, because a
       schedule on its own is too small a pull request to read.
 
-- [ ] Give `terraform.yml`'s `workflow_dispatch` an optional `replace`
+- [x] Give `terraform.yml`'s `workflow_dispatch` an optional `replace`
       input, the address of one resource, passed to `terraform apply`
       as `-replace=` when set. Today the dispatch takes only the
       environment, so a regenerated secret would need an apply from
