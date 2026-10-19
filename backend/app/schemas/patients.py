@@ -143,10 +143,29 @@ class PatientsListOut(BaseModel):
 
     Attributes:
         patients: Patients visible to the current user.
+        total: How many that is. The same number as ``len(patients)``,
+            for a caller that wants the count without walking the list.
         fhir_ready: Whether the FHIR server was reachable.
     """
 
     patients: list[PatientListItem]
+    total: int
+    fhir_ready: bool
+
+
+class PatientCountOut(BaseModel):
+    """How many patients the caller may see, and nothing else about them.
+
+    The admin page shows a count. A count should not arrive with every
+    patient's name and identifiers attached, however the page then
+    discards them, so this answers the number alone.
+
+    Attributes:
+        total: Patients visible to the current user.
+        fhir_ready: Whether the FHIR server was reachable; 0 when not.
+    """
+
+    total: int
     fhir_ready: bool
 
 

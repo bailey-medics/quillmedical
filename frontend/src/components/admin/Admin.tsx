@@ -35,8 +35,11 @@ interface AdminProps {
   organisationsLoading?: boolean;
   /** Existing users for statistics */
   existingUsers?: Array<{ id: string; username: string; email: string }>;
-  /** Existing patients for statistics */
-  existingPatients?: Array<{ id: string; name: string }>;
+  /**
+   * How many patients the viewer may see. A number, not the patients:
+   * the page has no use for their names, so it never holds them.
+   */
+  patientCount?: number;
   /** Number of organisations */
   organisationCount?: number;
 }
@@ -49,7 +52,7 @@ export default function Admin({
   patientsLoading = false,
   organisationsLoading = false,
   existingUsers = [],
-  existingPatients = [],
+  patientCount = 0,
   organisationCount = 0,
 }: AdminProps) {
   return (
@@ -69,7 +72,7 @@ export default function Admin({
         {clinicalServicesEnabled && showPatients && (
           <StatCard
             title="Total patients"
-            value={existingPatients.length}
+            value={patientCount}
             loading={patientsLoading}
           />
         )}

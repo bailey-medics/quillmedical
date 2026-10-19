@@ -75,6 +75,7 @@ def _shown(client: TestClient, query: str = "") -> list[tuple[str, bool]]:
     assert resp.status_code == 200
     body = resp.json()
     assert body["fhir_ready"] is True
+    assert body["total"] == len(body["patients"])
 
     return [(row["id"], row["is_active"]) for row in body["patients"]]
 
@@ -181,7 +182,11 @@ class TestTheList:
             resp = authenticated_clinician_client.get("/api/patients")
 
         assert resp.status_code == 200
-        assert resp.json() == {"patients": [], "fhir_ready": False}
+        assert resp.json() == {
+            "patients": [],
+            "total": 0,
+            "fhir_ready": False,
+        }
 
     def test_a_record_that_cannot_be_listed_empties_the_whole_list(
         self, authenticated_superadmin_client: TestClient
@@ -194,7 +199,11 @@ class TestTheList:
             )
 
         assert resp.status_code == 200
-        assert resp.json() == {"patients": [], "fhir_ready": False}
+        assert resp.json() == {
+            "patients": [],
+            "total": 0,
+            "fhir_ready": False,
+        }
 
     def test_nobody_signed_in_is_refused(
         self, test_client: TestClient
@@ -393,3 +402,68 @@ class TestTheUpdate:
 
         assert resp.status_code == 403
         read.assert_not_called()
+
+
+class TestTheCount:
+    """``GET /api/patients/count``: the number the admin page shows.
+
+    The same patients the list would show, counted, with no names or
+    identifiers in the answer.
+    """
+
+    def test_an_admin_in_a_trust_is_told_that_trusts_patients(
+        self,
+        authenticated_admin_client: TestClient,
+        test_admin: User,
+        db_session: Session,
+        own_trust: OrgUnit,
+        other_trust: OrgUnit,
+    ) -> None:
+        add_org_unit_member(db_session, own_trust.id, test_admin.id, "staff")
+        db_session.commit()
+
+        with patch(LIST, return_value=EVERY_RECORD):
+            resp = authenticated_admin_client.get("/api/patients/count")
+
+        assert resp.status_code == 200
+        assert resp.json() == {"total": 1, "fhir_ready": True}
+
+    def test_the_answer_carries_no_patient(
+        self,
+        authenticated_admin_client: TestClient,
+        test_admin: User,
+        db_session: Session,
+        own_trust: OrgUnit,
+    ) -> None:
+        add_org_unit_member(db_session, own_trust.id, test_admin.id, "staff")
+        db_session.commit()
+
+        with patch(LIST, return_value=EVERY_RECORD):
+            resp = authenticated_admin_client.get("/api/patients/count")
+
+        assert set(resp.json()) == {"total", "fhir_ready"}
+        assert OWN_PATIENT not in resp.text
+
+    def test_anything_going_wrong_but_fhir_itself_is_zero_not_ready(
+        self, authenticated_admin_client: TestClient
+    ) -> None:
+        with patch(LIST, side_effect=RuntimeError(LEAK)):
+            resp = authenticated_admin_client.get("/api/patients/count")
+
+        assert resp.status_code == 200
+        assert resp.json() == {"total": 0, "fhir_ready": False}
+        assert LEAK not in resp.text
+
+    def test_somebody_without_manage_users_is_refused(
+        self, authenticated_clinician_client: TestClient
+    ) -> None:
+        resp = authenticated_clinician_client.get("/api/patients/count")
+
+        assert resp.status_code == 403
+
+    def test_nobody_signed_in_is_refused(
+        self, test_client: TestClient
+    ) -> None:
+        resp = test_client.get("/api/patients/count")
+
+        assert resp.status_code == 401

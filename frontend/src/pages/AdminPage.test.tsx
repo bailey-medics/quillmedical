@@ -1,11 +1,14 @@
 /**
- * Tests for AdminPage's patient fetching.
+ * Tests for AdminPage's patient count fetching.
  *
  * The retry loop exists because FHIR takes time to come up, so a failed
  * request normally means "not ready yet". In a teaching deployment
- * there is no FHIR at all and `/patients` answers 503 permanently - and
- * the catch cannot tell those apart, so one tab left open polled every
- * five seconds until it was closed.
+ * there is no FHIR at all and `/patients/count` answers 503 permanently
+ * - and the catch cannot tell those apart, so one tab left open polled
+ * every five seconds until it was closed.
+ *
+ * It asks for the count, never the list: the page shows a number, and
+ * the list carries every patient's name and identifiers.
  */
 
 import { describe, expect, it, vi, beforeEach } from "vitest";
@@ -49,7 +52,19 @@ describe("AdminPage patient fetching", () => {
     vi.clearAllMocks();
     vi.unstubAllEnvs();
     signedIn.competencies = ["manage_users"];
-    vi.mocked(api.get).mockResolvedValue({ fhir_ready: true, patients: [] });
+    vi.mocked(api.get).mockResolvedValue({ fhir_ready: true, total: 0 });
+  });
+
+  it("asks for the count, never the list", async () => {
+    vi.stubEnv("VITE_CLINICAL_SERVICES_ENABLED", "true");
+    renderWithRouter(<AdminPage />);
+
+    await waitFor(() => {
+      const paths = vi.mocked(api.get).mock.calls.map((c) => c[0]);
+      expect(paths).toContain("/patients/count");
+    });
+    const paths = vi.mocked(api.get).mock.calls.map((c) => c[0]);
+    expect(paths).not.toContain("/patients");
   });
 
   it("does not ask for patients where there is no FHIR", async () => {
@@ -62,16 +77,16 @@ describe("AdminPage patient fetching", () => {
       expect(api.get).toHaveBeenCalled();
     });
     const paths = vi.mocked(api.get).mock.calls.map((c) => c[0]);
-    expect(paths).not.toContain("/patients");
+    expect(paths).not.toContain("/patients/count");
   });
 
-  it("asks for patients where FHIR is present", async () => {
+  it("asks for the count where FHIR is present", async () => {
     vi.stubEnv("VITE_CLINICAL_SERVICES_ENABLED", "true");
     renderWithRouter(<AdminPage />);
 
     await waitFor(() => {
       const paths = vi.mocked(api.get).mock.calls.map((c) => c[0]);
-      expect(paths).toContain("/patients");
+      expect(paths).toContain("/patients/count");
     });
   });
 
@@ -86,6 +101,6 @@ describe("AdminPage patient fetching", () => {
       expect(api.get).toHaveBeenCalled();
     });
     const paths = vi.mocked(api.get).mock.calls.map((c) => c[0]);
-    expect(paths).not.toContain("/patients");
+    expect(paths).not.toContain("/patients/count");
   });
 });

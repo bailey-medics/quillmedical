@@ -23,18 +23,11 @@ interface ApiUser {
 }
 
 /**
- * API Patient Response (FHIR Patient)
+ * Patient count response (including FHIR readiness flag). A number and
+ * nothing else: the page shows a count, so it never fetches the list.
  */
-interface ApiPatient {
-  id: string;
-  name: Array<{ given?: string[]; family?: string }>;
-}
-
-/**
- * Patients API Response (including FHIR readiness flag)
- */
-interface PatientsApiResponse {
-  patients: ApiPatient[];
+interface PatientCountResponse {
+  total: number;
   fhir_ready: boolean;
 }
 
@@ -51,9 +44,7 @@ export default function AdminPage() {
   const [users, setUsers] = useState<
     Array<{ id: string; username: string; email: string }>
   >([]);
-  const [patients, setPatients] = useState<Array<{ id: string; name: string }>>(
-    [],
-  );
+  const [patientCount, setPatientCount] = useState(0);
   const [organisationCount, setOrganisationCount] = useState(0);
   const [usersLoading, setUsersLoading] = useState(true);
   const [patientsLoading, setPatientsLoading] = useState(true);
@@ -112,7 +103,7 @@ export default function AdminPage() {
     };
   }, [state.status]);
 
-  // Fetch patients (waits for FHIR to be ready)
+  // Fetch the patient count (waits for FHIR to be ready)
   useEffect(() => {
     let cancelled = false;
 
@@ -120,8 +111,8 @@ export default function AdminPage() {
       // Nothing to wait for where there is no FHIR. The retry below
       // exists because FHIR takes time to come up, so a failure is
       // normally "not ready yet" - but in a teaching deployment
-      // /patients answers 503 permanently, and the catch cannot tell
-      // the two apart. One admin tab left open then polls every five
+      // /patients/count answers 503 permanently, and the catch cannot
+      // tell the two apart. One admin tab left open then polls every five
       // seconds for as long as it is open, which is exactly what
       // happened: 127 deliberate 503s logged at ERROR in thirteen
       // minutes.
@@ -137,23 +128,13 @@ export default function AdminPage() {
 
       try {
         setPatientsLoading(true);
-        const patientsResponse =
-          await api.get<PatientsApiResponse>("/patients");
+        const countResponse =
+          await api.get<PatientCountResponse>("/patients/count");
 
         if (!cancelled) {
           // Check if FHIR is ready
-          if (patientsResponse.fhir_ready) {
-            setPatients(
-              patientsResponse.patients.map((p) => {
-                const name = p.name?.[0];
-                const givenName = name?.given?.[0] || "";
-                const familyName = name?.family || "";
-                return {
-                  id: p.id,
-                  name: `${givenName} ${familyName}`.trim() || "Unknown",
-                };
-              }),
-            );
+          if (countResponse.fhir_ready) {
+            setPatientCount(countResponse.total);
             setPatientsLoading(false);
           } else {
             // FHIR not ready yet, keep loading and retry
@@ -165,7 +146,7 @@ export default function AdminPage() {
           }
         }
       } catch (error) {
-        console.error("Failed to fetch patients:", error);
+        console.error("Failed to fetch the patient count:", error);
         // On error, stop loading after a delay and retry
         setTimeout(() => {
           if (!cancelled) {
@@ -233,7 +214,7 @@ export default function AdminPage() {
       clinicalServicesEnabled={clinicalServicesEnabled}
       showPatients={managesPatients}
       existingUsers={users}
-      existingPatients={patients}
+      patientCount={patientCount}
       usersLoading={usersLoading}
       patientsLoading={patientsLoading}
       organisationsLoading={organisationsLoading}

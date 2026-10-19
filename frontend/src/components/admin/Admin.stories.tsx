@@ -28,14 +28,6 @@ const sampleUsers = [
   { id: "5", username: "adminuser", email: "admin.user@hospital.com" },
 ];
 
-const samplePatients = [
-  { id: "p1", name: "Alice Johnson" },
-  { id: "p2", name: "Bob Williams" },
-  { id: "p3", name: "Carol Davis" },
-  { id: "p4", name: "David Martinez" },
-  { id: "p5", name: "Eva Rodriguez" },
-];
-
 /**
  * Super Admin View
  *
@@ -47,7 +39,7 @@ export const SuperAdminView: Story = {
   args: {
     platformRole: "superadmin",
     existingUsers: sampleUsers,
-    existingPatients: samplePatients,
+    patientCount: 5,
   },
 };
 
@@ -64,7 +56,7 @@ export const LoadingState: Story = {
     patientsLoading: true,
     organisationsLoading: true,
     existingUsers: sampleUsers,
-    existingPatients: samplePatients,
+    patientCount: 5,
   },
 };
 
@@ -80,7 +72,7 @@ export const PatientsLoadingState: Story = {
     usersLoading: false,
     patientsLoading: true,
     existingUsers: sampleUsers,
-    existingPatients: [],
+    patientCount: 0,
   },
 };
 
@@ -95,7 +87,7 @@ export const TeachingAdminView: Story = {
     platformRole: "standard",
     showPatients: false,
     existingUsers: sampleUsers,
-    existingPatients: samplePatients,
+    patientCount: 5,
     organisationCount: 1,
   },
 };
