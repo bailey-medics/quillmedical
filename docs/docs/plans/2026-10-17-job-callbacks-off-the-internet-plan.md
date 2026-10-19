@@ -195,14 +195,19 @@ shared secret, its Secret Manager entry and both job mounts go.
 
 ## Phase 5: Refuse `/api/ci/` at the edge
 
-- [ ] Add a Cloud Armor rule to `google_compute_security_policy.waf` in
+- [x] Add a Cloud Armor rule to `google_compute_security_policy.waf` in
       `infra/modules/load-balancer/main.tf`: `deny(404)` where
       `request.path.startsWith('/api/ci/')`, at a priority ahead of the
       throttle. 404 rather than 403, matching what the app's own guards
       answer, so the prefix is not advertised. The backend's `run.app`
       URL is already closed to the internet by its ingress setting, so
       after this the three routes are reachable only from inside the
-      VPC.
+      VPC. Built on 2026-10-19 at priority 900. By then the prefix also
+      held `no-speech` and the virus scanner's `/api/ci/uploads/scan-complete`,
+      both guarded by `require_job_identity` and reporting over the
+      VPC, so the one rule covers five routes. **Merge only after the
+      sync plan's Phase 4 (#2130) is live**, which removes the last
+      route under the prefix that anything outside GCP calls.
 
       This lands only after Phase 4 of
       `2026-10-16-teaching-sync-without-a-github-secret-plan.md` has

@@ -18,6 +18,28 @@ resource "google_compute_security_policy" "waf" {
   project = var.project_id
   name    = "quill-waf-${var.environment}"
 
+  # Nothing under /api/ci/ is for the internet. Those routes are the Cloud
+  # Run jobs' reports (transcode, caption, no-speech, poster, virus scan),
+  # which reach the backend's own run.app address over the VPC and prove
+  # themselves with an identity token. 404 rather than 403, as the app's
+  # own guards answer, so the prefix is not advertised. Ahead of the
+  # throttle, so a refused request is not also counted against anyone.
+  # The teaching pipeline once called /api/ci/teaching/sync from GitHub over
+  # this domain; it starts a job now, and that route is gone. See
+  # docs/docs/plans/2026-10-17-job-callbacks-off-the-internet-plan.md.
+  rule {
+    action   = "deny(404)"
+    priority = 900
+
+    match {
+      expr {
+        expression = "request.path.startsWith('/api/ci/')"
+      }
+    }
+
+    description = "Job callbacks are not reachable from the internet"
+  }
+
   # Rate limiting: 500 requests/min per IP
   rule {
     action   = "throttle"
