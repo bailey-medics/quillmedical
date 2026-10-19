@@ -375,3 +375,43 @@ class TestTeachingJobCallbackCallers:
     def test_set_but_naming_nobody_fails_at_startup(self) -> None:
         with pytest.raises(ValidationError, match="names no service account"):
             self._settings(TEACHING_JOB_CALLBACK_CALLERS=" , ")
+
+
+class TestTeachingJobCallbackTestKey:
+    """The test signing key is refused anywhere but the test stack."""
+
+    @staticmethod
+    def _settings(**overrides: object) -> Settings:
+        return Settings(
+            JWT_SECRET="test_secret_long_enough_32_chars_min",
+            CORE_DB_PASSWORD="auth_pass",
+            VAPID_PRIVATE="vapid_key",
+            **overrides,
+        )
+
+    def test_the_test_stack_may_set_it(self) -> None:
+        settings = self._settings(
+            BACKEND_ENV="testing",
+            TEACHING_JOB_CALLBACK_TEST_KEY_FILE="/e2e-job-key/public.pem",
+        )
+
+        assert (
+            settings.TEACHING_JOB_CALLBACK_TEST_KEY_FILE
+            == "/e2e-job-key/public.pem"
+        )
+
+    # Not production here: its own startup checks fail first on these
+    # settings, which would pass this test without reaching this check.
+    @pytest.mark.parametrize("env", ["staging", "development", "local"])
+    def test_any_other_environment_fails_at_startup(self, env: str) -> None:
+        with pytest.raises(ValidationError, match="only when BACKEND_ENV"):
+            self._settings(
+                BACKEND_ENV=env,
+                TEACHING_JOB_CALLBACK_TEST_KEY_FILE="/e2e-job-key/public.pem",
+            )
+
+    @pytest.mark.parametrize("env", ["development", "testing"])
+    def test_unset_is_accepted(self, env: str) -> None:
+        settings = self._settings(BACKEND_ENV=env)
+
+        assert settings.TEACHING_JOB_CALLBACK_TEST_KEY_FILE is None

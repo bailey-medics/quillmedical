@@ -171,10 +171,21 @@ function firesUnloadWarning(): boolean {
   return event.defaultPrevented;
 }
 
-/** Drop a video on the card's dropzone and let the upload start. */
+/**
+ * Drop a video on the card's dropzone and let the upload start.
+ *
+ * Waits for the dropzone: each organisation's card fetches its own
+ * videos once the organisations have arrived, so it can come a moment
+ * after the rest of the page.
+ */
 async function startUpload() {
-  const input = document.querySelector<HTMLInputElement>('input[type="file"]');
-  if (!input) throw new Error("no dropzone on the page");
+  const input = await waitFor(() => {
+    const found =
+      document.querySelector<HTMLInputElement>('input[type="file"]');
+    if (!found) throw new Error("no dropzone on the page");
+
+    return found;
+  });
   await userEvent.upload(
     input,
     new File(["x"], "lecture.mp4", { type: "video/mp4" }),

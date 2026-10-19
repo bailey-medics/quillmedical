@@ -324,6 +324,16 @@ class Settings(BaseSettings):
             "commas: the transcode and caption jobs. Unset in development."
         ),
     )
+    TEACHING_JOB_CALLBACK_TEST_KEY_FILE: str | None = Field(
+        None,
+        description=(
+            "A PEM public key file the job identity tokens are checked "
+            "against instead of Google's certificates, so the end-to-end "
+            "stack can stand in for the jobs with a key made for the run. "
+            "Everything else about the token is checked as usual. Allowed "
+            "only when BACKEND_ENV is testing."
+        ),
+    )
 
     # --- In-app guides ---
     GUIDE_ASSETS_GCS_BUCKET: str | None = Field(
@@ -574,6 +584,27 @@ class Settings(BaseSettings):
         if not self.EMAIL_DRY_RUN:
             raise ValueError(
                 "EMAIL_CAPTURE_DIR may be set only when EMAIL_DRY_RUN is on"
+            )
+
+        return self
+
+    @model_validator(mode="after")
+    def _validate_teaching_job_callback_test_key(self) -> Settings:
+        """Refuse the test signing key anywhere but the test stack.
+
+        With it set, a job's token is checked against a key made for one
+        end-to-end run rather than Google's, so whoever holds that key's
+        other half can report a finished job. That is the point in the
+        test stack and a hole anywhere else, so set elsewhere the backend
+        fails at startup and the old revision keeps serving.
+        """
+        if self.TEACHING_JOB_CALLBACK_TEST_KEY_FILE is None:
+            return self
+
+        if self.BACKEND_ENV.lower() != "testing":
+            raise ValueError(
+                "TEACHING_JOB_CALLBACK_TEST_KEY_FILE may be set only when "
+                "BACKEND_ENV is testing"
             )
 
         return self

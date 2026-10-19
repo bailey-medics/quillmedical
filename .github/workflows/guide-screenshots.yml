@@ -60,6 +60,11 @@ jobs:
       - name: Prepare the E2E mail folder
         run: .github/scripts/ci/prepare-e2e-mail.sh
 
+      # The key pair the tests stand in for the video jobs with. Made per
+      # run and never committed; compose.ci.yml mounts the public half.
+      - name: Prepare the E2E job key
+        run: .github/scripts/ci/prepare-e2e-job-key.sh
+
       # Postgres and Caddy come from this repository's own copies where it
       # has them, pulled with this login, and not from the public
       # registry, which refuses a runner that asks too often. That

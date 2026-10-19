@@ -25,14 +25,28 @@ export default defineConfig({
       testMatch: /.*\.setup\.ts/,
     },
     {
+      // Journeys that change what every other test sees, so they run
+      // once, first, in one browser. The video gate leaves the module
+      // hidden at CI Second Hospital until it has uploaded the video
+      // there, and the leak tests expect the module at both.
+      name: "video-gate",
+      use: {
+        ...devices["Desktop Chrome"],
+        storageState: "e2e/.auth/user.json",
+      },
+      testDir: "./e2e/tests",
+      testMatch: /\.gate\.spec\.ts$/,
+      dependencies: ["setup"],
+    },
+    {
       name: "chromium",
       use: {
         ...devices["Desktop Chrome"],
         storageState: "e2e/.auth/user.json",
       },
       testDir: "./e2e/tests",
-      testIgnore: /\.phone\.spec\.ts$/,
-      dependencies: ["setup"],
+      testIgnore: [/\.phone\.spec\.ts$/, /\.gate\.spec\.ts$/],
+      dependencies: ["setup", "video-gate"],
     },
     {
       // Safari's engine. Catches focus, scrolling and `inert` differences
@@ -45,8 +59,8 @@ export default defineConfig({
         storageState: "e2e/.auth/user.json",
       },
       testDir: "./e2e/tests",
-      testIgnore: /\.phone\.spec\.ts$/,
-      dependencies: ["setup"],
+      testIgnore: [/\.phone\.spec\.ts$/, /\.gate\.spec\.ts$/],
+      dependencies: ["setup", "video-gate"],
     },
     {
       // A phone's width, below `md`, where the navigation folds behind
@@ -59,7 +73,7 @@ export default defineConfig({
       },
       testDir: "./e2e/tests",
       testMatch: /\.phone\.spec\.ts$/,
-      dependencies: ["setup"],
+      dependencies: ["setup", "video-gate"],
     },
   ],
 });

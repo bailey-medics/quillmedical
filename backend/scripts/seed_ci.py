@@ -226,10 +226,16 @@ def seed() -> None:
 
         db.commit()
 
+        # 5f. Somebody who operates Quill and runs teaching, to fill in a
+        # module's video at an organisation they do not belong to.
+        seed_operator(db, org.id)
+
         # 6. Open every teaching module mounted at /teaching-repos, at
-        # both teaching organisations
+        # both teaching organisations. The second gets no video: the
+        # journey in e2e/tests/teaching-admin/video-gate.gate.spec.ts
+        # uploads it, and checks the module is hidden until then.
         seed_teaching(db, org.id, admin.id)
-        seed_teaching(db, second.id, admin.id)
+        seed_teaching(db, second.id, admin.id, with_videos=False)
 
         # 7. A delegate with a result, for the teaching admin's list of
         # delegates in e2e/tests/teaching-admin/
@@ -650,7 +656,34 @@ def seed_out_of_time_attempts(db: Session, org_unit_id: int) -> None:
     print("Seeded an out-of-time attempt for each browser")
 
 
-def seed_teaching(db: Session, org_unit_id: int, admin_id: int) -> None:
+#: Operates Quill and runs teaching: the person who uploads a module's
+#: video for an organisation, in e2e/tests/teaching-admin/.
+OPERATOR = "ci_operator"
+
+
+def seed_operator(db: Session, organisation_id: int) -> None:
+    """Seed somebody who operates Quill and runs teaching.
+
+    A superadmin with the teaching admin's competencies, so they may
+    manage a module's videos at every organisation holding it. A member
+    of the first teaching organisation as well, because every teaching
+    route asks that the caller belong to an organisation with teaching
+    on. They upload for the second, which they do not belong to.
+    """
+    operator = _ensure_user(db, OPERATOR, "teaching_admin")
+    operator.platform_role = "superadmin"
+    add_org_unit_member(db, organisation_id, operator.id, "staff")
+    db.flush()
+    print("Seeded the operator")
+
+
+def seed_teaching(
+    db: Session,
+    org_unit_id: int,
+    admin_id: int,
+    *,
+    with_videos: bool = True,
+) -> None:
     """Sync each mounted teaching module into the CI organisation, live.
 
     compose.ci.yml mounts the content that
@@ -661,7 +694,8 @@ def seed_teaching(db: Session, org_unit_id: int, admin_id: int) -> None:
 
     Each module's videos are uploaded too (``seed_videos``), because a
     module whose content names a video is hidden from learners until it
-    has been.
+    has been. Unless *with_videos* is false, which leaves the module
+    hidden there for a test to upload the video itself.
 
     Raises:
         RuntimeError: If a module fails validation, so a content problem
@@ -722,7 +756,8 @@ def seed_teaching(db: Session, org_unit_id: int, admin_id: int) -> None:
         status.active_version_set_by = admin_id
         status.active_version_set_at = datetime.now(UTC)
         db.flush()
-        seed_videos(db, org_unit_id, bank_id, admin_id)
+        if with_videos:
+            seed_videos(db, org_unit_id, bank_id, admin_id)
         # Every module needs an enrolment, so the people already given a
         # place are enrolled on each one as it opens.
         enrolled = enrol_everyone_with_a_place(
@@ -734,11 +769,6 @@ def seed_teaching(db: Session, org_unit_id: int, admin_id: int) -> None:
         db.commit()
         print(f"Opened teaching module {bank_id} at version {version}")
         print(f"Enrolled {len(enrolled)} on {bank_id}")
-
-
-#: The captions a seeded video is given where a caption job is
-#: configured, standing in for what that job would write.
-SEEDED_CAPTIONS = "WEBVTT\n\n00:00:00.000 --> 00:00:08.000\nLungs in motion.\n"
 
 
 def seed_videos(
@@ -754,8 +784,9 @@ def seed_videos(
     to ``local_upload_file``, then ``link_upload``.
 
     Where a transcode or caption job is configured, the gate asks for
-    its work too, so what the job would write is written here and the
-    captions are marked as checked by a person.
+    its work too, so what the job would write or report is recorded
+    here: the 720p rendition, and, the content's videos being silent,
+    that the caption job found no speech.
 
     A reference already linked is left alone, so a re-run uploads
     nothing new.
@@ -819,12 +850,12 @@ def seed_videos(
             link.transcoded_at = datetime.now(UTC)
 
         # What the caption job writes, and a person having read it.
+        # What the caption job reports for a video with nothing to
+        # caption. The content's videos are silent: `lungs-video.mp4`
+        # has no audio track, so the job finds no speech, and no person
+        # is asked to read captions that cannot exist.
         if caption_is_configured():
-            stored.with_name(f"{target.asset_id}.vtt").write_text(
-                SEEDED_CAPTIONS
-            )
-            link.has_captions = True
-            link.captions_reviewed_at = datetime.now(UTC)
+            link.no_speech_found_at = datetime.now(UTC)
 
         db.flush()
         print(f"Uploaded video {ref} of {bank_id} for org_unit {org_unit_id}")

@@ -1324,6 +1324,29 @@ def test_captions_that_do_not_begin_webvtt_are_refused(
     assert _links(db_session)[0].captions_reviewed_at is None
 
 
+def test_with_no_bucket_captions_are_read_from_beside_the_upload(
+    test_client: TestClient,
+    db_session: Session,
+    trust: OrgUnit,
+    admin: User,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """Where the caption job's stand-in and a saved edit put them."""
+    module = _module_on_disk(tmp_path)
+    (module / "learning").mkdir(exist_ok=True)
+    (module / "learning" / "asset1.vtt").write_text(CAPTIONS, encoding="utf-8")
+    _upload(db_session, trust)
+    _captions_bucket(monkeypatch, None)
+    _content_path(monkeypatch, str(tmp_path))
+    _login(test_client, admin)
+
+    resp = test_client.get(f"{MEDIA}/asset1/captions")
+
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["webvtt"] == CAPTIONS
+
+
 def test_captions_are_not_saved_where_there_is_no_bucket_for_them(
     test_client: TestClient,
     db_session: Session,
@@ -1331,8 +1354,10 @@ def test_captions_are_not_saved_where_there_is_no_bucket_for_them(
     admin: User,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    """Nor content on disk to save them beside."""
     _upload(db_session, trust)
     written = _captions_bucket(monkeypatch, None)
+    _content_path(monkeypatch, None)
 
     resp = test_client.put(
         f"{MEDIA}/asset1/captions",

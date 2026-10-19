@@ -34,6 +34,8 @@ teaching-repos/
 .e2e-teaching/
 # Emails the end-to-end stack wrote (.github/scripts/ci/prepare-e2e-mail.sh)
 frontend/e2e/.mail/
+# The key pair the E2E tests stand in for the video jobs with, made per run
+frontend/e2e/.job-key/
 
 .venv
 __pycache__/

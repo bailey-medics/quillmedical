@@ -1230,14 +1230,56 @@ def test_captions_that_do_not_begin_webvtt_are_refused_and_nothing_is_saved(
     assert row.has_captions is False
 
 
+def test_with_no_bucket_captions_are_saved_beside_the_upload_on_disk(
+    db_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    written: list[tuple[str, int, str, str, str]],
+) -> None:
+    """Where the local video route serves them from, as in the test stack."""
+    module = _module_on_disk(tmp_path)
+    org = _organisation(db_session)
+    row = _upload(db_session, org)
+    _captions_bucket(monkeypatch, None)
+    _content_path(monkeypatch, str(tmp_path))
+
+    saved = _save(db_session, org, f"\n{CAPTIONS}\n\n")
+
+    assert (module / "learning" / f"{ASSET}.vtt").read_text(
+        encoding="utf-8"
+    ) == f"{CAPTIONS}\n"
+    assert written == []
+    assert saved.webvtt == CAPTIONS
+    assert row.has_captions is True
+    assert row.captions_reviewed_at is not None
+
+
+def test_with_no_bucket_and_the_module_not_on_disk_captions_are_refused(
+    db_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    org = _organisation(db_session)
+    row = _upload(db_session, org)
+    _captions_bucket(monkeypatch, None)
+    _content_path(monkeypatch, str(tmp_path))
+
+    with pytest.raises(CaptionsCannotBeSaved):
+        _save(db_session, org)
+
+    assert row.captions_reviewed_at is None
+
+
 def test_with_no_bucket_captions_are_refused_and_no_review_is_recorded(
     db_session: Session,
     monkeypatch: pytest.MonkeyPatch,
     written: list[tuple[str, int, str, str, str]],
 ) -> None:
+    """Neither a bucket nor content on disk: nowhere to save them."""
     org = _organisation(db_session)
     row = _upload(db_session, org)
     _captions_bucket(monkeypatch, None)
+    _content_path(monkeypatch, None)
 
     with pytest.raises(CaptionsCannotBeSaved) as refused:
         _save(db_session, org)

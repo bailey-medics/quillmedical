@@ -1464,7 +1464,7 @@ Decided by Mark on 2026-10-17:
       and the lookup is refused at once instead of waiting out its
       timeouts.
 
-- [ ] A journey at "CI Second Hospital", which has no upload, in
+- [x] A journey at "CI Second Hospital", which has no upload, in
       `tests/teaching-admin/`:
       - a TA and a TD there see no module on the teaching pages, and
         its address does not open;
@@ -1476,6 +1476,35 @@ Decided by Mark on 2026-10-17:
       - the TA and the TD now see the module, open it, and the video
         plays.
 
+      Built as `tests/teaching-admin/video-gate.gate.spec.ts`, in a
+      Playwright project of its own, `video-gate`, which the chromium,
+      webkit and phone projects depend on: until it has run the module
+      is hidden at CI Second Hospital, and the leak tests expect it
+      there. It starts by deleting any upload it finds there, so a retry
+      begins where the first try did. `seed_teaching` gains
+      `with_videos`, false for the second organisation. The uploader is
+      a new seeded `ci_operator`, a superadmin with the teaching admin's
+      profession and a member of CI Teaching Hospital, as every teaching
+      route asks; `admin` holds no `manage_teaching`. Its id comes from
+      the module's organisations list, because the org_unit list is
+      scoped to where the caller belongs.
+
+      `fixtures/mediaJobs.ts` stands in for both jobs: it writes the
+      `-720p.mp4` and `.vtt` beside the upload and calls each callback
+      with the stack's token. So CI's Playwright container now mounts
+      `.e2e-teaching` writable, reversing the note in the step above.
+
+      Found while building: with no bucket, captions could be neither
+      read nor saved, so wherever a caption job was configured without
+      a bucket the gate could never open. `local_captions_file` in
+      `media_uploads.py` keeps them at `{module}/learning/{asset}.vtt`,
+      where the local video route already serves them from, and both
+      caption routes use it when no bucket is set but content is on
+      disk. With neither, saving is still refused with a 503.
+
+      The journey checks the video reaches the delegate as the 720p
+      rendition from Quill; playing it through is the next step's test.
+
 - [ ] Test the self-hosted player: on the "Lungs in motion" slide the
       video is granted through `/video-access`, fetched from Quill's own
       origin, plays, its clock moves, and it reaches its end, in every
@@ -1483,6 +1512,37 @@ Decided by Mark on 2026-10-17:
       `tests/taking-a-module/self-hosted-video.spec.ts` and passing in
       Chromium, WebKit and the phone project locally; CI's Linux
       browsers may not decode H.264, which the first CI run will show.
+
+- [x] Follow the silent video's real path, decided by Mark on
+      2026-10-18, and prove the jobs' identity in the test stack.
+      Built in #2096 once #2100 ("Captions: a silent video needs none")
+      and #2090 ("Security: callbacks accept the jobs' identity") were
+      on `main`.
+
+      `lungs-video.mp4` has no audio track, and since #2100 the caption
+      job reports no speech for such a video (`/ci/teaching/no-speech`,
+      setting `no_speech_found_at`), which `is_servable` counts the same
+      as captions a person has checked. So `seed_videos` now sets
+      `no_speech_found_at` instead of writing a `.vtt` and
+      `captions_reviewed_at`. The gate journey checks the module is
+      still hidden after the transcode and visible after the no-speech
+      report, and that the card reads "Ready - no speech, so no captions
+      needed"; it no longer opens the caption editor. Caption review is
+      left to the backend tests, as showing it end to end would need a
+      video with speech in respiratory-teaching.
+
+      Since #2090 a job proves who it is with a Google-signed identity
+      token, which nothing in the test stack can get, and every callback
+      answered 503 there. So, in `testing` only,
+      `TEACHING_JOB_CALLBACK_TEST_KEY_FILE` names a public key the token
+      is checked against instead of Google's certificates; the settings
+      refuse it in any other environment, as they refuse
+      `EMAIL_CAPTURE_DIR`. Audience, issuer, expiry, `email_verified`
+      and the caller list are checked as in App production.
+      `.github/scripts/ci/prepare-e2e-job-key.sh` makes a new key pair
+      for every run, never committed, and `fixtures/mediaJobs.ts` signs
+      its reports with the private half using Node's own `crypto`. The
+      shared callback token the stack used to set is gone.
 
 ## Phase 18: Two more checks in the settings journeys
 
