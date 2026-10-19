@@ -5,8 +5,8 @@
  * The rest of Settings (notifications, dark mode) is untested here and
  * was before these changes too.
  */
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithRouter } from "@/test/test-utils";
 import { fetchMyPassport, setPassportFrameworks } from "@lib/passport";
@@ -28,11 +28,14 @@ const authUser = vi.hoisted(() => ({
   enabled_features: [] as string[],
   competencies: [] as string[],
   marketing_emails: false,
+  totp_enabled: false,
 }));
+const reload = vi.hoisted(() => vi.fn<() => Promise<void>>());
 
 vi.mock("@/auth/AuthContext", () => ({
   useAuth: () => ({
     state: { status: "authenticated", user: authUser },
+    reload,
   }),
 }));
 
@@ -482,6 +485,89 @@ describe("the install app card", () => {
 });
 
 describe("the two-factor card", () => {
+  beforeEach(() => {
+    authUser.totp_enabled = false;
+    reload.mockReset();
+    reload.mockResolvedValue(undefined);
+    vi.mocked(api.post).mockReset();
+  });
+
+  afterEach(() => {
+    authUser.totp_enabled = false;
+  });
+
+  /** The switch, by its name. */
+  function totpSwitch(): HTMLElement {
+    return screen.getByRole("switch", { name: /two-factor authentication/i });
+  }
+
+  it("shows two-factor on when the account has it", () => {
+    authUser.totp_enabled = true;
+    renderWithRouter(<Settings />);
+
+    expect(totpSwitch()).toBeChecked();
+    expect(
+      screen.getByRole("button", { name: /configure totp/i }),
+    ).not.toHaveAttribute("aria-disabled", "true");
+  });
+
+  it("asks for the password to turn two-factor off, then turns it off", async () => {
+    const user = userEvent.setup();
+    authUser.totp_enabled = true;
+    vi.mocked(api.post).mockResolvedValue({ detail: "disabled" });
+    renderWithRouter(<Settings />);
+
+    await user.click(totpSwitch());
+    const dialog = await screen.findByRole("dialog", {
+      name: "Turn off two-factor authentication",
+    });
+    await user.type(within(dialog).getByLabelText("Password"), "secret123");
+    await user.click(within(dialog).getByRole("button", { name: "Turn off" }));
+
+    await waitFor(() =>
+      expect(api.post).toHaveBeenCalledWith("/auth/totp/disable", {
+        password: "secret123",
+      }),
+    );
+    // The account is read again, which is what turns the switch off.
+    await waitFor(() => expect(reload).toHaveBeenCalled());
+  });
+
+  it("says a wrong password is wrong, and leaves two-factor on", async () => {
+    const user = userEvent.setup();
+    authUser.totp_enabled = true;
+    vi.mocked(api.post).mockRejectedValue(new Error("Incorrect password"));
+    renderWithRouter(<Settings />);
+
+    await user.click(totpSwitch());
+    const dialog = await screen.findByRole("dialog", {
+      name: "Turn off two-factor authentication",
+    });
+    await user.type(within(dialog).getByLabelText("Password"), "wrong");
+    await user.click(within(dialog).getByRole("button", { name: "Turn off" }));
+
+    expect(
+      await within(dialog).findByText("Incorrect password"),
+    ).toBeInTheDocument();
+    expect(reload).not.toHaveBeenCalled();
+    expect(totpSwitch()).toBeChecked();
+  });
+
+  it("leaves two-factor on, and sends nothing, when turning off is cancelled", async () => {
+    const user = userEvent.setup();
+    authUser.totp_enabled = true;
+    renderWithRouter(<Settings />);
+
+    await user.click(totpSwitch());
+    const dialog = await screen.findByRole("dialog", {
+      name: "Turn off two-factor authentication",
+    });
+    await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
+
+    expect(api.post).not.toHaveBeenCalled();
+    expect(totpSwitch()).toBeChecked();
+  });
+
   it("keeps configuring shut until the switch is on", async () => {
     const user = userEvent.setup();
     renderWithRouter(<Settings />);

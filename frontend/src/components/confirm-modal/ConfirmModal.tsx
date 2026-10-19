@@ -49,6 +49,11 @@ export interface ConfirmModalProps {
   icon?: ReactElement;
   /** Use red (destructive) or blue (non-destructive) accept button. Defaults to true */
   destructive?: boolean;
+  /**
+   * A field the action needs, beneath the message: a password, say.
+   * Kept out of `children`, which is a paragraph and cannot hold one.
+   */
+  field?: ReactNode;
 }
 
 export default function ConfirmModal({
@@ -62,6 +67,7 @@ export default function ConfirmModal({
   cancelLabel = "Cancel",
   icon,
   destructive = true,
+  field,
 }: ConfirmModalProps) {
   const [loading, setLoading] = useState(false);
 
@@ -127,6 +133,7 @@ export default function ConfirmModal({
           </Modal.Title>
         )}
         <BodyText justify="centre">{children}</BodyText>
+        {field}
         {destructive ? (
           <ButtonPairRed
             onAccept={handleAccept}

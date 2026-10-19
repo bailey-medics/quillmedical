@@ -9,6 +9,7 @@
 import { Group, SimpleGrid, Stack, useMantineColorScheme } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 import {
+  IconAlertTriangle,
   IconBell,
   IconChartBar,
   IconDownload,
@@ -23,6 +24,7 @@ import { useAuth } from "@/auth/AuthContext";
 import ActionCard from "@/components/action-card";
 import PageHeader from "@/components/page-header";
 import IconTextButton from "@/components/button/IconTextButton";
+import { PasswordConfirmModal } from "@/components/confirm-modal";
 import SolidSwitch from "@/components/form/SolidSwitch";
 import { InstallAppModal } from "@/components/install-app-modal";
 import { api } from "@/lib/api";
@@ -57,13 +59,36 @@ function b64ToUint8Array(base64: string) {
  * @returns A JSX element containing the settings UI.
  */
 export default function Settings() {
-  const [useTotp, setUseTotp] = useState(false);
+  // Whether they have asked to set two-factor up, before it is on. Once
+  // it is on, the switch reads the account itself, `totp_enabled`.
+  const [settingUpTotp, setSettingUpTotp] = useState(false);
+  const [turningOffTotp, setTurningOffTotp] = useState(false);
   // Switched on unless the user has said otherwise: this is an opt-out, and
   // the switch reads positively ("help improve") rather than as a negative to
   // be un-ticked. Read once on mount - the preference only changes here.
   const [countPageViews, setCountPageViews] = useState(!hasOptedOut());
   const navigate = useNavigate();
-  const { state } = useAuth();
+  const { state, reload } = useAuth();
+  const totpEnabled =
+    state.status === "authenticated" && state.user.totp_enabled === true;
+  const useTotp = totpEnabled || settingUpTotp;
+
+  // Off asks for the password first: a stolen session must not be able
+  // to take two-factor away on its own, which is why the API asks too.
+  function handleTotpSwitch(checked: boolean): void {
+    if (!checked && totpEnabled) {
+      setTurningOffTotp(true);
+      return;
+    }
+
+    setSettingUpTotp(checked);
+  }
+
+  async function turnOffTotp(password: string): Promise<void> {
+    await api.post("/auth/totp/disable", { password });
+    setSettingUpTotp(false);
+    await reload();
+  }
   // News and updates by email. Unlike the switch above this is held on
   // the server, and Resend, which sends the newsletter, has to be told:
   // so the switch only stays where it was put once the save has worked.
@@ -311,7 +336,7 @@ export default function Settings() {
               <SolidSwitch
                 aria-label="Two-factor authentication (TOTP)"
                 checked={useTotp}
-                onChange={(e) => setUseTotp(e.currentTarget.checked)}
+                onChange={(e) => handleTotpSwitch(e.currentTarget.checked)}
               />
               <Group justify="flex-end">
                 <IconTextButton
@@ -326,6 +351,19 @@ export default function Settings() {
             </Stack>
           }
         />
+
+        <PasswordConfirmModal
+          opened={turningOffTotp}
+          onClose={() => setTurningOffTotp(false)}
+          onConfirm={turnOffTotp}
+          title="Turn off two-factor authentication"
+          acceptLabel="Turn off"
+          submittingLabel="Turning off…"
+          icon={<IconAlertTriangle />}
+        >
+          Signing in will then ask for your password only. Enter your password
+          to turn it off.
+        </PasswordConfirmModal>
 
         {/* Last: only passport holders see it, so it follows the cards
             everybody has rather than shifting them around */}

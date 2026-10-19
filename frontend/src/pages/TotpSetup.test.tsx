@@ -19,6 +19,11 @@ vi.mock("@/lib/api", () => ({
   },
 }));
 
+const reload = vi.fn<() => Promise<void>>();
+vi.mock("@/auth/AuthContext", () => ({
+  useAuth: () => ({ reload }),
+}));
+
 vi.mock("qrcode", () => ({
   default: {
     toCanvas: vi.fn(),
@@ -40,6 +45,7 @@ vi.mock("react-router-dom", async () => {
 describe("TotpSetup", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    reload.mockResolvedValue(undefined);
     (apiModule.api.post as ReturnType<typeof vi.fn>).mockResolvedValue({
       provision_uri: "otpauth://totp/Quill:testuser?secret=ABC123&issuer=Quill",
     });
@@ -155,6 +161,25 @@ describe("TotpSetup", () => {
     await waitFor(() => {
       expect(screen.getByText(/two-factor enabled/i)).toBeInTheDocument();
     });
+    // So settings shows two-factor on without a page load.
+    expect(reload).toHaveBeenCalled();
+  });
+
+  it("still says two-factor is on when the account will not refresh", async () => {
+    (apiModule.api.post as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce({
+        provision_uri:
+          "otpauth://totp/Quill:testuser?secret=ABC123&issuer=Quill",
+      })
+      .mockResolvedValueOnce({});
+    reload.mockRejectedValue(new Error("offline"));
+    const user = userEvent.setup();
+    renderWithRouter(<TotpSetup />);
+
+    await user.type(await screen.findByLabelText(/6-digit code/i), "123456");
+    await user.click(screen.getByTestId("submit-button"));
+
+    expect(await screen.findByText(/two-factor enabled/i)).toBeInTheDocument();
   });
 
   it("shows error on verification failure", async () => {

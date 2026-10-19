@@ -41,6 +41,19 @@ describe("ConfirmModal", () => {
     expect(screen.queryByText("Are you sure?")).not.toBeInTheDocument();
   });
 
+  it("shows a field beneath the message, outside its paragraph", () => {
+    renderWithMantine(
+      <ConfirmModal
+        {...defaultProps}
+        field={<input aria-label="Password" type="password" />}
+      />,
+    );
+
+    const field = screen.getByLabelText("Password");
+    expect(field).toBeInTheDocument();
+    expect(field.closest("p")).toBeNull();
+  });
+
   it("renders title when provided", () => {
     renderWithMantine(<ConfirmModal {...defaultProps} title="Remove member" />);
     expect(screen.getByText("Remove member")).toBeInTheDocument();

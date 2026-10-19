@@ -1585,7 +1585,7 @@ on top, leaving #2050 as it is.
       "Wrong code entered, please try entering your 6-digit authenticator
       code again".
 
-- [ ] Signing in after two-factor is turned off, asked for by Mark on
+- [x] Signing in after two-factor is turned off, asked for by Mark on
       2026-10-17. A person sets two-factor up as story 27 does, turns
       it off in settings (which asks for their password), signs out, and
       signs in again with their password alone: no code is asked for.
@@ -1603,6 +1603,19 @@ on top, leaving #2050 as it is.
       which calls `POST /api/auth/totp/disable`. The modal is a new
       component, `PasswordConfirmModal`, built from `ConfirmModal` and
       `PasswordField`, with a story and a test. Then this journey.
+
+      Built. `ConfirmModal` gains a `field` slot beneath its message,
+      because its message is a paragraph and cannot hold an input.
+      `PasswordConfirmModal` puts a `PasswordField` there, refuses an
+      empty password before any request, and shows why the action
+      failed under the field while staying open. In `Settings.tsx` the
+      switch is on when `totp_enabled` is, or while the person is
+      setting two-factor up. `TotpSetup.tsx` now reloads the account
+      after a code verifies, so the switch is on when they come back
+      without a page load. The journey in `settings.spec.ts` sets
+      two-factor up, tries a wrong password (refused, still on), turns
+      it off with the right one, checks that survives a reload, and
+      signs in again with the password alone.
 
 ## Phase 19: Telling the operator when no clinical lead is told of a pass
 

@@ -45,6 +45,8 @@ export type User = {
   owns_passport?: boolean;
   /** Whether they are sent news and updates by email */
   marketing_emails?: boolean;
+  /** Whether signing in asks for a code from their authenticator app */
+  totp_enabled?: boolean;
   /** Whether FHIR and EHRbase clinical services are available */
   clinical_services_enabled?: boolean;
   /** Resolved CBAC competency IDs for this user */
