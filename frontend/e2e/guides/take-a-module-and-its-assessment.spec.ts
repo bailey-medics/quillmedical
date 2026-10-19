@@ -5,6 +5,7 @@
  */
 
 import { test, expect } from "@playwright/test";
+import { knownSlides } from "../fixtures/learning";
 import { shot } from "./shot";
 import { PEOPLE, signIn } from "./signIn";
 
@@ -35,7 +36,10 @@ test("take a module and its assessment", async ({ page }) => {
   ).toBeVisible();
   await shot(page, "take-a-module-and-its-assessment/slide");
 
-  await page.goto(page.url().replace(/\/slide\/1$/, "/slide/6"));
+  // The last slide is worked out from the pinned module, so a slide added
+  // to it moves this with it.
+  const last = knownSlides().length - 1;
+  await page.goto(page.url().replace(/\/slide\/1$/, `/slide/${last}`));
   const finish = page.getByRole("button", { name: "Finish", exact: true });
   await expect(finish).toBeVisible();
   await shot(page, "take-a-module-and-its-assessment/last-slide");
