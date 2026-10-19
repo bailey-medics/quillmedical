@@ -151,6 +151,21 @@ variable "enable_pagerduty_channel" {
   default     = false
 }
 
+variable "deploy_service_account" {
+  description = <<-EOT
+    The service account deploy.yml signs in as, granted
+    roles/iam.serviceAccountUser on each runtime identity so a deploy can
+    run a service or job as that identity, and on nothing else. Empty
+    grants nothing.
+
+    Passed in rather than created here: the account was made by hand on
+    2026-09-25 (environment isolation plan), and holds roles this
+    Terraform does not manage.
+  EOT
+  type        = string
+  default     = ""
+}
+
 variable "content_ci_service_account" {
   description = <<-EOT
     The service account the teaching content pipeline uploads as, granted

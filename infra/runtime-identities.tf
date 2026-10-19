@@ -117,6 +117,27 @@ resource "google_service_account" "runtime" {
   description  = "The identity the ${each.key} workload runs as. Holds only what ${each.key} uses; see infra/runtime-identities.tf."
 }
 
+# ---------- The deploy may act as each runtime identity ----------
+# `gcloud run deploy` and `gcloud run jobs update` run the service or job
+# as its runtime identity, which needs `iam.serviceAccounts.actAs` on that
+# identity. The grant is per account, not project-wide, so the deploy can
+# act as these and as nothing else, the Terraform account included.
+#
+# Granted by hand on 2026-09-25 for the five accounts that existed then,
+# and so missed for `run-scan` when Terraform created it: the first deploy
+# after the scan job merged failed with `actAs` denied on the `run-scan`
+# service account. Here it is granted for every
+# account the map above creates, so a new workload cannot be missed again.
+# For the five granted by hand the binding already exists, and creating
+# it again changes nothing.
+resource "google_service_account_iam_member" "deploy_acts_as_runtime" {
+  for_each = var.deploy_service_account != "" ? google_service_account.runtime : {}
+
+  service_account_id = each.value.name
+  role               = "roles/iam.serviceAccountUser"
+  member             = "serviceAccount:${var.deploy_service_account}"
+}
+
 # ---------- Secrets, per secret rather than project-wide ----------
 resource "google_secret_manager_secret_iam_member" "runtime" {
   for_each = local.runtime_secret_access

@@ -77,6 +77,7 @@ cloud_run_services       = ["quill-backend-app", "quill-frontend-app"]
 # unlike the teaching CI account it replaced on 2026-09-23, which carried
 # roles/editor across the whole project.
 content_ci_service_account = "content-sync@quill-medical-app.iam.gserviceaccount.com"
+deploy_service_account     = "github-deploy@quill-medical-app.iam.gserviceaccount.com"
 
 # The monitoring module looks a Slack channel up by display name rather
 # than creating one, because a Slack channel can only be made through the
