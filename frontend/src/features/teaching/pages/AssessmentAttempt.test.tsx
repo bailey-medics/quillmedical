@@ -839,8 +839,16 @@ describe("AssessmentAttempt, finishing the exam", () => {
 });
 
 describe("AssessmentAttempt, the countdown", () => {
-  /** A start by this computer's clock that would leave half an hour. */
-  const halfAnHourAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+  /**
+   * A start by this computer's clock that would leave half an hour.
+   *
+   * Worked out when a test asks, not once when the file loads: on a busy
+   * runner the seconds between the two were enough to take the countdown
+   * below 29:50, and the last test in this group failed.
+   */
+  function halfAnHourAgo(): string {
+    return new Date(Date.now() - 30 * 60 * 1000).toISOString();
+  }
 
   beforeEach(() => {
     // The countdown held still, so the time shown is the time it was set
@@ -856,7 +864,7 @@ describe("AssessmentAttempt, the countdown", () => {
   });
 
   it("is set by the seconds the server says are left, not by this computer's clock", async () => {
-    resumeAttempt({ started_at: halfAnHourAgo, seconds_left: 19 * 60 + 50 });
+    resumeAttempt({ started_at: halfAnHourAgo(), seconds_left: 19 * 60 + 50 });
 
     await screen.findByText("Question 1 text");
 
@@ -947,7 +955,7 @@ describe("AssessmentAttempt, the countdown", () => {
   });
 
   it("is worked out from the start for a server that sends no seconds left", async () => {
-    resumeAttempt({ started_at: halfAnHourAgo });
+    resumeAttempt({ started_at: halfAnHourAgo() });
 
     await screen.findByText("Question 1 text");
 
