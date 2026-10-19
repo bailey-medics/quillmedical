@@ -80,25 +80,33 @@ transcode, caption and poster jobs, which read it from Secret Manager.
 
 ## Phase 3: The pipeline starts the job
 
-- [ ] Point the job at each build in `.github/workflows/deploy.yml`,
+- [x] Point the job at each build in `.github/workflows/deploy.yml`,
       with a `gcloud run jobs update quill-teaching-sync-<env> --image`
       step beside the transcode and caption ones, using the admin image.
       The admin job's own image is set by `run-migrations.sh`, so
       without this the sync job would run whatever image it was last
       given.
 
-- [ ] Replace the "Trigger backend sync" step in
+- [x] Replace the "Trigger backend sync" step in
       `.github/workflows/teaching-pipeline.yml` with a script under
       `.github/scripts/teaching-pipeline/`, with its `.bats`, that runs
       `gcloud run jobs execute quill-teaching-sync-app --wait`. The
       project is the one in the service account's email, so the
-      teaching repositories need no new secret.
+      teaching repositories need no new secret. Built as
+      `run-sync-job.sh`, which starts the job *without* `--wait` and
+      polls `executions describe` itself: on a failed job `--wait` exits
+      non-zero without printing the execution it made, and the notice
+      below needs its name. `run.viewer` on the job, granted in Phase 2,
+      is what lets the account read the execution.
 
-- [ ] Rework "Capture the sync response". The HTTP body is gone, and
+- [x] Rework "Capture the sync response". The HTTP body is gone, and
       reading the job's log from GitHub would need `logging.viewer`,
       which is project-wide. So the Slack failure notice names the
       execution and says the rejected banks are in its log, rather
-      than quoting them.
+      than quoting them. The script writes `execution` and `log_url` to
+      `GITHUB_OUTPUT` before it waits, so the notice has them whether
+      the job passed or failed; a run that never started the job says
+      so instead.
 
 - [ ] Run the pipeline from one teaching repository with one module
       changed, and confirm the bank updates. Then with a deliberately

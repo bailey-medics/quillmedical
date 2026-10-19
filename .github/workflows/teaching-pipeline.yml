@@ -5,7 +5,7 @@
 #
 #   push to feature/**  → auto-create PR
 #   pull_request        → validate content + check branch protection
-#   push to main        → deploy to GCS + trigger backend sync
+#   push to main        → deploy to GCS + start the backend's sync job
 #
 # Do not rename the jobs. Content-repo rulesets require status checks
 # called "pipeline / validate" and "pipeline / check-protection", composed
@@ -218,7 +218,8 @@ jobs:
       contents: read
       id-token: write
     outputs:
-      sync_response: ${{ steps.sync.outputs.body }}
+      execution: ${{ steps.sync.outputs.execution }}
+      log_url: ${{ steps.sync.outputs.log_url }}
     steps:
       # lfs: true for the same reason as validate, and with the same
       # caveat - this job uploads the bytes to GCS, so a pointer here
@@ -252,35 +253,18 @@ jobs:
           bash tooling/.github/scripts/teaching-pipeline/sync-to-gcs.sh \
             question_bank_content/modules "${{ secrets.GCP_TEACHING_GCS_BUCKET }}"
 
-      # --fail-with-body, not -f: the endpoint returns 422 with the
-      # rejected banks listed in the body, and plain -f discards it. The
-      # build should say which bank failed and why, not just go red.
-      - name: Trigger backend sync
-        run: |
-          # pipefail because the default shell here is `bash -e`, without it:
-          # tee would swallow curl's non-zero exit and a rejected bank would
-          # go back to passing silently, which is the whole point of the 422.
-          set -o pipefail
-          curl -sS --fail-with-body -X POST \
-            "${{ secrets.BACKEND_SYNC_URL }}/api/ci/teaching/sync" \
-            -H "Authorization: Bearer ${{ secrets.BACKEND_SYNC_TOKEN }}" \
-            -H "Content-Type: application/json" \
-            | tee "${RUNNER_TEMP}/sync-response.json"
-
-      # Carried out of the job so the failure notification can quote it.
-      # always(), because the interesting case is the one where the step
-      # above has just failed. Truncated: Slack rejects large payloads and a
-      # stack trace helps nobody in a channel.
-      - name: Capture the sync response
-        if: always()
+      # Starts the backend's own sync job rather than calling an endpoint
+      # with a bearer token: the account this run signs in as may start
+      # that one job and nothing else, so GitHub holds no credential the
+      # live app accepts. The script waits for the job and fails the step
+      # if a bank was rejected, naming the execution whose log says why.
+      # The outputs are written before the wait, so a failure still has
+      # a name for the notice below.
+      - name: Start the backend sync job
         id: sync
         run: |
-          {
-            echo 'body<<SYNC_EOF'
-            head -c 1500 "${RUNNER_TEMP}/sync-response.json" 2>/dev/null || true
-            echo
-            echo 'SYNC_EOF'
-          } >> "$GITHUB_OUTPUT"
+          bash tooling/.github/scripts/teaching-pipeline/run-sync-job.sh \
+            "${{ secrets.GCP_SERVICE_ACCOUNT }}"
 
   # -------------------------------------------------------------------
   # Tell someone when a deploy fails
@@ -288,9 +272,9 @@ jobs:
   #
   # A failed deploy leaves GCS holding content the backend has not imported,
   # and until now nothing said so - the sync could fail and the only trace
-  # was a red tick nobody was watching. Quotes the backend's response, so
-  # the message names the bank that was rejected rather than sending the
-  # reader to the logs.
+  # was a red tick nobody was watching. Names the sync job's execution and
+  # links its log, which is where the rejected banks are listed: GitHub
+  # cannot read that log itself without a project-wide logging role.
   #
   # Called by full path rather than a relative one: this workflow runs under
   # the content repository, so `./` would look for the file there.
@@ -308,6 +292,6 @@ jobs:
         *Author:* ${{ github.actor }}
         *Run:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View run>
 
-        *Backend response:*
-        ```${{ needs.deploy.outputs.sync_response }}```
+        *Sync job:* ${{ needs.deploy.outputs.execution != '' && format('<{0}|{1}>', needs.deploy.outputs.log_url, needs.deploy.outputs.execution) || 'not started, see the run' }}
+        The rejected banks, if any, are listed in its log.
     secrets: inherit
