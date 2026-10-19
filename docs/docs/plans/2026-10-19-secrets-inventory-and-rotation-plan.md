@@ -86,7 +86,7 @@ on that stack's code.
 
 ## Phase 3: How each secret is rotated
 
-- [ ] Add `### Rotating a secret` under the inventory, one procedure per
+- [x] Add `### Rotating a secret` under the inventory, one procedure per
       class, each ending with the step that is always forgotten:
       **re-run `deploy.yml`**, because a new secret version or a
       Terraform apply makes a Cloud Run revision that serves no traffic,
@@ -132,23 +132,27 @@ on that stack's code.
         the same deploy afterwards; the alert SMS number is a number
         and is simply replaced.
 
+- [x] Add a schedule, one line each, with the first date: hand-set
+      credentials (SES, Slack, PagerDuty) yearly; Terraform-generated
+      values on demand, since nothing leaves the project and nobody
+      types them; everything immediately on any suspicion of exposure.
+      Put the first yearly date, 2027-10, in `todo.md` beside the
+      `security.txt` renewal, which is the same kind of reminder.
+      Landed with the procedures above, in the same unit, because a
+      schedule on its own is too small a pull request to read.
+
 - [ ] Give `terraform.yml`'s `workflow_dispatch` an optional `replace`
       input, the address of one resource, passed to `terraform apply`
       as `-replace=` when set. Today the dispatch takes only the
       environment, so a regenerated secret would need an apply from
       somebody's laptop with the apply account's rights, which nobody
       holds outside GitHub by design. Validate the input against a
-      short allow-list of the `random_password` addresses rather than
-      accept any resource, so the dispatch cannot be used to replace a
-      database. A `.bats` test of the script that builds the apply
-      arguments, as the other workflow scripts have.
-
-- [ ] Add a schedule, one line each, with the first date: hand-set
-      credentials (SES, Slack, PagerDuty) yearly; Terraform-generated
-      values on demand, since nothing leaves the project and nobody
-      types them; everything immediately on any suspicion of exposure.
-      Put the first yearly date, 2027-10, in `todo.md` beside the
-      `security.txt` renewal, which is the same kind of reminder.
+      short allow-list of the generated-secret addresses (the
+      `random_password` resources, and `random_bytes.signing_key` in
+      the video pipeline module) rather than accept any resource, so
+      the dispatch cannot be used to replace a database. A `.bats` test
+      of the script that builds the apply arguments, as the other
+      workflow scripts have.
 
 ## Decisions
 
