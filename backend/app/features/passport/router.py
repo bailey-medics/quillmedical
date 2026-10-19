@@ -2139,6 +2139,16 @@ async def upload_evidence(
                 f"That PDF contains active content ({token}), "
                 "which evidence may not",
             )
+    else:
+        # An image is stored as its picture and nothing else: decoded
+        # and written again, with the EXIF (and a phone photo's GPS
+        # position in it) dropped. Done before hashing, so the hash the
+        # holder is handed names what is stored. A HEIC comes back as a
+        # JPEG, and `media_type` says so from here on.
+        try:
+            data, media_type = evidence.sanitise_image(data, media_type)
+        except evidence.ImageNotReadable as exc:
+            raise HTTPException(400, str(exc)) from None
 
     try:
         attachment = blobs.put(
