@@ -27,7 +27,6 @@ function delegate(name: string, result: "pass" | "fail" | null) {
     email: `${name}@example.test`,
     site_name: "Ward 1",
     clinical_lead: null,
-    learning_completed: null,
     assessment_result: result,
     assessment_date: result ? "2026-10-01T10:00:00Z" : null,
     first_time_pass: result === "pass",

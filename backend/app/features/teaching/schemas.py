@@ -550,7 +550,6 @@ class DelegateOut(BaseModel):
     email: str | None
     site_name: str | None
     clinical_lead: str | None
-    learning_completed: bool | None
     assessment_result: str | None
     assessment_date: datetime | None
     first_time_pass: bool

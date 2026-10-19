@@ -4,7 +4,7 @@
  * Full-page composition showing the delegates view for a teaching
  * module. Displays a 1st pass rate stat, filters (all, trust,
  * clinical lead, 1st-time passers), and a table of delegates with
- * learning and assessment status.
+ * their assessment results.
  */
 import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
@@ -26,7 +26,6 @@ interface Delegate {
   email: string;
   trust: string;
   clinicalLead: string;
-  learningCompleted: boolean | null; // null = not applicable
   assessmentResult: "pass" | "fail" | "incomplete" | null;
   assessmentDate: string | null;
   firstTimePass: boolean;
@@ -39,7 +38,6 @@ const DELEGATES: Delegate[] = [
     email: "s.ahmed@nhs.net",
     trust: "Leeds Teaching Hospitals",
     clinicalLead: "Prof James Morton",
-    learningCompleted: true,
     assessmentResult: "pass",
     assessmentDate: "2026-05-10",
     firstTimePass: true,
@@ -50,7 +48,6 @@ const DELEGATES: Delegate[] = [
     email: "t.chen@nhs.net",
     trust: "Leeds Teaching Hospitals",
     clinicalLead: "Prof James Morton",
-    learningCompleted: true,
     assessmentResult: "fail",
     assessmentDate: "2026-05-08",
     firstTimePass: false,
@@ -61,7 +58,6 @@ const DELEGATES: Delegate[] = [
     email: "e.watson@nhs.net",
     trust: "Bradford Teaching Hospitals",
     clinicalLead: "Dr Rachel Singh",
-    learningCompleted: true,
     assessmentResult: "pass",
     assessmentDate: "2026-05-12",
     firstTimePass: true,
@@ -72,7 +68,6 @@ const DELEGATES: Delegate[] = [
     email: "r.patel@nhs.net",
     trust: "Bradford Teaching Hospitals",
     clinicalLead: "Dr Rachel Singh",
-    learningCompleted: false,
     assessmentResult: "incomplete",
     assessmentDate: null,
     firstTimePass: false,
@@ -83,7 +78,6 @@ const DELEGATES: Delegate[] = [
     email: "h.brooks@nhs.net",
     trust: "Airedale NHS Foundation Trust",
     clinicalLead: "Dr Rachel Singh",
-    learningCompleted: true,
     assessmentResult: "pass",
     assessmentDate: "2026-04-28",
     firstTimePass: false,
@@ -94,7 +88,6 @@ const DELEGATES: Delegate[] = [
     email: "m.obrien@nhs.net",
     trust: "Airedale NHS Foundation Trust",
     clinicalLead: "Prof James Morton",
-    learningCompleted: null,
     assessmentResult: "pass",
     assessmentDate: "2026-05-15",
     firstTimePass: true,
@@ -105,7 +98,6 @@ const DELEGATES: Delegate[] = [
     email: "p.sharma@nhs.net",
     trust: "Leeds Teaching Hospitals",
     clinicalLead: "Prof James Morton",
-    learningCompleted: true,
     assessmentResult: "pass",
     assessmentDate: "2026-05-14",
     firstTimePass: true,
@@ -116,7 +108,6 @@ const DELEGATES: Delegate[] = [
     email: "d.kim@nhs.net",
     trust: "Bradford Teaching Hospitals",
     clinicalLead: "Dr Rachel Singh",
-    learningCompleted: false,
     assessmentResult: null,
     assessmentDate: null,
     firstTimePass: false,
@@ -151,13 +142,6 @@ const columns: Column<Delegate>[] = [
   { header: "Trust", render: (d) => d.trust },
   { header: "Clinical lead", render: (d) => d.clinicalLead },
   {
-    header: "Learning",
-    render: (d) => {
-      if (d.learningCompleted === null) return "-";
-      return d.learningCompleted ? "Complete" : "In progress";
-    },
-  },
-  {
     header: "Assessment",
     render: (d) => {
       if (!d.assessmentResult) return "-";
@@ -184,7 +168,7 @@ function calcFirstPassRate(delegates: Delegate[]): number {
 
 // ── Interactive wrapper ─────────────────────────────────────────────
 
-function AllDelegatesPage({ hasLearning = true }: { hasLearning?: boolean }) {
+function AllDelegatesPage() {
   const [filters, setFilters] = useState<string[]>([]);
 
   const trusts = filters
@@ -208,10 +192,6 @@ function AllDelegatesPage({ hasLearning = true }: { hasLearning?: boolean }) {
   }
 
   const firstPassRate = calcFirstPassRate(filtered);
-
-  const activeColumns = hasLearning
-    ? columns
-    : columns.filter((c) => c.header !== "Learning");
 
   return (
     <TeachingLayout
@@ -242,7 +222,7 @@ function AllDelegatesPage({ hasLearning = true }: { hasLearning?: boolean }) {
 
         <DataTable
           data={filtered}
-          columns={activeColumns}
+          columns={columns}
           getRowKey={(d) => d.id}
           emptyMessage="No delegates match the selected filters"
         />
@@ -264,11 +244,6 @@ type Story = StoryObj;
 export const Default: Story = {
   tags: ["!test"],
   render: () => <AllDelegatesPage />,
-};
-
-export const WithoutLearning: Story = {
-  tags: ["!test"],
-  render: () => <AllDelegatesPage hasLearning={false} />,
 };
 
 export const DarkMode: Story = {
