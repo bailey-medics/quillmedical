@@ -33,6 +33,10 @@ case "$1 $2" in
         shift 2
         echo "$*" > "${STUB}/linked"
         [ -f "${STUB}/link-fails" ] && exit 1
+        # What GitHub answers once the link is made, where a test says.
+        if [ -d "${STUB}/after-link" ]; then
+            cp "${STUB}/after-link/"* "${STUB}/"
+        fi
         exit 0
         ;;
     "stack unstack")
@@ -306,5 +310,87 @@ two_open() {
     run python3 "${SCRIPT}" --repair feature/b feature/c
     [ "$status" -eq 0 ]
     [[ "$output" == *"would not unstack #1414"* ]]
+    [ "$(cat "${STUB}/linked")" = "1386 1364" ]
+}
+
+# GitHub left feature/c's pull request out: #1386 is the top of stack
+# #1414, and #1364 is in none. After a link, GitHub holds both.
+missing_from_the_top() {
+    write_record '{"id": "5", "number": 1414}'
+    two_open
+    echo '{"stack": {"id": 1700305, "number": 1414, "position": 3, "size": 3}}' \
+        > "${STUB}/pull-1386"
+    echo '{"stack": null}' > "${STUB}/pull-1364"
+    echo '{"pull_requests": [{"number": 1300, "state": "closed", "merged_at": "2026-10-17T09:00:00Z"}, {"number": 1386, "state": "open", "merged_at": null}]}' \
+        > "${STUB}/stack-1414"
+    mkdir -p "${STUB}/after-link"
+    echo '{"stack": {"id": 1700305, "number": 1414, "position": 4, "size": 4}}' \
+        > "${STUB}/after-link/pull-1364"
+}
+
+@test "repair adds a pull request missing from the top to the stack holding the rest" {
+    missing_from_the_top
+
+    run python3 "${SCRIPT}" --repair feature/b feature/c
+    [ "$status" -eq 0 ]
+    [ "$(cat "${STUB}/linked")" = "1414 1364" ]
+    [[ "$output" == *"Added #1364 to stack #1414"* ]]
+    [ ! -e "${STUB}/unstacked" ]
+}
+
+@test "repair adds to the stack even where GitHub would not unstack it, as with a queued pull request" {
+    missing_from_the_top
+    touch "${STUB}/unstack-fails-1414"
+
+    run python3 "${SCRIPT}" --repair feature/b feature/c
+    [ "$status" -eq 0 ]
+    [ ! -e "${STUB}/unstacked" ]
+}
+
+@test "repair unstacks and links when adding did not make them one stack" {
+    missing_from_the_top
+    rm -r "${STUB}/after-link"
+
+    run python3 "${SCRIPT}" --repair feature/b feature/c
+    [ "$status" -eq 0 ]
+    [ "$(cat "${STUB}/unstacked")" = "1414" ]
+    [ "$(cat "${STUB}/linked")" = "1386 1364" ]
+}
+
+@test "repair does not add on top where something else sits above the last held" {
+    missing_from_the_top
+    echo '{"stack": {"id": 1700305, "number": 1414, "position": 3, "size": 5}}' \
+        > "${STUB}/pull-1386"
+
+    run python3 "${SCRIPT}" --repair feature/b feature/c
+    [ "$status" -eq 0 ]
+    [ "$(cat "${STUB}/unstacked")" = "1414" ]
+    [ "$(cat "${STUB}/linked")" = "1386 1364" ]
+}
+
+@test "repair does not add on top of a stack holding a closed pull request" {
+    missing_from_the_top
+    echo '{"pull_requests": [{"number": 1300, "state": "closed", "merged_at": null}, {"number": 1386, "state": "open", "merged_at": null}]}' \
+        > "${STUB}/stack-1414"
+
+    run python3 "${SCRIPT}" --repair feature/b feature/c
+    [ "$status" -eq 0 ]
+    [ "$(cat "${STUB}/unstacked")" = "1414" ]
+    [ "$(cat "${STUB}/linked")" = "1386 1364" ]
+}
+
+@test "repair does not add on top when the gap is below a held pull request" {
+    write_record '{"id": "5", "number": 1414}'
+    two_open
+    echo '{"stack": null}' > "${STUB}/pull-1386"
+    echo '{"stack": {"id": 1700305, "number": 1414, "position": 1, "size": 1}}' \
+        > "${STUB}/pull-1364"
+    mkdir -p "${STUB}/after-link"
+    echo '{"stack": {"id": 1700305, "number": 1414, "position": 1, "size": 2}}' \
+        > "${STUB}/after-link/pull-1386"
+
+    run python3 "${SCRIPT}" --repair feature/b feature/c
+    [ "$status" -eq 0 ]
+    [ "$(cat "${STUB}/unstacked")" = "1414" ]
     [ "$(cat "${STUB}/linked")" = "1386 1364" ]
 }
