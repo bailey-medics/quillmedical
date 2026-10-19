@@ -32,6 +32,9 @@ site/
 teaching-repos/
 # Teaching content for the end-to-end tests (.github/scripts/ci/fetch-e2e-teaching.sh)
 .e2e-teaching/
+# ClamAV's packages and definitions, copied out of the clamav-mirror image
+# before the scan image is built (.github/scripts/clamav-mirror/fetch-mirror.sh)
+.clamav-mirror/
 # Emails the end-to-end stack wrote (.github/scripts/ci/prepare-e2e-mail.sh)
 frontend/e2e/.mail/
 # The key pair the E2E tests stand in for the video jobs with, made per run

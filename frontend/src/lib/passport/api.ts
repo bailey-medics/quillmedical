@@ -45,6 +45,7 @@ import type {
   CertificateInput,
   CpdEntry,
   CpdEntryInput,
+  EvidenceScan,
   EvidenceUpload,
   InboxItem,
   InvitePreview,
@@ -371,6 +372,19 @@ export function uploadEvidence(
   return api.post<EvidenceUpload>(
     `/passport/${segment(passportId)}/evidence`,
     form,
+  );
+}
+
+/**
+ * Where the malware scan of an uploaded file has got to. Asked straight
+ * after an upload, and again every few seconds while it is `pending`.
+ */
+export function fetchEvidenceScan(
+  passportId: string,
+  blobHash: string,
+): Promise<EvidenceScan> {
+  return api.get<EvidenceScan>(
+    `/passport/${segment(passportId)}/evidence/${segment(blobHash)}/scan`,
   );
 }
 

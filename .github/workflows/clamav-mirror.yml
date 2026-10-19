@@ -1,0 +1,176 @@
+# Fetch ClamAV and its definitions once a day, and redeploy the scan job
+# on them.
+#
+# ClamAV's servers refuse an address that asks too often. Four things
+# used to ask: the scan image build on every deploy, the scan job on every
+# upload (from App production's one outgoing address), and the teaching
+# content check on every push to a content pull request (from GitHub's
+# shared runner addresses). Now this workflow asks, once a day, and keeps
+# the answer in GHCR as ghcr.io/<owner>/clamav-mirror: the pinned ClamAV
+# packages and the day's definitions. Everything else reads that.
+#
+# GitHub does the setup and the deploy; the live app only runs. So the
+# same daily run rebuilds the scan job's image on the day's definitions
+# and points the job at it, as deploy.yml does, and the job itself fetches
+# nothing. See Phase 7 of docs/docs/plans/2026-10-18-upload-safety-plan.md.
+#
+# The package is private, as the other mirrored images are. The teaching
+# repositories run the content check, so the package's settings on GitHub
+# give them read access ("Manage Actions access").
+name: ClamAV mirror
+
+on:
+  schedule:
+    # Daily, early, so the day's uploads are scanned with the day's
+    # definitions. ClamAV publishes several times a day; once is enough.
+    - cron: "17 5 * * *"
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - "backend/Dockerfile.scan"
+      - ".github/clamav-mirror/**"
+      - ".github/scripts/clamav-mirror/**"
+      - ".github/workflows/clamav-mirror.yml"
+  # On the pull request that changes the pin too, so the mirror holds the
+  # new version before the pull request's merge deploys it. Only the
+  # mirror is made there: nothing is deployed from a pull request.
+  pull_request:
+    paths:
+      - "backend/Dockerfile.scan"
+      - ".github/clamav-mirror/**"
+      - ".github/scripts/clamav-mirror/**"
+      - ".github/workflows/clamav-mirror.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: clamav-mirror-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  GCP_REGION: europe-west2
+  AR_REGISTRY: europe-west2-docker.pkg.dev
+
+jobs:
+  mirror:
+    # A pull request from a fork is given a token that may not write
+    # packages, so the push would only fail there.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    name: Fetch ClamAV and today's definitions
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - name: Fetch, check and prove the packages and definitions
+        run: bash .github/scripts/clamav-mirror/build-mirror.sh backend/Dockerfile.scan .clamav-mirror
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Tagged with the version, which every reader asks for, and with the
+      # version and the date, so a day's definitions can be found again.
+      - name: Push the mirror
+        run: |
+          version="$(cat .clamav-mirror/VERSION)"
+          image="ghcr.io/${{ github.repository_owner }}/clamav-mirror"
+          docker build --file .github/clamav-mirror/Dockerfile \
+            --tag "${image}:${version}" \
+            --tag "${image}:${version}-$(date -u +%Y%m%d)" \
+            .clamav-mirror
+          docker push --all-tags "$image"
+
+  redeploy-scan-job:
+    # Main only, never a pull request: this deploys.
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    name: Redeploy the scan job on today's definitions
+    needs: mirror
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment: app
+    # Waits behind a deploy rather than racing it for the same job.
+    concurrency:
+      group: deploy
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      id-token: write  # Workload Identity Federation for Google Cloud Platform
+      packages: read  # The mirror, and the mirrored base image
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Fetch the mirror into the build context
+        run: bash .github/scripts/clamav-mirror/fetch-mirror.sh "${{ github.repository_owner }}" backend/Dockerfile.scan .clamav-mirror
+
+      # The deploy account, as in deploy.yml: pushes images and points
+      # Cloud Run at them, and nothing else.
+      - name: Authenticate to GCP (app)
+        uses: google-github-actions/auth@v3.0.0
+        with:
+          workload_identity_provider: ${{ secrets.GCP_APP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_APP_DEPLOY_SERVICE_ACCOUNT }}
+
+      - name: Set up gcloud CLI
+        uses: google-github-actions/setup-gcloud@v3.0.1
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ env.AR_REGISTRY }} --quiet
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4.3.0
+        with:
+          driver-opts: image=mirror.gcr.io/moby/buildkit:buildx-stable-1
+
+      - name: Use the mirrored base images
+        id: base
+        run: bash .github/scripts/ci/use-mirrored-base-images.sh "${{ github.repository_owner }}" backend/Dockerfile.scan
+
+      - name: Name today's image
+        id: tag
+        run: echo "tag=clamav-$(date -u +%Y%m%d)-${GITHUB_SHA::12}" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push the scan image
+        uses: docker/build-push-action@v7.3.0
+        with:
+          context: .
+          file: ./backend/Dockerfile.scan
+          push: true
+          tags: ${{ env.AR_REGISTRY }}/${{ secrets.GCP_APP_PROJECT_ID }}/quill/scan:${{ steps.tag.outputs.tag }}
+          build-args: ${{ steps.base.outputs.build_args }}
+
+      - name: Point the scan job at it
+        run: |
+          gcloud run jobs update quill-scan-app \
+            --project=${{ secrets.GCP_APP_PROJECT_ID }} \
+            --region=${{ env.GCP_REGION }} \
+            --image=${{ env.AR_REGISTRY }}/${{ secrets.GCP_APP_PROJECT_ID }}/quill/scan:${{ steps.tag.outputs.tag }}
+
+  notify-failure:
+    name: Notify a failed ClamAV refresh
+    needs: [mirror, redeploy-scan-job]
+    if: ${{ always() && github.event_name != 'pull_request' && (needs.mirror.result == 'failure' || needs.redeploy-scan-job.result == 'failure') }}
+    uses: ./.github/workflows/slack-notify.yml
+    with:
+      channel: app
+      text: |
+        *❌ ClamAV refresh failed*
+
+        The scan job carries on with the definitions it has until the next run succeeds.
+        *Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>
+    secrets: inherit

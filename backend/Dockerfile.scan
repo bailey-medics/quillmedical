@@ -6,16 +6,28 @@
 #
 # A file of its own, as Dockerfile.caption is, so that ClamAV and its
 # definition database (a few hundred megabytes) never enter the image the
-# API serves from. ClamAV comes from the Debian archive the base image
-# already draws on, so there is no new image to mirror and no new source
-# to watch.
+# API serves from.
 #
-# The definitions are fetched once at build by `freshclam`, so the image
-# carries a database from the day it was built. `deploy.yml` builds this
-# image on every backend deploy, which bounds how old they can be; the job
-# also tries a refresh at the start of each run, best effort. The report
-# it sends carries the database version and date, so the record of a
-# scan says what it was scanned with.
+# ClamAV comes from Cisco Talos's own release packages, pinned below by
+# version and by SHA-256. It first came from the Debian archive, and the
+# first scan in App production warned "Your ClamAV installation is
+# OUTDATED": Debian ships 1.4.3 and lags ClamAV's own releases. Renovate
+# watches the version (see renovate.json), so a new release opens a pull
+# request rather than waiting for someone to read the job log.
+#
+# **This build downloads nothing.** The package and the day's definitions
+# come from the clamav-mirror image, which a daily GitHub workflow fills
+# (.github/workflows/clamav-mirror.yml): ClamAV's servers refuse an
+# address that asks too often, so they are asked once a day, from one
+# job, and never by a build or by the live job. The workflow that builds
+# this image copies the mirror's files into `.clamav-mirror/` in the
+# build context first (.github/scripts/clamav-mirror/fetch-mirror.sh).
+# The same daily workflow rebuilds this image and points the live job at
+# it, so its definitions are never more than a day old.
+#
+# The definitions are in the image, and the report the job sends carries
+# their version and date, so the record of a scan says what it was
+# scanned with.
 #
 # Build context: repository root, like the other job images.
 #
@@ -30,34 +42,62 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# `clamav` carries clamscan; `clamav-freshclam` carries the updater. The
-# daemon package is not wanted: one file per job run is a clamscan, not a
-# clamd. The database directory is handed to the unprivileged user below
-# so the refresh at run time can write to it.
-RUN apt-get update \
- && apt-get install -y --no-install-recommends clamav clamav-freshclam \
- && rm -rf /var/lib/apt/lists/*
+# The 1.4 line, ClamAV's long-term support release: fewer upgrades to
+# make, and a scanner is the place for the steady one. Renovate is held to
+# 1.4 for the same reason.
+#
+# A new version needs both checksums updating, from the release's assets
+# on GitHub (the `digest` of each `.deb`). The build fails until they are,
+# which is the point: a package that is not the one reviewed is refused.
+# renovate: datasource=github-releases depName=Cisco-Talos/clamav extractVersion=^clamav-(?<version>.+)$
+ARG CLAMAV_VERSION=1.4.6
+ARG CLAMAV_SHA256_AMD64=d3ee9e401974855a1edc1761b1425417d126de618d5f0c91cd51209f69f6fcc2
+ARG CLAMAV_SHA256_ARM64=a29cc95aeb225f0dc1b99024b49f1cc109502cb17aaf168637d0901aa9674fe8
+ARG TARGETARCH
 
-# The definitions, baked. `freshclam` exits non-zero on a transient
-# mirror failure, which would fail the build; it is retried a few times
-# because a missing database makes the image useless, not merely stale.
-RUN for attempt in 1 2 3; do freshclam --quiet && break || sleep 15; done \
- && test -s /var/lib/clamav/main.cvd -o -s /var/lib/clamav/main.cld
+# The mirror's packages and definitions, copied out of the clamav-mirror
+# image by the workflow before this build. A build without them fails at
+# the checksum below rather than producing a scanner with nothing to
+# scan with.
+COPY .clamav-mirror/ /tmp/clamav-mirror/
 
-# Proof, on every build, that the engine runs and the definitions just
-# fetched detect something: the EICAR test string, which every antivirus
+# The package is self-contained and installs under /usr/local, with
+# clamscan in /usr/local/bin. The daemon it also carries is not used: one
+# file per job run is a clamscan, not a clamd. It is checked against the
+# pinned checksum here too, so the mirror cannot hand this build a package
+# other than the one reviewed.
+RUN case "${TARGETARCH:-amd64}" in \
+      amd64) arch=x86_64; sum="${CLAMAV_SHA256_AMD64}" ;; \
+      arm64) arch=aarch64; sum="${CLAMAV_SHA256_ARM64}" ;; \
+      *) echo "No ClamAV package for ${TARGETARCH}" >&2; exit 1 ;; \
+    esac \
+ && deb="/tmp/clamav-mirror/clamav-${CLAMAV_VERSION}.linux.${arch}.deb" \
+ && echo "${sum}  ${deb}" | sha256sum -c - \
+ && dpkg -i "${deb}" \
+ && mkdir -p /usr/local/share/clamav \
+ && cp /tmp/clamav-mirror/db/* /usr/local/share/clamav/ \
+ && rm -rf /tmp/clamav-mirror \
+ && test -s /usr/local/share/clamav/main.cvd -o -s /usr/local/share/clamav/main.cld \
+ && clamscan --version
+
+# Proof, on every build, that the engine runs and the definitions it was
+# given detect something: the EICAR test string, which every antivirus
 # must recognise and which is harmless. Written here rather than checked
 # in, so no file in the repository ever trips a scanner. `clamscan` exits
 # 1 on a detection, so a clean exit, or an error, fails the build; the
 # signature name is checked too, so a scanner that exited 1 for some
 # other reason cannot pass. The unit tests stand in for ClamAV; this is
 # the one place the real scanner meets a real test file before deploy.
-RUN printf '%s' 'X5O!P%@AP[4\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*' > /tmp/eicar \
- && if clamscan --no-summary --infected /tmp/eicar > /tmp/eicar.out; then \
+#
+# The file is called `sample`, not `eicar`, and the name is matched in the
+# signature after the colon: matching "eicar" anywhere in the line would
+# also match the file's own name, whatever was found in it.
+RUN printf '%s' 'X5O!P%@AP[4\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*' > /tmp/sample \
+ && if clamscan --no-summary --infected /tmp/sample > /tmp/sample.out; then \
       echo "ERROR: ClamAV did not detect the EICAR test file" >&2; exit 1; \
     fi \
- && grep -qi eicar /tmp/eicar.out \
- && rm -f /tmp/eicar /tmp/eicar.out
+ && grep -qiE '^/tmp/sample: .*eicar.* FOUND$' /tmp/sample.out \
+ && rm -f /tmp/sample /tmp/sample.out
 
 COPY backend/requirements-scan.txt ./
 RUN pip install --no-cache-dir -r requirements-scan.txt
@@ -68,7 +108,7 @@ COPY backend/app ./app
 COPY backend/scripts/scan_cli.py ./scripts/scan_cli.py
 
 RUN useradd --uid 10001 --create-home appuser \
- && chown -R appuser:appuser /app /var/lib/clamav /var/log/clamav
+ && chown -R appuser:appuser /app
 USER appuser
 
 CMD ["python", "scripts/scan_cli.py"]

@@ -66,18 +66,11 @@ def _clam(
     scan_code: int = 0,
     scan_stdout: str = "",
     scan_stderr: str = "",
-    freshclam_code: int = 0,
-    freshclam_raises: BaseException | None = None,
 ):
-    """A stand-in for `subprocess.run` that plays ClamAV's three commands."""
+    """A stand-in for `subprocess.run` that plays ClamAV's two commands.
+    Anything else fails the test, `freshclam` included."""
 
     def _run(args, **kwargs):  # noqa: ANN001
-        if args[0] == "freshclam":
-            if freshclam_raises is not None:
-                raise freshclam_raises
-
-            return MagicMock(returncode=freshclam_code, stdout="", stderr="")
-
         if args[0] == "clamscan" and "--version" in args:
             return MagicMock(returncode=0, stdout=VERSION_LINE + "\n")
 
@@ -157,24 +150,6 @@ class TestDefinitions:
         with patch("subprocess.run", side_effect=FileNotFoundError):
             assert definitions_version() == "unknown"
 
-    def test_a_failed_refresh_is_a_warning_not_a_stop(self, capsys) -> None:
-        from scripts.scan_cli import refresh_definitions
-
-        with _clam(freshclam_code=1):
-            assert refresh_definitions() is False
-
-        assert "not refreshed" in capsys.readouterr().err
-
-    def test_a_refresh_past_its_ceiling_is_a_warning(self, capsys) -> None:
-        from scripts.scan_cli import refresh_definitions
-
-        with _clam(
-            freshclam_raises=subprocess.TimeoutExpired("freshclam", 60)
-        ):
-            assert refresh_definitions() is False
-
-        assert "not refreshed" in capsys.readouterr().err
-
 
 class TestScanJob:
     """The whole run: download, scan, report, exit code."""
@@ -200,6 +175,33 @@ class TestScanJob:
                 patch("scripts.scan_cli.report") as report,
             ):
                 return scan(), report
+
+    def test_it_never_asks_clamav_for_new_definitions(self) -> None:
+        """It runs on every upload from one address; ClamAV's servers
+        refuse an address that asks too often. The image carries the
+        day's definitions instead."""
+        blob = MagicMock()
+        blob.exists.return_value = True
+        client = MagicMock()
+        client.bucket.return_value.blob.return_value = blob
+        storage_module = MagicMock()
+        storage_module.Client.return_value = client
+        modules_patch, attr_patch = _patch_storage(storage_module)
+
+        with patch.dict(os.environ, BASE_ENV, clear=False):
+            from scripts.scan_cli import scan
+
+            with (
+                modules_patch,
+                attr_patch,
+                _clam(scan_code=0) as run,
+                patch("scripts.scan_cli.report"),
+            ):
+                scan()
+
+        commands = [call.args[0][0] for call in run.call_args_list]
+        assert "freshclam" not in commands
+        assert "clamscan" in commands
 
     def test_a_clean_file_is_reported_and_exits_zero(self) -> None:
         code, report = self._run(scan_code=0)

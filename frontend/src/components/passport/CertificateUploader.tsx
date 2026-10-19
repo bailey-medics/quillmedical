@@ -19,22 +19,42 @@
  * not apply here: a video is addressed by a generated id, so nobody has
  * to look inside it.
  *
+ * **Uploaded is not yet attached.** Every file is scanned for malware
+ * before it can be shown, so after the upload this asks where the scan
+ * has got to every few seconds, and hands the file to the form only once
+ * it is clean. A file the scan finds something in is never handed over,
+ * and the drop area says so. A scan with no verdict after two minutes is
+ * handed over anyway, so a slow scan does not stop a save: it is still
+ * held back wherever it would be shown, and the save refuses it if the
+ * verdict turns out to be malware.
+ *
  * @example
  * ```tsx
  * <CertificateUploader passportId={id} onUploaded={setAttachment} />
  * ```
  */
 
-import { useState } from "react";
-import { Group, Stack } from "@mantine/core";
+import { useEffect, useRef, useState } from "react";
+import { Stack } from "@mantine/core";
 import MediaDropzone from "@/components/media-dropzone";
 import ErrorState from "@/components/error-state/ErrorState";
-import Icon from "@/components/icons/Icon";
-import { IconCircleCheck } from "@/components/icons/appIcons";
-import { BodyTextInline, FieldDescription } from "@/components/typography";
-import { uploadEvidence } from "@lib/passport";
+import { FieldDescription } from "@/components/typography";
+import { fetchEvidenceScan, uploadEvidence } from "@lib/passport";
 import type { AttachmentInput } from "@lib/passport";
+import EvidenceScanStatus, {
+  type EvidenceScanStatusName,
+} from "./EvidenceScanStatus";
 import { ACCEPTED_EVIDENCE_TYPES } from "./evidenceFormat";
+
+/** How often the scan is asked about while it is running. */
+export const SCAN_POLL_MS = 3000;
+
+/** How long the uploader waits for a verdict before attaching anyway. */
+export const SCAN_PATIENCE_MS = 120_000;
+
+function wait(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 export interface CertificateUploaderProps {
   /** Whose passport the evidence is stored against. */
@@ -60,25 +80,93 @@ export default function CertificateUploader({
   // form below. The form's own line sits under the description field,
   // off-screen on a phone, so an upload that worked looked like a press
   // that did nothing.
-  const [attached, setAttached] = useState<string | null>(null);
+  const [scan, setScan] = useState<{
+    status: EvidenceScanStatusName;
+    filename: string;
+    signature?: string | null;
+  } | null>(null);
+  // Bumped by each drop and by unmounting, so a scan still being asked
+  // about for an earlier file stops rather than overwriting the newer one.
+  const attempt = useRef(0);
+
+  useEffect(() => {
+    return () => {
+      attempt.current += 1;
+    };
+  }, []);
 
   async function handleDrop(file: File) {
+    const mine = ++attempt.current;
     setUploading(true);
     setError(null);
+    setScan(null);
+
+    let stored: AttachmentInput;
 
     try {
-      const stored = await uploadEvidence(passportId, file);
-      setAttached(stored.filename);
-      onUploaded(stored);
+      stored = await uploadEvidence(passportId, file);
     } catch {
       // Deliberately not the thrown message: a storage failure's own
       // wording is about buckets and hashes, which tells a doctor
       // nothing they can act on.
       setError("That file could not be uploaded. Please try again.");
-    } finally {
+      setUploading(false);
+      return;
+    }
+
+    setScan({ status: "checking", filename: stored.filename });
+
+    const deadline = Date.now() + SCAN_PATIENCE_MS;
+
+    while (attempt.current === mine) {
+      let state: string;
+      let signature: string | null = null;
+
+      try {
+        const answer = await fetchEvidenceScan(passportId, stored.hash);
+        state = answer.scan_state;
+        signature = answer.signature;
+      } catch {
+        // A blip asking about the scan is not a verdict: ask again.
+        state = "pending";
+      }
+
+      if (attempt.current !== mine) {
+        return;
+      }
+
+      if (state === "clean") {
+        setScan({ status: "attached", filename: stored.filename });
+        onUploaded(stored);
+        break;
+      }
+
+      if (state === "infected") {
+        setScan({ status: "malware", filename: stored.filename, signature });
+        break;
+      }
+
+      if (state === "failed") {
+        setScan({ status: "failed", filename: stored.filename });
+        break;
+      }
+
+      if (Date.now() >= deadline) {
+        setScan({ status: "slow", filename: stored.filename });
+        onUploaded(stored);
+        break;
+      }
+
+      await wait(SCAN_POLL_MS);
+    }
+
+    if (attempt.current === mine) {
       setUploading(false);
     }
   }
+
+  const checking = scan?.status === "checking";
+  const attached = scan?.status === "attached" || scan?.status === "slow";
 
   return (
     <Stack gap="xs">
@@ -92,21 +180,24 @@ export default function CertificateUploader({
         disabled={uploading}
         accept={ACCEPTED_EVIDENCE_TYPES}
         label={
-          uploading
-            ? "Uploading…"
-            : attached
-              ? adds
-                ? "Drop another to add it"
-                : "Drop another to replace it"
-              : "Drop a certificate or click to browse"
+          checking
+            ? "Scanning…"
+            : uploading
+              ? "Uploading…"
+              : attached
+                ? adds
+                  ? "Drop another to add it"
+                  : "Drop another to replace it"
+                : "Drop a certificate or click to browse"
         }
       />
 
-      {attached && !uploading && (
-        <Group gap="xs" wrap="nowrap">
-          <Icon icon={<IconCircleCheck />} />
-          <BodyTextInline>Attached: {attached}</BodyTextInline>
-        </Group>
+      {scan && (
+        <EvidenceScanStatus
+          status={scan.status}
+          filename={scan.filename}
+          signature={scan.signature}
+        />
       )}
 
       <FieldDescription>

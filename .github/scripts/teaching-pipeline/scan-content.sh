@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Scans a teaching content repository's modules for malware with ClamAV.
 #
-# Usage: scan-content.sh <modules-directory>
+# Usage: scan-content.sh <modules-directory> <definitions-directory>
 #
 # Every file a teaching repository holds is served to learners from the
 # teaching bucket, so it is scanned before it can get there, as every file
@@ -10,8 +10,10 @@
 # that was scanned.
 #
 # Fails closed: a file ClamAV names fails the job, naming each one, and so
-# does a scanner error. ClamAV must already be installed with current
-# definitions; the workflow does that before calling this.
+# does a scanner error, and so does a definitions directory with nothing
+# in it, which would pass every file. ClamAV must already be installed;
+# the workflow installs it, and fetches the definitions, from Quill's
+# clamav-mirror image.
 set -euo pipefail
 
 # shellcheck source=../shared/logging.sh
@@ -19,11 +21,22 @@ source "$(dirname "${BASH_SOURCE[0]}")/../shared/logging.sh" "scan-content"
 
 main() {
   local modules_dir="${1:-}"
+  local db_dir="${2:-}"
   local report
   local status
 
   if [ -z "$modules_dir" ]; then
-    error "No modules directory provided. Usage: scan-content.sh <modules-directory>"
+    error "No modules directory provided. Usage: scan-content.sh <modules-directory> <definitions-directory>"
+    exit 1
+  fi
+
+  if [ -z "$db_dir" ]; then
+    error "No definitions directory provided. Usage: scan-content.sh <modules-directory> <definitions-directory>"
+    exit 1
+  fi
+
+  if ! compgen -G "${db_dir}/*.c[vl]d" >/dev/null; then
+    error "No definitions in ${db_dir}, so nothing can be scanned"
     exit 1
   fi
 
@@ -38,7 +51,7 @@ main() {
   # of its own. `|| status=$?` keeps set -e from ending the script before
   # the code can be read.
   status=0
-  report="$(clamscan --recursive --infected --no-summary "$modules_dir")" || status=$?
+  report="$(clamscan --database="$db_dir" --recursive --infected --no-summary "$modules_dir")" || status=$?
 
   if [ "$status" -eq 0 ]; then
     log "No malware found"

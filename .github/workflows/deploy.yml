@@ -207,10 +207,18 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      # The scan image downloads nothing: ClamAV's package and the day's
+      # definitions come out of the clamav-mirror image, which
+      # clamav-mirror.yml refreshes daily. ClamAV's servers refuse an
+      # address that asks too often, and GitHub's runners share theirs.
+      - name: Fetch the ClamAV mirror into the build context
+        if: ${{ matrix.service == 'backend' }}
+        run: bash .github/scripts/clamav-mirror/fetch-mirror.sh "${{ github.repository_owner }}" backend/Dockerfile.scan .clamav-mirror
+
       # Its own Dockerfile too: ClamAV and its definition database have
-      # no business in the image the API serves from. Built on every
-      # backend deploy, which is what bounds how old the definitions
-      # baked into it can be.
+      # no business in the image the API serves from. clamav-mirror.yml
+      # also rebuilds it daily, so its definitions are never more than a
+      # day old.
       - name: Build and push scan image
         if: ${{ matrix.service == 'backend' }}
         uses: docker/build-push-action@v7.3.0

@@ -417,6 +417,15 @@ export interface EvidenceUpload {
   media_type: string;
 }
 
+/**
+ * Where the malware scan of one uploaded file has got to. `signature` is
+ * what the scan called what it found, for `infected` only.
+ */
+export interface EvidenceScan {
+  scan_state: "pending" | "clean" | "infected" | "failed";
+  signature: string | null;
+}
+
 // ---------------------------------------------------------------------------
 // Self-declared evidence
 //

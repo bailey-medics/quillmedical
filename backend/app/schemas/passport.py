@@ -739,6 +739,20 @@ class EvidenceUploadOut(BaseModel):
     media_type: NonEmptyText
 
 
+class EvidenceScanOut(BaseModel):
+    """Where the malware scan of one uploaded file has got to.
+
+    Its own route rather than a field on ``EvidenceUploadOut``: clients
+    pass the upload's answer straight into the record they write, and
+    ``AttachmentIn`` refuses a field it does not know, so a new field
+    there would break every client still sending the answer on.
+    """
+
+    scan_state: Literal["pending", "clean", "infected", "failed"]
+    #: What ClamAV called what it found, for ``infected`` only.
+    signature: str | None = None
+
+
 # --------------------------------------------------------------------
 # Competency catalogue
 # --------------------------------------------------------------------
