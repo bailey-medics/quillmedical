@@ -727,7 +727,7 @@ before any feature.
 
 ## Phase 4: One test that every route is guarded
 
-- [x] Add `backend/tests/every_route_is_guarded_test.py`. It walks
+- [ ] Add `backend/tests/every_route_is_guarded_test.py`. It walks
       `served_routes(app)` from `backend/app/utils/route_list.py`, never
       `app.routes`, which no longer lists an included router's routes,
       and for every route goes through the dependency tree with

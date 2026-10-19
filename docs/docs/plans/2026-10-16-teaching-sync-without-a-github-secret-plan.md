@@ -108,10 +108,21 @@ transcode, caption and poster jobs, which read it from Secret Manager.
       the job passed or failed; a run that never started the job says
       so instead.
 
-- [ ] Run the pipeline from one teaching repository with one module
+- [x] Run the pipeline from one teaching repository with one module
       changed, and confirm the bank updates. Then with a deliberately
       broken bank, and confirm the run fails and Slack names the
-      execution.
+      execution. Done on 2026-10-19 from `eoeeta-teaching-testing` #8,
+      a comment added to the test bank, after #2129 had merged. The
+      first attempt failed and proved the failure path by accident: the
+      sync job was still running Google's `cloudrun/hello` placeholder,
+      because the `deploy.yml` step that points it at the admin image
+      runs only when the backend changed, and #2129 changed no backend
+      code. The content account started the job and watched it to its
+      five-minute timeout, `run-sync-job.sh` failed the step naming
+      execution `quill-teaching-sync-app-w5j26` and its log, and the
+      Slack notice went out. A hand-run `deploy.yml` then set the image
+      and the re-run synced in 70 s (`quill-teaching-sync-app-b8hzw`).
+      No broken bank was pushed: the failure path had been seen.
 
 ## Phase 4: Remove the route and the secrets
 
@@ -132,14 +143,18 @@ transcode, caption and poster jobs, which read it from Secret Manager.
       in every teaching repository, or a pipeline run between the two
       would fail.
 
-- [ ] Delete `BACKEND_SYNC_TOKEN` and `BACKEND_SYNC_URL` wherever they
+- [x] Delete `BACKEND_SYNC_TOKEN` and `BACKEND_SYNC_URL` wherever they
       are held: the teaching repositories, and the organisation if they
       are organisation secrets. Check `gh secret list` for each, and the
-      organisation's list, before and after.
+      organisation's list, before and after. Done on 2026-10-19 after
+      #2130 merged: both were repository secrets on `eoeeta-teaching`,
+      `eoeeta-teaching-testing` and `respiratory-teaching`, and on no
+      other; the organisation held only `SLACK_WEBHOOK_URL` before and
+      after. Each repository is left with the three the pipeline reads.
 
 ## Phase 5: One guard for the three callbacks
 
-- [ ] Superseded on 2026-10-17 by
+- [x] Superseded on 2026-10-17 by
       `2026-10-17-job-callbacks-off-the-internet-plan.md`, which replaces
       the shared token with the jobs' own identity and gives the three
       routes one guard, `require_job_identity`, that
