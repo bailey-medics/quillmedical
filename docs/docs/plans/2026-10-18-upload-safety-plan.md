@@ -365,6 +365,23 @@ upload marked, so the person who uploaded it can see why it went.
       bucket; upload a real scan and see it served once the verdict
       arrives. Record the definitions date the report carried.
 
+### Unit 5: the image proves it detects EICAR
+
+Added on 19 October 2026, after the question "do the tests ever offer
+ClamAV an unsafe file?" The answer was no: the unit tests stand in for
+the scanner, and only the manual step at the end of Unit 4 puts a real
+test file through the real engine.
+
+- [x] Add a build step to `backend/Dockerfile.scan`, after `freshclam`,
+      that writes the EICAR test string (the harmless string every
+      antivirus must detect, written at build time so no file in the
+      repository trips a scanner) and runs `clamscan` over it. The build
+      fails unless `clamscan` exits 1 and names an EICAR signature, so
+      every image `deploy.yml` builds has proved that its engine runs
+      and its baked definitions detect something. It does not replace
+      the post-deploy EICAR upload in Unit 4, which proves the chain
+      through the app; it is the check that runs without anyone.
+
 ## Decisions
 
 - **Antivirus last, and built ahead of being asked** - ClamAV is

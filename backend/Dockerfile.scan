@@ -44,6 +44,21 @@ RUN apt-get update \
 RUN for attempt in 1 2 3; do freshclam --quiet && break || sleep 15; done \
  && test -s /var/lib/clamav/main.cvd -o -s /var/lib/clamav/main.cld
 
+# Proof, on every build, that the engine runs and the definitions just
+# fetched detect something: the EICAR test string, which every antivirus
+# must recognise and which is harmless. Written here rather than checked
+# in, so no file in the repository ever trips a scanner. `clamscan` exits
+# 1 on a detection, so a clean exit, or an error, fails the build; the
+# signature name is checked too, so a scanner that exited 1 for some
+# other reason cannot pass. The unit tests stand in for ClamAV; this is
+# the one place the real scanner meets a real test file before deploy.
+RUN printf '%s' 'X5O!P%@AP[4\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*' > /tmp/eicar \
+ && if clamscan --no-summary --infected /tmp/eicar > /tmp/eicar.out; then \
+      echo "ERROR: ClamAV did not detect the EICAR test file" >&2; exit 1; \
+    fi \
+ && grep -qi eicar /tmp/eicar.out \
+ && rm -f /tmp/eicar /tmp/eicar.out
+
 COPY backend/requirements-scan.txt ./
 RUN pip install --no-cache-dir -r requirements-scan.txt
 
