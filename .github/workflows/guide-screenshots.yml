@@ -125,6 +125,11 @@ jobs:
 
       # --network host so localhost is the CI stack. The runner's own user,
       # so what it writes stays readable by the upload step.
+      # The pinned teaching module is mounted at the path `../.e2e-teaching`
+      # reaches from /work, as in the E2E job in ci.yml: the module guide
+      # works out the last slide from it (`knownSlides` in
+      # e2e/fixtures/learning.ts), and without the mount it cannot open the
+      # module's content.mdx. Read-only: no guide writes there.
       - name: Take the screenshots
         working-directory: frontend
         run: >-
@@ -132,6 +137,7 @@ jobs:
           --user "$(id -u):$(id -g)"
           -e CI -e HOME=/tmp
           -v "$PWD:/work" -w /work
+          -v "$PWD/../.e2e-teaching:/.e2e-teaching:ro"
           "mcr.microsoft.com/playwright:v${{ steps.playwright_version.outputs.version }}-noble"
           npx playwright test --config playwright.guides.config.ts
 
