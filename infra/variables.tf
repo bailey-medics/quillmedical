@@ -86,6 +86,12 @@ variable "caption_image" {
   default     = "gcr.io/cloudrun/hello:latest"
 }
 
+variable "scan_image" {
+  description = "Container image for the upload scan Cloud Run Job (built from backend/Dockerfile.scan, which carries ClamAV and its definitions and is deliberately separate from the backend image). Pushed by CI and set at call time, like the other job images; Terraform does not track it."
+  type        = string
+  default     = "gcr.io/cloudrun/hello:latest"
+}
+
 variable "lb_domains" {
   description = "Domain names for the load balancer SSL certificate and routing"
   type        = list(string)

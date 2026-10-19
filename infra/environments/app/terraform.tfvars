@@ -57,6 +57,7 @@ frontend_image  = "gcr.io/cloudrun/hello:latest"
 admin_image     = "gcr.io/cloudrun/hello:latest"
 transcode_image = "gcr.io/cloudrun/hello:latest"
 caption_image   = "gcr.io/cloudrun/hello:latest"
+scan_image      = "gcr.io/cloudrun/hello:latest"
 
 # The apex is monitored from here once this project serves it. The uptime
 # check probes app_domain at /api/health and everything else at /, which

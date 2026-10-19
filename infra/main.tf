@@ -379,6 +379,33 @@ module "cloud_run_backend" {
       EHRBASE_DB_NAME = module.cloud_sql_ehrbase[0].database_name
       EHRBASE_DB_USER = module.cloud_sql_ehrbase[0].database_user
     } : {},
+    {
+      # The job that scans every upload for malware before it is served,
+      # in every product: passport evidence is uploaded everywhere. Set,
+      # the backend asks for a scan at each upload and holds the file
+      # back until the verdict is clean; unset is development, where
+      # nothing is scanned and nothing is gated. See Phase 4 of
+      # docs/docs/plans/2026-10-18-upload-safety-plan.md.
+      UPLOAD_SCAN_JOB = join("/", [
+        "projects", var.project_id,
+        "locations", var.region,
+        "jobs", "quill-scan-${var.environment}",
+      ])
+
+      # How the jobs prove themselves when they report back: a Google
+      # identity token minted for this audience, this service's own
+      # address, from one of these service accounts. The scan job
+      # reports in every product; the video jobs only where there are
+      # videos.
+      TEACHING_JOB_CALLBACK_AUDIENCE = local.backend_run_app_url
+      TEACHING_JOB_CALLBACK_CALLERS = join(",", concat(
+        [google_service_account.runtime["scan"].email],
+        local.is_teaching_product ? [
+          google_service_account.runtime["transcode"].email,
+          google_service_account.runtime["caption"].email,
+        ] : [],
+      ))
+    },
     local.is_teaching_product ? {
       CLINICAL_SERVICES_ENABLED = "false"
       TEACHING_STORAGE_BACKEND  = "gcs"
@@ -433,14 +460,6 @@ module "cloud_run_backend" {
         "jobs", "quill-caption-${var.environment}",
       ])
 
-      # How the transcode and caption jobs prove themselves when they
-      # report back: a Google identity token minted for this audience,
-      # this service's own address, from one of these service accounts.
-      TEACHING_JOB_CALLBACK_AUDIENCE = local.backend_run_app_url
-      TEACHING_JOB_CALLBACK_CALLERS = join(",", [
-        google_service_account.runtime["transcode"].email,
-        google_service_account.runtime["caption"].email,
-      ])
 
       # Same host as the app, deliberately: the load balancer routes
       # /videos/* to the backend bucket, so the signed cookie is same-origin
@@ -725,6 +744,55 @@ module "cloud_run_caption_job" {
   secret_env_vars = local.caption_secret_env_vars
 
   depends_on = [module.teaching_video_pipeline]
+}
+
+# ---------- Cloud Run Job: upload malware scan (every product) ----------
+# ClamAV over one uploaded object, reporting clean, infected or failed to
+# the backend, which holds the file back until the verdict is clean and
+# deletes it on infected. Every upload goes through it: passport evidence
+# in every product, lecture masters where there are videos. See Phase 4 of
+# docs/docs/plans/2026-10-18-upload-safety-plan.md.
+#
+# Not gated on the teaching product, unlike the two video jobs: passport
+# evidence is uploaded everywhere.
+#
+# Sized for ClamAV's database, which it loads into memory (about 1.3 GB),
+# rather than for the file. A scan of a file this size takes well under a
+# minute; the ten minute ceiling is for the definitions refresh and the
+# download on a slow day, and a job past it has gone wrong.
+module "cloud_run_scan_job" {
+  source = "./modules/cloud-run-job"
+
+  # Its own identity; see infra/runtime-identities.tf.
+  service_account_email = google_service_account.runtime["scan"].email
+  project_id            = var.project_id
+  region                = var.region
+  environment           = var.environment
+
+  job_name          = "scan"
+  image             = var.scan_image
+  vpc_subnetwork_id = module.networking.cloud_run_subnet_id
+
+  # All egress through the VPC, for the reason the video jobs' is: the
+  # report must arrive at the backend as internal traffic. The
+  # definitions refresh at the start of each run goes out through Cloud
+  # NAT, as the caption job's model download does.
+  vpc_egress = "ALL_TRAFFIC"
+
+  cpu     = "1"
+  memory  = "2Gi"
+  timeout = "600s"
+
+  env_vars = {
+    # The backend's run.app address, as the video jobs report to, so the
+    # report never leaves Google's network.
+    SCAN_CALLBACK_URL = "${module.cloud_run_backend.service_url}/api/ci/uploads/scan-complete"
+
+    # The audience of the report's identity token.
+    SCAN_CALLBACK_AUDIENCE = local.backend_run_app_url
+  }
+
+  secret_env_vars = local.scan_secret_env_vars
 }
 
 # ---------- Cloud Run: frontend ----------
