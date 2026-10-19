@@ -114,3 +114,4 @@
 - [Finalise EoEETA Teaching](2026-10-17-finalise-eoeeta-teaching-plan.md)
 - [Direct VPC Egress](2026-10-18-direct-vpc-egress-plan.md)
 - [Upload Safety](2026-10-18-upload-safety-plan.md)
+- [Remote Dev Machine](2026-10-19-remote-dev-machine-plan.md)
