@@ -215,6 +215,57 @@ class TestEveryRouteAsksWhoIsCalling:
         assert [key for key, why in PUBLIC.items() if not why.strip()] == []
 
 
+#: The prefix the load balancer refuses from the internet, on the strength
+#: of everything under it being a job's report. See Phase 5 of
+#: docs/docs/plans/2026-10-17-job-callbacks-off-the-internet-plan.md.
+JOB_CALLBACK_PREFIX = "/api/ci/"
+
+
+def _service_call_routes() -> set[RouteKey]:
+    found: set[RouteKey] = set()
+
+    for route in served_routes(app):
+        if _is_service_call(route):
+            found.update(_keys(route))
+
+    return found
+
+
+def _job_callback_routes() -> set[RouteKey]:
+    found: set[RouteKey] = set()
+
+    for route in served_routes(app):
+        if route.path.startswith(JOB_CALLBACK_PREFIX):
+            found.update(_keys(route))
+
+    return found
+
+
+class TestTheJobCallbackPrefixHoldsOnlyJobCallbacks:
+    """Cloud Armor answers 404 to anything under /api/ci/ from outside.
+
+    That rule is safe only while every route under the prefix is a job's
+    report, reached over the VPC with an identity token, and nothing a
+    person or a browser calls lives there. These make the convention a
+    check: a new route under the prefix that forgets the guard would
+    otherwise ship as a public route behind a rule that assumes it is
+    not, and a job callback placed elsewhere would be open to the
+    internet with nothing refusing it at the edge.
+    """
+
+    def test_the_prefix_holds_several_routes(self) -> None:
+        # A floor: a wrong prefix would find nothing and pass the rest.
+        assert len(_job_callback_routes()) >= 4
+
+    def test_every_route_under_the_prefix_asks_for_a_job_identity(
+        self,
+    ) -> None:
+        assert _job_callback_routes() - _service_call_routes() == set()
+
+    def test_no_route_outside_the_prefix_is_a_job_callback(self) -> None:
+        assert _service_call_routes() - _job_callback_routes() == set()
+
+
 class TestChangingRoutesCheckCsrf:
     def test_no_route_changes_something_without_checking_csrf(self) -> None:
         """A route that changes something for a signed-in caller takes
