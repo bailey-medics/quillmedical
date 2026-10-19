@@ -49,7 +49,7 @@ def deactivate_account(db: Session, actor: User, user_id: int) -> User:
         DeactivatingYourself: If the account is the caller's own.
         AlreadyDeactivated: If it is already inactive.
     """
-    user = account_the_caller_may_act_on(db, actor, user_id)
+    user = account_the_caller_may_act_on(db, actor, user_id, deactivating=True)
 
     if user.id == actor.id:
         raise DeactivatingYourself()
@@ -90,7 +90,7 @@ def reactivate_account(db: Session, actor: User, user_id: int) -> User:
             answers as an account that is not there.
         AlreadyActive: If it is already active.
     """
-    user = account_the_caller_may_act_on(db, actor, user_id)
+    user = account_the_caller_may_act_on(db, actor, user_id, deactivating=True)
 
     if user.is_active:
         raise AlreadyActive()

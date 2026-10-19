@@ -25,7 +25,11 @@ from app.organisations import (
     org_units_whose_people_reached_by,
 )
 from app.users.errors import UserNotFound
-from app.users.scope import check_account_in_scope, check_may_act_on_operator
+from app.users.scope import (
+    check_account_in_deactivation_scope,
+    check_account_in_scope,
+    check_may_act_on_operator,
+)
 
 
 def check_account_within_reach(db: Session, actor: User, target: User) -> None:
@@ -70,7 +74,7 @@ def check_account_within_reach(db: Session, actor: User, target: User) -> None:
 
 
 def account_the_caller_may_act_on(
-    db: Session, actor: User, user_id: int
+    db: Session, actor: User, user_id: int, *, deactivating: bool = False
 ) -> User:
     """Find an account the caller may act on as a whole, or refuse.
 
@@ -86,6 +90,9 @@ def account_the_caller_may_act_on(
         db: Core database session.
         actor: The caller.
         user_id: The id of the account, as the request gave it.
+        deactivating: Whether the act is a deactivation or reactivation,
+            whose scope leaves out what organisation cover gives (see
+            ``may_deactivate_account``).
 
     Returns:
         The account.
@@ -106,6 +113,10 @@ def account_the_caller_may_act_on(
 
     check_may_act_on_operator(actor, user)
     check_account_within_reach(db, actor, user)
-    check_account_in_scope(actor, user)
+
+    if deactivating:
+        check_account_in_deactivation_scope(actor, user)
+    else:
+        check_account_in_scope(actor, user)
 
     return user

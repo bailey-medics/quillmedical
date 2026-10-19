@@ -31,6 +31,12 @@ interface ActionCardProps {
   onClick?: () => void;
   /** Optional disabled state for the button */
   disabled?: boolean;
+  /**
+   * Why the button is disabled, shown beneath it. A greyed-out button
+   * with no reason reads as broken; this says what stops it. Shown only
+   * while `disabled`.
+   */
+  disabledReason?: string;
   /** Remove max-width constraint so the card fills its container */
   fullWidth?: boolean;
   /** Button variant (default: "filled") */
@@ -60,6 +66,7 @@ export default function ActionCard({
   buttonUrl = "#",
   onClick,
   disabled = false,
+  disabledReason,
   fullWidth = false,
   buttonVariant = "filled",
   buttonDestructive = false,
@@ -100,6 +107,9 @@ export default function ActionCard({
             variant={buttonVariant}
             destructive={buttonDestructive}
           />
+        )}
+        {disabled && disabledReason && (
+          <BodyText c="dimmed">{disabledReason}</BodyText>
         )}
       </Stack>
     </BaseCard>

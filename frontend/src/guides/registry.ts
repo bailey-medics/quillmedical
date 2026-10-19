@@ -76,10 +76,27 @@ export const GUIDES = [
     feature: "teaching",
   },
   {
+    slug: "add-a-site",
+    title: "Add a site",
+    summary:
+      "Add a place inside your organisation where delegates are based, with its clinical lead.",
+    audience: "admin",
+    public: false,
+    feature: "teaching",
+  },
+  {
     slug: "deactivate-a-site",
     title: "Deactivate a site",
     summary:
       "Stop a site taking part, and close the accounts of people who belong nowhere else.",
+    audience: "admin",
+    public: false,
+    feature: "teaching",
+  },
+  {
+    slug: "deactivate-a-user",
+    title: "Deactivate a user",
+    summary: "Stop somebody signing in, and let them back in later.",
     audience: "admin",
     public: false,
     feature: "teaching",

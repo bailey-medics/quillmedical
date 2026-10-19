@@ -507,6 +507,11 @@ class UserOut(BaseModel):
     #: Their teaching enrolments at each organisation they belong to
     #: that the caller reaches. Empty unless the caller runs teaching.
     teaching_enrolments: list[TeachingEnrolmentsAtOut] = []
+    #: Whether the caller may deactivate or reactivate this account: not
+    #: their own, not an operator's unless they are one, and within what
+    #: they may manage, organisation cover aside. The page shows the
+    #: button greyed out, with the reason, where this is false.
+    may_deactivate: bool = False
 
 
 class LinkPatientIn(BaseModel):

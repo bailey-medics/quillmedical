@@ -15,7 +15,9 @@ import { signIn } from "../../fixtures/signIn";
 
 const FOR_ADMINS = [
   "Add a delegate by hand",
+  "Add a site",
   "Deactivate a site",
+  "Deactivate a user",
   "See delegates' results",
 ];
 const FOR_EVERYONE = ["Join a course", "Take a module and its assessment"];

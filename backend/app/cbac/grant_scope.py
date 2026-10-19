@@ -29,6 +29,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from dataclasses import dataclass
+from datetime import UTC, datetime
 
 from app.cbac.base_professions import PROFESSION_IDS
 from app.cbac.competencies import COMPETENCIES, ROOT_COMPETENCY
@@ -180,6 +181,60 @@ def may_manage_account(user: User, target: User) -> bool:
         True if the caller may act on it.
     """
     return not out_of_scope_competencies(user, target.get_final_competencies())
+
+
+#: The grant source an org_unit's passport cover writes for its members
+#: (``app.features.passport.cover``). Not anybody's grant to the person:
+#: it comes with belonging there.
+ORGANISATION_COVER_SOURCE = "organisation"
+
+
+def held_beyond_organisation_cover(target: User) -> list[str]:
+    """What *target* holds through some grant other than organisation cover.
+
+    A competency held through organisation cover and also through a grant
+    of its own, such as a passport the person pays for themselves, counts.
+
+    Args:
+        target: The person whose grants are read.
+
+    Returns:
+        The competency ids, sorted.
+    """
+    now = datetime.now(UTC)
+
+    return sorted(
+        {
+            row.competency_id
+            for row in target.competency_grants
+            if row.is_current(now) and row.source != ORGANISATION_COVER_SOURCE
+        }
+    )
+
+
+def may_deactivate_account(user: User, target: User) -> bool:
+    """Whether *user* may deactivate or reactivate *target*'s account.
+
+    As ``may_manage_account``, with one difference: a competency the
+    target holds only through their organisation's passport cover is not
+    counted. Nobody granted it to them, and closing or reopening the
+    account hands it to nobody, so it should not keep a teaching admin
+    from closing a delegate's account. Decided by Mark on 2026-10-19.
+
+    Only these two acts. A change of password, email or profession, or
+    an invite, would let the caller sign in as the person and write in
+    their passport, so those keep ``may_manage_account``.
+
+    Args:
+        user: The caller, an admin.
+        target: The person whose account would be closed or reopened.
+
+    Returns:
+        True if the caller may do it.
+    """
+    return not out_of_scope_competencies(
+        user, held_beyond_organisation_cover(target)
+    )
 
 
 def out_of_scope_competencies(user: User, ids: Iterable[str]) -> list[str]:

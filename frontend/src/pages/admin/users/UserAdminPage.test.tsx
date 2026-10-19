@@ -286,6 +286,60 @@ describe("UserAdminPage", () => {
       });
     });
 
+    it("greys out deactivating, and says why, where the viewer may not", async () => {
+      vi.spyOn(apiLib.api, "get").mockResolvedValue({
+        ...mockUserDetails,
+        may_deactivate: false,
+      });
+
+      renderWithRouter(<UserAdminPage />, {
+        routePath: "/admin/users/:id",
+        initialRoute: "/admin/users/1",
+      });
+
+      expect(
+        await screen.findByRole("button", { name: "Deactivate" }),
+      ).toBeDisabled();
+      expect(
+        screen.getByText(/This account holds access you cannot grant/),
+      ).toBeInTheDocument();
+    });
+
+    it("says a viewer cannot deactivate their own account", async () => {
+      vi.spyOn(apiLib.api, "get").mockResolvedValue({
+        ...mockUserDetails,
+        username: mockAuthUsers.admin.username,
+        may_deactivate: false,
+      });
+
+      renderWithRouter(<UserAdminPage />, {
+        routePath: "/admin/users/:id",
+        initialRoute: "/admin/users/1",
+      });
+
+      expect(
+        await screen.findByText("You cannot deactivate your own account."),
+      ).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Deactivate" })).toBeDisabled();
+    });
+
+    it("leaves deactivating open, with no reason, where the viewer may", async () => {
+      vi.spyOn(apiLib.api, "get").mockResolvedValue({
+        ...mockUserDetails,
+        may_deactivate: true,
+      });
+
+      renderWithRouter(<UserAdminPage />, {
+        routePath: "/admin/users/:id",
+        initialRoute: "/admin/users/1",
+      });
+
+      expect(
+        await screen.findByRole("button", { name: "Deactivate" }),
+      ).toBeEnabled();
+      expect(screen.queryByText(/cannot deactivate/)).not.toBeInTheDocument();
+    });
+
     it("displays reactivate user action card when user is inactive", async () => {
       vi.spyOn(apiLib.api, "get").mockResolvedValue({
         ...mockUserDetails,
