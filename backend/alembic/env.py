@@ -10,6 +10,7 @@ from sqlalchemy import engine_from_config, pool, text
 # Import feature models so Alembic detects them for autogenerate
 import app.features.passport.models  # noqa: F401
 import app.features.teaching.models  # noqa: F401
+import app.features.uploads.models  # noqa: F401
 from alembic import context
 from app.config import settings
 from app.models import Base
