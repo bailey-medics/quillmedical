@@ -1746,12 +1746,21 @@ and test something nobody does.
       CI runs two workers. If CI shows it again, that is the next
       thing to look at.
 
-- [ ] Reading the slides by swiping, as
+- [x] Reading the slides by swiping, as
       `taking-a-module/slides.phone.spec.ts`: swipe forward through
       every slide and back one, and see each slide's heading.
       `SlideReader` reads a touch starting and ending on the slide
       area, so the swipe is those two events, dispatched with a touch
       at a start and an end point, as a finger makes them.
+
+      Built. On a slide that plays a video a swipe changes nothing, by
+      design, so a swipe meant for the player cannot carry the learner
+      off it; the test checks that and taps Next there. The touch start
+      and end are sent a moment apart, as a finger sends them:
+      `SlideReader` keeps where the touch started in state, and sent in
+      the same instant the end arrived before it was kept, so nothing
+      moved. Passing alone four times, and with the whole phone project,
+      56.
 
 ## Decisions
 
