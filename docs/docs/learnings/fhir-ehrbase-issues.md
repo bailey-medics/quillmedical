@@ -62,7 +62,7 @@ EHRbase takes 30-110 seconds to start (Flyway migrations, Spring Boot init, Hika
 | --------------------------------------- | --------------------------------------- | ----------------------------------------- |
 | Startup probe timeout (1s → 15s)        | `infra/modules/cloud-run/main.tf`       | Committed (`ed5b39b`)                     |
 | COS startup script path fixes           | `infra/modules/compute-fhir/startup.sh` | Committed (`ed5b39b`, needs further work) |
-| `uuid-ossp` extension on Cloud SQL      | `quill-ehrbase-staging` instance        | Applied manually                          |
+| `uuid-ossp` extension on Cloud SQL      | `quill-ehrbase-staging` instance (removed with its project on 2026-09-24) | Applied by hand there, and nowhere since: `quill-medical-app` holds only `quill-core-app`, so an EHR production build must create the extension before EHRbase's first migration |
 | EHRbase container with correct env vars | `fhir-ehrbase-staging` VM               | Running via `docker run`                  |
 | FHIR container                          | `fhir-ehrbase-staging` VM               | Running via `docker run`                  |
 
