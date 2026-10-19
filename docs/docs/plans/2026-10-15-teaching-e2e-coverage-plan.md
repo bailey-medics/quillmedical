@@ -1505,13 +1505,16 @@ Decided by Mark on 2026-10-17:
       The journey checks the video reaches the delegate as the 720p
       rendition from Quill; playing it through is the next step's test.
 
-- [ ] Test the self-hosted player: on the "Lungs in motion" slide the
+- [x] Test the self-hosted player: on the "Lungs in motion" slide the
       video is granted through `/video-access`, fetched from Quill's own
       origin, plays, its clock moves, and it reaches its end, in every
       browser project. Written as
-      `tests/taking-a-module/self-hosted-video.spec.ts` and passing in
-      Chromium, WebKit and the phone project locally; CI's Linux
-      browsers may not decode H.264, which the first CI run will show.
+      `tests/taking-a-module/self-hosted-video.spec.ts`. It now waits
+      for the `-720p.mp4` rendition rather than the original upload,
+      because the stack runs the transcode gate and the seed writes the
+      rendition as the job would. Passing in Chromium and WebKit with
+      `just e2e` on macOS; CI's Linux browsers may not decode H.264,
+      which the first CI run will show.
 
 - [x] Follow the silent video's real path, decided by Mark on
       2026-10-18, and prove the jobs' identity in the test stack.
