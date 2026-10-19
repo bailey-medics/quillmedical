@@ -468,6 +468,36 @@ Gone, named so that nobody goes looking for them:
 
 Not in Secret Manager at all: the VAPID public key, the callback identity tokens, and the `.env` files on a developer's machine, which hold development values only.
 
+### Rotating a secret
+
+Every procedure ends with the same step, and it is the one that gets forgotten: **re-run `deploy.yml`**. A new secret version, or a Terraform apply, makes a Cloud Run revision that serves no traffic until a deploy routes traffic to it, so a rotation that stops at Secret Manager has changed nothing the app can see. `gcloud run services update` is not the answer either: it makes a revision by hand that Terraform then refuses with a 409. After the deploy, check the serving revision changed (`gcloud run services describe quill-backend-app --region europe-west2 --format 'value(status.latestReadyRevisionName)'`).
+
+- **A hand-set value** (the SES keys, the Slack webhook, the PagerDuty key, the alert number, the feedback addresses, the EHRbase passwords):
+
+  ```bash
+  printf '%s' "$VALUE" | gcloud secrets versions add <name> --data-file=-
+  ```
+
+  `printf`, never `echo`, which appends a newline that then fails the login. Then re-run `deploy.yml` and confirm the serving revision changed. Old versions stay readable until disabled: disable the previous one once the new revision is seen working, and destroy it a week later.
+
+- **A Terraform-generated value** (`jwt-secret`, `core-db-password`, `teaching-video-signing-key`, and the two EHR database passwords): an apply with `-replace=<address>` regenerates it, and for a database password sets the new value on the database user in the same apply. The addresses are `random_password.jwt_secret`, `module.cloud_sql_core.random_password.db_password`, `module.teaching_video_pipeline[0].random_bytes.signing_key`, `module.cloud_sql_fhir[0].random_password.db_password` and `module.cloud_sql_ehrbase[0].random_password.db_password`. Run it from `terraform.yml` by hand (Run workflow, environment `app`, `replace` set to the address), never from a laptop against the live state: the apply account lives in GitHub's `app` environment and nobody holds it outside. Then `deploy.yml`.
+
+- **The JWT secret** is a Terraform-generated value with a consequence: every session is signed out at once, and every password-reset and email-verification link in flight stops working, because `JWT_SECRET` signs those too. Rotate it in a quiet hour and say so in Slack first.
+
+- **The VAPID pair** is two values that must change together: the private key in Secret Manager and the public key in `deploy.yml` as `VITE_VAPID_PUBLIC`. `just vapid-key` prints a fresh pair; add the private half as a new version of `vapid-private` by hand, as above, and change the public half in `deploy.yml` in the same pull request. Never `-replace` `random_password.vapid_placeholder`: that writes another placeholder over the real key. Every existing push subscription dies with the old key, which is acceptable while notifications are switched off in Settings.
+
+- **The video signing key** is Terraform-generated and read by two things, the backend and the load balancer, in one apply. A learner mid-video gets a 403 on the next segment and the player asks for a new cookie. No announcement needed.
+
+- **The SES key pair**: make the new access key in AWS IAM first, set both secrets, deploy, send one test email (the feedback form is the quickest), then delete the old key in AWS. Never the other way round: deleting first stops every email until the deploy lands.
+
+- **The Slack webhook and the PagerDuty key** are rotated at the other end (Slack, PagerDuty) and the new value set here, with the same deploy afterwards. The alert SMS number is a number and is simply replaced.
+
+Schedule:
+
+- **Hand-set credentials** (the SES key pair, the Slack webhook, the PagerDuty key): yearly, first due 2027-10, tracked in [todo.md](../plans/todo.md).
+- **Terraform-generated values**: on demand. Nothing leaves the project and nobody types them.
+- **Anything**: immediately, on any suspicion of exposure.
+
 ## Security
 
 - **No public database IPs** - Cloud SQL is accessible only via VPC
