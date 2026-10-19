@@ -6,13 +6,16 @@ that moment.
 """
 
 from datetime import UTC, datetime
+from unittest.mock import patch
 
 import pytest
 from sqlalchemy.orm import Session
 
+from app.config import settings
 from app.features.teaching import ci_media
 from app.features.teaching.ci_media import (
     _media_link,
+    after_scan,
     record_captions,
     record_transcode,
 )
@@ -350,3 +353,98 @@ class TestRecordCaptions:
     ) -> None:
         with pytest.raises(MediaAssetNotFound):
             record_captions(db_session, ORG_ID, MODULE_ID, "never-existed")
+
+
+class TestAfterScan:
+    """A clean verdict on a teaching upload is what fires the transcode."""
+
+    @pytest.fixture()
+    def source_bucket(self, monkeypatch: pytest.MonkeyPatch) -> str:
+        monkeypatch.setattr(
+            settings, "TEACHING_VIDEOS_SOURCE_BUCKET", "source-bucket"
+        )
+        monkeypatch.setattr(
+            settings,
+            "TEACHING_TRANSCODE_JOB",
+            "projects/p/locations/l/jobs/transcode",
+        )
+
+        return "source-bucket"
+
+    def test_another_bucket_is_not_a_teaching_upload(
+        self, db_session: Session, source_bucket: str
+    ) -> None:
+        with patch(
+            "app.features.teaching.transcode.start_transcode"
+        ) as started:
+            handled = after_scan(
+                db_session, "passports-bucket", "1/mod/asset-1", "clean"
+            )
+
+        assert handled is False
+        started.assert_not_called()
+
+    def test_clean_fires_the_transcode_and_records_its_start(
+        self, db_session: Session, source_bucket: str
+    ) -> None:
+        row = _upload(db_session)
+
+        with patch(
+            "app.features.teaching.transcode.start_transcode"
+        ) as started:
+            handled = after_scan(
+                db_session,
+                source_bucket,
+                f"{ORG_ID}/{MODULE_ID}/{ASSET_ID}",
+                "clean",
+            )
+
+        assert handled is True
+        started.assert_called_once_with(row.org_unit_id, MODULE_ID, ASSET_ID)
+        assert row.transcode_started_at is not None
+
+    @pytest.mark.parametrize("verdict", ["infected", "failed"])
+    def test_anything_but_clean_fires_nothing(
+        self, db_session: Session, source_bucket: str, verdict: str
+    ) -> None:
+        row = _upload(db_session)
+
+        with patch(
+            "app.features.teaching.transcode.start_transcode"
+        ) as started:
+            handled = after_scan(
+                db_session,
+                source_bucket,
+                f"{ORG_ID}/{MODULE_ID}/{ASSET_ID}",
+                verdict,
+            )
+
+        assert handled is True
+        started.assert_not_called()
+        assert row.transcode_started_at is None
+
+    def test_an_upload_deleted_while_the_scan_ran_is_let_go(
+        self, db_session: Session, source_bucket: str
+    ) -> None:
+        with patch(
+            "app.features.teaching.transcode.start_transcode"
+        ) as started:
+            handled = after_scan(
+                db_session, source_bucket, "1/mod/never-linked", "clean"
+            )
+
+        assert handled is True
+        started.assert_not_called()
+
+    def test_a_key_that_is_not_an_upload_path_is_let_go(
+        self, db_session: Session, source_bucket: str
+    ) -> None:
+        with patch(
+            "app.features.teaching.transcode.start_transcode"
+        ) as started:
+            handled = after_scan(
+                db_session, source_bucket, "not/a/teaching/key/at/all", "clean"
+            )
+
+        assert handled is True
+        started.assert_not_called()

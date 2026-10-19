@@ -37,7 +37,7 @@ import { Document } from "@/components/documents";
 import CertificateForm from "@/components/passport/CertificateForm";
 import CertificateUploader from "@/components/passport/CertificateUploader";
 import PassportRecordCard from "@/components/passport/PassportRecordCard";
-import { IconFileText } from "@/components/icons/appIcons";
+import { IconAlertCircle, IconFileText } from "@/components/icons/appIcons";
 import {
   amendCertificate,
   certificateAttachmentUrl,
@@ -56,6 +56,50 @@ import type {
  * save photographs in, is left to `Document`'s download link, because
  * only Safari can draw one.
  */
+/**
+ * What stands in for a file the malware scan has not passed. The backend
+ * holds the bytes back, so `Document` would only show a broken load;
+ * this says what is happening instead.
+ */
+function ScanNotice({
+  filename,
+  state,
+}: {
+  filename: string;
+  state: "pending" | "infected" | "failed";
+}) {
+  if (state === "infected") {
+    return (
+      <StateMessage
+        colour="alert"
+        icon={<IconAlertCircle />}
+        title={`${filename} was removed`}
+        description="Malware was found in this file, so it has been deleted. Upload a clean copy."
+      />
+    );
+  }
+
+  if (state === "failed") {
+    return (
+      <StateMessage
+        colour="warning"
+        icon={<IconAlertCircle />}
+        title={`${filename} could not be checked`}
+        description="The malware check did not finish. Upload the file again."
+      />
+    );
+  }
+
+  return (
+    <StateMessage
+      colour="info"
+      icon={<IconFileText />}
+      title={`${filename} is being checked`}
+      description="Every uploaded file is checked for malware before it is shown. This usually takes a minute."
+    />
+  );
+}
+
 function documentType(attachment: Attachment): "pdf" | "image" | "other" {
   if (attachment.media_type === "application/pdf") return "pdf";
   if (attachment.media_type === "image/heic") return "other";
@@ -247,18 +291,26 @@ export function Component() {
               `Document` chooses how a PDF is shown; an image is as it is. */}
           {passportId &&
             name &&
-            certificate.attachments.map((attachment) => (
-              <Document
-                key={attachment.hash}
-                name={attachment.filename}
-                type={documentType(attachment)}
-                url={certificateAttachmentUrl(
-                  passportId,
-                  name,
-                  attachment.hash,
-                )}
-              />
-            ))}
+            certificate.attachments.map((attachment) =>
+              attachment.scan_state && attachment.scan_state !== "clean" ? (
+                <ScanNotice
+                  key={attachment.hash}
+                  filename={attachment.filename}
+                  state={attachment.scan_state}
+                />
+              ) : (
+                <Document
+                  key={attachment.hash}
+                  name={attachment.filename}
+                  type={documentType(attachment)}
+                  url={certificateAttachmentUrl(
+                    passportId,
+                    name,
+                    attachment.hash,
+                  )}
+                />
+              ),
+            )}
         </>
       )}
     </Stack>

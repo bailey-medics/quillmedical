@@ -84,6 +84,7 @@ function certificatesWith(attachment: {
   filename: string;
   size_bytes: number;
   media_type: string;
+  scan_state?: "pending" | "clean" | "infected" | "failed";
 }) {
   fetchCertificates.mockResolvedValue(
     certificates.map((item) =>
@@ -178,6 +179,51 @@ describe("PassportCertificatePage", () => {
       await screen.findByText("Document preview not available"),
     ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Download" })).toBeInTheDocument();
+  });
+
+  it("says a file is being checked rather than failing to load it", async () => {
+    certificatesWith({
+      hash: "sha256:ab12",
+      filename: "als.pdf",
+      size_bytes: 1024,
+      media_type: "application/pdf",
+      scan_state: "pending",
+    });
+    renderWithRouter(<PassportCertificatePage />);
+
+    expect(
+      await screen.findByText("als.pdf is being checked"),
+    ).toBeInTheDocument();
+    expect(screen.queryByTitle("als.pdf")).not.toBeInTheDocument();
+  });
+
+  it("says a file was removed when malware was found in it", async () => {
+    certificatesWith({
+      hash: "sha256:ab12",
+      filename: "als.pdf",
+      size_bytes: 1024,
+      media_type: "application/pdf",
+      scan_state: "infected",
+    });
+    renderWithRouter(<PassportCertificatePage />);
+
+    expect(await screen.findByText("als.pdf was removed")).toBeInTheDocument();
+    expect(screen.getByText(/Malware was found/)).toBeInTheDocument();
+    expect(screen.queryByTitle("als.pdf")).not.toBeInTheDocument();
+  });
+
+  it("shows a clean file as before", async () => {
+    useNativePdfViewer.mockReturnValue(true);
+    certificatesWith({
+      hash: "sha256:ab12",
+      filename: "als.pdf",
+      size_bytes: 1024,
+      media_type: "application/pdf",
+      scan_state: "clean",
+    });
+    renderWithRouter(<PassportCertificatePage />);
+
+    expect(await screen.findByTitle("als.pdf")).toBeInTheDocument();
   });
 
   it("says so when the certificate is not there", async () => {

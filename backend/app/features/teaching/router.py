@@ -24,6 +24,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.cbac.positions import clinical_leads_of
+from app.config import settings
 from app.db import get_core_db
 from app.deps import (
     DEP_CURRENT_USER,
@@ -111,6 +112,7 @@ from app.features.teaching.module_content import (
     question_bank_detail,
     video_prefix_to_grant,
 )
+from app.features.teaching.object_paths import media_object_path
 from app.features.teaching.schemas import (
     AdminBankDetailOut,
     AdminBankOut,
@@ -164,6 +166,8 @@ from app.features.teaching.storage import (
 from app.features.teaching.video_access import (
     sign_cookie,
 )
+from app.features.uploads import scan as upload_scan
+from app.features.uploads.models import UploadScan
 from app.models import (
     User,
     org_unit_member,
@@ -1902,13 +1906,35 @@ def get_module_media(
     org_id = _media_org_unit_id(user, db, module_id, org_unit_id)
     keys = get_referenced_media_keys(module_id)
     inventory = get_media_inventory(db, org_id, module_id, keys)
+    source_bucket = settings.TEACHING_VIDEOS_SOURCE_BUCKET
+
+    def _scan_of(link: ModuleMediaLink) -> UploadScan | None:
+        # Only while the scan is what the upload is waiting on: once the
+        # transcode has started, the scan said clean.
+        if not upload_scan.scan_is_configured() or not source_bucket:
+            return None
+
+        if link.transcode_started_at is not None:
+            return None
+
+        return upload_scan.scan_row_for(
+            db,
+            source_bucket,
+            media_object_path(link.organisation_id, module_id, link.asset_id),
+        )
 
     def _asset(link: ModuleMediaLink) -> MediaAssetOut:
         # Attached to every asset the card shows, through the one helper
         # that builds them, so no row can be rendered without the state
         # that says whether it is still being worked on.
         out = MediaAssetOut.model_validate(link)
-        progress = describe_progress(link)
+        scan = _scan_of(link)
+        progress = describe_progress(
+            link,
+            scan=None if scan is None else upload_scan.state_of(scan),
+            scan_detail=None if scan is None else scan.signature,
+            scan_requested_at=None if scan is None else scan.requested_at,
+        )
         out.progress = MediaProgressOut(
             stage=progress.stage,
             total_stages=progress.total_stages,

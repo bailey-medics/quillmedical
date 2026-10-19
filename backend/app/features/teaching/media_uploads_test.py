@@ -8,6 +8,7 @@ they were asked for, and uploads to disk go to a folder the test made.
 import logging
 from datetime import UTC, datetime
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 from sqlalchemy import select
@@ -1485,3 +1486,50 @@ class TestLooksLikeVideo:
         assert not looks_like_video(b"<html>", "video/mp4")
         assert not looks_like_video(b"", "video/mp4")
         assert not looks_like_video(b"\x00\x00\x00\x18ftypmp42", "image/png")
+
+
+class TestLinkAsksForAScan:
+    """Where a scan job is configured, the scan comes before the
+    transcode: the link asks for the scan, and the clean verdict fires
+    the transcode (see `after_scan` in `ci_media.py`)."""
+
+    def test_the_link_requests_a_scan_and_fires_no_transcode(
+        self,
+        db_session: Session,
+        transcodes: Transcodes,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        from app.features.uploads.scan import scan_state_for
+
+        _transcode_job(monkeypatch, "projects/p/locations/l/jobs/transcode")
+        monkeypatch.setattr(
+            settings, "UPLOAD_SCAN_JOB", "projects/p/locations/l/jobs/scan"
+        )
+        monkeypatch.setattr(
+            settings, "TEACHING_VIDEOS_SOURCE_BUCKET", "source-bucket"
+        )
+        org = _organisation(db_session)
+
+        with patch("app.features.uploads.scan._start_job") as started:
+            link = _link(db_session, org, _person(db_session))
+
+        key = f"{link.organisation_id}/{MODULE}/{ASSET}"
+        started.assert_called_once_with("source-bucket", key)
+        assert scan_state_for(db_session, "source-bucket", key) == "pending"
+        assert transcodes == []
+        assert link.transcode_started_at is None
+
+    def test_without_a_scan_job_the_transcode_fires_at_once(
+        self,
+        db_session: Session,
+        transcodes: Transcodes,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        _transcode_job(monkeypatch, "projects/p/locations/l/jobs/transcode")
+        monkeypatch.setattr(settings, "UPLOAD_SCAN_JOB", None)
+        org = _organisation(db_session)
+
+        link = _link(db_session, org, _person(db_session))
+
+        assert len(transcodes) == 1
+        assert link.transcode_started_at is not None

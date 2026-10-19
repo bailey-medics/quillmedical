@@ -25,6 +25,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.features.teaching.models import ModuleMediaLink
+from app.features.uploads.scan import ScanState
 
 #: How long each job may run before the card stops claiming it is
 #: working. Generous rather than tight: overstating a stall would have
@@ -36,6 +37,9 @@ from app.features.teaching.models import ModuleMediaLink
 #: unlucky.
 _TRANSCODE_PATIENCE = timedelta(minutes=25)
 _CAPTION_PATIENCE = timedelta(minutes=70)
+#: The scan job's own timeout is ten minutes, and a scan of a file this
+#: size takes under one.
+_SCAN_PATIENCE = timedelta(minutes=15)
 
 #: Uploaded, transcoded, captioned, reviewed.
 _TOTAL_STAGES = 4
@@ -97,7 +101,12 @@ class MediaProgress:
 
 
 def describe_progress(
-    link: ModuleMediaLink, *, now: datetime | None = None
+    link: ModuleMediaLink,
+    *,
+    now: datetime | None = None,
+    scan: ScanState | None = None,
+    scan_detail: str | None = None,
+    scan_requested_at: datetime | None = None,
 ) -> MediaProgress:
     """Say where an upload has reached, in words a person can act on.
 
@@ -114,6 +123,12 @@ def describe_progress(
 
     Ordered most-finished first, so each branch can assume everything
     below it has happened.
+
+    ``scan`` is where the malware scan has got to, where a scan job is
+    configured and the transcode has not yet run: the scan comes first,
+    so its states sit in the first stage. ``scan_detail`` is the
+    signature named for ``infected``; ``scan_requested_at`` is what
+    says a pending scan has run too long.
     """
     now = now or datetime.now(UTC)
 
@@ -180,6 +195,47 @@ def describe_progress(
             stage=2,
             total_stages=_TOTAL_STAGES,
             label="Writing captions",
+            in_progress=True,
+            stalled=False,
+        )
+
+    # The malware scan, where one was asked for and the transcode has
+    # not yet started. A verdict that is not clean ends the row: nothing
+    # further is coming for this file, and the card says why.
+    if link.transcode_started_at is None and scan == "infected":
+        return MediaProgress(
+            stage=1,
+            total_stages=_TOTAL_STAGES,
+            label=(
+                "Upload refused: malware found "
+                f"({scan_detail or 'signature not named'})"
+            ),
+            in_progress=False,
+            stalled=True,
+            is_final=True,
+        )
+    if link.transcode_started_at is None and scan == "failed":
+        return MediaProgress(
+            stage=1,
+            total_stages=_TOTAL_STAGES,
+            label="The malware check failed; upload the file again",
+            in_progress=False,
+            stalled=True,
+            is_final=True,
+        )
+    if link.transcode_started_at is None and scan == "pending":
+        if _overdue(scan_requested_at, _SCAN_PATIENCE):
+            return MediaProgress(
+                stage=1,
+                total_stages=_TOTAL_STAGES,
+                label="The malware check seems to have failed",
+                in_progress=False,
+                stalled=True,
+            )
+        return MediaProgress(
+            stage=1,
+            total_stages=_TOTAL_STAGES,
+            label="Checking the upload for malware",
             in_progress=True,
             stalled=False,
         )

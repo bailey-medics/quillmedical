@@ -34,6 +34,7 @@ import re
 import subprocess  # noqa: S404 - git bundle, argument list never a string
 import tempfile
 import zipfile
+from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path, PurePosixPath
 
@@ -129,6 +130,7 @@ def build_bundle(
     head_commit: str | None = None,
     generated_at: datetime | None = None,
     blobs: BlobStore | GcsBlobStore | None = None,
+    include_evidence: Callable[[str], bool] | None = None,
 ) -> bytes:
     """Package a whole passport as a zip.
 
@@ -144,6 +146,11 @@ def build_bundle(
         head_commit: The commit being exported, printed in the PDF
             footer so a printed page can be tied to a repository state.
         generated_at: When, for tests.
+        include_evidence: Given a digest, whether its file may be handed
+            out. None means every file the records name. The passport
+            routes pass the malware scan's answer, so a file that has
+            not been scanned clean stays out of the export as it stays
+            off the certificate's page.
 
     Returns:
         The zip's bytes.
@@ -169,7 +176,7 @@ def build_bundle(
         archive.writestr("VERIFY.md", VERIFY_TEMPLATE)
 
         named = _write_record(archive, store, passport_id)
-        _write_evidence(archive, blobs, passport_id, named)
+        _write_evidence(archive, blobs, passport_id, named, include_evidence)
         _write_views(archive, store, passport_id, head_commit, moment)
         _write_history(archive, store, passport_id)
 
@@ -239,6 +246,7 @@ def _write_evidence(
     blobs: BlobStore | GcsBlobStore | None,
     passport_id: str,
     named: list[str],
+    include: Callable[[str], bool] | None = None,
 ) -> None:
     """Add each file the records name, where the record says it is.
 
@@ -257,6 +265,18 @@ def _write_evidence(
         return
 
     for digest in named:
+        # A file the malware scan has not passed is not handed out,
+        # here any more than on the certificate's page. The record still
+        # names it; the bytes are what stay behind.
+        if include is not None and not include(digest):
+            logger.info(
+                "Evidence left out of the export, not scanned clean: "
+                "passport=%s digest=%s",
+                passport_id,
+                digest,
+            )
+            continue
+
         try:
             data = blobs.get(passport_id, digest)
         except BlobError, paths.PassportPathError:

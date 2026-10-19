@@ -53,6 +53,7 @@ from app.features.teaching.errors import (
 )
 from app.features.teaching.models import ModuleMediaLink
 from app.features.teaching.schemas import CaptionsOut
+from app.features.uploads import scan as upload_scan
 from app.organisations import media_prefix_of
 
 logger = logging.getLogger(__name__)
@@ -309,11 +310,29 @@ def link_upload(
     # it became "Processing seems to have failed" - a failure that never
     # happened, over a job that was never fired. Asked of the same
     # helper the learner gate uses, so the two cannot disagree.
-    if media.transcode_is_configured():
-        link.transcode_started_at = datetime.now(UTC)
-        db.flush()
+    #
+    # Where a scan job is configured, the scan comes first and the
+    # transcode is fired by its clean verdict (`after_scan` in
+    # `ci_media.py`), so the chain is upload, scan, transcode, caption
+    # and FFmpeg never reads a file that was not scanned clean. The
+    # source bucket is where the upload sits; on a developer's machine
+    # there is none, and nothing is scanned.
+    source_bucket = settings.TEACHING_VIDEOS_SOURCE_BUCKET
 
-    transcode.start_transcode(org_unit_id, module_id, asset_id)
+    if upload_scan.scan_is_configured() and source_bucket:
+        upload_scan.request_scan(
+            db,
+            source_bucket,
+            object_paths.media_object_path(
+                link.organisation_id, module_id, asset_id
+            ),
+        )
+    else:
+        if media.transcode_is_configured():
+            link.transcode_started_at = datetime.now(UTC)
+            db.flush()
+
+        transcode.start_transcode(org_unit_id, module_id, asset_id)
 
     # Last, when everything about the new link is written. Nothing
     # below can lose it.

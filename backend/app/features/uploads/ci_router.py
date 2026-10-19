@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 
 from app.db import get_core_db
 from app.deps import DEP_REQUIRE_JOB_IDENTITY
+from app.features.teaching.ci_media import after_scan
 from app.features.uploads.scan import ScanNotRequested, record_verdict
 from app.features.uploads.schemas import ScanCompleteIn, ScanCompleteOut
 
@@ -54,5 +55,10 @@ def ci_scan_complete(
         raise HTTPException(
             404, "No scan was requested for that object"
         ) from None
+
+    # A teaching upload waits on this verdict for its transcode. The
+    # passport needs nothing fired: its routes read the verdict when a
+    # file is asked for.
+    after_scan(db, body.bucket, body.object_key, body.verdict)
 
     return ScanCompleteOut(recorded=True, verdict=body.verdict)

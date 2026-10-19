@@ -70,6 +70,7 @@ from app.email_send import (
     send_email,
 )
 from app.features.gating import requires_feature, user_has_feature
+from app.features.uploads import scan as upload_scan
 from app.models import User, normalise_email, org_unit_member
 from app.org_units.tree import descendant_ids
 from app.organisations import (
@@ -147,7 +148,7 @@ from .blobs import (
 )
 from .commits import Actor
 from .entitlements import passport_write_ends_on
-from .gcs_store import GcsBlobStore
+from .gcs_store import GcsBlobStore, blob_object_key
 from .locking import lock_passport_for_write
 from .models import (
     Passport,
@@ -300,6 +301,40 @@ MAX_EVIDENCE_BYTES = 8 * 1024 * 1024  # 8 MB
 
 #: How much to read at a time while enforcing that ceiling.
 _UPLOAD_CHUNK = 64 * 1024
+
+
+def _evidence_scan_bucket() -> str | None:
+    """The bucket whose objects the scan job is told about, or None.
+
+    None in development, where evidence is on disk and no job is
+    configured. A function rather than a read of settings at each site,
+    so a test can stand in a bucket name without switching the blob
+    store itself over to Cloud Storage.
+    """
+    return settings.PASSPORT_GCS_BUCKET
+
+
+def _scan_state_of(
+    db: Session, passport_id: str, blob_digest: str
+) -> upload_scan.ScanState:
+    """Where the malware scan of one piece of evidence has got to.
+
+    ``clean`` wherever no scan job is configured: that is development,
+    and nothing is gated there. Where one is configured, a file with no
+    row was never asked about, and is treated as still pending rather
+    than served: nothing is handed out on the strength of having been
+    uploaded.
+    """
+    bucket = _evidence_scan_bucket()
+
+    if not upload_scan.scan_is_configured() or bucket is None:
+        return "clean"
+
+    state = upload_scan.scan_state_for(
+        db, bucket, blob_object_key(passport_id, blob_digest)
+    )
+
+    return "pending" if state is None else state
 
 
 def _looks_like(data: bytes, media_type: str) -> bool:
@@ -2168,6 +2203,17 @@ async def upload_evidence(
     except BlobError:
         raise HTTPException(500, "That file could not be stored") from None
 
+    # Every upload is scanned for malware before anyone can open it.
+    # Asked for once the bytes are in the bucket, since that is what the
+    # job reads; until it answers, the file is held back everywhere it
+    # could be served.
+    scan_bucket = _evidence_scan_bucket()
+
+    if upload_scan.scan_is_configured() and scan_bucket is not None:
+        upload_scan.request_scan(
+            db, scan_bucket, blob_object_key(row.id, attachment.hash)
+        )
+
     logger.info(
         "Passport evidence stored: passport=%s bytes=%d type=%s",
         row.id,
@@ -2248,11 +2294,16 @@ def list_certificates(
         name = entry.name
         raw = store.read(row.id, paths.certificate_file(name))
         certificate = from_yaml(Certificate, raw)
-        found.append(
-            CertificateOut.model_validate(
-                {"name": name, **certificate.model_dump(mode="json")}
-            )
+        out = CertificateOut.model_validate(
+            {"name": name, **certificate.model_dump(mode="json")}
         )
+
+        # So the page can say "being checked" or "removed" in place of
+        # a file it would otherwise fail to load.
+        for attachment in out.attachments:
+            attachment.scan_state = _scan_state_of(db, row.id, attachment.hash)
+
+        found.append(out)
 
     return found
 
@@ -2368,6 +2419,24 @@ def get_certificate_attachment(
         ALLOWED_EVIDENCE_TYPES
     ):
         raise HTTPException(404, "Attachment not found")
+
+    # Not until the malware scan says clean. 409 while it is still
+    # being looked at, so the page can say so; 410 for a file that was
+    # removed, since it is gone for good and the reason is worth saying.
+    scan_state = _scan_state_of(db, row.id, attachment.hash)
+
+    if scan_state == "pending":
+        raise HTTPException(409, "This file is still being checked")
+
+    if scan_state == "infected":
+        raise HTTPException(
+            410, "This file was removed: malware was found in it"
+        )
+
+    if scan_state == "failed":
+        raise HTTPException(
+            409, "This file could not be checked; upload it again"
+        )
 
     try:
         data = blobs.get(row.id, attachment.hash)
@@ -3683,6 +3752,9 @@ def export_bundle(
             requested_by=str(user.id),
             head_commit=row.head_commit,
             blobs=blobs,
+            include_evidence=lambda digest: (
+                _scan_state_of(db, row.id, digest) == "clean"
+            ),
         )
     except PassportNotFoundError:
         raise HTTPException(404, "Passport not found") from None

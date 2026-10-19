@@ -35,6 +35,7 @@ import zipfile
 from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from unittest.mock import patch
 
 import jwt
 import pytest
@@ -3190,6 +3191,135 @@ class TestEvidence:
         assert response.status_code == 200, response.text
         assert b"A phone" not in response.content
         assert hashlib.sha256(response.content).hexdigest() in uploaded["hash"]
+
+    def test_the_file_is_held_back_until_the_malware_scan_says_clean(
+        self, holder_client: TestClient, monkeypatch, db_session
+    ) -> None:
+        """Every upload is scanned before anyone can open it. The scan
+        is asked for at upload; the file answers 409 until the verdict
+        is clean, 410 once malware was found and the file removed."""
+        from app.features.passport.gcs_store import blob_object_key
+        from app.features.uploads.scan import record_verdict
+
+        monkeypatch.setattr(
+            settings, "UPLOAD_SCAN_JOB", "projects/p/locations/l/jobs/scan"
+        )
+        monkeypatch.setattr(
+            router, "_evidence_scan_bucket", lambda: "passports-bucket"
+        )
+        passport_id = _create_passport(holder_client)
+
+        with patch("app.features.uploads.scan._start_job") as started:
+            uploaded = self._upload(holder_client, passport_id).json()
+
+        key = blob_object_key(passport_id, uploaded["hash"])
+        started.assert_called_once_with("passports-bucket", key)
+        name = self._certificate_with(holder_client, passport_id, uploaded)
+        url = (
+            f"/api/passport/{passport_id}/certificates/{name}"
+            f"/attachments/{uploaded['hash']}"
+        )
+
+        pending = holder_client.get(url)
+        assert pending.status_code == 409
+        assert "still being checked" in pending.text
+        listed = holder_client.get(f"/api/passport/{passport_id}/certificates")
+        assert listed.json()[0]["attachments"][0]["scan_state"] == "pending"
+
+        record_verdict(
+            db_session, "passports-bucket", key, "clean", None, "ClamAV 1.0"
+        )
+        db_session.commit()
+
+        clean = holder_client.get(url)
+        assert clean.status_code == 200, clean.text
+        listed = holder_client.get(f"/api/passport/{passport_id}/certificates")
+        assert listed.json()[0]["attachments"][0]["scan_state"] == "clean"
+
+    def test_a_file_the_scan_found_malware_in_is_gone(
+        self, holder_client: TestClient, monkeypatch, db_session
+    ) -> None:
+        from app.features.passport.gcs_store import blob_object_key
+        from app.features.uploads.scan import record_verdict
+
+        monkeypatch.setattr(
+            settings, "UPLOAD_SCAN_JOB", "projects/p/locations/l/jobs/scan"
+        )
+        monkeypatch.setattr(
+            router, "_evidence_scan_bucket", lambda: "passports-bucket"
+        )
+        passport_id = _create_passport(holder_client)
+
+        with patch("app.features.uploads.scan._start_job"):
+            uploaded = self._upload(holder_client, passport_id).json()
+
+        name = self._certificate_with(holder_client, passport_id, uploaded)
+        key = blob_object_key(passport_id, uploaded["hash"])
+
+        with patch("app.features.uploads.scan.delete_object"):
+            record_verdict(
+                db_session,
+                "passports-bucket",
+                key,
+                "infected",
+                "Eicar-Signature",
+                "ClamAV 1.0",
+            )
+        db_session.commit()
+
+        gone = holder_client.get(
+            f"/api/passport/{passport_id}/certificates/{name}"
+            f"/attachments/{uploaded['hash']}"
+        )
+        assert gone.status_code == 410
+        assert "malware was found" in gone.text
+        listed = holder_client.get(f"/api/passport/{passport_id}/certificates")
+        assert listed.json()[0]["attachments"][0]["scan_state"] == "infected"
+
+    def test_the_bundle_leaves_out_a_file_not_scanned_clean(
+        self, holder_client: TestClient, monkeypatch, db_session
+    ) -> None:
+        from app.features.passport import paths
+
+        monkeypatch.setattr(
+            settings, "UPLOAD_SCAN_JOB", "projects/p/locations/l/jobs/scan"
+        )
+        monkeypatch.setattr(
+            router, "_evidence_scan_bucket", lambda: "passports-bucket"
+        )
+        passport_id = _create_passport(holder_client)
+
+        with patch("app.features.uploads.scan._start_job"):
+            uploaded = self._upload(holder_client, passport_id).json()
+
+        self._certificate_with(holder_client, passport_id, uploaded)
+
+        response = holder_client.get(f"/api/passport/{passport_id}/export.zip")
+
+        assert response.status_code == 200
+        with zipfile.ZipFile(io.BytesIO(response.content)) as archive:
+            names = set(archive.namelist())
+        assert not any(
+            name.endswith(str(paths.blob(uploaded["hash"]))) for name in names
+        )
+
+    def test_without_a_scan_job_nothing_is_held_back(
+        self, holder_client: TestClient, monkeypatch
+    ) -> None:
+        """Development: no job, no gate, and the listing says clean."""
+        monkeypatch.setattr(settings, "UPLOAD_SCAN_JOB", None)
+        passport_id = _create_passport(holder_client)
+        uploaded = self._upload(holder_client, passport_id).json()
+        name = self._certificate_with(holder_client, passport_id, uploaded)
+
+        response = holder_client.get(
+            f"/api/passport/{passport_id}/certificates/{name}"
+            f"/attachments/{uploaded['hash']}"
+        )
+
+        assert response.status_code == 200
+        listed = holder_client.get(f"/api/passport/{passport_id}/certificates")
+        assert listed.json()[0]["attachments"][0]["scan_state"] == "clean"
 
     def test_a_pdf_with_active_content_is_refused(
         self, holder_client: TestClient
