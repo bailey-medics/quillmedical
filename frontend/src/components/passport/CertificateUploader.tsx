@@ -52,6 +52,28 @@ export const SCAN_POLL_MS = 3000;
 /** How long the uploader waits for a verdict before attaching anyway. */
 export const SCAN_PATIENCE_MS = 120_000;
 
+/**
+ * What to say when an upload fails.
+ *
+ * A refusal (400) or a file too large (413) carries the backend's own
+ * reason, written for the person uploading: the file is empty, is not
+ * the type it claims to be, is a PDF that runs something, or is an
+ * image that cannot be read. Uploading it again will not help, so the
+ * reason is what they need. Anything else is a fault on the way, a
+ * network or storage failure whose own wording is about buckets and
+ * hashes, so it is not shown, and trying again is the right advice.
+ */
+function uploadFailure(err: unknown): string {
+  const status =
+    err instanceof Error && "status" in err ? err.status : undefined;
+
+  if ((status === 400 || status === 413) && err instanceof Error) {
+    return err.message;
+  }
+
+  return "That file could not be uploaded. Please try again.";
+}
+
 function wait(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -105,11 +127,8 @@ export default function CertificateUploader({
 
     try {
       stored = await uploadEvidence(passportId, file);
-    } catch {
-      // Deliberately not the thrown message: a storage failure's own
-      // wording is about buckets and hashes, which tells a doctor
-      // nothing they can act on.
-      setError("That file could not be uploaded. Please try again.");
+    } catch (err) {
+      setError(uploadFailure(err));
       setUploading(false);
       return;
     }

@@ -384,6 +384,18 @@ def _refuse_unless_scan_allows(
         )
 
 
+#: Each evidence type as the person uploading would name it. The refusal
+#: is shown to them as it is, and "application/pdf" means nothing to a
+#: doctor where "PDF" does.
+_EVIDENCE_TYPE_NAMES: dict[str, str] = {
+    "application/pdf": "PDF",
+    "image/jpeg": "JPEG",
+    "image/png": "PNG",
+    "image/heic": "HEIC",
+    "image/webp": "WebP",
+}
+
+
 def _looks_like(data: bytes, media_type: str) -> bool:
     """Whether the bytes begin the way *media_type* says they should.
 
@@ -2206,7 +2218,7 @@ async def upload_evidence(
     if not _looks_like(data, media_type):
         raise HTTPException(
             400,
-            f"That file does not look like {media_type}",
+            f"That file is not a real {_EVIDENCE_TYPE_NAMES[media_type]}",
         )
 
     # A PDF is the one evidence type whose contents can act rather than
