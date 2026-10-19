@@ -60,7 +60,7 @@ once those have gone in.
 
 ## Phase 3: A `security.txt`
 
-- [ ] Add `frontend/public/.well-known/security.txt`, served by the
+- [x] Add `frontend/public/.well-known/security.txt`, served by the
       frontend container at `/.well-known/security.txt` because Vite
       copies `public/` as is and the load balancer sends every non-API
       path to the frontend. RFC 9116 requires `Contact` and `Expires`;
@@ -71,7 +71,7 @@ once those have gone in.
       `Policy:` line until a disclosure page exists to point at. Source:
       [RFC 9116](https://www.rfc-editor.org/rfc/rfc9116).
 
-- [ ] A test in `frontend/src/` that reads the file and checks the two
+- [x] A test in `frontend/src/` that reads the file and checks the two
       required fields are present and `Expires` is in the future, so the
       file cannot quietly lapse: an expired `security.txt` is treated as
       absent. Add a calendar note in `todo.md` for its renewal. Tick the
@@ -79,7 +79,7 @@ once those have gone in.
 
 ## Phase 4: Dev dependencies and the production image
 
-- [ ] Already done: `backend/Dockerfile` installs with
+- [x] Already done: `backend/Dockerfile` installs with
       `poetry install --only main`, so the runtime image carries no dev
       group. The `todo.md` item saying otherwise is stale; strike it,
       naming the line that does it.
