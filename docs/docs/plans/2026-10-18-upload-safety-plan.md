@@ -244,7 +244,9 @@ upload marked, so the person who uploaded it can see why it went.
 
 ### Unit 2: the backend records a scan
 
-- [ ] Add an `upload_scan` table in `backend/app/models.py` and its
+- [x] Add an `upload_scan` table (built in
+      `backend/app/features/uploads/models.py`, beside the feature's own
+      code rather than in `app/models.py`) and its
       migration: `bucket`, `object_key`, `requested_at`, `scanned_at`,
       `verdict` (`clean`, `infected` or `failed`, validated in code as
       `MEMBER_CAPACITIES` is rather than as a database enum),
@@ -257,7 +259,7 @@ upload marked, so the person who uploaded it can see why it went.
       way by both. A row with `scanned_at` null is a scan requested and
       not yet answered.
 
-- [ ] Add `backend/app/uploads/scan.py` with `request_scan(db, bucket,
+- [x] Add `backend/app/features/uploads/scan.py` with `request_scan(db, bucket,
       object_key)`, which writes the row and fires the job through
       `run_v2` exactly as `start_caption` does, reading `UPLOAD_SCAN_JOB`
       from settings; `scan_is_configured()`; `record_verdict(db, bucket,
@@ -267,8 +269,8 @@ upload marked, so the person who uploaded it can see why it went.
       `verdict_for` is never consulted, the same reading as the
       transcode gate: an absent job is development, not a fault.
 
-- [ ] Add `POST /api/ci/uploads/scan-complete` in a new
-      `backend/app/uploads/ci_router.py`, guarded by
+- [x] Add `POST /api/ci/uploads/scan-complete` in a new
+      `backend/app/features/uploads/ci_router.py`, guarded by
       `require_job_identity` as the teaching callbacks are, and included
       from `main.py` under the API prefix. It records the verdict. On
       `infected` it deletes the object from the bucket itself, through
@@ -276,12 +278,17 @@ upload marked, so the person who uploaded it can see why it went.
       object key and nothing else. It is listed in
       `every_route_is_guarded_test.py` with the other job callbacks.
 
-- [ ] Test the recorder and the route: a request writes a row and fires
+- [x] Test the recorder and the route: a request writes a row and fires
       the job; a clean report fills it in; an infected report deletes
       the object and keeps the row; a failed report is recorded as
       failed; a report for an object nobody asked to scan is refused
       404; the identity checks are shared with the other callbacks
-      through `ci_media_callback_refusals_test.py`.
+      through `ci_media_callback_refusals_test.py`. As built, the
+      refusals are pinned in `tests/ci_scan_complete_test.py` itself: the
+      media refusals file asserts the media routes' own 404 wording, and
+      the guard's branches are already covered in
+      `app/deps_job_identity_test.py`. The route-guard test needed no
+      entry, since it recognises `require_job_identity` on its own.
 
 ### Unit 3: nothing is served until its scan says clean
 

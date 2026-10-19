@@ -71,6 +71,7 @@ from app.features.teaching.errors import TeachingError
 from app.features.teaching.public_router import (
     router as teaching_public_router,
 )
+from app.features.uploads.ci_router import router as uploads_ci_router
 from app.feedback.router import router as feedback_router
 from app.fhir_client import (
     FhirClientError,
@@ -1564,6 +1565,7 @@ router.include_router(passport_public_router)
 
 
 router.include_router(teaching_ci_router)
+router.include_router(uploads_ci_router)
 
 app.include_router(router)
 

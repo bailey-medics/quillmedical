@@ -307,6 +307,16 @@ class Settings(BaseSettings):
             "someone writes them by hand."
         ),
     )
+    UPLOAD_SCAN_JOB: str | None = Field(
+        None,
+        description=(
+            "Fully-qualified Cloud Run Job that scans one uploaded object "
+            "for malware, e.g. projects/p/locations/europe-west2/jobs/"
+            "quill-scan-app. Every upload is scanned before it is served "
+            "where this is set. Unset in development, where nothing is "
+            "scanned and nothing is gated."
+        ),
+    )
     TEACHING_JOB_CALLBACK_AUDIENCE: str | None = Field(
         None,
         description=(
