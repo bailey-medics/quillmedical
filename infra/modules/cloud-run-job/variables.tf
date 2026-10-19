@@ -74,28 +74,13 @@ variable "vpc_egress" {
   }
 }
 
-variable "vpc_connector_id" {
-  description = <<-EOT
-    Serverless VPC connector ID. Give this or vpc_subnetwork_id: a job
-    always reaches the VPC one way or the other, never both ways.
-  EOT
-  type        = string
-  default     = ""
-}
-
 variable "vpc_subnetwork_id" {
   description = <<-EOT
     Subnet for Direct VPC egress: each task takes an address on it and
-    reaches the VPC with no connector in between. Give this or
-    vpc_connector_id.
+    reaches the VPC directly. Required: every job here reaches something
+    on the VPC, Cloud SQL or the backend's internal address.
   EOT
   type        = string
-  default     = ""
-
-  validation {
-    condition     = (var.vpc_subnetwork_id != "") != (var.vpc_connector_id != "")
-    error_message = "Give exactly one of vpc_subnetwork_id and vpc_connector_id."
-  }
 }
 
 variable "env_vars" {

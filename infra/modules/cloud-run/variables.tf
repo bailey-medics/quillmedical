@@ -61,26 +61,14 @@ variable "concurrency" {
   default     = 80
 }
 
-variable "vpc_connector_id" {
-  description = "Serverless VPC connector ID (omit to disable VPC access)"
-  type        = string
-  default     = ""
-}
-
 variable "vpc_subnetwork_id" {
   description = <<-EOT
     Subnet for Direct VPC egress: each instance takes an address on it and
-    reaches the VPC with no connector in between. Give this or
-    vpc_connector_id, never both; a revision carries one or the other.
-    Omit both to disable VPC access.
+    reaches the VPC directly. Omit to disable VPC access, as the frontend
+    does.
   EOT
   type        = string
   default     = ""
-
-  validation {
-    condition     = !(var.vpc_subnetwork_id != "" && var.vpc_connector_id != "")
-    error_message = "Give vpc_subnetwork_id or vpc_connector_id, not both."
-  }
 }
 
 variable "env_vars" {

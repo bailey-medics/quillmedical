@@ -201,7 +201,7 @@ The infrastructure is defined in `infra/` using Terraform modules:
 | Module                    | Purpose                                                                 |
 | ------------------------- | ----------------------------------------------------------------------- |
 | `secrets`                 | Secret Manager secret containers                                        |
-| `networking`              | VPC, subnet, Cloud NAT, VPC connector, firewall rules                   |
+| `networking`              | VPC, subnets (private, and one for Cloud Run's Direct VPC egress), Cloud NAT, firewall rules |
 | `cloud-sql`               | PostgreSQL instances with private IP, backups, auto-generated passwords |
 | `cloud-run`               | Backend and frontend services with secret injection                     |
 | `cloud-run-job`           | Admin CLI job (create-superadmin, add-role, run-migrations), and the transcode and caption jobs |
