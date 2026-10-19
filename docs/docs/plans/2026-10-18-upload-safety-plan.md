@@ -333,7 +333,7 @@ upload marked, so the person who uploaded it can see why it went.
 
 ### Unit 4: the job exists in every environment
 
-- [ ] Terraform: a `scan` identity in `local.runtime_workload_secrets`
+- [x] Terraform: a `scan` identity in `local.runtime_workload_secrets`
       (no secrets), `roles/storage.objectViewer` on the passport bucket
       and, where the teaching product is on, the video source bucket;
       `module.cloud_run_scan_job` from `modules/cloud-run-job` with
@@ -345,7 +345,13 @@ upload marked, so the person who uploaded it can see why it went.
       added to `TEACHING_JOB_CALLBACK_CALLERS`; a `scan_image` variable
       with the placeholder image in `terraform.tfvars`. The job is not
       gated on `is_teaching_product`: passport evidence is uploaded in
-      every product.
+      every product. As built, `TEACHING_JOB_CALLBACK_AUDIENCE` and
+      `TEACHING_JOB_CALLBACK_CALLERS` moved out of the teaching-only
+      block to the unconditional one, since the scan job reports in
+      every product; the video jobs' accounts are concatenated in where
+      the teaching product is on. The local Terraform (1.15.0) is older
+      than `versions.tf` requires, so the change was checked by
+      `terraform fmt` here and by the plan CI posts on the pull request.
 
 - [ ] After the merge, check the Terraform run applied, then re-run
       `deploy.yml` so the backend revision carrying the new env takes

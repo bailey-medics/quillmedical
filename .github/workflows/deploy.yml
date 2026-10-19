@@ -321,18 +321,14 @@ jobs:
             --region=${{ env.GCP_REGION }} \
             --image=${{ env.AR_REGISTRY }}/${{ secrets[format('GCP_{0}_PROJECT_ID', matrix.environment)] }}/quill/caption:${{ needs.prepare.outputs.sha }}
 
-      # The scan job is pointed at the same way. `|| true` only until
-      # Unit 4 of the upload safety plan creates the job in Terraform:
-      # until then there is nothing to point, and a deploy must not fail
-      # on it. Unit 4 removes the `|| true`.
+      # The scan job is pointed at the same way.
       - name: Point the scan job at this build
         if: ${{ needs.prepare.outputs.backend_changed == 'true' || steps.placeholder.outputs.backend == 'true' }}
         run: |
           gcloud run jobs update quill-scan-${{ matrix.environment }} \
             --project=${{ secrets[format('GCP_{0}_PROJECT_ID', matrix.environment)] }} \
             --region=${{ env.GCP_REGION }} \
-            --image=${{ env.AR_REGISTRY }}/${{ secrets[format('GCP_{0}_PROJECT_ID', matrix.environment)] }}/quill/scan:${{ needs.prepare.outputs.sha }} \
-            || true
+            --image=${{ env.AR_REGISTRY }}/${{ secrets[format('GCP_{0}_PROJECT_ID', matrix.environment)] }}/quill/scan:${{ needs.prepare.outputs.sha }}
 
       # The smoke test runs inside the admin job rather than from this
       # runner, because a tagged revision's *.run.app URL is only reachable

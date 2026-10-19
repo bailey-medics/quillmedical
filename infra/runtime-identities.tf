@@ -75,6 +75,11 @@ locals {
 
   caption_secret_env_vars = {}
 
+  # The scan job reads no secret either: it holds read access to the two
+  # buckets it scans and reports with an identity token, like the video
+  # jobs. In the list for the same reason they are, its service account.
+  scan_secret_env_vars = {}
+
   # Workload => the secrets it reads. The frontend reads none, which is the
   # point of this file.
   runtime_workload_secrets = merge(
@@ -82,6 +87,9 @@ locals {
       backend  = values(local.backend_secret_env_vars)
       frontend = []
       admin    = values(local.admin_secret_env_vars)
+      # In every product: passport evidence is uploaded everywhere, and
+      # every upload is scanned before it is served.
+      scan = values(local.scan_secret_env_vars)
     },
     local.is_teaching_product ? {
       transcode = values(local.transcode_secret_env_vars)
@@ -145,6 +153,16 @@ resource "google_storage_bucket_iam_member" "runtime_backend_passports" {
   bucket = module.passport_storage.bucket_name
   role   = "roles/storage.objectAdmin"
   member = "serviceAccount:${google_service_account.runtime["backend"].email}"
+}
+
+# The scan job reads the evidence it scans and nothing more. It never
+# deletes: the backend acts on the verdict with the objectAdmin grant
+# above, so a fault in the scanner cannot remove a file. See Phase 4 of
+# docs/docs/plans/2026-10-18-upload-safety-plan.md.
+resource "google_storage_bucket_iam_member" "runtime_scan_passports" {
+  bucket = module.passport_storage.bucket_name
+  role   = "roles/storage.objectViewer"
+  member = "serviceAccount:${google_service_account.runtime["scan"].email}"
 }
 
 # The teaching sync job runs as the admin identity and reads the banks the
@@ -215,6 +233,15 @@ resource "google_storage_bucket_iam_member" "runtime_transcode_video_source" {
   member = "serviceAccount:${google_service_account.runtime["transcode"].email}"
 }
 
+# The scan job reads a lecture master before the transcode is allowed to.
+resource "google_storage_bucket_iam_member" "runtime_scan_video_source" {
+  count = local.is_teaching_product ? 1 : 0
+
+  bucket = module.teaching_video_pipeline[0].source_bucket_name
+  role   = "roles/storage.objectViewer"
+  member = "serviceAccount:${google_service_account.runtime["scan"].email}"
+}
+
 # Transcode writes the renditions; caption reads the 720p one and writes the
 # WebVTT file beside it; the backend reads and saves that WebVTT file when an
 # admin reviews captions (read_caption_object and write_caption_object in
@@ -266,10 +293,15 @@ resource "google_service_account_iam_member" "runtime_backend_signs_as_itself" {
 # carry a great deal else besides. This role is the two permissions and
 # nothing more, which is what a serving application should hold.
 resource "google_cloud_run_v2_job_iam_member" "runtime_backend_invokes" {
-  for_each = local.is_teaching_product ? {
-    transcode = module.cloud_run_transcode_job[0].job_name
-    caption   = module.cloud_run_caption_job[0].job_name
-  } : {}
+  for_each = merge(
+    {
+      scan = module.cloud_run_scan_job.job_name
+    },
+    local.is_teaching_product ? {
+      transcode = module.cloud_run_transcode_job[0].job_name
+      caption   = module.cloud_run_caption_job[0].job_name
+    } : {}
+  )
 
   project  = var.project_id
   location = var.region
