@@ -1,6 +1,6 @@
 # Job callbacks off the internet plan
 
-<!-- cspell:ignore mgwc trs5t -->
+<!-- cspell:ignore cwhqt mgwc trs5t -->
 
 The transcode and caption jobs report back to the backend at
 `/api/ci/teaching/*-complete` over the public app domain, presenting a
@@ -214,9 +214,16 @@ shared secret, its Secret Manager entry and both job mounts go.
       removed `POST /api/ci/teaching/sync`, which the teaching
       pipeline calls from GitHub over the public domain until then.
 
-- [ ] Confirm from outside: `curl -i https://app.quill-medical.com/api/ci/teaching/transcode-complete`
+- [x] Confirm from outside: `curl -i https://app.quill-medical.com/api/ci/teaching/transcode-complete`
       answers 404 from Cloud Armor, and a transcode run afterwards still
-      records.
+      records. Done on 2026-10-19 after #2133 applied: from outside,
+      `/api/ci/teaching/transcode-complete` and
+      `/api/ci/uploads/scan-complete` both answer 404 and `/api/health`
+      still answers 200. No transcode could run (every master in the
+      source bucket had been transcoded and deleted), so the proof that
+      a job still reports over the VPC was a caption job instead:
+      `quill-caption-app-cwhqt` reported to the backend's `run.app`
+      address and was answered 200.
 
 ## Decisions
 
