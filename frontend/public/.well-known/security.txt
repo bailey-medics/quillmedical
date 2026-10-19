@@ -1,0 +1,6 @@
+# Quill Medical: how to report a security problem.
+# Format: RFC 9116, https://www.rfc-editor.org/rfc/rfc9116
+Contact: mailto:info@quill-medical.com
+Expires: 2027-10-19T00:00:00.000Z
+Preferred-Languages: en
+Canonical: https://app.quill-medical.com/.well-known/security.txt
