@@ -80,10 +80,23 @@ jobs:
       - name: Use the mirrored images where they exist
         run: bash .github/scripts/ci/use-mirrored-images.sh "${{ github.repository_owner }}" compose.ci.yml CI_POSTGRES_IMAGE CI_CADDY_IMAGE
 
+      # The Python and Node the images build on, from the mirror too. Amazon's
+      # public registry refused the Python image with "Data limit exceeded"
+      # on 19 October 2026, failing this workflow with no screen changed.
+      - name: Use the mirrored base images
+        id: base
+        run: bash .github/scripts/ci/use-mirrored-base-images.sh "${{ github.repository_owner }}" backend/Dockerfile frontend/Dockerfile
+
       # Built here, where ci.yml's end-to-end job pulls images it prebuilt
-      # for a pull request: on a push to main there are none to pull.
+      # for a pull request: on a push to main there are none to pull. A
+      # separate build, because `up --build` cannot be given build arguments.
+      - name: Build CI images
+        env:
+          BUILD_ARGS: ${{ steps.base.outputs.build_args }}
+        run: bash .github/scripts/guide-screenshots/build-ci-images.sh compose.ci.yml "$BUILD_ARGS"
+
       - name: Start CI stack
-        run: docker compose -f compose.ci.yml up --build --wait --wait-timeout 120
+        run: docker compose -f compose.ci.yml up --wait --wait-timeout 120
 
       - name: Run database migrations
         run: docker compose -f compose.ci.yml exec -T backend alembic upgrade head
