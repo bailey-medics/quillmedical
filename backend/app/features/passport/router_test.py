@@ -3131,6 +3131,29 @@ class TestEvidence:
         assert response.status_code == 400
         assert "does not look like" in response.text
 
+    def test_a_pdf_with_active_content_is_refused(
+        self, holder_client: TestClient
+    ) -> None:
+        """An assessor's browser opens the evidence, so a PDF that runs
+        script or launches a program is refused, naming the token."""
+        passport_id = _create_passport(holder_client)
+
+        response = self._upload(
+            holder_client,
+            passport_id,
+            content=b"\n".join(
+                [
+                    b"%PDF-1.4",
+                    b"1 0 obj",
+                    b"<< /OpenAction 2 0 R >>",
+                    b"endobj",
+                ]
+            ),
+        )
+
+        assert response.status_code == 400
+        assert "active content (/OpenAction)" in response.text
+
     def test_a_real_png_is_accepted(self, holder_client: TestClient) -> None:
         """The sniff must admit genuine files, not merely refuse fakes.
 
@@ -3263,6 +3286,12 @@ class TestEvidence:
         assert response.headers["content-type"] == "application/pdf"
         assert response.headers["content-disposition"] == "inline"
         assert response.headers["x-content-type-options"] == "nosniff"
+        # A PDF the upload scan missed runs with no access to this
+        # origin, and no other site may embed the bytes.
+        assert response.headers["content-security-policy"] == "sandbox"
+        assert (
+            response.headers["cross-origin-resource-policy"] == "same-origin"
+        )
         # The uploaded filename may name a patient, so it is never sent.
         assert "certificate.pdf" not in str(response.headers)
 

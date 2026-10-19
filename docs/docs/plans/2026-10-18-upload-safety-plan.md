@@ -19,7 +19,7 @@ Decisions.
 
 ## Phase 1: PDFs with active content are refused, and evidence is served sandboxed
 
-- [ ] Add `pdf_active_content(data: bytes) -> str | None` in a new
+- [x] Add `pdf_active_content(data: bytes) -> str | None` in a new
       `backend/app/features/passport/evidence.py`, returning the first
       offending token or None. It scans the bytes for the PDF name
       tokens that make a document do something rather than show
@@ -36,33 +36,41 @@ Decisions.
       holds. The scan catches the ordinary case and gives the holder a
       clear reason.
 
-- [ ] Call it from `upload_evidence`, after `_looks_like` and before
+- [x] Call it from `upload_evidence`, after `_looks_like` and before
       `blobs.put`, answering 400 with "That PDF contains active content
       (`/JavaScript`), which evidence may not" naming the token. The
       refusal is logged with the token and no filename, since a filename
       may carry a patient identifier.
 
-- [ ] Test it in `backend/app/features/passport/evidence_test.py`: a
+- [x] Test it in `backend/app/features/passport/evidence_test.py`: a
       minimal PDF passes; one with each token is refused and the message
       names the token; a token appearing inside a text string of a
       legitimate document is still refused (accepted as a false positive,
       because a certificate never needs the word `/Launch` in its text);
-      and a JPEG is never scanned, since the tokens are PDF names.
+      a longer name that merely starts the same way, such as
+      `/AAPL:Keywords` written by macOS, is not a match; and a JPEG is
+      never scanned, since the tokens are PDF names.
 
-- [ ] Add `Content-Security-Policy: sandbox` and
+- [x] Add `Content-Security-Policy: sandbox` and
       `Cross-Origin-Resource-Policy: same-origin` to the response from
       `get_certificate_attachment`, the one route that serves evidence
       bytes back. `sandbox` makes the document an opaque origin, so a
       PDF the scan missed cannot reach the app's cookies or API even when
-      the browser's viewer runs its script. Chrome, Firefox and Safari
-      all still display an image and a PDF inline under it; the step
-      checks that in a real browser against the dev stack before it is
-      marked done, because a header that blanks the certificate page
-      would be worse than the risk.
+      the browser's viewer runs its script.
 
-- [ ] Pin the headers in `backend/tests/passport_api_contract_test.py`
+- [ ] Check in a real browser, against the dev stack, that a certificate
+      page still shows a PDF and an image inline under the new headers.
+      Chrome, Firefox and Safari all document rendering under `sandbox`,
+      but a header that blanked the certificate page would be worse than
+      the risk, so this is confirmed by eye before the pull request
+      merges. Not done in the unattended run that built the step: the dev
+      stack lives in the main checkout and the run had no browser.
+
+- [x] Pin the headers in `backend/app/features/passport/router_test.py`
       beside the existing `nosniff` check, so a later refactor cannot
-      drop one silently.
+      drop one silently. (The plan first named
+      `backend/tests/passport_api_contract_test.py`; the `nosniff` check
+      turned out to live in the router's own test file.)
 
 ## Phase 2: Images are re-encoded at upload
 
