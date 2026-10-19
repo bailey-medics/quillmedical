@@ -22,7 +22,7 @@ Press **Next** to move on from each step.
 
 1. **Basic details.** Enter the full name, email, username and initial password. For **Base profession**, choose **Teaching clinical lead**.
    ![The basic details step, filled in for a clinical lead](create-a-clinical-lead/basic-details.png)
-2. **Organisation/site.** If their site has been added already, choose it under **Site**. If it has not been created, choose your organisation under **Organisation** instead. The account is not created unless you choose at least one.
+2. **Organisation/site.** If their site has been added already, choose it under **Site**. If it has not been created, choose your organisation under **Organisation** instead. You can only create a new user account if you choose one.
    ![The organisation and site step, with the organisation chosen](create-a-clinical-lead/organisation-site.png)
 3. **Competencies.** Leave both boxes empty.
 4. **Practice.** Leave the switches as they are. A clinical lead does not need them to be sent certificates.
