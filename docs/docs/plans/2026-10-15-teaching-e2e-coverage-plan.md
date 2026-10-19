@@ -1685,6 +1685,74 @@ holds the rest (`gh stack link <stack> <prs>`) worked.
       check fails. Six new bats tests; the two that say nothing was
       unstacked were checked to go red with the new path switched off.
 
+## Phase 21: The delegate's journeys on a phone
+
+Decided by Mark on 2026-10-19, before EoEETA goes live. A delegate is
+the person most likely to be on a phone: the registration invite arrives
+by email, and many will open it on their phone and carry on there. At a
+phone's width Quill is laid out differently, with the menu behind the
+hamburger, slides moved by swiping, tables stacked and button pairs full
+width, and the Chromium and WebKit projects test none of that: they run
+at desktop width. The `phone` project (a Pixel 7) runs only files named
+`*.phone.spec.ts`, and there is one, `edges/taking-a-module.phone.spec.ts`
+(Phase 9, story 7). Admin journeys stay at desktop width, where admin
+work is done: running them on a phone would add minutes to every CI run
+and test something nobody does.
+
+- [x] Trial run first, to know the cost before writing anything: run
+      `getting-in/`, `taking-a-module/` and `settings/` in the `phone`
+      project once, locally, with the project's `testMatch` widened for
+      the run only. Run on 2026-10-19: 42 passed as they are, 5 failed,
+      and 8 did not run because they follow a failure in a serial group.
+      No failure was a phone bug in the app; each was a test not
+      reaching something laid out differently at a phone's width:
+      - three read the slide list from the side panel
+        (`complementary`), which on a phone is in the menu drawer behind
+        the hamburger (`TeachingLayout`'s `drawerContent`);
+      - two counted three "Log in" links on the public site, where at a
+        phone's width the header's own is hidden and two show.
+
+      So the steps first written here change. Registering, signing in
+      with and without two-factor, the forgotten password and settings
+      already pass at a phone's width, so separate phone copies of them
+      would repeat tests that work. The phone project runs the
+      delegate's folders instead, and the five failures get a phone
+      path. Swiping is the one thing no test does, so it stays a new
+      spec.
+
+- [x] The phone project runs the delegate's folders: `getting-in/`,
+      `taking-a-module/` and `settings/`, as well as every
+      `*.phone.spec.ts`, in `playwright.config.ts`. A fixture,
+      `fixtures/phone.ts`, reaches what the width moves: `slideList`
+      hands back the slide list, the side panel at desktop width or the
+      menu drawer, opened first, on a phone; `closeSlideList` closes the
+      drawer with the hamburger, which reads "Close navigation" while it
+      is open (Escape does not close it); `atPhoneWidth` says which.
+      The public site test counts the "Log in" links the width shows:
+      three at desktop width, two on a phone.
+
+      Fixing the first failures let the rest of the serial groups run,
+      and two more tables turned out to be cards at a phone's width,
+      with no table role: results by question, in
+      `checkResultsByQuestion` (`fixtures/assessment.ts`), and the
+      dashboard's "My history". Each gets a phone path that checks the
+      same things: each answer given and a count of the outcome badges,
+      and a card per attempt by its "Result:" line, opened by tapping
+      it. 55 pass in the phone project, and the specs touched still pass
+      at desktop width. Once, with the whole phone project running at
+      the laptop's full width of workers, the existing
+      `edges/taking-a-module.phone.spec.ts` stalled on a click for its
+      whole two minutes; alone it passed three times out of three, and
+      CI runs two workers. If CI shows it again, that is the next
+      thing to look at.
+
+- [ ] Reading the slides by swiping, as
+      `taking-a-module/slides.phone.spec.ts`: swipe forward through
+      every slide and back one, and see each slide's heading.
+      `SlideReader` reads a touch starting and ending on the slide
+      area, so the swipe is those two events, dispatched with a touch
+      at a start and an end point, as a finger makes them.
+
 ## Decisions
 
 - **Refusals are checked at the API as well as on screen** - several

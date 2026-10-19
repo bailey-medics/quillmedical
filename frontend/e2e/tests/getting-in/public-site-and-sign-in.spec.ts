@@ -20,6 +20,7 @@ import {
   followIntoTheStack,
 } from "../../fixtures/publicSite";
 import { PLACES, freshUsername, signIn } from "../../fixtures/signIn";
+import { atPhoneWidth } from "../../fixtures/phone";
 
 /** The two people this phase is about, by the name each story uses. */
 const PEOPLE = [
@@ -89,9 +90,10 @@ test.describe("From the public site into the app", () => {
       await page.goto(`${PUBLIC_SITE}/optical-diagnosis-polyps`);
 
       // In the header, the menu and the page itself: every one goes to
-      // the live app. The page's own is followed.
+      // the live app. The page's own is followed. At a phone's width the
+      // header's own is hidden, and the menu and the page's show.
       const logIns = page.getByRole("link", { name: "Log in" });
-      await expect(logIns).toHaveCount(3);
+      await expect(logIns).toHaveCount(atPhoneWidth(page) ? 2 : 3);
       for (const link of await logIns.all()) {
         await expect(link).toHaveAttribute("href", LIVE_APP);
       }

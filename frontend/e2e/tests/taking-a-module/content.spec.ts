@@ -25,6 +25,7 @@ import { answerQuestion, startTheAssessment } from "../../fixtures/assessment";
 import { expectLoaded, knownSlides } from "../../fixtures/learning";
 import { makeLearner } from "../../fixtures/people";
 import { freshUsername, signIn } from "../../fixtures/signIn";
+import { slideList } from "../../fixtures/phone";
 
 test.describe.configure({ timeout: 300_000 });
 test.use({ storageState: { cookies: [], origins: [] } });
@@ -88,7 +89,7 @@ test("every slide shows its text, pictures and videos", async ({
   // The app splits the file into as many slides as this does: the side
   // list holds one entry for each, and "Exit lesson".
   await page.goto(`/teaching/learn/${MODULE_ID}/slide/0`);
-  await expect(page.getByRole("complementary").getByRole("button")).toHaveCount(
+  await expect((await slideList(page)).getByRole("button")).toHaveCount(
     slides.length + 1,
   );
 
