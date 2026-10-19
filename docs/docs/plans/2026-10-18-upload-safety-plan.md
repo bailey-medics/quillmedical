@@ -292,7 +292,7 @@ upload marked, so the person who uploaded it can see why it went.
 
 ### Unit 3: nothing is served until its scan says clean
 
-- [ ] Teaching: `link_upload` in `media_uploads.py` requests a scan of
+- [x] Teaching: `link_upload` in `media_uploads.py` requests a scan of
       the source object where a scan job is configured, and fires the
       transcode only where none is; the scan callback fires the
       transcode on `clean`, so the chain is upload, scan, transcode,
@@ -304,7 +304,7 @@ upload marked, so the person who uploaded it can see why it went.
       transcode never runs on a file that was not scanned clean, so
       `is_servable` needs no new branch.
 
-- [ ] Passport: `upload_evidence` requests a scan of the blob after
+- [x] Passport: `upload_evidence` requests a scan of the blob after
       `blobs.put` where a job is configured. `get_certificate_attachment`
       answers 409 "This file is still being checked" until the verdict
       is clean, and 410 "This file was removed: malware was found" on
@@ -312,14 +312,19 @@ upload marked, so the person who uploaded it can see why it went.
       `infected`, `failed`, or `clean` where no job is configured),
       additive, so the certificate page can say so rather than show a
       broken image. The export bundle and PDF include only attachments
-      whose verdict is clean.
+      whose verdict is clean. (As built: the PDF export never embedded
+      attachments, so only the bundle needed the filter; and where a
+      scan job is configured, a file with no scan row is treated as
+      pending rather than served, so nothing is handed out on the
+      strength of having been uploaded. No real users yet, so no
+      pre-scanning evidence is hidden by that.)
 
-- [ ] Frontend: `PassportCertificatePage` shows a short notice in place
+- [x] Frontend: `PassportCertificatePage` shows a short notice in place
       of `Document` for an attachment whose `scan_state` is not `clean`,
       using `StateMessage`. The admin media card needs no change: its
       label comes from `describe_progress`.
 
-- [ ] Tests: the teaching chain in `media_uploads_test.py` and
+- [x] Tests: the teaching chain in `media_uploads_test.py` and
       `ci_media_test.py` (scan requested at link, transcode fired by the
       clean verdict, not fired on infected); the passport gate in
       `router_test.py` (409 before, 200 after clean, 410 after infected,

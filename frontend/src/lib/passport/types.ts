@@ -148,6 +148,14 @@ export interface Attachment {
   filename: string;
   size_bytes: number;
   media_type: string;
+  /**
+   * Where the malware scan of this file has got to. Absent or `clean`
+   * means the file may be shown; `pending` means the job has not yet
+   * answered; `infected` means it was removed. The backend holds the
+   * bytes back for anything but `clean`, so this is what the page
+   * shows in their place.
+   */
+  scan_state?: "pending" | "clean" | "infected" | "failed";
 }
 
 /**

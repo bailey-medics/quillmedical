@@ -574,16 +574,8 @@ class GcsBlobStore:
         self._bucket = bucket
 
     def _name(self, passport_id: str, blob_digest: str) -> str:
-        """The object key for one blob.
-
-        Raises:
-            PassportPathError: If the passport id or the digest is
-                malformed. Both decide an object key, so both are
-                validated rather than trusted.
-        """
-        shard = paths.shard(passport_id)
-
-        return f"{PREFIX}/{shard}/{paths.blob(blob_digest)}"
+        """The object key for one blob. See :func:`blob_object_key`."""
+        return blob_object_key(passport_id, blob_digest)
 
     def exists(self, passport_id: str, blob_digest: str) -> bool:
         """Whether a blob is already stored."""
@@ -697,6 +689,23 @@ class GcsBlobStore:
         )
 
         return digest(self.get(passport_id, blob_digest)) == expected
+
+
+def blob_object_key(passport_id: str, blob_digest: str) -> str:
+    """The object key for one blob, as the store writes it.
+
+    A function of its own, not only the store's private method, because
+    the malware scan is asked for by this key and answered by it: the
+    scan job is told the key, and its verdict is recorded against it.
+
+    Raises:
+        PassportPathError: If the passport id or the digest is malformed.
+            Both decide an object key, so both are validated rather than
+            trusted.
+    """
+    shard = paths.shard(passport_id)
+
+    return f"{PREFIX}/{shard}/{paths.blob(blob_digest)}"
 
 
 def build_store(bucket_name: str, client: Any = None) -> GcsPassportStore:

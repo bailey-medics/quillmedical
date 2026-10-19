@@ -120,6 +120,65 @@ def record_transcode(
     return set_flags
 
 
+def after_scan(
+    db: Session, bucket: str, object_key: str, verdict: str
+) -> bool:
+    """What a scan verdict means for a teaching upload, if it is one.
+
+    Where a scan job is configured, ``link_upload`` asks for the scan
+    and leaves the transcode to this: a ``clean`` verdict on an object
+    in the source bucket fires the transcode, so FFmpeg never reads a
+    file that was not scanned clean. Any other verdict fires nothing,
+    and the card says why through ``describe_progress``.
+
+    Returns:
+        Whether the object was a teaching upload at all. False for any
+        other bucket, so the caller can hand the verdict on.
+    """
+    from app.config import settings
+
+    if not bucket or bucket != settings.TEACHING_VIDEOS_SOURCE_BUCKET:
+        return False
+
+    # The key the upload was stored under: ``{org}/{module}/{asset}``.
+    parts = object_key.split("/")
+
+    if len(parts) != 3 or not parts[0].isdigit():
+        logger.warning(
+            "scan verdict for an unrecognised teaching key bucket=%s key=%s",
+            bucket,
+            object_key,
+        )
+        return True
+
+    org_id, module_id, asset_id = int(parts[0]), parts[1], parts[2]
+
+    try:
+        link = _media_link(db, org_id, module_id, asset_id)
+    except MediaAssetNotFound:
+        # Deleted while the scan ran. Nothing to start, and the object
+        # the job scanned is swept by the lifecycle rule.
+        return True
+
+    if verdict != "clean":
+        return True
+
+    # Recorded before firing, as `link_upload` records it: a card that
+    # says nothing is running over a job that is would be the worse
+    # mistake of the two.
+    from app.features.teaching.media import transcode_is_configured
+
+    if transcode_is_configured():
+        link.transcode_started_at = datetime.now(UTC)
+        db.flush()
+
+    from app.features.teaching.transcode import start_transcode
+
+    start_transcode(link.org_unit_id, module_id, asset_id)
+
+    return True
+
+
 def record_captions(
     db: Session, org_id: int, module_id: str, asset_id: str
 ) -> None:

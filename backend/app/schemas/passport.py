@@ -156,6 +156,12 @@ class AttachmentOut(BaseModel):
     filename: NonEmptyText
     size_bytes: int = Field(ge=0)
     media_type: NonEmptyText
+    #: Where the malware scan of this file has got to. ``clean`` where
+    #: no scan job is configured, which is development; ``pending``
+    #: until the job answers; ``infected`` for a file that was removed.
+    #: The page shows a notice in place of a file that is not clean.
+    #: Optional, so the change is additive.
+    scan_state: Literal["pending", "clean", "infected", "failed"] = "clean"
 
 
 class AssessorOut(BaseModel):

@@ -243,3 +243,54 @@ class TestNaiveTimestamps:
         )
 
         assert p.in_progress is True
+
+
+class TestScan:
+    """The malware scan, which comes before the transcode where a scan
+    job is configured, so its states sit in the first stage."""
+
+    def test_pending_is_in_progress(self) -> None:
+        p = describe_progress(
+            _link(), now=NOW, scan="pending", scan_requested_at=NOW
+        )
+
+        assert p.stage == 1
+        assert p.label == "Checking the upload for malware"
+        assert p.in_progress is True
+        assert p.is_final is False
+
+    def test_pending_for_too_long_is_called_a_failure(self) -> None:
+        p = describe_progress(
+            _link(),
+            now=NOW,
+            scan="pending",
+            scan_requested_at=NOW - timedelta(minutes=16),
+        )
+
+        assert p.stalled is True
+        assert "seems to have failed" in p.label
+
+    def test_infected_ends_the_row_and_names_the_signature(self) -> None:
+        p = describe_progress(
+            _link(), now=NOW, scan="infected", scan_detail="Eicar-Signature"
+        )
+
+        assert p.label == "Upload refused: malware found (Eicar-Signature)"
+        assert p.stalled is True
+        assert p.is_final is True
+
+    def test_failed_ends_the_row_and_asks_for_the_file_again(self) -> None:
+        p = describe_progress(_link(), now=NOW, scan="failed")
+
+        assert p.label == "The malware check failed; upload the file again"
+        assert p.is_final is True
+
+    def test_the_scan_is_not_consulted_once_the_transcode_has_started(
+        self,
+    ) -> None:
+        """A transcode that started was fired by a clean verdict."""
+        p = describe_progress(
+            _link(transcode_started_at=NOW), now=NOW, scan="pending"
+        )
+
+        assert p.label == "Preparing the video"

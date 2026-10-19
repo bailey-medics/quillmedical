@@ -141,9 +141,11 @@ def scan_state_for(
     """
     row = _row(db, bucket, object_key)
 
-    if row is None:
-        return None
+    return None if row is None else state_of(row)
 
+
+def state_of(row: UploadScan) -> ScanState:
+    """One row, read as the state a feature acts on."""
     if row.verdict is None:
         return "pending"
 
@@ -154,6 +156,13 @@ def scan_state_for(
         return "infected"
 
     return "failed"
+
+
+def scan_row_for(
+    db: Session, bucket: str, object_key: str
+) -> UploadScan | None:
+    """The whole row, for a card that shows when a scan was asked for."""
+    return _row(db, bucket, object_key)
 
 
 def scan_signature_for(
