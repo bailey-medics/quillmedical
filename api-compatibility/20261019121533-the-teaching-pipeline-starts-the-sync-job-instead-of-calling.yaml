@@ -1,0 +1,4 @@
+generation: 1
+forces_reload: false
+change: "api-path-removed-without-deprecation POST /api/ci/teaching/sync api path removed without deprecation"
+reason: "The teaching pipeline starts the sync job instead of calling this route, and no browser ever did, so no open tab can be broken by its removal."

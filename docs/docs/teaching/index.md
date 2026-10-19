@@ -403,7 +403,6 @@ Set in `compose.dev.yml` for local development:
 | `TEACHING_QUESTION_BANK_PATH` | `/teaching-repos`      | Container path to question bank directories |
 | `TEACHING_IMAGES_BASE_URL`    | `/api/teaching/images` | Base URL for image serving                  |
 | `TEACHING_GCS_BUCKET`         | _(not set)_            | GCS bucket name (production only)           |
-| `TEACHING_SYNC_TOKEN`         | _(not set)_            | Auth token for CI sync endpoint             |
 
 ### Docker volume mount
 

@@ -53,7 +53,6 @@ locals {
       EHRBASE_API_ADMIN_PASSWORD = "ehrbase-admin-password"
     } : {},
     local.is_teaching_product ? {
-      TEACHING_SYNC_TOKEN        = "teaching-sync-token"
       TEACHING_VIDEO_SIGNING_KEY = "teaching-video-signing-key"
     } : {}
   )

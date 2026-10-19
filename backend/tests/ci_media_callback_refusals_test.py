@@ -164,28 +164,6 @@ def test_the_wrong_token_is_refused(
 
 
 @each_callback
-def test_the_sync_token_is_not_a_job_identity(
-    test_client: TestClient,
-    configured: None,
-    monkeypatch: pytest.MonkeyPatch,
-    endpoint: str,
-    body: dict[str, object],
-) -> None:
-    from pydantic import SecretStr
-
-    monkeypatch.setattr(
-        settings, "TEACHING_SYNC_TOKEN", SecretStr("the-sync-token")
-    )
-
-    resp = test_client.post(
-        endpoint, json=body, headers=_bearer("the-sync-token")
-    )
-
-    assert resp.status_code == 401
-    assert resp.json() == {"detail": "Invalid token"}
-
-
-@each_callback
 def test_an_upload_that_is_not_there_is_refused(
     test_client: TestClient,
     configured: None,
