@@ -9,6 +9,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { fn } from "storybook/test";
 import { Container } from "@mantine/core";
 import { ActiveStatusBadge } from "@/components/badge";
+import BaseCard from "@/components/base-card/BaseCard";
 import { StoryNote } from "@/stories/variants";
 import DataTable, { type Column } from "./DataTable";
 
@@ -190,6 +191,43 @@ export const LongText: Story = {
   },
 };
 // cspell:enable
+
+/**
+ * Narrow header in a card
+ *
+ * A table in a BaseCard inherits the card's "break anywhere" wrapping. A
+ * header in a column narrower than its words wraps between them and
+ * never inside one: the column grows to fit its longest word.
+ */
+export const NarrowHeaderInACard: Story = {
+  args: {
+    data: sampleUsers,
+    columns: [
+      {
+        header: "Username",
+        render: (user) => user.username,
+        accessor: (user) => user.username,
+      },
+      {
+        header: "Email",
+        render: (user) => user.email,
+        accessor: (user) => user.email,
+      },
+      {
+        header: "Authorised here",
+        width: "140px",
+        render: (user) => String(user.id),
+        accessor: (user) => user.id,
+      },
+    ],
+    getRowKey: (user) => user.id,
+  },
+  render: (args) => (
+    <BaseCard>
+      <DataTable {...args} />
+    </BaseCard>
+  ),
+};
 
 interface Admission {
   id: number;

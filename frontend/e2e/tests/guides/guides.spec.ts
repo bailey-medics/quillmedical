@@ -15,6 +15,7 @@ import { signIn } from "../../fixtures/signIn";
 
 const FOR_ADMINS = [
   "Add a delegate by hand",
+  "Create a clinical lead",
   "Add a site",
   "Deactivate a site",
   "Deactivate a user",

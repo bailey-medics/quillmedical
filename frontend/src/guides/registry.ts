@@ -76,6 +76,15 @@ export const GUIDES = [
     feature: "teaching",
   },
   {
+    slug: "create-a-clinical-lead",
+    title: "Create a clinical lead",
+    summary:
+      "Give a site's clinical lead an account, ready to be named when the site is added.",
+    audience: "admin",
+    public: false,
+    feature: "teaching",
+  },
+  {
     slug: "add-a-site",
     title: "Add a site",
     summary:
