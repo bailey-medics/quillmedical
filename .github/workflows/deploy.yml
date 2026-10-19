@@ -33,7 +33,12 @@ permissions:
 concurrency:
   # Fixed group (not keyed on github.ref) so a workflow_dispatch from a tag/hotfix
   # branch still serialises against a push-triggered deploy from main.
-  group: deploy
+  #
+  # Renamed from `deploy` on 2026-10-19: a run of that group stuck in
+  # `waiting` with nothing to approve, GitHub refused to cancel, reject or
+  # delete it, and every deploy queued behind it. A new name is a new
+  # queue; the old run can sit in its ghost state harmlessly.
+  group: deploy-app
   cancel-in-progress: false  # Never cancel a deploy in progress
 
 env:
