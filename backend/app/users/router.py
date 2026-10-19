@@ -19,6 +19,7 @@ from fastapi import (
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.cbac.grant_scope import may_deactivate_account
 from app.cbac.practising import competencies_at
 from app.config import settings
 from app.deps import (
@@ -571,6 +572,17 @@ def get_user(
             # practice at an org_unit they could not open.
             if reached is None or unit_id in reached
         ],
+        # Worked out here so the page greys the button out with its
+        # reason rather than offering one the API refuses. The same
+        # three checks ``deactivate_account`` makes after reach.
+        may_deactivate=(
+            user.id != current_user.id
+            and (
+                current_user.platform_role == "superadmin"
+                or user.platform_role != "superadmin"
+            )
+            and may_deactivate_account(current_user, user)
+        ),
         # For the form's Enrolment step, and only for somebody who runs
         # teaching: what they are enrolled on at each organisation they
         # belong to that the caller reaches.

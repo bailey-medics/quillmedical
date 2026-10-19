@@ -9,6 +9,7 @@ leak. See ``docs/docs/plans/2026-09-30-manage-teaching-competency-plan.md``.
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from typing import Any
 
 import pytest
@@ -16,7 +17,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 from app.cbac.grants import sync_competency_rows
-from app.models import OrgUnit, User
+from app.models import OrgUnit, User, UserCompetency
 from app.organisations import add_org_unit_member, get_member_org_unit_ids
 from app.security import hash_password
 
@@ -335,3 +336,123 @@ def test_a_user_manager_still_reaches_clinicians(
         json={"removed_competencies": ["prescribe_non_controlled"]},
     )
     assert resp.status_code == 200, resp.text
+
+
+def _passport(db: Session, user: User, source: str) -> None:
+    """Give *user* passport writing, through *source*: ``organisation``
+    for their organisation's cover, ``individual`` for one they pay for."""
+    user.competency_grants.append(
+        UserCompetency(
+            competency_id="passport_write",
+            starts_on=datetime(2026, 1, 1, tzinfo=UTC),
+            ends_on=None,
+            source=source,
+        )
+    )
+    db.commit()
+
+
+class TestOrganisationCover:
+    """Passport writing that comes with the organisation does not keep a
+    teaching admin from closing or reopening a delegate's account.
+
+    Decided by Mark on 2026-10-19. A passport the delegate pays for
+    themselves still does, and so does every other act on the account:
+    a new password or an invite would let the teaching admin sign in as
+    the delegate and write in their passport.
+    """
+
+    def test_deactivate_a_delegate_covered_by_their_organisation(
+        self, client: TestClient, delegate: User, db_session: Session
+    ) -> None:
+        _passport(db_session, delegate, "organisation")
+
+        resp = client.post(f"/api/users/{delegate.id}/deactivate")
+
+        assert resp.status_code == 200, resp.text
+
+    def test_reactivate_a_delegate_covered_by_their_organisation(
+        self, client: TestClient, delegate: User, db_session: Session
+    ) -> None:
+        _passport(db_session, delegate, "organisation")
+        delegate.is_active = False
+        db_session.commit()
+
+        resp = client.post(f"/api/users/{delegate.id}/reactivate")
+
+        assert resp.status_code == 200, resp.text
+
+    @pytest.mark.parametrize(
+        "sources",
+        [["individual"], ["organisation", "individual"]],
+        ids=["paid-for-themselves", "covered-and-paid-for"],
+    )
+    def test_not_a_delegate_who_pays_for_their_own_passport(
+        self,
+        client: TestClient,
+        delegate: User,
+        db_session: Session,
+        sources: list[str],
+    ) -> None:
+        for source in sources:
+            _passport(db_session, delegate, source)
+
+        resp = client.post(f"/api/users/{delegate.id}/deactivate")
+
+        assert resp.status_code == 403
+
+    def test_cover_still_keeps_them_from_sending_an_invite(
+        self, client: TestClient, delegate: User, db_session: Session
+    ) -> None:
+        _passport(db_session, delegate, "organisation")
+
+        resp = client.post(f"/api/users/{delegate.id}/send-invite")
+
+        assert resp.status_code == 403
+
+    def test_cover_still_keeps_them_from_changing_the_email(
+        self, client: TestClient, delegate: User, db_session: Session
+    ) -> None:
+        _passport(db_session, delegate, "organisation")
+
+        resp = client.patch(
+            f"/api/users/{delegate.id}", json={"email": "new@example.test"}
+        )
+
+        assert resp.status_code == 403
+
+
+class TestMayDeactivate:
+    """The user's details say whether the caller may close the account,
+    so the page can grey the button out with its reason."""
+
+    def _may(self, client: TestClient, user: User) -> bool:
+        resp = client.get(f"/api/users/{user.id}")
+        assert resp.status_code == 200, resp.text
+
+        return bool(resp.json()["may_deactivate"])
+
+    def test_a_delegate(self, client: TestClient, delegate: User) -> None:
+        assert self._may(client, delegate) is True
+
+    def test_a_delegate_covered_by_their_organisation(
+        self, client: TestClient, delegate: User, db_session: Session
+    ) -> None:
+        _passport(db_session, delegate, "organisation")
+
+        assert self._may(client, delegate) is True
+
+    def test_a_delegate_who_pays_for_their_own_passport(
+        self, client: TestClient, delegate: User, db_session: Session
+    ) -> None:
+        _passport(db_session, delegate, "individual")
+
+        assert self._may(client, delegate) is False
+
+    def test_a_clinician(self, client: TestClient, consultant: User) -> None:
+        assert self._may(client, consultant) is False
+
+    def test_their_own_account(
+        self, client: TestClient, coordinator: User
+    ) -> None:
+        assert self._may(client, coordinator) is False

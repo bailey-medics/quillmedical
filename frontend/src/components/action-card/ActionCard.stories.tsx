@@ -65,6 +65,26 @@ export const Destructive: Story = {
 };
 
 /**
+ * Disabled, with the reason
+ *
+ * A button greyed out with nothing said reads as broken, so the reason
+ * sits beneath it, as on a user's page where the viewer may not
+ * deactivate the account.
+ */
+export const DisabledWithReason: Story = {
+  args: {
+    icon: <IconUserPlus />,
+    title: "Deactivate user",
+    subtitle: "Disable this user account",
+    buttonLabel: "Deactivate",
+    onClick: () => undefined,
+    disabled: true,
+    disabledReason:
+      "This account holds access you cannot grant, such as a clinician passport the person pays for themselves, so you cannot deactivate or reactivate it.",
+  },
+};
+
+/**
  * Without subtitle
  *
  * The title and the action say enough, as on the passport specialty card,

@@ -58,6 +58,38 @@ describe("ActionCard", () => {
       ).toContain("var(--alert-color)");
     });
 
+    it("says why its button is disabled, beneath it", () => {
+      renderWithRouter(
+        <ActionCard
+          title="Deactivate user"
+          buttonLabel="Deactivate"
+          onClick={() => undefined}
+          disabled
+          disabledReason="You cannot deactivate your own account."
+        />,
+      );
+
+      expect(screen.getByRole("button", { name: "Deactivate" })).toBeDisabled();
+      expect(
+        screen.getByText("You cannot deactivate your own account."),
+      ).toBeInTheDocument();
+    });
+
+    it("keeps the reason hidden while the button works", () => {
+      renderWithRouter(
+        <ActionCard
+          title="Deactivate user"
+          buttonLabel="Deactivate"
+          onClick={() => undefined}
+          disabledReason="You cannot deactivate your own account."
+        />,
+      );
+
+      expect(
+        screen.queryByText("You cannot deactivate your own account."),
+      ).not.toBeInTheDocument();
+    });
+
     it("renders icon", () => {
       renderWithRouter(<ActionCard {...defaultProps} />);
       expect(screen.getByTestId("test-icon")).toBeInTheDocument();

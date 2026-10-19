@@ -47,6 +47,29 @@ interface UserDetails {
   removed_competencies: string[];
   platform_role: "superadmin" | "standard";
   is_active: boolean;
+  /**
+   * Whether the viewer may deactivate or reactivate this account. Absent
+   * from a backend older than the field, and then the button stays as it
+   * was and the API has the last word.
+   */
+  may_deactivate?: boolean;
+}
+
+/**
+ * Why the viewer may not deactivate or reactivate *user*, shown under the
+ * greyed-out button, or undefined where they may.
+ */
+function deactivateRefusal(
+  user: UserDetails,
+  viewerUsername: string | undefined,
+): string | undefined {
+  if (user.may_deactivate !== false) return undefined;
+
+  if (user.username === viewerUsername) {
+    return "You cannot deactivate your own account.";
+  }
+
+  return "This account holds access you cannot grant, such as a clinician passport the person pays for themselves, so you cannot deactivate or reactivate it.";
 }
 
 /**
@@ -73,6 +96,8 @@ export default function UserAdminPage() {
   const viewerIsOperator =
     state.status === "authenticated" &&
     state.user.platform_role === "superadmin";
+  const viewerUsername =
+    state.status === "authenticated" ? state.user.username : undefined;
 
   useEffect(() => {
     async function fetchUserData() {
@@ -261,6 +286,8 @@ export default function UserAdminPage() {
                   : "Re-enable this user account"
               }
               buttonLabel={user.is_active ? "Deactivate" : "Reactivate"}
+              disabled={user.may_deactivate === false}
+              disabledReason={deactivateRefusal(user, viewerUsername)}
             />
           </SimpleGrid>
         </Stack>

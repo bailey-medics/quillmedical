@@ -12,6 +12,7 @@ routes keep their org unit checks beside them.
 
 from app.cbac.grant_scope import (
     may_assign_profession,
+    may_deactivate_account,
     may_manage_account,
     out_of_scope_competencies,
     scope_for,
@@ -84,6 +85,24 @@ def check_account_in_scope(actor: User, target: User) -> None:
         AccountOutOfScope: If the account is outside their scope.
     """
     if not may_manage_account(actor, target):
+        raise AccountOutOfScope()
+
+
+def check_account_in_deactivation_scope(actor: User, target: User) -> None:
+    """Refuse a deactivation or reactivation the caller may not make.
+
+    As ``check_account_in_scope``, except that a competency held only
+    through organisation cover is not counted: see
+    ``may_deactivate_account``.
+
+    Args:
+        actor: The caller.
+        target: The person whose account would be closed or reopened.
+
+    Raises:
+        AccountOutOfScope: If the account is outside their scope.
+    """
+    if not may_deactivate_account(actor, target):
         raise AccountOutOfScope()
 
 
