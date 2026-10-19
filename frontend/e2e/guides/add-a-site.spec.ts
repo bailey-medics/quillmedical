@@ -16,7 +16,13 @@ test("add a site", async ({ page }) => {
   await expect(
     page.getByRole("heading", { level: 1, name: "Sites" }),
   ).toBeVisible();
-  await expect(page.getByRole("row").nth(1)).toBeVisible();
+  // A seeded site's row, not any row: the loading skeleton is drawn as
+  // rows too, and would be photographed in place of the list. The button
+  // is the one the guide points at.
+  await expect(
+    page.getByRole("row", { name: new RegExp(SEEDED.site) }),
+  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "Add site" })).toBeVisible();
   await shot(page, "add-a-site/sites");
 
   await page.getByRole("button", { name: "Add site" }).click();

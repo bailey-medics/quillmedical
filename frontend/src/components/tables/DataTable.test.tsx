@@ -15,6 +15,7 @@ import userEvent from "@testing-library/user-event";
 import { renderWithMantine } from "@test/test-utils";
 import { Badge } from "@mantine/core";
 import DataTable, { type Column } from "./DataTable";
+import classes from "./DataTable.module.css";
 
 interface TestUser {
   id: number;
@@ -331,6 +332,29 @@ describe("DataTable", () => {
 
       const headers = screen.getAllByRole("columnheader");
       expect(headers[0]).toHaveStyle({ width: "200px" });
+    });
+
+    it("keeps every header from breaking inside a word, sortable or not", () => {
+      const users: TestUser[] = [
+        { id: 1, name: "Alice", email: "alice@example.com" },
+      ];
+      const columns: Column<TestUser>[] = [
+        {
+          header: "Authorised here",
+          render: (u) => u.name,
+          accessor: (u) => u.name,
+          width: "140px",
+        },
+        { header: "Email", render: (u) => u.email },
+      ];
+
+      renderWithMantine(
+        <DataTable data={users} columns={columns} getRowKey={(u) => u.id} />,
+      );
+
+      const headers = screen.getAllByRole("columnheader");
+      expect(headers).toHaveLength(2);
+      headers.forEach((header) => expect(header).toHaveClass(classes.header));
     });
   });
 

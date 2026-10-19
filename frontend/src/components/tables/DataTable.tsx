@@ -336,7 +336,11 @@ function DataTableView<T>({
           <Table.Thead>
             <Table.Tr>
               {columns.map((column, index) => (
-                <Table.Th key={index} style={{ width: column.width }}>
+                <Table.Th
+                  key={index}
+                  className={classes.header}
+                  style={{ width: column.width }}
+                >
                   <BodyTextBold>{column.header}</BodyTextBold>
                 </Table.Th>
               ))}
@@ -430,7 +434,11 @@ function DataTableView<T>({
         <Table.Thead>
           <Table.Tr>
             {columns.map((column, index) => (
-              <Table.Th key={index} style={{ width: column.width }}>
+              <Table.Th
+                key={index}
+                className={classes.header}
+                style={{ width: column.width }}
+              >
                 {column.accessor ? (
                   <SortHeader
                     label={column.header}

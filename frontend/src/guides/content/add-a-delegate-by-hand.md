@@ -1,21 +1,20 @@
 # Add a delegate by hand
 
-Most delegates [register themselves](/guides/join-a-course). Use this guide for somebody who
-cannot, or whose account you would rather set up for them.
+Teaching delegates should normally join using the [registration pages](/guides/join-a-course). Only use the guide below if the teaching delegate is having issues with registering, or you need to manually add them for other reasons.
 
 ## Before you start
 
 Have these to hand:
 
-- the delegate's full name and email address
-- a username for them
-- a first password of at least 8 characters
-- the site they belong to
+- the delegate's **full name** and **email address**
+- a **username** for them
+- a first **password** of at least 8 characters
+- the **site** they belong to
 
 ## Open the new user form
 
-1. In the side menu, choose [**Admin**](/admin), then [**Users**](/admin/users).
-2. Press the **Add user** button, beside the search box above the list. It is an icon with no words.
+1. In the side menu, choose [**Admin**](/admin) and then [**Users**](/admin/users).
+2. Press the **Add user** button. This can be found in the icon row above the user's table. It is a icon of a person with the plus symbol. Hint: hover over an icon to see it's action.
    ![The list of users, with the Add user button above it](add-a-delegate-by-hand/users.png)
 3. The [**Create new user**](/admin/users/new) page opens.
 
@@ -25,10 +24,11 @@ Press **Next** to move on from each step.
 
 1. **Basic details.** Enter the full name, email, username and initial password. For **Base profession**, choose **Teaching delegate**.
    ![The basic details step, filled in for a teaching delegate](add-a-delegate-by-hand/basic-details.png)
-2. **Organisation/site.** Under **Site**, choose the delegate's site. The page calls this optional, but the account is not created unless you choose at least one site or organisation.
+2. **Organisation/site.** Under **Site**, choose the delegate's site. Important: there is no need to chose an organisation for a teaching delegate. The page calls this optional, but the account is not created unless you choose at least one site or organisation.
    ![The organisation and site step](add-a-delegate-by-hand/organisation-site.png)
-3. **Competencies.** Leave both boxes empty. The profession already gives a delegate what they need.
-4. **Practice.** Leave the switches as they are.
+3. **Competencies.** Leave both boxes empty. The base profession already gives a delegate what they need.
+4. **Practice.** Under the delegate's site, switch on **Take Teaching Modules** and **View Own Teaching Results**.
+   ![The practice step, with both switches on for the delegate's site](add-a-delegate-by-hand/practice.png)
 5. **Enrolment.** Tick each module the delegate is to take. An end date is optional: leave it empty and the enrolment has no end.
    ![The enrolment step, with a module ticked](add-a-delegate-by-hand/enrolment.png)
 6. **Review.** Check the details, including the modules under **Enrolment**, then press **Create user**.
@@ -41,21 +41,13 @@ You are taken back to the list of users, with the message **User created**.
 Quill does not email a new delegate by itself. Do one of these:
 
 - Give them the username and the initial password yourself.
-- Send an invite. In [**Users**](/admin/users), choose the delegate, then under **Actions** press **Send** on the **Send invite email** card. They are emailed a link to set up their own password.
+- Send an invite. In [**Users**](/admin/users), choose the delegate, then under **Actions** press **Send** on the **Send invite email** card. They are emailed a link to set up their own password. The link only lasts 30 mins however.
 
-Once signed in, the delegate sees the modules you ticked.
-
-## Add a module later
-
-1. Choose [**Admin**](/admin), then [**Sites**](/admin/sites), and open the delegate's site.
-2. Choose the delegate from the list of staff.
-3. Tick the module, then press **Save enrolment**.
-
-## If the account is not created
+## Problem solving
 
 The message **User not created** appears on the **Review** step, with the
 reason.
 
 - **Choose at least one organisation or site.** Press **Back** until you reach step 2, and choose the delegate's site.
 - **Username already exists.** Choose a different username.
-- **Email already exists.** They already have a Quill account. Add them to the site as staff instead: choose [**Admin**](/admin), then [**Sites**](/admin/sites), open the site and press **Add staff**.
+- **Email already exists.** They already have a Quill account. Add them to the site as staff instead: choose [**Admin**](/admin), then [**Sites**](/admin/sites), open the site and under **Site specific staff members** press the **Add staff** icon.

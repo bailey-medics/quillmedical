@@ -6,9 +6,8 @@ A site is a place inside your organisation where delegates are based, such as a 
 
 Have these to hand:
 
-- the site's name
-- its address, if you want it shown
-- who its clinical lead is, if they already have an account
+- the **site's name**
+- who its **clinical lead** is. They need an account before you can choose them, so if they do not have one yet, [create a clinical lead](/guides/create-a-clinical-lead) first.
 
 ## Add the site
 

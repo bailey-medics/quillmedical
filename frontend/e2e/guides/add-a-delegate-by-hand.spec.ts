@@ -19,7 +19,11 @@ test("add a delegate by hand", async ({ page }) => {
   await expect(
     page.getByRole("heading", { level: 1, name: "Users" }),
   ).toBeVisible();
-  await expect(page.getByRole("row").nth(1)).toBeVisible();
+  // A seeded person's row, not any row: the loading skeleton is drawn as
+  // rows too, and would be photographed in place of the list.
+  await expect(
+    page.getByRole("row", { name: new RegExp(PEOPLE.teachingAdmin) }),
+  ).toBeVisible();
   await shot(page, "add-a-delegate-by-hand/users");
 
   await page.getByRole("button", { name: "Add user" }).click();
@@ -53,10 +57,28 @@ test("add a delegate by hand", async ({ page }) => {
   ).toBeVisible();
   await next.click();
 
-  // Practice: left as it is.
+  // Practice: both learner competencies switched on at the site. Saving
+  // a ticked module would do it anyway, but the guide shows the admin
+  // what should be on.
   await expect(
     page.getByRole("heading", { name: SEEDED.site, level: 2 }),
   ).toBeVisible();
+
+  for (const competency of [
+    "Take Teaching Modules",
+    "View Own Teaching Results",
+  ]) {
+    const toggle = page.getByRole("switch", {
+      name: `${competency} at ${SEEDED.site}: may practise here`,
+    });
+    // The switch's input is visually hidden, so click its track.
+    await page
+      .locator(`label[for="${await toggle.getAttribute("id")}"]`)
+      .click();
+    await expect(toggle).toBeChecked();
+  }
+
+  await shot(page, "add-a-delegate-by-hand/practice");
   await next.click();
 
   // Enrolment: the first module the organisation serves.
