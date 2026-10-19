@@ -51,6 +51,12 @@ from tests.competencies import join_for_teaching as add_org_unit_member
 # ------------------------------------------------------------------
 
 
+#: The first bytes of an MP4 (a four-byte box length, then ``ftyp``) and
+#: of a WebM (the EBML header), as the local upload route checks them.
+MP4_HEAD = b"\x00\x00\x00\x18ftypmp42"
+WEBM_HEAD = b"\x1a\x45\xdf\xa3"
+
+
 def _make_teaching_org(db: Session) -> OrgUnit:
     """Create an org with the teaching feature enabled."""
     org = OrgUnit(name="Teaching Org", type="hospital_team")
@@ -4217,14 +4223,14 @@ class TestLocalMediaUpload:
 
         resp = test_client.put(
             self._url(),
-            content=b"fake mp4 bytes",
+            content=MP4_HEAD + b" fake mp4 bytes",
             headers={
                 **self._login(test_client),
                 "Content-Type": "video/mp4",
             },
         )
 
-        assert resp.status_code == 204
+        assert resp.status_code == 204, resp.text
         written = (
             tmp_path
             / "content-repo"
@@ -4233,7 +4239,34 @@ class TestLocalMediaUpload:
             / "learning"
             / "abc123.mp4"
         )
-        assert written.read_bytes() == b"fake mp4 bytes"
+        assert written.read_bytes() == MP4_HEAD + b" fake mp4 bytes"
+
+    def test_bytes_that_are_not_the_declared_video_are_refused(
+        self, test_client, db_session, monkeypatch, tmp_path
+    ):
+        """The header says what the caller claims; the first bytes say
+        what the file is. Nothing is left on disk."""
+        org = _make_teaching_org(db_session)
+        _make_educator(db_session, org)
+        db_session.commit()
+        base = self._module_on_disk(tmp_path)
+        self._use_local(monkeypatch, base)
+
+        resp = test_client.put(
+            self._url(),
+            content=b"<html>not a video</html>",
+            headers={
+                **self._login(test_client),
+                "Content-Type": "video/mp4",
+            },
+        )
+
+        assert resp.status_code == 400
+        assert "does not look like video/mp4" in resp.text
+        learning = (
+            tmp_path / "content-repo" / "modules" / "test-bank" / "learning"
+        )
+        assert not (learning / "abc123.mp4").exists()
 
     def test_the_extension_follows_the_content_type(
         self, test_client, db_session, monkeypatch, tmp_path
@@ -4248,7 +4281,7 @@ class TestLocalMediaUpload:
 
         test_client.put(
             self._url(),
-            content=b"x",
+            content=WEBM_HEAD + b"x",
             headers={
                 **self._login(test_client),
                 "Content-Type": "video/webm",
@@ -4283,7 +4316,7 @@ class TestLocalMediaUpload:
 
         def _die_after_one_chunk(self):
             async def _stream():
-                yield b"the first part of a lecture"
+                yield MP4_HEAD + b" the first part of a lecture"
                 raise ConnectionError("the tab was closed")
 
             return _stream()

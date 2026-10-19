@@ -783,6 +783,28 @@ def local_upload_file(
     return learning_dir / f"{asset_id}{_suffix_for(content_type)}"
 
 
+def looks_like_video(head: bytes, content_type: str) -> bool:
+    """Whether the first bytes of an upload begin the way its declared
+    type says they should.
+
+    The local development route is the only place the backend sees a
+    video's bytes, so it is the only place it can check them; in
+    production the job does the same with FFprobe. A short table rather
+    than a library, as the passport's ``_looks_like`` is: two
+    signatures that have not changed in decades.
+
+    MP4 and QuickTime are both ISO base media files, a four-byte length
+    then ``ftyp``. WebM is Matroska, which opens with the EBML header.
+    """
+    if content_type in ("video/mp4", "video/quicktime"):
+        return head[4:8] == b"ftyp"
+
+    if content_type == "video/webm":
+        return head.startswith(b"\x1a\x45\xdf\xa3")
+
+    return False
+
+
 def _suffix_for(content_type: str) -> str:
     """The file suffix an upload of one type is stored with.
 

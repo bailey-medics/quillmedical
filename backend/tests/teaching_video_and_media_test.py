@@ -766,6 +766,19 @@ def test_a_module_the_callers_trust_does_not_hold_can_be_linked_to(
 # --- PUT /admin/modules/{module_id}/media/{asset_id}/content ----------------
 
 
+#: What an upload's bytes begin with, as the route checks them: a
+#: four-byte box length then ``ftyp`` for an MP4, the EBML header for a
+#: WebM. Anything else is sent as it is, so the type check is what
+#: refuses it.
+_HEADS = {
+    "video/mp4": b"\x00\x00\x00\x18ftypmp42",
+    "video/quicktime": b"\x00\x00\x00\x14ftypqt  ",
+    "video/webm": b"\x1a\x45\xdf\xa3",
+}
+
+VIDEO_BYTES = _HEADS["video/mp4"] + b"video"
+
+
 def _send(
     client: TestClient,
     headers: dict[str, str],
@@ -776,7 +789,7 @@ def _send(
 ) -> tuple[int, object]:
     resp = client.put(
         f"/api/teaching/admin/modules/{module_id}/media/{asset_id}/content",
-        content=b"video",
+        content=_HEADS.get(content_type, b"") + b"video",
         headers={**headers, "Content-Type": content_type},
     )
 
@@ -795,7 +808,7 @@ def test_bytes_sent_through_the_application_land_in_the_modules_folder(
     _content_path(monkeypatch, str(tmp_path))
 
     assert _send(test_client, _login(test_client, admin)) == (204, None)
-    assert (module / "learning" / "abc123.mp4").read_bytes() == b"video"
+    assert (module / "learning" / "abc123.mp4").read_bytes() == VIDEO_BYTES
 
 
 def test_bytes_are_not_taken_through_the_application_beside_a_bucket(

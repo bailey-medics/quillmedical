@@ -87,6 +87,7 @@ from app.features.teaching.media_uploads import (
     link_upload,
     local_upload_file,
     local_upload_root,
+    looks_like_video,
     new_upload_target,
     save_captions,
     set_poster_frame,
@@ -2608,8 +2609,21 @@ async def upload_media_content_locally(
     try:
         with destination.open("wb") as handle:
             async for chunk in request.stream():
+                # The first bytes say what the file is; the header only
+                # says what the caller claims. Refused at the door, as
+                # the job refuses it in production.
+                if written == 0 and chunk:
+                    if not looks_like_video(chunk, content_type):
+                        raise HTTPException(
+                            400,
+                            f"That file does not look like {content_type}",
+                        )
+
                 written += len(chunk)
                 handle.write(chunk)
+    except HTTPException:
+        destination.unlink(missing_ok=True)
+        raise
     except Exception:
         destination.unlink(missing_ok=True)
         logger.warning(
