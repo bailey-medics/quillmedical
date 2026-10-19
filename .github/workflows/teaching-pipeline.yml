@@ -62,7 +62,9 @@ jobs:
   validate:
     if: github.event_name == 'pull_request' || (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/feature/'))
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    # Fifteen rather than ten since the malware scan was added: installing
+    # ClamAV and fetching its definitions takes a minute or two.
+    timeout-minutes: 15
     permissions:
       contents: read
     steps:
@@ -98,6 +100,7 @@ jobs:
           sparse-checkout: |
             backend/app/features/teaching/tooling
             .github/scripts/shared
+            .github/scripts/teaching-pipeline
 
       # Quill's .github/actions/setup-python is not usable here: its paths
       # assume Quill is the workspace root, which in a reusable workflow is
@@ -154,6 +157,27 @@ jobs:
           PYTHONPATH: ${{ github.workspace }}/tooling/backend
         run: |
           python -m app.features.teaching.tooling.cli modules/ --ref origin/main
+
+      # Every file here is served to learners from the teaching bucket, so
+      # it is scanned for malware before it can get there, as every file
+      # uploaded through the app is. Here, in the required check, because
+      # the tree that reaches main is the one this job checked; the deploy
+      # job relies on that and does not re-validate. The images are the
+      # real bytes, since the checkout above fetches LFS.
+      #
+      # ClamAV from the runner's own Ubuntu archive, so there is no image
+      # to mirror. Ubuntu starts a freshclam service on install, which
+      # holds the database lock; it is stopped so the refresh below can
+      # run, and the refresh is retried once, as the pip installs are.
+      - name: Install ClamAV
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q --no-install-recommends clamav clamav-freshclam
+          sudo systemctl stop clamav-freshclam || true
+          sudo bash "${GITHUB_WORKSPACE}/tooling/.github/scripts/shared/retry-once.sh" freshclam --quiet
+
+      - name: Scan the content for malware
+        run: bash tooling/.github/scripts/teaching-pipeline/scan-content.sh question_bank_content/modules
 
   # -------------------------------------------------------------------
   # Verify branch protection is configured (catches missing Terraform)
