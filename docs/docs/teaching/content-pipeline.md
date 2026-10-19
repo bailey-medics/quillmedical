@@ -54,14 +54,17 @@ this repository. The pipeline picks its job from the event that triggered it.
       `modules/<bank_id>/` in the images bucket, with `rsync --delete`, so
       the bucket has the repository's shape and a file removed from the
       repository is removed from the bucket.
-    - It then calls `POST /api/ci/teaching/sync` on the backend, with a
-      bearer token.
+    - `run-sync-job.sh` then starts the backend's `quill-teaching-sync-app`
+      Cloud Run job and waits for it. The pipeline's service account may
+      start that one job and read its executions, and nothing else, so no
+      token passes through GitHub.
 
-4. **The backend imports.** The endpoint checks the token against
-   `TEACHING_SYNC_TOKEN`, lists the banks in the bucket and runs
-   `sync_question_bank` for each, which validates again before importing.
-   If any bank is rejected the endpoint returns 422 with the rejected banks
-   named, so the deploy fails instead of reporting success.
+4. **The backend imports.** The job runs the admin image's
+   `sync-teaching` action, which lists the banks in the bucket and runs
+   `sync_question_bank` for each, validating again before importing. If
+   any bank is rejected the job prints each one with its reason and exits
+   non-zero, so the deploy fails instead of reporting success, and the
+   Slack notice links the execution's log.
 
 5. **Learners get the newest version.** At the end of every sync
    `_serve_newest_version` points each organisation at the newest version
@@ -172,14 +175,12 @@ No file lists these together.
    [environment isolation plan](../plans/2026-09-18-environment-isolation-and-iap-plan.md).
 
 5. **Set the secrets on the new repository.** `teaching-pipeline.yml` reads
-   five:
+   three:
 
     - `GCP_WORKLOAD_IDENTITY_PROVIDER`
-    - `GCP_SERVICE_ACCOUNT`
+    - `GCP_SERVICE_ACCOUNT`, whose email also names the project the sync
+      job is started in
     - `GCP_TEACHING_GCS_BUCKET`
-    - `BACKEND_SYNC_URL`
-    - `BACKEND_SYNC_TOKEN`, the same value as the backend's
-      `teaching-sync-token` secret
 
     The failure notice also needs `SLACK_WEBHOOK_URL`.
 

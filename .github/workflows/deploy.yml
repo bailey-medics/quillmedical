@@ -330,6 +330,19 @@ jobs:
             --region=${{ env.GCP_REGION }} \
             --image=${{ env.AR_REGISTRY }}/${{ secrets[format('GCP_{0}_PROJECT_ID', matrix.environment)] }}/quill/scan:${{ needs.prepare.outputs.sha }}
 
+      # The teaching sync job runs the admin image with ADMIN_ACTION fixed
+      # to sync-teaching, started by the content pipeline. The admin job's
+      # own image is set by run-migrations.sh above; this one has no such
+      # step of its own, so without this it would keep running whatever
+      # image it was last given.
+      - name: Point the teaching sync job at this build
+        if: ${{ needs.prepare.outputs.backend_changed == 'true' || steps.placeholder.outputs.backend == 'true' }}
+        run: |
+          gcloud run jobs update quill-teaching-sync-${{ matrix.environment }} \
+            --project=${{ secrets[format('GCP_{0}_PROJECT_ID', matrix.environment)] }} \
+            --region=${{ env.GCP_REGION }} \
+            --image=${{ env.AR_REGISTRY }}/${{ secrets[format('GCP_{0}_PROJECT_ID', matrix.environment)] }}/quill/admin:${{ needs.prepare.outputs.sha }}
+
       # The smoke test runs inside the admin job rather than from this
       # runner, because a tagged revision's *.run.app URL is only reachable
       # from the VPC once the backend's ingress is closed. Unset, the

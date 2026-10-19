@@ -1,5 +1,7 @@
 # Direct VPC egress plan
 
+<!-- cspell:ignore 68rdt cs745 rhbnw rzdwb trs5t wqsfp -->
+
 Every Cloud Run workload that reaches the private network does so through
 a Serverless VPC Access connector: two or three `e2-micro` relay machines
 that run all day and carry every byte at about 200 Mbps each. Since the
@@ -78,9 +80,18 @@ keeps the whole series in one view.
       a job that cannot reach the network fails one execution, visibly,
       and nothing else notices.
 
-- [ ] Run one transcode and one caption job in App production after the
+- [x] Run one transcode and one caption job in App production after the
       apply, and confirm both reports land and the encode is faster
-      than the last one on the connector. Google warns an instance may
+      than the last one on the connector. Done on 2026-10-18 once
+      Phases 1 to 4 had applied: transcode `quill-transcode-app-rzdwb`
+      on `936b61864b6b41a1b4ddb807f20c6240`, 4 min 03 s against 3 min
+      53 s for the same asset's original run (which bypassed the
+      connector altogether, before the callbacks plan) and 4 min 17 s on
+      the connector; the download and the three uploads each took under
+      a second, so the encode itself is the time. Caption
+      `quill-caption-app-cs745`, 1 min 20 s. Both reports answered 200,
+      and the execution records show `network-interfaces` and no
+      connector. Google warns an instance may
       wait a minute for its first connection on Direct VPC, which is
       lost in a twenty-minute job timeout. The figure to beat, from
       2026-10-18 on the connector: asset
@@ -97,10 +108,19 @@ keeps the whole series in one view.
       reads the teaching bucket through Private Google Access and
       needs nothing else.
 
-- [ ] Confirm with one ordinary deploy, which runs the migrations and
+- [x] Confirm with one ordinary deploy, which runs the migrations and
       the smoke test on the admin job, and one
       `gcloud run jobs execute quill-teaching-sync-app --wait`, or a
-      pipeline run if the sync plan has landed by then.
+      pipeline run if the sync plan has landed by then. Done on
+      2026-10-18: the deploy that merged Phases 1 to 4 ran its smoke
+      test before the apply had moved the admin job, but the admin
+      job's scheduled `finish-exams-out-of-time` at 20:55 ran on Direct
+      VPC and reached Cloud SQL, and the hand-run `deploy.yml` after
+      #2105 (run 39168326385) ran `run-migrations` (`quill-admin-app-68rdt`)
+      and `smoke-test` (`quill-admin-app-rhbnw`) on Direct VPC, both
+      green. The sync job is not run here: its pipeline step is the
+      sync plan's Phase 3, and it reaches the same Cloud SQL and bucket
+      the admin job just did.
 
 ## Phase 5: The backend moves
 
@@ -118,15 +138,25 @@ keeps the whole series in one view.
       frontend reaches nothing private and has no VPC access today; it
       gets none now either.
 
-- [ ] A Terraform apply makes a new revision that serves no traffic, so
+- [x] A Terraform apply makes a new revision that serves no traffic, so
       re-run `deploy.yml` afterwards and confirm the serving revision is
       the new one (`gcloud run services describe quill-backend-app`
-      shows it). Then watch the first request after an idle spell: the
+      shows it). Exactly so on 2026-10-18: Terraform's revision
+      `00236-r98` carried the subnet and no traffic, the merge's deploy
+      skipped both builds as no code had changed, and a hand-run
+      `deploy.yml` put `00425-liw` into service on Direct VPC at 21:39. Then watch the first request after an idle spell: the
       backend has no minimum instances, so every cold start now
       includes Direct VPC's network set-up. Nobody is on App production
       yet, so this is measured rather than pre-empted; if a cold start
       is felt, `min_instances = 1` on the backend is the one-line
-      answer, and is recorded here if taken.
+      answer, and is recorded here if taken. Measured on 2026-10-18 from
+      revision `00425-liw`'s first instance: started 21:39:50, Uvicorn
+      up at 21:39:52, workers ready at 21:40:05, startup probe (which
+      opens Cloud SQL over the new subnet) passed at 21:40:11 on its
+      second attempt. About 21 seconds, of which the app's own boot is
+      most, and the first `/api/health` through the load balancer took
+      4 ms. No sign of the minute-long first connection Google warns
+      of, so `min_instances` stays unset.
 
 ## Phase 6: The connector goes
 
@@ -147,8 +177,16 @@ keeps the whole series in one view.
       stay. The `10.8.0.0/28` range is freed with it; the new subnet
       stays.
 
-- [ ] Confirm the apply deleted the connector and nothing else, and that
-      a deploy and one transcode still pass afterwards.
+- [x] Confirm the apply deleted the connector and nothing else, and that
+      a deploy and one transcode still pass afterwards. Done on
+      2026-10-19: #2116's apply reported "0 added, 1 changed, 1
+      destroyed", the destroyed one `google_vpc_access_connector.connector`
+      (4 min 15 s to go), and the connector list is empty. Transcode
+      `quill-transcode-app-wqsfp` on `959bd5375d544d528c9b984d5efa9dfc`
+      ran afterwards, 4 min 11 s, and its report was answered 200. The
+      deploy that proved the backend on Direct VPC was the hand-run one
+      the day before; the connector's removal changes nothing a deploy
+      touches.
 
 ## Decisions
 
