@@ -25,6 +25,7 @@ import {
 import { waitForEmail, waitForEmailMatching } from "../../fixtures/mail";
 import { leadOf, makeLearner } from "../../fixtures/people";
 import { freshUsername, signIn } from "../../fixtures/signIn";
+import { atPhoneWidth, closeSlideList, slideList } from "../../fixtures/phone";
 
 const LEARNERS = [
   { who: "a TA", kind: "ta", profession: "teaching_admin" },
@@ -81,9 +82,10 @@ for (const { who, kind, profession } of LEARNERS) {
       await signIn(page, username);
       await page.goto(`/teaching/learn/${MODULE_ID}/slide/0`);
 
-      const sideList = page.getByRole("complementary").getByRole("button");
+      const sideList = (await slideList(page)).getByRole("button");
       await expect(sideList.last()).toHaveText("Exit lesson");
       const slideCount = (await sideList.count()) - 1;
+      await closeSlideList(page);
 
       for (let slide = 1; slide < slideCount; slide += 1) {
         await nextSlide(page, slide);
@@ -92,8 +94,9 @@ for (const { who, kind, profession } of LEARNERS) {
       await expect(
         page.getByRole("button", { name: "Next", exact: true }),
       ).toBeHidden();
-      await page
-        .getByRole("complementary")
+      await (
+        await slideList(page)
+      )
         .getByRole("button", { name: "Exit lesson" })
         .click();
       await expect(page).not.toHaveURL(/\/slide\//);
@@ -102,8 +105,9 @@ for (const { who, kind, profession } of LEARNERS) {
     test("plays the recorded lecture", async ({ page, browserName }) => {
       await signIn(page, username);
       await page.goto(`/teaching/learn/${MODULE_ID}/slide/0`);
-      await page
-        .getByRole("complementary")
+      await (
+        await slideList(page)
+      )
         .getByRole("button", { name: "Recorded lecture" })
         .click();
 
@@ -183,17 +187,29 @@ for (const { who, kind, profession } of LEARNERS) {
       await signIn(page, username);
       await page.goto("/teaching");
 
+      // A table at desktop width; at a phone's width a card for each
+      // attempt, with no table role, each with a "Result:" line and
+      // opened by tapping it. Nothing else on the page says "Pass" or
+      // "Fail" on its own.
       const history = page
         .getByRole("table")
         .filter({ hasText: "Question bank" })
         .getByRole("row")
         .filter({ hasNotText: "Question bank" });
-      await expect(history).toHaveCount(2);
-      await expect(history.filter({ hasText: "Pass" })).toHaveCount(1);
-      await expect(history.filter({ hasText: "Fail" })).toHaveCount(1);
+      const main = page.getByRole("main");
+      const attempt = (result: string) =>
+        atPhoneWidth(page)
+          ? main.getByText(result, { exact: true })
+          : history.filter({ hasText: result });
+
+      await expect(
+        atPhoneWidth(page) ? main.getByText("Result:") : history,
+      ).toHaveCount(2);
+      await expect(attempt("Pass")).toHaveCount(1);
+      await expect(attempt("Fail")).toHaveCount(1);
 
       for (const result of ["Pass", "Fail"]) {
-        await history.filter({ hasText: result }).click();
+        await attempt(result).click();
         await expect(page).toHaveURL(/\/teaching\/assessment\/\d+\/result$/);
         await expect(
           page.getByRole("heading", {

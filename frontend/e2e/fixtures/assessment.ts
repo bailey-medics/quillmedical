@@ -7,6 +7,7 @@
 
 import { expect, type Page } from "@playwright/test";
 import { MODULE_ID, questionShown } from "./answers";
+import { atPhoneWidth } from "./phone";
 
 /** Start the assessment from the module page, and pass its intro page. */
 export async function startTheAssessment(page: Page): Promise<void> {
@@ -97,6 +98,20 @@ export async function checkResultsByQuestion(
 ): Promise<void> {
   await page.getByRole("link", { name: "View results by question" }).click();
   await expect(page).toHaveURL(/\/question-results$/);
+
+  // At a phone's width the table is a stack of cards with no table role.
+  // Each answer given is shown, and the outcome badge is counted: one per
+  // question, all this outcome, says what the rows say below.
+  if (atPhoneWidth(page)) {
+    for (const label of chosen) {
+      await expect(page.getByText(label, { exact: true })).toBeVisible();
+    }
+    await expect(
+      page.getByRole("main").getByText(outcome, { exact: true }),
+    ).toHaveCount(chosen.length);
+
+    return;
+  }
 
   const rows = page.getByRole("row").filter({ hasNotText: "Answer given" });
   await expect(rows).toHaveCount(chosen.length);

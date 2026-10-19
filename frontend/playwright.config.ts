@@ -64,15 +64,24 @@ export default defineConfig({
     },
     {
       // A phone's width, below `md`, where the navigation folds behind
-      // the hamburger. Only the journeys written for a phone, named
-      // `*.phone.spec.ts`, run here.
+      // the hamburger. The journeys written for a phone, named
+      // `*.phone.spec.ts`, and the delegate's own journeys, which are
+      // the ones most likely to be made on a phone: getting in, taking
+      // a module, and settings. Admin journeys stay at desktop width,
+      // where admin work is done. Phase 21 of
+      // docs/docs/plans/2026-10-15-teaching-e2e-coverage-plan.md.
       name: "phone",
       use: {
         ...devices["Pixel 7"],
         storageState: "e2e/.auth/user.json",
       },
       testDir: "./e2e/tests",
-      testMatch: /\.phone\.spec\.ts$/,
+      testMatch: [
+        /\.phone\.spec\.ts$/,
+        /\/getting-in\/.*\.spec\.ts$/,
+        /\/taking-a-module\/.*\.spec\.ts$/,
+        /\/settings\/.*\.spec\.ts$/,
+      ],
       dependencies: ["setup", "video-gate"],
     },
   ],
