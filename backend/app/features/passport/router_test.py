@@ -3140,7 +3140,13 @@ class TestEvidence:
         )
 
         assert response.status_code == 400
-        assert "does not look like" in response.text
+        assert response.json() == {"detail": "That file is not a real PDF"}
+
+    def test_every_evidence_type_has_a_name_a_person_would_use(self) -> None:
+        """The refusal names the type, and is shown as it is."""
+        assert set(router._EVIDENCE_TYPE_NAMES) == set(
+            router.ALLOWED_EVIDENCE_TYPES
+        )
 
     def test_an_image_that_cannot_be_decoded_is_refused(
         self, holder_client: TestClient

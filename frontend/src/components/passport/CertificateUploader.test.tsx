@@ -250,6 +250,62 @@ describe("CertificateUploader", () => {
     expect(onUploaded).toHaveBeenCalledWith(stored);
   });
 
+  it("gives the backend's reason when it refuses the file", async () => {
+    // Trying again would not help, so the generic message would mislead.
+    uploadEvidence.mockRejectedValue(
+      Object.assign(new Error("That file is not a real PDF"), { status: 400 }),
+    );
+    const onUploaded = vi.fn();
+    const { container } = renderWithMantine(
+      <CertificateUploader passportId="3f2a8c1e" onUploaded={onUploaded} />,
+    );
+
+    drop(container, new File(["x"], "fake.pdf", { type: "application/pdf" }));
+
+    expect(
+      await screen.findByText("That file is not a real PDF"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Please try again/)).not.toBeInTheDocument();
+    expect(onUploaded).not.toHaveBeenCalled();
+  });
+
+  it("gives the backend's reason when the file is too large", async () => {
+    uploadEvidence.mockRejectedValue(
+      Object.assign(new Error("That file is larger than 8 MB"), {
+        status: 413,
+      }),
+    );
+    const { container } = renderWithMantine(
+      <CertificateUploader passportId="3f2a8c1e" onUploaded={vi.fn()} />,
+    );
+
+    drop(container, new File(["x"], "big.pdf", { type: "application/pdf" }));
+
+    expect(
+      await screen.findByText("That file is larger than 8 MB"),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps a server fault's own wording off the screen", async () => {
+    uploadEvidence.mockRejectedValue(
+      Object.assign(new Error("Stored evidence already exists at that hash"), {
+        status: 500,
+      }),
+    );
+    const { container } = renderWithMantine(
+      <CertificateUploader passportId="3f2a8c1e" onUploaded={vi.fn()} />,
+    );
+
+    drop(container, new File(["x"], "als.pdf", { type: "application/pdf" }));
+
+    expect(
+      await screen.findByText(
+        "That file could not be uploaded. Please try again.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/hash/)).not.toBeInTheDocument();
+  });
+
   it("says so when the file is the wrong type", async () => {
     const { container } = renderWithMantine(
       <CertificateUploader passportId="3f2a8c1e" onUploaded={vi.fn()} />,
