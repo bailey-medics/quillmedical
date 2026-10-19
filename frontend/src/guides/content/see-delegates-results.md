@@ -14,7 +14,9 @@ organisations.
 ## Read the page
 
 Results are shown for one module at a time. If your organisation runs
-more than one, choose which under **Module**.
+more than one, choose which under **Module** drop down.
+
+![The Module drop down open, with each module listed](see-delegates-results/module.png)
 
 Three figures sit above the list:
 

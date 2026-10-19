@@ -1,12 +1,12 @@
 # Deactivate a user
 
-Deactivate somebody's account when they should no longer use Quill, for example a delegate who has left the course. They can no longer sign in, and nothing they have done is deleted. You can let them back in later.
+Deactivate somebody's account when they should no longer use Quill, for example a delegate who has left the course. A user will no longer be able to log in to their deactivated account. Their details will be kept until automatically deleted in 2 - 3.5 years.
 
 ## Who you can deactivate
 
 You can deactivate a delegate, a clinical lead or another teaching admin who belongs to your organisation or one of its sites. You cannot deactivate your own account.
 
-If somebody holds access you cannot give them yourself, such as a clinician passport they pay for themselves, you cannot deactivate them. Their page shows the **Deactivate** button greyed out, with the reason beneath it. A passport your organisation provides for everyone does not stop you.
+If somebody holds access you cannot give them yourself, such as a clinician passport they pay for themselves, you cannot deactivate them. Their page shows the **Deactivate** button greyed out, with the reason beneath it.
 
 To close the accounts of everyone at a site that is no longer taking part, [deactivate the site](/guides/deactivate-a-site) instead.
 
@@ -17,20 +17,20 @@ To close the accounts of everyone at a site that is no longer taking part, [deac
    ![The list of users](deactivate-a-user/users.png)
 3. On their page, find the **Deactivate user** card and press **Deactivate**.
    ![A user's page, with the Deactivate user card](deactivate-a-user/user.png)
-4. Read the message, then press **Deactivate user** to go ahead, or **Cancel** to leave the account as it is.
+4. Read the message, then press **Deactivate user** to go ahead.
    ![The message asking you to confirm](deactivate-a-user/confirm.png)
 
-You are taken back to the list of users. The person is emailed to say their account has been closed.
+You will then be taken back to the list of users and the user will be emailed to say their account has been closed.
 
 ## What deactivating does
 
 - **They cannot sign in.** Signing in with their username and password is refused.
-- **Their results are kept.** Nothing they have sat is deleted, and you can still see it.
-- **It can be undone.** Their account stays, ready to reactivate.
+- **Their results are kept.** Nothing they have sat is deleted, and you can still see it. However, deactivated accounts are deleted in line with the sponsors / Quill's policies at 2 - 3.5 years after deactivation.
+- **It can be undone.** Their account stays, ready to reactivate, if within the automatic deletion timeframe.
 
 ## Make an account active again
 
 1. Open the person's page, as above. To find them quickly, filter the list of users to **Inactive**.
 2. In the **Reactivate user** card, press **Reactivate**, then **Reactivate user**.
 
-They can sign in again with the same username and password, and are emailed to say so.
+They can sign in again with the same username and password. The user will be emailed to inform them that there account is active again.
