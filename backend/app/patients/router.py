@@ -70,6 +70,7 @@ from app.schemas.patients import (
     LetterOut,
     LettersListOut,
     PatientActivationOut,
+    PatientCountOut,
     PatientMetadataOut,
     PatientsListOut,
     PatientVerifyOut,
@@ -173,11 +174,49 @@ def list_patients(
             include_inactive=include_inactive,
         )
 
-        return PatientsListOut(patients=shown, fhir_ready=True)
+        return PatientsListOut(
+            patients=shown, total=len(shown), fhir_ready=True
+        )
     except FhirClientError:
         raise
     except Exception:
-        return PatientsListOut(patients=[], fhir_ready=False)
+        return PatientsListOut(patients=[], total=0, fhir_ready=False)
+
+
+@router.get(
+    "/patients/count",
+    dependencies=[DEP_REQUIRE_MANAGE_USERS, DEP_REQUIRE_CLINICAL],
+    response_model=PatientCountOut,
+)
+def count_patients(
+    current_user: User = DEP_CURRENT_USER,
+    db: Session = DEP_GET_SESSION,
+) -> PatientCountOut:
+    """How many patients the caller may see.
+
+    For the admin page's "Total patients" card, which used to fetch the
+    whole list to read its length: every patient's name and identifiers
+    crossing the wire, into a tab with no use for them, on every load.
+    The count is of the same patients the list would show, so it
+    respects the caller's organisations exactly as the list does.
+
+    Asked of `manage_users` before the clinical gate, so somebody without
+    the competency is refused rather than told that clinical services
+    are off. The admin page fetches it for `manage_users` holders alone.
+    """
+    try:
+        records = list_fhir_patients()
+        # The default view, as a member sees the list: active patients
+        # in the caller's own organisations.
+        shown = patients_shown(
+            db, current_user, records, scope=None, include_inactive=False
+        )
+
+        return PatientCountOut(total=len(shown), fhir_ready=True)
+    except FhirClientError:
+        raise
+    except Exception:
+        return PatientCountOut(total=0, fhir_ready=False)
 
 
 @router.put(

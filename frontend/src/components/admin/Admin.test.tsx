@@ -17,12 +17,6 @@ const mockUsers = [
   { id: "3", username: "drsmith", email: "dr.smith@hospital.com" },
 ];
 
-const mockPatients = [
-  { id: "p1", name: "Alice Johnson" },
-  { id: "p2", name: "Bob Williams" },
-  { id: "p3", name: "Carol Davis" },
-];
-
 describe("Admin", () => {
   describe("Basic rendering", () => {
     it("renders administration title", () => {
@@ -56,20 +50,14 @@ describe("Admin", () => {
     });
 
     it("displays total patients count", () => {
-      renderWithRouter(
-        <Admin platformRole="superadmin" existingPatients={mockPatients} />,
-      );
+      renderWithRouter(<Admin platformRole="superadmin" patientCount={3} />);
       expect(screen.getByText("Total patients")).toBeInTheDocument();
       expect(screen.getByText("3")).toBeInTheDocument();
     });
 
     it("leaves out the patient count for somebody without patient pages", () => {
       renderWithRouter(
-        <Admin
-          platformRole="standard"
-          showPatients={false}
-          existingPatients={mockPatients}
-        />,
+        <Admin platformRole="standard" showPatients={false} patientCount={3} />,
       );
       expect(screen.queryByText("Total patients")).not.toBeInTheDocument();
       expect(screen.getByText("Total users")).toBeInTheDocument();
@@ -108,7 +96,7 @@ describe("Admin", () => {
           usersLoading={false}
           patientsLoading={true}
           existingUsers={mockUsers}
-          existingPatients={[]}
+          patientCount={0}
         />,
       );
       // Should show Total Users value (3) but Total Patients as loading
@@ -125,10 +113,8 @@ describe("Admin", () => {
       expect(zeros.length).toBeGreaterThan(0);
     });
 
-    it("handles empty patients array", () => {
-      renderWithRouter(
-        <Admin platformRole="superadmin" existingPatients={[]} />,
-      );
+    it("handles a patient count of nought", () => {
+      renderWithRouter(<Admin platformRole="superadmin" patientCount={0} />);
       const zeros = screen.getAllByText("0");
       expect(zeros.length).toBeGreaterThan(0);
     });

@@ -33,7 +33,7 @@ once those have gone in.
 
 ## Phase 2: The admin page counts patients instead of fetching them
 
-- [ ] Add `total: int` to `PatientsListOut` in
+- [x] Add `total: int` to `PatientsListOut` in
       `backend/app/schemas/patients.py`, set in `list_patients` in
       `backend/app/patients/router.py` to the length of what
       `patients_shown` returns, so the count respects the caller's
@@ -42,7 +42,7 @@ once those have gone in.
       `list_patients` tests: the total matches the list, and is 0 with
       `fhir_ready` false.
 
-- [ ] Add `GET /api/patients/count` in the same router, guarded as
+- [x] Add `GET /api/patients/count` in the same router, guarded as
       `list_patients` is (`DEP_REQUIRE_CLINICAL`, `DEP_CURRENT_USER`),
       answering `PatientCountOut(total, fhir_ready)` and nothing else.
       The admin page wants a number, and a number should not come with
@@ -50,7 +50,7 @@ once those have gone in.
       frontend then discards them. The `total` on the list is for
       callers that already hold the list.
 
-- [ ] In `frontend/src/pages/AdminPage.tsx`, replace the `/patients`
+- [x] In `frontend/src/pages/AdminPage.tsx`, replace the `/patients`
       fetch and the `patients` state with a call to `/patients/count`,
       and give `components/admin/Admin.tsx` a `patientCount: number`
       prop in place of `existingPatients`, which nothing else on that
