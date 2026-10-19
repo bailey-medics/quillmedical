@@ -1,28 +1,24 @@
-"""The job callbacks: content sync, and transcode and caption completion.
+"""The video jobs' callbacks: transcode, caption, no-speech and poster.
 
 Called by jobs, not by people. None carries a session, so none sits
 behind the teaching feature gate or under the teaching router's prefix.
-The sync proves itself with a service token; the three completion
-reports go through ``require_job_identity`` in ``app.deps``.
+Each proves itself through ``require_job_identity`` in ``app.deps``.
+
+The content sync once had a route here too, called by the teaching
+pipeline with a bearer token; the pipeline now starts the
+``quill-teaching-sync`` job instead, which runs ``sync_every_bank``
+itself. See docs/docs/plans/2026-10-16-teaching-sync-without-a-github-secret-plan.md.
 
 Moved out of ``main.py`` on 12 October 2026, as they were: the same
 addresses, checks and response models. ``main.py`` includes this router
 under the API prefix.
 """
 
-import hmac
 import logging
 
-from fastapi import (
-    APIRouter,
-    Depends,
-    HTTPException,
-    Request,
-    Response,
-)
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from app.config import settings
 from app.db import get_core_db
 from app.deps import DEP_REQUIRE_JOB_IDENTITY
 from app.features.teaching.ci_media import (
@@ -31,11 +27,9 @@ from app.features.teaching.ci_media import (
     record_poster,
     record_transcode,
 )
-from app.features.teaching.ci_sync import sync_every_bank
 from app.features.teaching.schemas import (
     CaptionCompleteIn,
     CaptionCompleteOut,
-    CiTeachingSyncOut,
     PosterCompleteIn,
     PosterCompleteOut,
     TranscodeCompleteIn,
@@ -45,59 +39,6 @@ from app.features.teaching.schemas import (
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
-
-
-# --- CI/CD sync endpoint (service token auth) ---
-@router.post(
-    "/ci/teaching/sync",
-    response_model=CiTeachingSyncOut,
-    responses={
-        422: {
-            "model": CiTeachingSyncOut,
-            "description": "At least one bank was rejected.",
-        }
-    },
-)
-def ci_teaching_sync(
-    request: Request,
-    response: Response,
-    db: Session = Depends(get_core_db),
-) -> CiTeachingSyncOut:
-    """Trigger teaching content sync from CI/CD pipeline.
-
-    Authenticates via Bearer token (TEACHING_SYNC_TOKEN).
-    Syncs all banks found in GCS or local filesystem.
-
-    Returns 422 when any bank was rejected, so the content deploy that
-    calls this fails instead of reporting success. The body is the same
-    either way, because a partial sync still needs to say which banks
-    succeeded and which did not.
-    """
-    # Validate service token
-    token = settings.TEACHING_SYNC_TOKEN
-
-    if not token:
-        raise HTTPException(503, "Sync token not configured")
-
-    auth_header = request.headers.get("Authorization", "")
-
-    if not auth_header.startswith("Bearer "):
-        raise HTTPException(401, "Missing Bearer token")
-
-    provided = auth_header.removeprefix("Bearer ").strip()
-
-    if not hmac.compare_digest(provided, token.get_secret_value()):
-        raise HTTPException(401, "Invalid token")
-
-    outcome = sync_every_bank(db)
-
-    if outcome.errors:
-        # Non-2xx so the caller's curl fails. Without this a rejected bank
-        # is indistinguishable from a clean sync, which is what let a
-        # malformed certificate block reach GCS unnoticed.
-        response.status_code = 422
-
-    return outcome
 
 
 # --- Transcode completion callback (job identity) ---

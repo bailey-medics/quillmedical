@@ -240,10 +240,6 @@ class Settings(BaseSettings):
         None,
         description="Local filesystem path to question bank content",
     )
-    TEACHING_SYNC_TOKEN: SecretStr | None = Field(
-        None,
-        description="Service token for CI/CD teaching content sync",
-    )
     TEACHING_VIDEOS_BUCKET: str | None = Field(
         None,
         description=(

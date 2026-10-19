@@ -187,10 +187,9 @@ No file lists these together.
 6. **Switch the bank on.** A first sync imports the bank. An admin still has
    to open it for an organisation before learners see it.
 
-## One thing to know about the sync endpoint
+## One thing to know about the sync
 
-`POST /api/ci/teaching/sync` imports every bank into one org unit: the one
-an existing bank is already held by, or, with none yet, the first
-organisation in the system. The pipeline's `org_id` input is not sent to it.
-Why it was built that way is not recorded in the code or the plans read for
-this page.
+The sync job imports every bank into one org unit: the one an existing bank
+is already held by, or, with none yet, the first organisation in the system.
+The pipeline's `org_id` input plays no part in it. Why it was built that way
+is not recorded in the code or the plans read for this page.

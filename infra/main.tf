@@ -114,28 +114,16 @@ module "secrets" {
     # with it, so the two must be the same bytes and no human types it in.
     local.is_teaching_product ? [
       "teaching-video-signing-key",
-      "teaching-sync-token",
     ] : []
   )
 }
 
-# `teaching-sync-token` predates this declaration. It was created by hand on
-# 2026-05-24 and referenced in the Cloud Run env mapping ever since, without
-# Terraform ever managing it - so a live secret had no declared owner and
-# nothing recorded that it should exist.
-#
-# A plain create would fail the apply with "already exists", so the existing
-# secret is imported. Only the container comes under management; the value
-# stays exactly where it is and is never read here, which is what
-# modules/secrets' convention asks for.
-# Gated on the environment, unlike the admin-job import below: that resource
-# exists everywhere, this secret only in teaching. An unconditional import
-# would have prod and staging try to adopt a secret that is not there.
-import {
-  for_each = local.is_teaching_product ? toset(["teaching-sync-token"]) : toset([])
-  to       = module.secrets.google_secret_manager_secret.secrets[each.key]
-  id       = "projects/${var.project_id}/secrets/${each.key}"
-}
+# `teaching-sync-token` was declared here from 2026-09 to 2026-10-19, imported
+# from a secret made by hand on 2026-05-24. It authenticated the teaching
+# pipeline's call to POST /api/ci/teaching/sync; the pipeline now starts the
+# `quill-teaching-sync` job instead and nothing reads the secret, so it is
+# removed, and this apply deletes it. See
+# docs/docs/plans/2026-10-16-teaching-sync-without-a-github-secret-plan.md.
 
 # ---------- Alerting secrets ----------
 #

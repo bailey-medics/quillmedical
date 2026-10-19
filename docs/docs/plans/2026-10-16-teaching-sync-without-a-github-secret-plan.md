@@ -115,9 +115,16 @@ transcode, caption and poster jobs, which read it from Secret Manager.
 
 ## Phase 4: Remove the route and the secrets
 
-- [ ] Remove `POST /api/ci/teaching/sync` from
+- [x] Remove `POST /api/ci/teaching/sync` from
       `backend/app/features/teaching/ci_router.py` and its entry in
-      `PUBLIC` in `backend/tests/every_route_is_guarded_test.py`. This is
+      `PUBLIC` in `backend/tests/every_route_is_guarded_test.py`. With
+      it go `TEACHING_SYNC_TOKEN` from `config.py`, the backend's mount
+      of `teaching-sync-token` and the secret itself from Terraform,
+      since nothing reads it once the route is gone; the two route test
+      files, whose cases `app/features/teaching/ci_sync_test.py` and
+      `backend/tests/admin_cli_test.py` already cover against
+      `sync_every_bank` and the job action; and the route's mentions in
+      `docs/docs/teaching/`. This is
       a breaking API change: CI's `api_schema_diff` flags it, so add the
       decision file with `backend/scripts/new_compat_decision.py`
       (`forces_reload: false`, since no browser calls it) and approve it

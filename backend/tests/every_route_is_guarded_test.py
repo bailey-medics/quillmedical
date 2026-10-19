@@ -90,9 +90,6 @@ PUBLIC: dict[RouteKey, str] = {
         "a crash on the login page must still be reportable; notes the "
         "user when there is one"
     ),
-    ("POST", "/api/ci/teaching/sync"): (
-        "called by CI with the TEACHING_SYNC_TOKEN bearer token"
-    ),
     ("GET", "/api/marketing/unsubscribe"): (
         "the link in a newsletter, carrying its own signed token"
     ),
