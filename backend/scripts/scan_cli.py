@@ -18,6 +18,12 @@ Environment Variables:
 Both callback variables are optional together: unset means development,
 where there is no backend to tell.
 
+**The job fetches nothing from ClamAV.** It scans with the definitions in
+its image, which a daily GitHub workflow builds from the clamav-mirror
+and deploys. ClamAV's servers refuse an address that asks too often, and
+this job runs on every upload from App production's one outgoing
+address, so it no longer asks at all.
+
 **The job never deletes anything.** It holds read access to the buckets
 and nothing more, so a fault in the scanner cannot remove a file. The
 backend acts on the verdict it is sent: an infected object is deleted
@@ -54,51 +60,10 @@ if proj_root not in sys.path:
 
 Verdict = Literal["clean", "infected", "failed"]
 
-#: How long a definitions refresh may take before the scan goes ahead
-#: with the definitions the image was built with.
-_REFRESH_CEILING = 60
-
 #: How long one scan may take. A file is at most a few hundred megabytes
 #: (the upload ceilings bound it), and ClamAV reads that in well under
 #: this; past it something is wrong.
 _SCAN_CEILING = 600
-
-
-def refresh_definitions() -> bool:
-    """Try to bring the definition database up to date. Best effort.
-
-    The image carries a database from the day it was built; this fetches
-    anything newer. A refresh that fails, or runs past its ceiling,
-    leaves the baked definitions in place and the scan goes ahead with
-    those, which is what the version in the report records.
-    """
-    # A fixed argument list and no shell.
-    try:
-        result = subprocess.run(  # noqa: S603  # nosec B607 B603
-            ["freshclam", "--quiet"],  # noqa: S607
-            capture_output=True,
-            text=True,
-            check=False,
-            timeout=_REFRESH_CEILING,
-        )
-    except (OSError, subprocess.TimeoutExpired) as exc:
-        print(
-            f"WARNING: definitions not refreshed ({exc}); scanning with "
-            "the definitions the image was built with",
-            file=sys.stderr,
-        )
-        return False
-
-    if result.returncode != 0:
-        print(
-            f"WARNING: definitions not refreshed (freshclam exited "
-            f"{result.returncode}); scanning with the definitions the "
-            "image was built with",
-            file=sys.stderr,
-        )
-        return False
-
-    return True
 
 
 def definitions_version() -> str:
@@ -300,7 +265,6 @@ def scan() -> int:
 
         return 1
 
-    refresh_definitions()
     definitions = definitions_version()
     print(f"Scanning with {definitions}")
 

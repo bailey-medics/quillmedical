@@ -208,6 +208,22 @@
       "matchPackageNames": ["typescript"],
       "matchUpdateTypes": ["major"],
       "dependencyDashboardApproval": true
+    },
+    {
+      "description": "ClamAV stays on its 1.4 long-term support line: fewer upgrades to make, and a scanner is the place for the steady one. Moving to the next LTS line is a decision, made by changing this.",
+      "matchPackageNames": ["Cisco-Talos/clamav"],
+      "allowedVersions": "<1.5.0",
+      "automerge": false
+    }
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "ClamAV in the upload scan image, installed from Cisco Talos's release packages rather than through a package manager Renovate already reads. Renovate does not update the checksums beside the version: the pull request it opens fails to build until someone copies the new digests from the release's assets, which is deliberate. See backend/Dockerfile.scan.",
+      "managerFilePatterns": ["/^backend/Dockerfile\\.scan$/"],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+) extractVersion=(?<extractVersion>\\S+)\\s+ARG CLAMAV_VERSION=(?<currentValue>\\S+)"
+      ]
     }
   ],
   "pre-commit": {

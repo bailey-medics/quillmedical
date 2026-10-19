@@ -62,8 +62,9 @@ jobs:
   validate:
     if: github.event_name == 'pull_request' || (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/feature/'))
     runs-on: ubuntu-24.04
-    # Fifteen rather than ten since the malware scan was added: installing
-    # ClamAV and fetching its definitions takes a minute or two.
+    # Fifteen rather than ten since the malware scan was added: fetching
+    # ClamAV and its definitions from the mirror, and scanning, add a
+    # minute or two.
     timeout-minutes: 15
     permissions:
       contents: read
@@ -99,8 +100,10 @@ jobs:
           path: tooling
           sparse-checkout: |
             backend/app/features/teaching/tooling
+            backend/Dockerfile.scan
             .github/scripts/shared
             .github/scripts/teaching-pipeline
+            .github/scripts/clamav-mirror
 
       # Quill's .github/actions/setup-python is not usable here: its paths
       # assume Quill is the workspace root, which in a reusable workflow is
@@ -165,19 +168,26 @@ jobs:
       # job relies on that and does not re-validate. The images are the
       # real bytes, since the checkout above fetches LFS.
       #
-      # ClamAV from the runner's own Ubuntu archive, so there is no image
-      # to mirror. Ubuntu starts a freshclam service on install, which
-      # holds the database lock; it is stopped so the refresh below can
-      # run, and the refresh is retried once, as the pip installs are.
-      - name: Install ClamAV
+      # ClamAV and its definitions come from Quill's clamav-mirror image,
+      # which a daily workflow in Quill refreshes. This job no longer asks
+      # ClamAV's servers for anything: they refuse an address that asks
+      # too often, and GitHub's runners share addresses. The image is
+      # private, so the package's settings on GitHub give each teaching
+      # repository read access; without it this fails, closed, here.
+      - name: Log in to GHCR, for the ClamAV mirror
+        uses: docker/login-action@v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install ClamAV from the mirror
         run: |
-          sudo apt-get update -q
-          sudo apt-get install -y -q --no-install-recommends clamav clamav-freshclam
-          sudo systemctl stop clamav-freshclam || true
-          sudo bash "${GITHUB_WORKSPACE}/tooling/.github/scripts/shared/retry-once.sh" freshclam --quiet
+          bash tooling/.github/scripts/clamav-mirror/fetch-mirror.sh bailey-medics tooling/backend/Dockerfile.scan "${RUNNER_TEMP}/clamav-mirror"
+          sudo dpkg -i "${RUNNER_TEMP}/clamav-mirror/clamav-$(cat "${RUNNER_TEMP}/clamav-mirror/VERSION").linux.x86_64.deb"
 
       - name: Scan the content for malware
-        run: bash tooling/.github/scripts/teaching-pipeline/scan-content.sh question_bank_content/modules
+        run: bash tooling/.github/scripts/teaching-pipeline/scan-content.sh question_bank_content/modules "${RUNNER_TEMP}/clamav-mirror/db"
 
   # -------------------------------------------------------------------
   # Verify branch protection is configured (catches missing Terraform)

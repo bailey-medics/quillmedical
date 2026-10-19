@@ -3236,6 +3236,173 @@ class TestEvidence:
         listed = holder_client.get(f"/api/passport/{passport_id}/certificates")
         assert listed.json()[0]["attachments"][0]["scan_state"] == "clean"
 
+    def test_the_uploader_can_ask_where_the_scan_has_got_to(
+        self, holder_client: TestClient, monkeypatch, db_session
+    ) -> None:
+        """The certificate form asks after an upload, so it can say
+        "checking", then "attached" or "malware found"."""
+        from app.features.passport.gcs_store import blob_object_key
+        from app.features.uploads.scan import record_verdict
+
+        monkeypatch.setattr(
+            settings, "UPLOAD_SCAN_JOB", "projects/p/locations/l/jobs/scan"
+        )
+        monkeypatch.setattr(
+            router, "_evidence_scan_bucket", lambda: "passports-bucket"
+        )
+        passport_id = _create_passport(holder_client)
+
+        with patch("app.features.uploads.scan._start_job"):
+            uploaded = self._upload(holder_client, passport_id).json()
+
+        url = f"/api/passport/{passport_id}/evidence/{uploaded['hash']}/scan"
+        assert holder_client.get(url).json() == {
+            "scan_state": "pending",
+            "signature": None,
+        }
+
+        with patch("app.features.uploads.scan.delete_object"):
+            record_verdict(
+                db_session,
+                "passports-bucket",
+                blob_object_key(passport_id, uploaded["hash"]),
+                "infected",
+                "Eicar-Signature",
+                "ClamAV 1.4.6",
+            )
+        db_session.commit()
+
+        assert holder_client.get(url).json() == {
+            "scan_state": "infected",
+            "signature": "Eicar-Signature",
+        }
+
+    def test_without_a_scan_job_an_upload_is_clean_at_once(
+        self, holder_client: TestClient, monkeypatch
+    ) -> None:
+        monkeypatch.setattr(settings, "UPLOAD_SCAN_JOB", None)
+        passport_id = _create_passport(holder_client)
+
+        uploaded = self._upload(holder_client, passport_id).json()
+
+        response = holder_client.get(
+            f"/api/passport/{passport_id}/evidence/{uploaded['hash']}/scan"
+        )
+
+        assert response.json() == {"scan_state": "clean", "signature": None}
+        # Never a field on the upload's own answer, which clients pass
+        # straight into the record they write.
+        assert "scan_state" not in uploaded
+
+    def test_saving_a_record_naming_a_file_with_malware_says_why(
+        self, holder_client: TestClient, monkeypatch, db_session
+    ) -> None:
+        """The file has been deleted, so "not stored" would be true but
+        no help: the refusal says it was malware, and what to do."""
+        from app.features.passport.gcs_store import blob_object_key
+        from app.features.uploads.scan import record_verdict
+
+        monkeypatch.setattr(
+            settings, "UPLOAD_SCAN_JOB", "projects/p/locations/l/jobs/scan"
+        )
+        monkeypatch.setattr(
+            router, "_evidence_scan_bucket", lambda: "passports-bucket"
+        )
+        passport_id = _create_passport(holder_client)
+
+        with patch("app.features.uploads.scan._start_job"):
+            uploaded = self._upload(
+                holder_client, passport_id, filename="eicar-in-a-pdf.pdf"
+            ).json()
+
+        with patch("app.features.uploads.scan.delete_object"):
+            record_verdict(
+                db_session,
+                "passports-bucket",
+                blob_object_key(passport_id, uploaded["hash"]),
+                "infected",
+                "Eicar-Signature",
+                "ClamAV 1.4.6",
+            )
+        db_session.commit()
+
+        response = holder_client.post(
+            f"/api/passport/{passport_id}/certificates",
+            json={
+                "title": "Advanced life support",
+                "issuer": "Resuscitation Council UK",
+                "awarded_on": "2026-03-14",
+                "attachments": [uploaded],
+            },
+        )
+
+        assert response.status_code == 400
+        assert response.json() == {
+            "detail": "eicar-in-a-pdf.pdf was removed: malware was found "
+            "in it (Eicar-Signature). Upload a clean copy."
+        }
+
+    def test_saving_a_record_naming_a_file_the_scan_could_not_check_says_so(
+        self, holder_client: TestClient, monkeypatch, db_session
+    ) -> None:
+        from app.features.passport.gcs_store import blob_object_key
+        from app.features.uploads.scan import record_verdict
+
+        monkeypatch.setattr(
+            settings, "UPLOAD_SCAN_JOB", "projects/p/locations/l/jobs/scan"
+        )
+        monkeypatch.setattr(
+            router, "_evidence_scan_bucket", lambda: "passports-bucket"
+        )
+        passport_id = _create_passport(holder_client)
+
+        with patch("app.features.uploads.scan._start_job"):
+            uploaded = self._upload(holder_client, passport_id).json()
+
+        record_verdict(
+            db_session,
+            "passports-bucket",
+            blob_object_key(passport_id, uploaded["hash"]),
+            "failed",
+            "clamscan exited 2",
+            "",
+        )
+        db_session.commit()
+
+        response = holder_client.post(
+            f"/api/passport/{passport_id}/certificates",
+            json={
+                "title": "Advanced life support",
+                "issuer": "Resuscitation Council UK",
+                "awarded_on": "2026-03-14",
+                "attachments": [uploaded],
+            },
+        )
+
+        assert response.status_code == 400
+        assert response.json() == {
+            "detail": "certificate.pdf could not be checked for malware. "
+            "Upload it again."
+        }
+
+    def test_saving_a_record_naming_a_file_still_being_checked_is_allowed(
+        self, holder_client: TestClient, monkeypatch
+    ) -> None:
+        """Held back wherever it would be served, so naming it hands
+        nobody the bytes, and a slow scan does not stop a save."""
+        monkeypatch.setattr(
+            settings, "UPLOAD_SCAN_JOB", "projects/p/locations/l/jobs/scan"
+        )
+        monkeypatch.setattr(
+            router, "_evidence_scan_bucket", lambda: "passports-bucket"
+        )
+        passport_id = _create_passport(holder_client)
+
+        with patch("app.features.uploads.scan._start_job"):
+            uploaded = self._upload(holder_client, passport_id).json()
+
+        self._certificate_with(holder_client, passport_id, uploaded)
+
     def test_a_file_the_scan_found_malware_in_is_gone(
         self, holder_client: TestClient, monkeypatch, db_session
     ) -> None:

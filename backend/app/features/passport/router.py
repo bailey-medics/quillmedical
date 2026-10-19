@@ -96,6 +96,7 @@ from app.schemas.passport import (
     CpdEntryIn,
     CpdEntryOut,
     EntitlementOut,
+    EvidenceScanOut,
     EvidenceUploadOut,
     FrameworkChoiceOut,
     FrameworkOut,
@@ -335,6 +336,52 @@ def _scan_state_of(
     )
 
     return "pending" if state is None else state
+
+
+def _refuse_unless_scan_allows(
+    db: Session, passport_id: str, item: AttachmentIn
+) -> None:
+    """Refuse to name evidence the malware scan found something in.
+
+    A file still being checked may be named: it is held back wherever
+    it would be served until the verdict is clean, so naming it gives
+    nobody the bytes. A file the scan named, or could not read, may not,
+    and the holder is told which and what to do.
+
+    Raises:
+        HTTPException: 400 for a file removed for malware, or one the
+            scan could not check.
+    """
+    try:
+        state = _scan_state_of(db, passport_id, item.hash)
+    except paths.PassportPathError:
+        # A malformed hash: the existence check that follows answers
+        # for it, in its own words.
+        return
+
+    if state == "infected":
+        bucket = _evidence_scan_bucket()
+        signature = (
+            upload_scan.scan_signature_for(
+                db, bucket, blob_object_key(passport_id, item.hash)
+            )
+            if bucket is not None
+            else None
+        )
+        found = f" ({signature})" if signature else ""
+
+        raise HTTPException(
+            400,
+            f"{item.filename} was removed: malware was found in it"
+            f"{found}. Upload a clean copy.",
+        )
+
+    if state == "failed":
+        raise HTTPException(
+            400,
+            f"{item.filename} could not be checked for malware. "
+            "Upload it again.",
+        )
 
 
 def _looks_like(data: bytes, media_type: str) -> bool:
@@ -1496,7 +1543,7 @@ def request_sign_off(
     # an assessor must not be emailed about a request that was refused.
     # Until 11 October 2026 the evidence was accepted and then dropped,
     # so the record an assessor signed carried none of it.
-    attachments = _attachments(blobs, row.id, body.attachments)
+    attachments = _attachments(db, blobs, row.id, body.attachments)
     # Already checked, so this only fetches the wording for the email.
     requested_scope = (
         definitions.scope_ref(competency_id, body.scope_id)
@@ -2004,6 +2051,7 @@ def _offered_refs(
 
 
 def _attachments(
+    db: Session,
     blobs: BlobStore | GcsBlobStore,
     passport_id: str,
     named: list[AttachmentIn],
@@ -2034,6 +2082,11 @@ def _attachments(
     found: list[Attachment] = []
 
     for item in named:
+        # Before the "is it stored?" check below: a file the malware scan
+        # named has already been deleted, and that check would answer
+        # first with a reason that says nothing about why.
+        _refuse_unless_scan_allows(db, passport_id, item)
+
         try:
             present = blobs.exists(passport_id, item.hash)
         except paths.PassportPathError:
@@ -2229,6 +2282,46 @@ async def upload_evidence(
     )
 
 
+@passport_router.get(
+    "/{passport_id}/evidence/{blob_digest}/scan",
+    response_model=EvidenceScanOut,
+    dependencies=[_DEP_PASSPORT],
+)
+def get_evidence_scan(
+    passport_id: str,
+    blob_digest: str,
+    user: User = DEP_CURRENT_USER,
+    db: Session = _DEP_SESSION,
+) -> EvidenceScanOut:
+    """Where the malware scan of one uploaded file has got to.
+
+    Asked by the certificate form straight after an upload, every few
+    seconds until the answer is not ``pending``, so the drop area can
+    say "checking", then "attached" or "malware found", rather than
+    "attached" for a file about to be deleted.
+
+    Writer-only, like the upload it follows. The signature is given for
+    ``infected`` only: it is what ClamAV calls what it found, worth
+    telling the person who uploaded the file.
+    """
+    row = _require_writer(db, passport_id, user)
+
+    try:
+        state = _scan_state_of(db, row.id, blob_digest)
+    except paths.PassportPathError:
+        raise HTTPException(400, "That is not a valid hash") from None
+
+    signature: str | None = None
+    bucket = _evidence_scan_bucket()
+
+    if state == "infected" and bucket is not None:
+        signature = upload_scan.scan_signature_for(
+            db, bucket, blob_object_key(row.id, blob_digest)
+        )
+
+    return EvidenceScanOut(scan_state=state, signature=signature)
+
+
 @passport_router.post(
     "/{passport_id}/certificates",
     response_model=RecordResultOut,
@@ -2262,7 +2355,7 @@ def add_certificate(
         expires_on=body.expires_on,
         competencies=_offered_refs(store, row.id, body.competencies),
         description=body.description,
-        attachments=_attachments(blobs, row.id, body.attachments),
+        attachments=_attachments(db, blobs, row.id, body.attachments),
     )
 
     name, commit = records.add_certificate(
@@ -2340,7 +2433,7 @@ def amend_certificate(
     existing = _existing_certificate(store, row.id, name)
 
     attachments = (
-        _attachments(blobs, row.id, body.attachments)
+        _attachments(db, blobs, row.id, body.attachments)
         if "attachments" in body.model_fields_set
         else existing.attachments
     )
@@ -2714,7 +2807,7 @@ def add_logbook_entry(
         outcome=body.outcome,
         notes=body.notes,
         also_counts_towards=body.also_counts_towards,
-        attachments=_attachments(blobs, row.id, body.attachments),
+        attachments=_attachments(db, blobs, row.id, body.attachments),
     )
 
     # Before the entry is written, for the reason a sign-off request
@@ -2887,7 +2980,7 @@ def amend_logbook_entry(
         notes=body.notes,
         also_counts_towards=body.also_counts_towards,
         attachments=(
-            _attachments(blobs, row.id, body.attachments)
+            _attachments(db, blobs, row.id, body.attachments)
             if "attachments" in body.model_fields_set
             else existing.attachments
         ),
@@ -2990,7 +3083,7 @@ def add_reflection(
         title=body.title,
         written_on=body.written_on,
         competencies=_offered_refs(store, row.id, body.competencies),
-        attachments=_attachments(blobs, row.id, body.attachments),
+        attachments=_attachments(db, blobs, row.id, body.attachments),
     )
 
     name, commit = records.add_reflection(
@@ -3083,7 +3176,7 @@ def amend_reflection(
         written_on=body.written_on,
         competencies=_competency_refs(body.competencies),
         attachments=(
-            _attachments(blobs, row.id, body.attachments)
+            _attachments(db, blobs, row.id, body.attachments)
             if "attachments" in body.model_fields_set
             else existing.attachments
         ),
@@ -3158,7 +3251,7 @@ def add_cpd_entry(
         competencies=_offered_refs(store, row.id, body.competencies),
         certificate=body.certificate,
         notes=body.notes,
-        attachments=_attachments(blobs, row.id, body.attachments),
+        attachments=_attachments(db, blobs, row.id, body.attachments),
     )
 
     stem, commit = records.add_cpd_entry(store, row.id, _actor(user), entry)
@@ -3292,7 +3385,7 @@ def amend_cpd_entry(
         certificate=body.certificate,
         notes=body.notes,
         attachments=(
-            _attachments(blobs, row.id, body.attachments)
+            _attachments(db, blobs, row.id, body.attachments)
             if "attachments" in body.model_fields_set
             else existing.attachments
         ),

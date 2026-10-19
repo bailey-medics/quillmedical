@@ -353,17 +353,32 @@ upload marked, so the person who uploaded it can see why it went.
       than `versions.tf` requires, so the change was checked by
       `terraform fmt` here and by the plan CI posts on the pull request.
 
-- [ ] After the merge, check the Terraform run applied, then re-run
+- [x] After the merge, check the Terraform run applied, then re-run
       `deploy.yml` so the backend revision carrying the new env takes
       traffic and the job is pointed at the real image (a Terraform
       revision gets no traffic on its own). Remove the `|| true` from
       Unit 1's pointing step in the same pull request as this unit.
+
+      Done on 19 October 2026. The deploy after the merge failed at the
+      scan job step: `github-deploy` could not act as `run-scan`, the
+      grant having been made by hand for the older accounts. Terraform
+      now grants it for every runtime account (#2134). Then `deploy.yml`
+      was run by hand: the serving revision carried `UPLOAD_SCAN_JOB` and
+      accepted `run-scan`'s reports, and the job ran the real image.
 
 - [ ] Prove it end to end in App production: upload a file containing
       the EICAR test string as passport evidence, see it refused with
       the signature named, and confirm the object is gone from the
       bucket; upload a real scan and see it served once the verdict
       arrives. Record the definitions date the report carried.
+
+      The EICAR half is done, on 19 October 2026: `eicar-in-a-pdf.pdf`, a
+      real PDF carrying the EICAR string in its content stream, was
+      uploaded as passport evidence. The job reported `Eicar-Signature`
+      about 35 seconds later, the backend recorded the verdict and the
+      object was gone from `quill-passports-app`. Still to do: a real
+      scan, seen to show once its verdict arrives, which is also the
+      first sight of the Phase 6 drop area in App production.
 
 ### Unit 5: the image proves it detects EICAR
 
@@ -439,6 +454,147 @@ fail CI, and close the one way files reached a bucket without being scanned.
       WebVTT text, not uploads). Both lists were proved able to fail by
       renaming an entry and watching the test go red. The validate job's
       timeout rose from ten minutes to fifteen for the ClamAV install.
+
+## Phase 6: The uploader says what the scan found, and ClamAV is current
+
+Found by the EICAR test in App production on 19 October 2026. The scan
+caught the file and the backend deleted it within 35 seconds, but the
+certificate form's drop area said "Attached: eicar-in-a-pdf.pdf"
+throughout, and saving the certificate would have failed with "That
+evidence is not stored against this passport", true but no help. The
+job log also warned that ClamAV 1.4.3, from Debian's archive, is behind
+the recommended 1.4.6.
+
+- [x] Add `GET /api/passport/{passport_id}/evidence/{blob_digest}/scan`,
+      answering `scan_state` (`pending`, `clean`, `infected`, `failed`)
+      and, for `infected`, the signature named. Writer-only, like the
+      upload it follows. Not a field on `EvidenceUploadOut`, as first
+      planned: the frontend passes the upload's answer straight into the
+      record it writes, and `AttachmentIn` refuses a field it does not
+      know, so a new field there would have broken every upload from a
+      tab still open on the old page. The uploader asks this route
+      straight after the upload instead.
+
+- [x] Refuse to save a record naming evidence the scan found malware in,
+      with the reason: "eicar-in-a-pdf.pdf was removed: malware was
+      found in it (Eicar-Signature). Upload a clean copy." And for a
+      scan that failed: "... could not be checked for malware. Upload it
+      again." Checked before the "is it stored?" check, since an
+      infected file has already been deleted and that check would
+      otherwise answer first with the unhelpful message.
+
+- [x] `CertificateUploader` asks the new route every three seconds after
+      an upload that comes back `pending`, saying "Scanning
+      eicar-in-a-pdf.pdf…" with the drop area disabled. (First written
+      as "Checking … for malware…", changed on 19 October 2026 as too
+      alarming for someone uploading an ordinary certificate.)
+      Clean: "Attached: …", and only then is the file handed to the form,
+      so a file never scanned clean cannot be saved from this page. Found:
+      a red "Malware found in eicar-in-a-pdf.pdf (Eicar-Signature). It
+      has been deleted and is not attached." and the drop area back to
+      empty. No verdict after two minutes: the file is handed to the
+      form with "Attached: … Still scanning; it will be shown once it
+      passes", so a slow scan does not stop somebody
+      saving, and the save-time check above still stands behind it.
+      Tests and stories for each state. As built, the line beneath the
+      drop area is its own presentational component,
+      `EvidenceScanStatus`, composed from `QuillSpinner`, `Icon` and
+      `ErrorState`, so each state has a story; the uploader only works
+      out which state to pass it.
+
+- [x] Update ClamAV to 1.4.6, from Cisco Talos's own release packages
+      rather than Debian's archive, which lags ClamAV's releases. The
+      package is pinned by version and by SHA-256 for each architecture
+      in `backend/Dockerfile.scan`, so a changed download fails the
+      build. 1.4 rather than 1.5 because 1.4 is ClamAV's long-term
+      support line: fewer upgrades to make, and a scanner is the place
+      for the steady one. A Renovate custom manager watches the
+      release, limited to 1.4, so a new patch opens a pull request
+      rather than relying on someone reading the job log; that pull
+      request has to update the two checksums by hand, and the build
+      fails until it does. The EICAR build check from Unit 5 proves
+      the new engine detects as the old one did.
+
+      As built: the package installs under `/usr/local`, with the
+      definitions in `/usr/local/share/clamav`, and `freshclam.conf` is
+      written from the package's sample. Checked locally: the image
+      reports `ClamAV 1.4.6`, the run-time refresh works as the
+      unprivileged user, and both EICAR test files in `local/` are found.
+
+## Phase 7: GitHub fetches ClamAV once a day, and the live job only scans
+
+Decided on 19 October 2026. ClamAV's definitions server refuses an
+address that asks too often, and four things asked it: the image build
+on every deploy, the scan job on every upload (all from App production's
+one Cloud NAT address), and the teaching content check on every push to
+a content pull request (from GitHub's shared runner addresses). The rule
+set for this phase: GitHub does setup and deploy, and the live app does
+only the running. So there is no mirror job in GCP, and the scan job
+stops fetching anything.
+
+- [x] Add `.github/workflows/clamav-mirror.yml`, run daily, by hand, and
+      on a change to the ClamAV pin. It downloads the pinned ClamAV
+      packages (both architectures, each checked against its SHA-256),
+      installs the amd64 one on the runner, runs `freshclam` once into a
+      fresh directory, proves the result detects EICAR, and pushes the
+      packages and definitions as one image,
+      `ghcr.io/<owner>/clamav-mirror`, tagged with the ClamAV version and
+      with the version and the date. This is now the only thing that
+      asks ClamAV's servers for anything: once a day, from one job. The
+      image is built `FROM scratch` and holds files, not a system; it
+      is a way to keep them in GHCR beside the other mirrored images,
+      private like them.
+
+- [x] The version and the two checksums stay in `backend/Dockerfile.scan`,
+      where Renovate already watches them, and the workflow reads them
+      from there, so there is one pin and not two.
+
+- [x] `backend/Dockerfile.scan` downloads nothing. The build is given
+      the mirror's files in a `.clamav-mirror/` directory of the build
+      context (gitignored), and the Dockerfile installs the package for
+      its architecture from there, after checking it against the same
+      pinned checksum, and copies the definitions in. The EICAR build
+      check stays. `deploy.yml` fetches the mirror's files before it
+      builds the scan image.
+
+- [x] The same daily workflow redeploys the scan job: it builds the scan
+      image on the day's definitions, pushes it to Artifact Registry, and
+      points `quill-scan-<env>` at it, as `deploy.yml` does. Keeping the
+      live job's definitions fresh is a deploy, so it is GitHub's. A
+      failed run posts to `#cicd`, and the live job carries on with the
+      definitions it has until the next run succeeds.
+
+- [x] `scripts/scan_cli.py` stops running `freshclam`. The live job scans
+      with the definitions in its image and records their version and
+      date against each verdict, as before. No upload makes an outgoing
+      call to ClamAV.
+
+- [ ] The teaching content check (`validate` in
+      `teaching-pipeline.yml`) installs ClamAV from the mirror's package
+      and scans with the mirror's definitions, instead of installing
+      Ubuntu's ClamAV and running `freshclam` on every push. The
+      teaching repositories run that job, so `clamav-mirror` must be
+      readable by them: in the package's settings on GitHub, "Manage
+      Actions access", give `eoeeta-teaching`,
+      `eoeeta-teaching-testing` and `respiratory-teaching` read access.
+      Until that is done the content check fails, closed, at the step
+      that fetches the mirror.
+
+      Built; the access grant is still to do, by hand, after the first
+      run of `clamav-mirror.yml` has created the package.
+
+      As built across the phase: the mirror workflow also runs on a pull
+      request that changes the pin, so the mirror holds a new version
+      before that pull request's merge deploys it. The daily redeploy
+      waits in the same concurrency group as `deploy.yml`, so the two
+      never point the job at an image at the same moment. Building and
+      testing this found that the EICAR checks matched "eicar" anywhere
+      in `clamscan`'s line, which includes the test file's own name, so
+      a scanner naming any other signature would have passed; both
+      checks now match the signature after the colon, and the test file
+      is called `sample`. Checked locally: the scan image builds from a
+      mirror directory with no download, and with no network at all it
+      reports ClamAV 1.4.6 and finds both EICAR test files.
 
 ## Decisions
 
