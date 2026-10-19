@@ -116,3 +116,4 @@
 - [Security Loose Ends](2026-10-19-security-loose-ends-plan.md)
 - [Upload Safety](2026-10-18-upload-safety-plan.md)
 - [Remote Dev Machine](2026-10-19-remote-dev-machine-plan.md)
+- [Secrets Inventory and Rotation](2026-10-19-secrets-inventory-and-rotation-plan.md)

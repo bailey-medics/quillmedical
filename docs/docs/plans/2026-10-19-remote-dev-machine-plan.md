@@ -54,6 +54,8 @@ The outcome wanted is one always-on Linux machine at home, reached through VS Co
 
 - [ ] Run one full cycle from the main checkout and from a worktree before relying on it: `just sa`, `just ub -k "..."`, `just uf src/...`, `just e2e`, `just sbt`, and a `just migrate` dry run.
 
+- [ ] Open the dev app in a browser two ways and fix what the second one shows. First through VS Code's port forwarding, which makes `localhost` on the laptop reach the box, so everything behaves as it does today. Then by the box's Tailscale address from the phone. The frontend calls `/api` relatively through Caddy (`caddy/dev/Caddyfile`), so nothing in the browser path hard-codes `localhost`, but two things will: Vite blocks any `Host` header that is not `localhost` or an IP address, and `frontend/vite.config.ts` sets no `server.allowedHosts`, so `http://devbox` gets a 403 from Vite while `http://100.x.y.z` works; and `FRONTEND_URL` in `backend/app/config.py` defaults to `http://localhost`, which is only used to build the links in verification and reset emails. The fixes are `allowedHosts` (or the `__VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS` environment variable in `compose.dev.yml`) and `FRONTEND_URL=http://devbox` in the box's `backend/.env`; the Vite one is a code change needing `implement`.
+
 ## Phase 4: Review after the first month
 
 - [ ] Decide whether it is working: the felt speed, the typing latency over Remote-SSH from outside the house, whether a job started on the box and directed from the phone finished as expected, and whether any outage or power cut stranded one.
