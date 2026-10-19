@@ -38,7 +38,7 @@ on that stack's code.
 
 ## Phase 2: The inventory
 
-- [ ] Add a `## Secrets` section to `docs/docs/infrastructure/gcp.md`,
+- [x] Add a `## Secrets` section to `docs/docs/infrastructure/gcp.md`,
       above `## Security`, listing every secret as bullets rather than a
       table (a table of ten rows with long cells is unreadable raw).
       Each bullet names the secret, who creates its container, who sets
@@ -73,7 +73,7 @@ on that stack's code.
         server and never stored; and the `.env` files on a developer's
         machine, which hold development values only.
 
-- [ ] Correct the GitHub section in the same page. "Six repository
+- [x] Correct the GitHub section in the same page. "Six repository
       secrets for the teaching content pipeline" is three since
       2026-10-19: the WIF provider, the content service account and the
       bucket, with `SLACK_WEBHOOK_URL` an organisation secret rather
