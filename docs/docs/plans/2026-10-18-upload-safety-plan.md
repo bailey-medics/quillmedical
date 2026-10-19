@@ -382,6 +382,64 @@ test file through the real engine.
       the post-deploy EICAR upload in Unit 4, which proves the chain
       through the app; it is the check that runs without anyone.
 
+## Phase 5: Nobody can add a way in that skips the scan
+
+Decided on 19 October 2026, after the question "is there a test that
+everything uploaded to a bucket is scanned?" There was not: a new upload
+route with no scan would have passed every check. These make forgetting
+fail CI, and close the one way files reached a bucket without being scanned.
+
+- [x] Add `backend/tests/every_upload_is_scanned_test.py`, part one:
+      walk every route with `served_routes(app)`, as
+      `every_route_is_guarded_test.py` does, and find each one that
+      takes a file in. A route takes a file in when a body parameter is
+      an `UploadFile`, or when its endpoint reads the raw request body
+      (`request.stream()`, `request.body()`), or when it hands out a
+      URL a browser uploads to (`create_resumable_upload_url`). Each
+      must be listed in `UPLOADS` with a reason starting `scanned:` or
+      `exempt:`. The list fails in both directions, as `PUBLIC` does: a
+      new route fails until it is listed, and a listed route that no
+      longer takes a file fails until it is taken out. A floor on the
+      count, and a deliberately planted unlisted route in a throwaway
+      app, prove the walk can fail.
+
+- [x] Part two of the same file: read the syntax tree of everything
+      under `app/` (tests excluded) for calls that write to a bucket
+      (`upload_from_string`, `upload_from_filename`, `upload_from_file`,
+      `create_resumable_upload_url`, and the blob store's `put`). Each
+      call site, named by module and enclosing function, must be listed
+      in `BUCKET_WRITES` with a reason starting `scanned:` or
+      `not an upload:`. That catches a file that arrives some other way
+      than a route parameter, such as inside a JSON body, and a new
+      bucket written to by code nobody thought of as an upload. Fails in
+      both directions, with a floor and a planted fault, as part one.
+
+- [x] Scan the teaching repositories' content before it reaches the
+      teaching bucket. Add
+      `.github/scripts/teaching-pipeline/scan-content.sh`, which runs
+      `clamscan --recursive --infected` over the modules directory and
+      fails the job on anything found, naming each file, and on a
+      scanner error too, so it fails closed. Call it from the `validate`
+      job of `teaching-pipeline.yml`, after installing ClamAV from the
+      runner's Ubuntu archive and refreshing its definitions. In
+      `validate` rather than `deploy`: `validate` is the required check
+      a content pull request must pass, the tree that reaches `main` is
+      byte-identical to the one it checked (the content ruleset enforces
+      that, which is why `deploy` does not re-validate), and an author
+      hears about it on the pull request rather than after merging. The
+      images arrive through Git LFS, which `validate` already checks out,
+      so it is the real bytes that are scanned. Tested with a `clamscan`
+      stub in `scan-content.bats`, as `sync-to-gcs.bats` stubs `gsutil`.
+
+      As built: the walks found five routes that take a file in (passport
+      evidence and the teaching upload URL, scanned; the development-only
+      upload route and the two mailing-list CSV routes, exempt) and five
+      bucket writes (the evidence write and its caller, and the upload
+      URL, scanned; the passport's git bundle and the caption editor's
+      WebVTT text, not uploads). Both lists were proved able to fail by
+      renaming an entry and watching the test go red. The validate job's
+      timeout rose from ten minutes to fifteen for the ClamAV install.
+
 ## Decisions
 
 - **Antivirus last, and built ahead of being asked** - ClamAV is
