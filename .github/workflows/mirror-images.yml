@@ -32,6 +32,7 @@ on:
       - "compose.ci.yml"
       - "backend/Dockerfile"
       - "backend/Dockerfile.caption"
+      - "backend/Dockerfile.scan"
       - "frontend/Dockerfile"
       - ".github/workflows/mirror-images.yml"
       - ".github/scripts/mirror-images/**"
@@ -44,6 +45,7 @@ on:
       - "compose.ci.yml"
       - "backend/Dockerfile"
       - "backend/Dockerfile.caption"
+      - "backend/Dockerfile.scan"
       - "frontend/Dockerfile"
       - ".github/workflows/mirror-images.yml"
       - ".github/scripts/mirror-images/**"
@@ -82,4 +84,4 @@ jobs:
       - name: Copy the images
         run: |
           bash .github/scripts/mirror-images/copy-images.sh "${{ github.repository_owner }}" compose.ci.yml \
-            backend/Dockerfile backend/Dockerfile.caption frontend/Dockerfile
+            backend/Dockerfile backend/Dockerfile.caption backend/Dockerfile.scan frontend/Dockerfile

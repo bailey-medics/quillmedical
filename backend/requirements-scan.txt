@@ -1,0 +1,12 @@
+# Dependencies for the upload scan Cloud Run Job only.
+#
+# Separate from poetry.lock for the reason requirements-caption.txt is:
+# this image carries ClamAV and its database and nothing the API needs,
+# so it installs the one package the job imports rather than the whole
+# backend. See the header of Dockerfile.scan.
+#
+# Pinned exactly, because nothing else pins it: there is no lock file
+# behind this and no Renovate coverage, so an unpinned range here would
+# make the image non-reproducible. Kept at the version poetry.lock holds,
+# so the two never disagree about the storage client.
+google-cloud-storage==3.17.0

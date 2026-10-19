@@ -1,0 +1,59 @@
+# backend/Dockerfile.scan - ClamAV, for the upload scan Cloud Run Job
+#
+# Every file uploaded to Quill is scanned for malware before anyone can
+# open it: passport evidence and teaching videos alike. See Phase 4 of
+# docs/docs/plans/2026-10-18-upload-safety-plan.md.
+#
+# A file of its own, as Dockerfile.caption is, so that ClamAV and its
+# definition database (a few hundred megabytes) never enter the image the
+# API serves from. ClamAV comes from the Debian archive the base image
+# already draws on, so there is no new image to mirror and no new source
+# to watch.
+#
+# The definitions are fetched once at build by `freshclam`, so the image
+# carries a database from the day it was built. `deploy.yml` builds this
+# image on every backend deploy, which bounds how old they can be; the job
+# also tries a refresh at the start of each run, best effort. The report
+# it sends carries the database version and date, so the record of a
+# scan says what it was scanned with.
+#
+# Build context: repository root, like the other job images.
+#
+# The base image is named in an ARG so that CI can build on its own copy
+# of it. See the same lines in backend/Dockerfile.
+ARG PYTHON_IMAGE=public.ecr.aws/docker/library/python:3.14-slim@sha256:51dafde81dbdb6ebde285137a295cf18a47ca95234fe388a343719cb97305b3d
+FROM ${PYTHON_IMAGE}
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1
+
+WORKDIR /app
+
+# `clamav` carries clamscan; `clamav-freshclam` carries the updater. The
+# daemon package is not wanted: one file per job run is a clamscan, not a
+# clamd. The database directory is handed to the unprivileged user below
+# so the refresh at run time can write to it.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends clamav clamav-freshclam \
+ && rm -rf /var/lib/apt/lists/*
+
+# The definitions, baked. `freshclam` exits non-zero on a transient
+# mirror failure, which would fail the build; it is retried a few times
+# because a missing database makes the image useless, not merely stale.
+RUN for attempt in 1 2 3; do freshclam --quiet && break || sleep 15; done \
+ && test -s /var/lib/clamav/main.cvd -o -s /var/lib/clamav/main.cld
+
+COPY backend/requirements-scan.txt ./
+RUN pip install --no-cache-dir -r requirements-scan.txt
+
+# The application package, for `job_identity` - the one helper the job
+# imports, to mint the identity token its report is sent with.
+COPY backend/app ./app
+COPY backend/scripts/scan_cli.py ./scripts/scan_cli.py
+
+RUN useradd --uid 10001 --create-home appuser \
+ && chown -R appuser:appuser /app /var/lib/clamav /var/log/clamav
+USER appuser
+
+CMD ["python", "scripts/scan_cli.py"]

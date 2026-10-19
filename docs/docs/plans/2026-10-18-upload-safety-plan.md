@@ -178,45 +178,197 @@ Decisions.
       `media_uploads.py`, and the route's existing tests now send bytes
       that begin as an MP4 or a WebM does.
 
-## Phase 4: Antivirus scanning, designed and not started
+## Phase 4: Every upload is scanned for malware before it is served
 
-Nothing in this phase is built until an organisation's information
-governance questionnaire asks whether uploads are virus scanned. The
-steps are written so that when one does, the work is a day rather than a
-design.
+Decided on 19 October 2026: built now rather than waiting for a
+questionnaire. Quill will meet NHS requirements for the NHS tenants it
+expects to have, and the Data Security and Protection Toolkit, DTAC and
+Cyber Essentials all ask that files entering a system are scanned for
+malware. "Yes, every upload, before anyone can open it, with the
+definition date recorded" is the answer to have ready; the mechanism
+below is what makes it true.
 
-- [ ] Mirror `clamav/clamav` into `ghcr.io/<owner>/mirror/` through
-      `.github/workflows/mirror-images.yml`, as every other third-party
-      image is, so the job never pulls from Docker Hub at runtime.
+The shape follows the transcode and caption jobs: a Cloud Run Job built
+from its own Dockerfile, started by the backend with the object to scan,
+reporting back with a Google identity token. Nothing is served until the
+report says clean, and a file the scanner names is deleted and its
+upload marked, so the person who uploaded it can see why it went.
 
-- [ ] Add a `quill-scan-<env>` Cloud Run job through
-      `infra/modules/cloud-run-job`, beside the caption job in
-      `infra/main.tf`, running `clamscan` over one object named by
-      environment variables, with read access to the passport blob
-      bucket and the teaching source bucket and nothing else. It reports
-      through a `/api/ci/teaching/scan-complete` callback with the
-      transcode callback token, the same shape as `caption-complete`.
-      Signature updates come from the image build on deploy, so the
-      definitions are as old as the last deploy; a scheduled
-      `freshclam` is a thing to monitor and is not added.
+### Unit 1: the scan job
 
-- [ ] Record the result where each upload is recorded: a `scanned_at`
-      column on `module_media_link`, and a `scanned_at` field on the
-      passport `Attachment`. A file is not served until it is set, in the
-      same way a video is not served until `transcoded_at` is. An
-      infected file is deleted from the bucket, its row or attachment
-      marked, and the uploader told; nothing about it is logged beyond
-      the ids.
+- [x] Add `backend/Dockerfile.scan`, from the same pinned Python base
+      image as every other backend image, with Debian's `clamav`
+      package (`clamscan` and `freshclam`) installed by apt. `freshclam`
+      runs once at build, so the image carries a definition database
+      from the day it was built; `deploy.yml` builds it on every backend
+      deploy, so the definitions are never older than the last deploy.
+      No new image to mirror: ClamAV comes from the Debian archive the
+      base image already uses, which keeps to the rule of not adding a
+      thing to monitor. Dependencies in `backend/requirements-scan.txt`,
+      pinned exactly as `requirements-caption.txt` is: only
+      `google-cloud-storage`, since the identity token comes from the
+      metadata server through `app/features/teaching/job_identity.py`,
+      which uses the standard library.
+
+- [x] Add `backend/scripts/scan_cli.py`, in the shape of
+      `caption_cli.py`: environment variables only. `SCAN_BUCKET` and
+      `SCAN_OBJECT` name the object; `SCAN_CALLBACK_URL` and
+      `SCAN_CALLBACK_AUDIENCE` say where to report. The job downloads
+      the object to a temporary file, runs `freshclam` with a 60 second
+      ceiling first (best effort: Cloud NAT gives the job a way out, as
+      it gives the caption job its Whisper model, and a refresh that
+      fails leaves the baked definitions in place), then runs
+      `clamscan --no-summary --infected` over the file. Exit 0 is clean,
+      1 is infected with the signature name on stdout, anything else is
+      a scanner fault. It reports `{bucket, object, verdict,
+      signature, definitions}` where `definitions` is the database
+      version and date from `clamscan --version`, so the record can say
+      not only that a file was scanned but with what. A scanner fault is
+      reported as `verdict: "failed"` rather than left silent, so the
+      upload shows as needing attention instead of waiting for ever.
+      **The job never deletes anything**: it holds read access only, and
+      the backend acts on the verdict.
+
+- [x] Test it in `backend/tests/scan_cli_test.py`, with `subprocess.run`
+      and the storage client patched as the caption tests do: the three
+      exit codes map to the three verdicts; the signature is read from
+      stdout; the definitions string is parsed from `clamscan --version`;
+      a failed `freshclam` does not stop the scan; the report carries
+      the object name and no local path; and a missing variable exits 1.
+
+- [x] Build and push the image in `deploy.yml` beside the caption image,
+      tagged `quill/scan`, and point `quill-scan-<env>` at it in the
+      deploy job as the caption job is pointed. The job will not exist
+      until Unit 4 applies, so the pointing step tolerates a missing job
+      until then (`|| true` with a comment naming Unit 4, removed there).
+
+### Unit 2: the backend records a scan
+
+- [ ] Add an `upload_scan` table in `backend/app/models.py` and its
+      migration: `bucket`, `object_key`, `requested_at`, `scanned_at`,
+      `verdict` (`clean`, `infected` or `failed`, validated in code as
+      `MEMBER_CAPACITIES` is rather than as a database enum),
+      `signature` and `definitions`, unique on `(bucket, object_key)`.
+      One table for both kinds of upload rather than columns on
+      `module_media_link` and a field on the passport `Attachment`: the
+      passport record is hashed, so a new field there would move every
+      existing fingerprint, and one table means one callback, one
+      recorder and one question, "is this object clean?", asked the same
+      way by both. A row with `scanned_at` null is a scan requested and
+      not yet answered.
+
+- [ ] Add `backend/app/uploads/scan.py` with `request_scan(db, bucket,
+      object_key)`, which writes the row and fires the job through
+      `run_v2` exactly as `start_caption` does, reading `UPLOAD_SCAN_JOB`
+      from settings; `scan_is_configured()`; `record_verdict(db, bucket,
+      object_key, verdict, signature, definitions)`; and `verdict_for(db,
+      bucket, object_key) -> ScanVerdict | None`. Where no job is
+      configured (development, the CI stack) nothing is requested and
+      `verdict_for` is never consulted, the same reading as the
+      transcode gate: an absent job is development, not a fault.
+
+- [ ] Add `POST /api/ci/uploads/scan-complete` in a new
+      `backend/app/uploads/ci_router.py`, guarded by
+      `require_job_identity` as the teaching callbacks are, and included
+      from `main.py` under the API prefix. It records the verdict. On
+      `infected` it deletes the object from the bucket itself, through
+      the backend's own credentials, and logs the signature with the
+      object key and nothing else. It is listed in
+      `every_route_is_guarded_test.py` with the other job callbacks.
+
+- [ ] Test the recorder and the route: a request writes a row and fires
+      the job; a clean report fills it in; an infected report deletes
+      the object and keeps the row; a failed report is recorded as
+      failed; a report for an object nobody asked to scan is refused
+      404; the identity checks are shared with the other callbacks
+      through `ci_media_callback_refusals_test.py`.
+
+### Unit 3: nothing is served until its scan says clean
+
+- [ ] Teaching: `link_upload` in `media_uploads.py` requests a scan of
+      the source object where a scan job is configured, and fires the
+      transcode only where none is; the scan callback fires the
+      transcode on `clean`, so the chain is upload, scan, transcode,
+      caption. `describe_progress` says "Checking the upload for
+      malware" while the scan is unanswered, "Upload refused: malware
+      found (<signature>)" on `infected` as a final state, and "The
+      malware check failed; upload again" on `failed`, within the first
+      of the four stages so the bar's scale does not change. The
+      transcode never runs on a file that was not scanned clean, so
+      `is_servable` needs no new branch.
+
+- [ ] Passport: `upload_evidence` requests a scan of the blob after
+      `blobs.put` where a job is configured. `get_certificate_attachment`
+      answers 409 "This file is still being checked" until the verdict
+      is clean, and 410 "This file was removed: malware was found" on
+      infected. `AttachmentOut` gains `scan_state` (`pending`, `clean`,
+      `infected`, `failed`, or `clean` where no job is configured),
+      additive, so the certificate page can say so rather than show a
+      broken image. The export bundle and PDF include only attachments
+      whose verdict is clean.
+
+- [ ] Frontend: `PassportCertificatePage` shows a short notice in place
+      of `Document` for an attachment whose `scan_state` is not `clean`,
+      using `StateMessage`. The admin media card needs no change: its
+      label comes from `describe_progress`.
+
+- [ ] Tests: the teaching chain in `media_uploads_test.py` and
+      `ci_media_test.py` (scan requested at link, transcode fired by the
+      clean verdict, not fired on infected); the passport gate in
+      `router_test.py` (409 before, 200 after clean, 410 after infected,
+      `scan_state` on the certificate); and the certificate page's notice
+      in `PassportCertificatePage.test.tsx`.
+
+### Unit 4: the job exists in every environment
+
+- [ ] Terraform: a `scan` identity in `local.runtime_workload_secrets`
+      (no secrets), `roles/storage.objectViewer` on the passport bucket
+      and, where the teaching product is on, the video source bucket;
+      `module.cloud_run_scan_job` from `modules/cloud-run-job` with
+      `vpc_egress = "ALL_TRAFFIC"`, 1 CPU, 2 GiB (ClamAV loads its
+      database into memory, about 1.3 GiB), a 10 minute timeout, and
+      `SCAN_CALLBACK_URL`/`SCAN_CALLBACK_AUDIENCE` as the caption job
+      has; the backend's `jobsExecutorWithOverrides` grant extended to
+      it; `UPLOAD_SCAN_JOB` in the backend's env and the scan account
+      added to `TEACHING_JOB_CALLBACK_CALLERS`; a `scan_image` variable
+      with the placeholder image in `terraform.tfvars`. The job is not
+      gated on `is_teaching_product`: passport evidence is uploaded in
+      every product.
+
+- [ ] After the merge, check the Terraform run applied, then re-run
+      `deploy.yml` so the backend revision carrying the new env takes
+      traffic and the job is pointed at the real image (a Terraform
+      revision gets no traffic on its own). Remove the `|| true` from
+      Unit 1's pointing step in the same pull request as this unit.
+
+- [ ] Prove it end to end in App production: upload a file containing
+      the EICAR test string as passport evidence, see it refused with
+      the signature named, and confirm the object is gone from the
+      bucket; upload a real scan and see it served once the verdict
+      arrives. Record the definitions date the report carried.
 
 ## Decisions
 
-- **Antivirus last, and only on request** - ClamAV is signature-based
-  and catches known Windows malware in files nobody on this platform
-  executes. Its value here is answering a questionnaire, not stopping an
-  attack; the attacks that reach an assessor's browser are a PDF's own
-  features, which Phases 1 and 2 address directly. Running it means an
-  image to mirror, a job to run and definitions to keep current, which
-  is a new thing to monitor and is not added without a named reason.
+- **Antivirus last, and built ahead of being asked** - ClamAV is
+  signature-based and catches known malware in files nobody on this
+  platform executes, so it was first planned as deferred: the attacks
+  that reach an assessor's browser are a PDF's own features, which
+  Phases 1 and 2 address directly. On 19 October 2026 that was reversed:
+  Quill will meet NHS requirements for the NHS tenants it expects, and
+  the DSPT, DTAC and Cyber Essentials all ask for malware scanning of
+  files entering the system. Built now, the answer is ready before the
+  question. The cost is kept down by taking ClamAV from the Debian
+  archive the base image already uses, so there is no new image to
+  mirror and no new source to watch.
+
+- **The backend deletes an infected file, not the job** - the job holds
+  read access only, so a fault in the scanner cannot remove anything.
+  The backend already holds write access to both buckets, and acting on
+  the verdict in one place keeps the record and the bucket in step.
+
+- **A scanner fault is a verdict, not silence** - `failed` is recorded
+  and shown, so an upload the scanner could not read says so rather
+  than waiting for a clean that never comes.
 
 - **Never a third-party scanning service** - VirusTotal and its like
   would mean sending a holder's certificates, and whatever patient

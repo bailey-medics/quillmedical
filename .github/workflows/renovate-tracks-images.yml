@@ -25,6 +25,7 @@ on:
       - "compose.ci.yml"
       - "backend/Dockerfile"
       - "backend/Dockerfile.caption"
+      - "backend/Dockerfile.scan"
       - "frontend/Dockerfile"
       - "renovate.json"
       - ".github/workflows/renovate-tracks-images.yml"
@@ -76,4 +77,4 @@ jobs:
         run: |
           bash .github/scripts/ci/check-renovate-tracks-images.sh \
             "${{ runner.temp }}/renovate-report/report.json" compose.ci.yml \
-            backend/Dockerfile backend/Dockerfile.caption frontend/Dockerfile
+            backend/Dockerfile backend/Dockerfile.caption backend/Dockerfile.scan frontend/Dockerfile
