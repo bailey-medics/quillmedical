@@ -14,6 +14,11 @@ Environment Variables:
     SCAN_CALLBACK_URL:       Optional.  Where to report the verdict.
     SCAN_CALLBACK_AUDIENCE:  Optional.  The audience of the identity
                              token the report is sent with.
+    TEACHING_VIDEOS_SOURCE_BUCKET:  Optional.  The video source bucket.
+    TEACHING_VIDEOS_SOURCE_MOUNT:   Optional.  Where that bucket is
+                                    mounted as a folder. An object from
+                                    it is scanned in place there; any
+                                    other is downloaded.
 
 Both callback variables are optional together: unset means development,
 where there is no backend to tell.
@@ -60,10 +65,24 @@ if proj_root not in sys.path:
 
 Verdict = Literal["clean", "infected", "failed"]
 
-#: How long one scan may take. A file is at most a few hundred megabytes
-#: (the upload ceilings bound it), and ClamAV reads that in well under
-#: this; past it something is wrong.
-_SCAN_CEILING = 600
+#: How long one scan may take. A lecture may be up to 3 GB, and ClamAV
+#: reads it end to end; past this something is wrong. Inside the job's
+#: own thirty minute timeout, so a scan that runs too long is reported
+#: as a fault rather than cut off with no report at all.
+_SCAN_CEILING = 25 * 60
+
+#: How large a file ClamAV will scan, and how much it will read from
+#: one. Its defaults are 25 MB and 100 MB, and a file over them is
+#: skipped and reported as if it were clean, which is how every lecture
+#: would have passed without being looked at. Both are set just under
+#: ClamAV's own ceiling of 4 GB, which the 3 GB upload limit stays
+#: inside.
+_SIZE_LIMITS = ("--max-filesize=4000M", "--max-scansize=4000M")
+
+#: What ClamAV names a file it could not scan in full, with
+#: ``--alert-exceeds-max``. The full name says which limit, such as
+#: ``Heuristics.Limits.Exceeded.MaxFileSize``.
+_LIMITS_EXCEEDED = "Heuristics.Limits.Exceeded"
 
 
 def definitions_version() -> str:
@@ -108,6 +127,11 @@ def scan_file(path: Path) -> tuple[Verdict, str | None]:
                 "clamscan",
                 "--no-summary",
                 "--infected",
+                *_SIZE_LIMITS,
+                # A file over the limits is reported rather than skipped
+                # as clean. It comes back as a finding, and is a fault
+                # below, never an infection.
+                "--alert-exceeds-max=yes",
                 str(path),
             ],
             capture_output=True,
@@ -122,7 +146,15 @@ def scan_file(path: Path) -> tuple[Verdict, str | None]:
         return "clean", None
 
     if result.returncode == 1:
-        return "infected", _signature_from(result.stdout)
+        signature = _signature_from(result.stdout)
+
+        # Too big to scan is not shown to be harmful, and "infected"
+        # would have the backend delete it. It is a fault: the upload
+        # waits, and the reason is in the report.
+        if signature.startswith(_LIMITS_EXCEEDED):
+            return "failed", f"too large to scan in full ({signature})"
+
+        return "infected", signature
 
     reason = (result.stderr or result.stdout).strip() or "no reason given"
 
@@ -243,6 +275,33 @@ def _require_env(*names: str) -> dict[str, str]:
     return values
 
 
+def _mounted_object(bucket_name: str, object_key: str) -> Path | None:
+    """The object's path in the mounted video source bucket, if there.
+
+    Only for that bucket: it is the only one mounted, and the only one
+    holding files large enough to need it. None otherwise, or where the
+    object cannot be seen through the mount, and the caller downloads.
+
+    The key must not climb out of the mount. Upload keys never do, but a
+    job invoked by hand could be given anything.
+    """
+    mount = os.environ.get("TEACHING_VIDEOS_SOURCE_MOUNT", "").strip()
+    mounted_bucket = os.environ.get(
+        "TEACHING_VIDEOS_SOURCE_BUCKET", ""
+    ).strip()
+
+    if not mount or not mounted_bucket or bucket_name != mounted_bucket:
+        return None
+
+    root = Path(mount).resolve()
+    candidate = (root / object_key).resolve()
+
+    if not candidate.is_relative_to(root) or not candidate.is_file():
+        return None
+
+    return candidate
+
+
 def scan() -> int:
     """Download one object, scan it, report the verdict.
 
@@ -268,15 +327,24 @@ def scan() -> int:
     definitions = definitions_version()
     print(f"Scanning with {definitions}")
 
-    # Downloaded under a fixed name, never the object's own: the key is
-    # a bucket path and has no business becoming a local one.
-    with tempfile.TemporaryDirectory() as tmp:
-        local = Path(tmp) / "upload"
-        print(f"Downloading {object_key}...")
-        blob.download_to_filename(str(local))
+    mounted = _mounted_object(bucket_name, object_key)
 
-        print("Scanning...")
-        verdict, detail = scan_file(local)
+    # A lecture is scanned in place on the mounted bucket. The job's
+    # filesystem is memory, and a 3 GB file copied into it would not
+    # fit beside ClamAV's definitions.
+    if mounted is not None:
+        print(f"Scanning {object_key} on the mounted bucket...")
+        verdict, detail = scan_file(mounted)
+    else:
+        # Downloaded under a fixed name, never the object's own: the key
+        # is a bucket path and has no business becoming a local one.
+        with tempfile.TemporaryDirectory() as tmp:
+            local = Path(tmp) / "upload"
+            print(f"Downloading {object_key}...")
+            blob.download_to_filename(str(local))
+
+            print("Scanning...")
+            verdict, detail = scan_file(local)
 
     if verdict == "failed":
         print(f"✗ Scan failed: {detail}", file=sys.stderr)

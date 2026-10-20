@@ -375,3 +375,136 @@ class TestReport:
                 report("b", "k", "clean", None, VERSION_LINE)
 
         assert "callback failed" in capsys.readouterr().err
+
+
+class TestLargeFiles:
+    """A lecture is up to 3 GB. ClamAV's defaults skip anything over
+    25 MB and call it clean, so the limits are set, and a file still too
+    big to scan in full is a fault rather than clean or infected."""
+
+    def test_the_size_limits_are_raised_and_reported_when_exceeded(
+        self,
+    ) -> None:
+        from scripts.scan_cli import scan_file
+
+        with _clam(scan_code=0) as run:
+            scan_file(Path("upload"))
+
+        args = run.call_args.args[0]
+        assert "--max-filesize=4000M" in args
+        assert "--max-scansize=4000M" in args
+        assert "--alert-exceeds-max=yes" in args
+        assert args[-1] == "upload"
+
+    def test_a_file_too_big_to_scan_is_a_fault_not_an_infection(
+        self,
+    ) -> None:
+        # "infected" would have the backend delete a lecture that has
+        # not been shown to be harmful.
+        from scripts.scan_cli import scan_file
+
+        stdout = "upload: Heuristics.Limits.Exceeded.MaxFileSize FOUND\n"
+        with _clam(scan_code=1, scan_stdout=stdout):
+            verdict, detail = scan_file(Path("upload"))
+
+        assert verdict == "failed"
+        assert detail is not None and "too large to scan" in detail
+
+
+class TestMountedBucket:
+    """A lecture is scanned in place on the mounted video source bucket;
+    anything from another bucket is downloaded as before."""
+
+    KEY = "7/colonoscopy-basics/a1b2c3d4"
+
+    def _run(self, env: dict[str, str]) -> tuple[int, MagicMock, MagicMock]:
+        blob = MagicMock()
+        blob.exists.return_value = True
+        blob.download_to_filename.side_effect = lambda dest: Path(
+            dest
+        ).write_bytes(b"x")
+        client = MagicMock()
+        client.bucket.return_value.blob.return_value = blob
+        storage_module = MagicMock()
+        storage_module.Client.return_value = client
+        modules_patch, attr_patch = _patch_storage(storage_module)
+
+        with patch.dict(os.environ, env, clear=False):
+            from scripts.scan_cli import scan
+
+            with (
+                modules_patch,
+                attr_patch,
+                _clam(scan_code=0) as run,
+                patch("scripts.scan_cli.report"),
+            ):
+                return scan(), blob, run
+
+    def _mounted(self, tmp_path: Path) -> Path:
+        path = tmp_path / self.KEY
+        path.parent.mkdir(parents=True)
+        path.write_bytes(b"lecture")
+
+        return path
+
+    def test_scans_a_lecture_in_place(self, tmp_path: Path) -> None:
+        mounted = self._mounted(tmp_path)
+        env = {
+            "SCAN_BUCKET": "video-source",
+            "SCAN_OBJECT": self.KEY,
+            "TEACHING_VIDEOS_SOURCE_BUCKET": "video-source",
+            "TEACHING_VIDEOS_SOURCE_MOUNT": str(tmp_path),
+        }
+
+        code, blob, run = self._run(env)
+
+        assert code == 0
+        blob.download_to_filename.assert_not_called()
+        assert run.call_args.args[0][-1] == str(mounted.resolve())
+
+    def test_downloads_from_another_bucket(self, tmp_path: Path) -> None:
+        # Passport evidence: not mounted, and small enough to download.
+        self._mounted(tmp_path)
+        env = {
+            "SCAN_BUCKET": "passports-bucket",
+            "SCAN_OBJECT": self.KEY,
+            "TEACHING_VIDEOS_SOURCE_BUCKET": "video-source",
+            "TEACHING_VIDEOS_SOURCE_MOUNT": str(tmp_path),
+        }
+
+        code, blob, _run = self._run(env)
+
+        assert code == 0
+        blob.download_to_filename.assert_called_once()
+
+    def test_downloads_when_the_mount_does_not_hold_it(
+        self, tmp_path: Path
+    ) -> None:
+        env = {
+            "SCAN_BUCKET": "video-source",
+            "SCAN_OBJECT": self.KEY,
+            "TEACHING_VIDEOS_SOURCE_BUCKET": "video-source",
+            "TEACHING_VIDEOS_SOURCE_MOUNT": str(tmp_path),
+        }
+
+        code, blob, _run = self._run(env)
+
+        assert code == 0
+        blob.download_to_filename.assert_called_once()
+
+    def test_a_key_cannot_climb_out_of_the_mount(self, tmp_path: Path) -> None:
+        mount = tmp_path / "mount"
+        mount.mkdir()
+        (tmp_path / "secret").write_bytes(b"not a lecture")
+        env = {
+            "SCAN_BUCKET": "video-source",
+            "SCAN_OBJECT": "../secret",
+            "TEACHING_VIDEOS_SOURCE_BUCKET": "video-source",
+            "TEACHING_VIDEOS_SOURCE_MOUNT": str(mount),
+        }
+
+        _code, blob, run = self._run(env)
+
+        # Not scanned in place: the download is what happens instead.
+        blob.download_to_filename.assert_called_once()
+        assert run.call_args.args[0][-1] != str(tmp_path / "secret")

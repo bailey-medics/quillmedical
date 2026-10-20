@@ -228,7 +228,7 @@ times that on Cloud Run's 4 vCPUs, against a 20-minute ceiling.
       out as it was before. Timed on the Mac, one minute of the 4K lecture
       took 22 seconds in one pass against 28 in two, about a fifth less.
 
-- [ ] Read the source from the mount, and scan large files properly, in
+- [x] Read the source from the mount, and scan large files properly, in
       `backend/scripts/scan_cli.py`. Where the bucket being scanned is
       the video source bucket and the mount holds the object, scan it in
       place; otherwise download, as passport evidence still is. Pass
@@ -242,7 +242,10 @@ times that on Cloud Run's 4 vCPUs, against a 20-minute ceiling.
       a file too big to scan has not been shown to be harmful, and
       `infected` would delete it. Raise `_SCAN_CEILING` to 25 minutes.
       Tests: the flags are passed, a limits finding reports `failed`, and
-      the mount is used only for the video source bucket.
+      the mount is used only for the video source bucket. As built, a key that would
+      resolve outside the mount is not read through it, and is
+      downloaded instead, since a job invoked by hand could be given any
+      key.
 
 - [ ] Refuse a video over 3 GB when the upload is asked for, and wait
       longer before calling a job stalled, in the backend and frontend.
