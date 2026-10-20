@@ -29,6 +29,7 @@ import {
 } from "@/components/teaching/module-media-card";
 import { useModuleMedia } from "@/features/teaching/use-module-media";
 import { api } from "@/lib/api";
+import { useWakeLockWhile } from "@lib/wake-lock/useWakeLockWhile";
 import type {
   AdminBankDetail,
   BankOrganisation,
@@ -222,6 +223,11 @@ export default function AdminBankDetailPage() {
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [uploading]);
+
+  // A computer that sleeps cuts the upload off, so the screen is kept
+  // on while a file is going up. Best effort: the upload resumes after
+  // a sleep anyway.
+  useWakeLockWhile(uploading);
 
   const fetchData = useCallback(async () => {
     if (!bankId) {
