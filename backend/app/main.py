@@ -80,7 +80,7 @@ from app.guides.router import router as guides_router
 from app.health import check_ehrbase_health, check_fhir_health
 from app.health import router as health_router
 from app.inbox.router import router as inbox_router
-from app.log_context import request_id_var, user_id_var
+from app.log_context import request_id_var, route_template, user_id_var
 from app.logging_config import setup_logging
 from app.marketing.admin_router import router as newsletter_admin_router
 from app.marketing.preferences import (
@@ -386,6 +386,7 @@ async def log_requests(
         extra={
             "method": request.method,
             "path": request.url.path,
+            "route": route_template(request.scope),
             "status": response.status_code,
             "duration_ms": elapsed_ms,
             "client_ip": request.client.host if request.client else None,

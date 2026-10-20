@@ -767,12 +767,13 @@ resource "google_monitoring_alert_policy" "backend_errors" {
 
   documentation {
     mime_type = "text/markdown"
-    subject   = "Backend error: $${log.extracted_label.message} $${log.extracted_label.platform} [$${log.extracted_label.status} $${log.extracted_label.request}]"
+    subject   = "Backend error: $${log.extracted_label.logger} $${log.extracted_label.platform} [$${log.extracted_label.status} $${log.extracted_label.method} $${log.extracted_label.area}]"
     content   = <<-EOT
       **$${resource.label.service_name}** logged an error.
 
-      - **Message:** $${log.extracted_label.message}
-      - **Request:** $${log.extracted_label.method} $${log.extracted_label.request}
+      - **Logged by:** $${log.extracted_label.logger}
+      - **Request id:** $${log.extracted_label.request_id} $${log.extracted_label.trace}
+      - **Request:** $${log.extracted_label.method} $${log.extracted_label.area}
       - **Answered:** $${log.extracted_label.status}
       - **Cloud Run said:** $${log.extracted_label.platform}
 
@@ -780,26 +781,27 @@ resource "google_monitoring_alert_policy" "backend_errors" {
       the above. The rest reads "(null)", which means "this entry has
       none", not that anything is missing:
 
-      - **The code logged it.** There is a message, and no request.
+      - **The code logged it.** There is the logger that wrote it and the
+        request id, and no request.
       - **Cloud Run recorded a request that answered 500 or above.** There
-        is a request and what it answered, and no message. The code's own
-        account of why is usually a line or two away in the logs, a few
-        seconds either side.
+        is the request's method, the part of the API it was in, what it
+        answered, and its trace id, which is the request id the code's
+        own lines carry.
       - **Cloud Run itself reported a fault.** There is only what Cloud
-        Run said, and no message or request. The usual one is "Memory
-        limit of … exceeded": the instance used more memory than it is
-        allowed and was stopped, and whatever it was doing was cut off.
-        Its memory allowance is `memory` on the service in
-        `infra/main.tf`.
+        Run said. The usual one is "Memory limit of … exceeded": the
+        instance used more memory than it is allowed and was stopped, and
+        whatever it was doing was cut off. Its memory allowance is
+        `memory` on the service in `infra/main.tf`.
 
-      Somebody using the app has probably just been failed. The message is
-      what the code logged, which never carries patient information; the
-      full entry, with its traceback, is in the logs:
+      Somebody using the app has probably just been failed. This alert
+      quotes nothing that names or numbers anybody, because it goes to
+      Slack and PagerDuty. The message, the full path and the traceback
+      are in the logs; search by the request id:
 
       ```
       resource.type="cloud_run_revision"
       resource.labels.service_name="$${resource.label.service_name}"
-      severity>=ERROR
+      jsonPayload.request_id="<the request id>"
       ```
 
       Logs: https://console.cloud.google.com/logs/query?project=$${project}
@@ -823,30 +825,31 @@ resource "google_monitoring_alert_policy" "backend_errors" {
         NOT jsonPayload."@type" = "type.googleapis.com/google.devtools.clouderrorreporting.v1beta1.ReportedErrorEvent"
       EOT
 
-      # What the alert quotes, so it says what went wrong without opening
-      # anything. An entry the code logged has a message. Cloud Run's own
-      # record of a request that answered 500 or above has none, and the
-      # alert used to read "(null)" and nothing else for those: on
-      # 4 October 2026 a refused marketing opt-out arrived that way, and
-      # which request had failed could only be found by reading the logs.
-      # So the request and its answer are quoted as well. Only the path:
-      # everything from the "?" on is left out, because a query string
-      # can hold what somebody typed into a search box, and that can be a
-      # patient's name. A path holds route names and ids.
+      # What the alert quotes: enough to say what went wrong and find it
+      # in the logs, and nothing that identifies anybody, because it goes
+      # to Slack and PagerDuty. Until 20 October 2026 it quoted the log
+      # message and the request path, and a path such as
+      # /api/users/123/deactivate, or the text of a refused passport
+      # sign-off, carried user and passport ids to both. Now:
       #
-      # Cloud Run's own faults are a third kind, with neither: on
-      # 4 October 2026 an instance stopped for exceeding its memory
-      # arrived as "(null)" throughout. Those are plain text, so the
-      # start of the text is quoted too. Everything the code logs is
-      # structured and has no text payload, so this is Cloud Run's
-      # wording and not the app's; it is cut at 200 characters all the
-      # same.
+      # - An entry the code logged gives the logger's name and the
+      #   request id, which finds the whole entry, message and all.
+      # - Cloud Run's own record of a request that answered 500 or above
+      #   gives its method, its status, the first segment after /api (a
+      #   route name such as "users", never an id), and its trace id,
+      #   which is the request id the code's own lines carry.
+      # - Cloud Run's own faults, such as an instance stopped for
+      #   exceeding its memory, are plain text in Cloud Run's wording,
+      #   not the app's, so the start of it is quoted, cut at 200
+      #   characters.
       label_extractors = {
-        message  = "EXTRACT(jsonPayload.message)"
-        method   = "EXTRACT(httpRequest.requestMethod)"
-        request  = "REGEXP_EXTRACT(httpRequest.requestUrl, \"^([^?]*)\")"
-        status   = "EXTRACT(httpRequest.status)"
-        platform = "REGEXP_EXTRACT(textPayload, \"^(.{1,200})\")"
+        logger     = "EXTRACT(jsonPayload.name)"
+        request_id = "EXTRACT(jsonPayload.request_id)"
+        trace      = "REGEXP_EXTRACT(trace, \"traces/([0-9a-f]+)\")"
+        method     = "EXTRACT(httpRequest.requestMethod)"
+        area       = "REGEXP_EXTRACT(httpRequest.requestUrl, \"^https?://[^/]+(/api/[a-z_-]+)\")"
+        status     = "EXTRACT(httpRequest.status)"
+        platform   = "REGEXP_EXTRACT(textPayload, \"^(.{1,200})\")"
       }
     }
   }
