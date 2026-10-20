@@ -38,13 +38,18 @@ resource "google_storage_bucket" "source" {
   # the request never reaches us.
   #
   # POST begins a resumable upload and PUT sends the chunks to the
-  # session URL it returns; both are needed. The exposed header is what
-  # carries that session URL back to the browser, and without it the
-  # first step succeeds and the second has nowhere to go.
+  # session URL it returns; both are needed. Location carries that
+  # session URL back to the browser, and without it the first step
+  # succeeds and the second has nowhere to go.
+  #
+  # Range is how the browser resumes. After each chunk, and when asked
+  # after a dropped connection, GCS answers 308 with Range saying how
+  # many bytes it holds. A header not exposed here is hidden from the
+  # page, which could then only start again from nothing.
   cors {
     origin          = [var.app_origin]
     method          = ["POST", "PUT", "OPTIONS"]
-    response_header = ["Content-Type", "Location", "x-goog-resumable"]
+    response_header = ["Content-Type", "Location", "Range", "x-goog-resumable"]
     max_age_seconds = 3600
   }
 }
