@@ -115,16 +115,17 @@ its own pull request, in rising order of risk.
 
 ## Phase 3: Database backups in London
 
-- [ ] **Pin the backup location.** In
+- [x] **Pin the backup location.** In
       `infra/modules/cloud-sql/main.tf`, `backup_configuration` gains
       `location = var.region`. Every instance the module makes takes it,
       so the FHIR and EHRbase databases do too when they are switched
       on. The point-in-time recovery logs need nothing: they are kept in
       Cloud Storage in the instance's own region.
 
-- [ ] **Delete the EU backups once a London one exists.** After the
-      apply, wait for the next automatic backup at 03:00 UTC, or take an
-      on-demand one with `gcloud sql backups create`, and confirm with
+- [ ] **Delete the EU backups once a London one exists.** Done after
+      this phase merges, since it needs the Terraform apply. Then wait
+      for the next automatic backup at 03:00 UTC, or take an on-demand
+      one with `gcloud sql backups create`, and confirm with
       `gcloud sql backups list --instance quill-core-app` that it is in
       `europe-west2`. Then delete each backup listed in `eu` with
       `gcloud sql backups delete`. Left alone they would roll off within
