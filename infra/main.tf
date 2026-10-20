@@ -637,19 +637,33 @@ module "cloud_run_transcode_job" {
   vpc_subnetwork_id = module.networking.cloud_run_subnet_id
   vpc_egress        = "ALL_TRAFFIC"
 
-  # Encoding is CPU-bound and the whole source file is held on local disk
-  # while FFmpeg works on it, so both are sized above the module defaults.
-  cpu    = "4"
-  memory = "4Gi"
+  # Sized for a 27-minute 4K lecture of about 3 GB, the largest an upload
+  # may be. The source is read from the mounted bucket below rather than
+  # copied in, because a Cloud Run job has no disk: its temporary folder
+  # is memory. The renditions are still written there, about 1.3 GB for
+  # such a lecture, hence 8 GiB. Encoding is CPU-bound, and 8 vCPU
+  # roughly halves it against 4.
+  cpu    = "8"
+  memory = "8Gi"
 
-  # Deliberate rather than the module's default: a hung job burns its full
-  # timeout before failing, and a lecture that has not encoded in twenty
-  # minutes has gone wrong rather than gone slowly.
-  timeout = "1200s"
+  # A hung job burns its full timeout before failing. Ninety minutes is
+  # about twice what a 3 GB 4K lecture was estimated to take; past it,
+  # the job has gone wrong rather than gone slowly.
+  timeout = "5400s"
+
+  gcs_volumes = [{
+    name       = "video-source"
+    bucket     = module.teaching_video_pipeline[0].source_bucket_name
+    mount_path = "/mnt/video-source"
+  }]
 
   env_vars = {
     TEACHING_VIDEOS_SOURCE_BUCKET = module.teaching_video_pipeline[0].source_bucket_name
     TEACHING_VIDEOS_BUCKET        = module.teaching_video_pipeline[0].processed_bucket_name
+
+    # Where the source bucket is mounted. The job reads the upload from
+    # here, falling back to a download where the mount is missing.
+    TEACHING_VIDEOS_SOURCE_MOUNT = "/mnt/video-source"
 
     # Where the job reports that its outputs verified. Until that report
     # lands `transcoded_at` stays null and the module stays hidden, so
@@ -745,9 +759,11 @@ module "cloud_run_caption_job" {
 # evidence is uploaded everywhere.
 #
 # Sized for ClamAV's database, which it loads into memory (about 1.3 GB),
-# rather than for the file. A scan of a file this size takes well under a
-# minute; the ten minute ceiling is for the definitions refresh and the
-# download on a slow day, and a job past it has gone wrong.
+# with room for the pages of the file being read. A lecture is read from
+# the mounted video source bucket rather than copied into memory, since a
+# Cloud Run job's temporary folder is memory; passport evidence, which is
+# small, is still downloaded. The thirty minute ceiling is for reading a
+# 3 GB lecture end to end, and a job past it has gone wrong.
 module "cloud_run_scan_job" {
   source = "./modules/cloud-run-job"
 
@@ -768,17 +784,33 @@ module "cloud_run_scan_job" {
   vpc_egress = "ALL_TRAFFIC"
 
   cpu     = "1"
-  memory  = "2Gi"
-  timeout = "600s"
+  memory  = "4Gi"
+  timeout = "1800s"
 
-  env_vars = {
-    # The backend's run.app address, as the video jobs report to, so the
-    # report never leaves Google's network.
-    SCAN_CALLBACK_URL = "${module.cloud_run_backend.service_url}/api/ci/uploads/scan-complete"
+  # Only where there are videos: the scan job runs in every product, the
+  # video source bucket only in teaching.
+  gcs_volumes = local.is_teaching_product ? [{
+    name       = "video-source"
+    bucket     = module.teaching_video_pipeline[0].source_bucket_name
+    mount_path = "/mnt/video-source"
+  }] : []
 
-    # The audience of the report's identity token.
-    SCAN_CALLBACK_AUDIENCE = local.backend_run_app_url
-  }
+  env_vars = merge(
+    {
+      # The backend's run.app address, as the video jobs report to, so
+      # the report never leaves Google's network.
+      SCAN_CALLBACK_URL = "${module.cloud_run_backend.service_url}/api/ci/uploads/scan-complete"
+
+      # The audience of the report's identity token.
+      SCAN_CALLBACK_AUDIENCE = local.backend_run_app_url
+    },
+    # Which bucket is mounted, and where, so a lecture is scanned in
+    # place and anything from another bucket is downloaded as before.
+    local.is_teaching_product ? {
+      TEACHING_VIDEOS_SOURCE_BUCKET = module.teaching_video_pipeline[0].source_bucket_name
+      TEACHING_VIDEOS_SOURCE_MOUNT  = "/mnt/video-source"
+    } : {},
+  )
 
   secret_env_vars = local.scan_secret_env_vars
 }

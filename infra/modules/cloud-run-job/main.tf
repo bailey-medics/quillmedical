@@ -27,8 +27,30 @@ resource "google_cloud_run_v2_job" "job" {
         }
       }
 
+      # Buckets the job reads as folders. Read-only: a mount is for
+      # reading a large object without copying it into memory, never a
+      # second way to write.
+      dynamic "volumes" {
+        for_each = var.gcs_volumes
+        content {
+          name = volumes.value.name
+          gcs {
+            bucket    = volumes.value.bucket
+            read_only = true
+          }
+        }
+      }
+
       containers {
         image = var.image
+
+        dynamic "volume_mounts" {
+          for_each = var.gcs_volumes
+          content {
+            name       = volume_mounts.value.name
+            mount_path = volume_mounts.value.mount_path
+          }
+        }
 
         resources {
           limits = {
