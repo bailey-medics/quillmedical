@@ -1,23 +1,21 @@
 # Terms of service
 
-Version 1.0, effective 6 October 2026. This is the first version.
-Nothing came before it except a placeholder page saying the terms were
-being written.
+Version 1.0, effective 20 October 2026.
 
 ## In short
 
 - Quill Medical is run by Bailey Medics Ltd, a company in England and
   Wales. These terms are a contract between you and us.
-- You get to Quill one of two ways: through an organisation that trains
-  or employs you (your sponsor), or by dealing with us directly. Part A
-  applies to everyone, Part B to people with a sponsor, and Part C to
-  people and organisations who deal with us directly.
-- Quill is for education and for recording your training. Nothing in it
-  is clinical advice, and nothing in it replaces your own judgement or
-  your local guidelines.
-- Never put anything in Quill that could identify a patient. This
+- You get to Quill Medical one of two ways: through an organisation that
+  trains or employs you (your sponsor), or by dealing with us directly.
+  Part A applies to everyone, Part B to people with a sponsor, and Part
+  C to people and organisations who deal with Quill Medical directly.
+- Quill Medical is for education and for recording your training.
+  Nothing in it is clinical advice, and nothing in it replaces your own
+  judgement or your local guidelines.
+- Never put anything in Quill Medical that could identify a patient. This
   includes reflections, logbook entries and messages to us.
-- Your reflections are private in Quill, but they are not legally
+- Your reflections are private in Quill Medical, but they are not legally
   privileged. A court can order them to be disclosed. Write about what
   you learned, not the facts of an incident.
 - What you write stays yours. The organisation that assesses you owns
@@ -36,18 +34,19 @@ Cheshire, M33 3SD. We are not registered for VAT.
 1.2 You can contact us at <info@quill-medical.com>. We will write to you
 at the email address on your account.
 
-1.3 "Quill", "the service", "we", "us" and "our" mean the Quill Medical
-service and Bailey Medics Ltd. "You" means the person or organisation
-using the service.
+1.3 "Quill Medical", "the service", "we", "us" and "our" mean the Quill
+Medical service and Bailey Medics Ltd. "You" means the person or
+organisation using the service.
 
 ### 2. Words used in these terms
 
-- **Sponsor** - an organisation that gives you access to Quill under an
-  agreement with us, such as a training academy, an NHS trust, a royal
-  college, a medical school or an employer. In Quill a sponsor is set up
-  as one or more organisation units, which are the places you belong to.
-- **Sponsored user** - somebody who uses Quill because a sponsor enrolled
-  them, invited them, or let them register into its programme.
+- **Sponsor** - an organisation that gives you access to Quill Medical
+  under an agreement with us, such as a training academy, an NHS trust,
+  a royal college, a medical school or an employer. In Quill Medical a
+  sponsor is set up as one or more organisation units, which are the
+  places you belong to.
+- **Sponsored user** - somebody who uses Quill Medical because a sponsor
+  enrolled them, invited them, or let them register into its programme.
 - **Direct customer** - a person or organisation that deals with us
   directly, with no sponsor's agreement in between.
 - **Sponsor agreement** - the written agreement between a sponsor and us,
@@ -58,14 +57,14 @@ using the service.
 - **Assessor** - a person who signs off a competency in somebody's
   clinician passport.
 - **Content** - the teaching modules, questions, images, video, text and
-  other material available through Quill.
+  other material available through Quill Medical.
 - **Your material** - anything you write or upload: reflections, logbook
   entries, certificates you declare, CPD entries, evidence files and
   feedback.
 
 ### 3. Which parts of these terms apply to you
 
-3.1 Part A applies to everyone who uses Quill.
+3.1 Part A applies to everyone who uses Quill Medical.
 
 3.2 If a sponsor gave you access, Part B applies as well. Your sponsor's
 agreement with us governs how the service is provided to your sponsor and
@@ -84,12 +83,13 @@ direct account and a sponsor later enrols you in its programme. Part B
 then applies to what you do within that sponsor's programme, and Part C
 to the rest.
 
-3.5 By creating an account, or by using Quill after being given an
-account, you agree to these terms. If you do not agree, do not use Quill.
+3.5 By creating an account, or by using Quill Medical after being given
+an account, you agree to these terms. If you do not agree, do not use
+Quill Medical.
 
 ### 4. Your account
 
-4.1 Quill is for healthcare professionals, people training to become
+4.1 Quill Medical is for healthcare professionals, people training to become
 them, the people who teach and assess them, and the organisations that
 run that training. You must be 18 or over.
 
@@ -112,17 +112,18 @@ been compromised.
 Two-factor authentication is available in Settings and we recommend it.
 Tell us at once if you think somebody else has used your account.
 
-4.5 We will send an email to verify your address when you register. Some
-features do not work until it is verified.
+4.5 We will send an email to verify your address when you register. You
+cannot sign in until it is verified, and if you change your address you
+must verify the new one.
 
-### 5. Using Quill properly
+### 5. Using Quill Medical properly
 
 5.1 You must not:
 
-- enter anything that could identify a patient, anywhere in Quill. This
-  includes names, dates of birth, hospital numbers, dates and places of
-  treatment, and rare combinations of details that would let somebody
-  work out who a patient is. Clause 9 says more;
+- enter anything that could identify a patient, anywhere in Quill
+  Medical. This includes names, dates of birth, hospital numbers, dates
+  and places of treatment, and rare combinations of details that would
+  let somebody work out who a patient is. Clause 9 says more;
 - share assessment questions, answers or marking schemes with anyone, or
   keep copies of them;
 - take an assessment for somebody else, let somebody else take one for
@@ -131,57 +132,59 @@ features do not work until it is verified.
   assessment, reflection or sign-off;
 - copy, download, screenshot, screen-record, scrape or redistribute
   content, except where a module says you may, or use content or your
-  access to Quill to build or train any AI system;
-- try to get round access controls, test the security of Quill without
-  our written permission, or interfere with the service for other users;
-- use Quill to harass, abuse or deceive anyone, or to break the law;
-- use Quill for anything other than education, training and the keeping
-  of training records.
+  access to Quill Medical to build or train any AI system;
+- try to get round access controls, test the security of Quill Medical
+  without our written permission, or interfere with the service for
+  other users;
+- use Quill Medical to harass, abuse or deceive anyone, or to break the law;
+- use Quill Medical for anything other than education, training and the
+  keeping of training records.
 
-5.2 If you believe there is a security problem in Quill, tell us at
+5.2 If you believe there is a security problem in Quill Medical, tell us at
 <info@quill-medical.com> rather than demonstrating it.
 
 ### 6. Teaching content, images and video
 
 6.1 Content is owned by whoever made it. Modules supplied by a sponsor or
-a content partner remain theirs. The Quill software, design and
+a content partner remain theirs. The Quill Medical software, design and
 trademarks are ours. Nothing in these terms gives you ownership of any of
 it.
 
 6.2 We grant you a personal, non-transferable licence to view and use
-content within Quill for your own education and training for as long as
-you have access to it. You must not copy it, share it or use it for
-anything else, and you must not remove any notice of who owns it.
+content within Quill Medical for your own education and training for as
+long as you have access to it. You must not copy it, share it or use it
+for anything else, and you must not remove any notice of who owns it.
 
-6.3 Clinical images and video in content are supplied by the organisation
-or author responsible for the module. They are responsible for having the
-right to use the material for teaching and for removing anything that
-could identify a patient before it reaches Quill. If you see anything in
-content that you think identifies a patient, tell us and we will remove
-it while we check.
+6.3 Clinical images and video in content are supplied by the
+organisation or author responsible for the module. They are responsible
+for having the right to use the material for teaching and for removing
+anything that could identify a patient before it reaches Quill Medical.
+If you see anything in content that you think identifies a patient, tell
+us and we will remove it while we check.
 
 6.4 If you contribute content, you confirm that you have the right to let
 us use it for teaching, that any patient recording in it was made as part
 of care or with the patient's consent, that it has been anonymised so far
 as possible, and that using it for teaching breaches no duty of
 confidence. You grant us and the sponsors you supply it to a licence to
-use it for teaching within Quill. You keep ownership of it.
+use it for teaching within Quill Medical. You keep ownership of it.
 
 ### 7. Assessments, results and certificates
 
-7.1 A result recorded in Quill is evidence for whoever is responsible for
-your training, and for your own record. It is not a professional
-qualification, a registration or a licence, and it does not by itself
-authorise you to do anything. Whether a result counts towards a
-qualification, an accreditation or a decision about your practice is for
-your sponsor or the relevant professional body to decide under its own
-rules.
+7.1 A result recorded in Quill Medical is evidence for whoever is
+responsible for your training, and for your own record. It is not a
+professional qualification, a registration or a licence, and it does not
+by itself authorise you to do anything. Whether a result counts towards
+a qualification, an accreditation or a decision about your practice is
+for your sponsor or the relevant professional body to decide under its
+own rules.
 
 7.2 Pass marks and time limits are set by the module and by your
-sponsor, and are shown before you start. We may change a module's content or questions between
-versions. A result stays attached to the version of the module you took.
+sponsor, and are shown before you start. We may change a module's
+content or questions between versions. A result stays attached to the
+version of the module you took.
 
-7.3 A certificate issued through Quill records that you completed a
+7.3 A certificate issued through Quill Medical records that you completed a
 module's assessment, when, and with what result. It carries the name on
 your account, so keep that accurate.
 
@@ -227,14 +230,15 @@ objective, as your professional body requires. You are accountable for
 your sign-off. If you later believe a sign-off you made was wrong, record
 a superseding one; do not ask us to delete the history.
 
-8.4 You may invite somebody outside Quill to sign off a competency. We
-will email them an invitation on your behalf, and you must have their
-agreement before you give us their email address.
+8.4 You may invite somebody outside Quill Medical to sign off a
+competency. We will email them an invitation on your behalf, and you
+must have their agreement before you give us their email address.
 
 8.5 The passport is yours to keep. You can download a complete copy at
-any time, including its history, and it stays readable without Quill. If
-a sponsor's agreement with us ends, clause 22 says what happens to the
-sponsor's copy of your records.
+any time, including its history, and it stays readable without Quill
+Medical. An evidence file is left out only if our virus check found a
+problem with it. If a sponsor's agreement with us ends, clause 22 says
+what happens to the sponsor's copy of your records.
 
 ### 9. Reflections and other things you write
 
@@ -243,8 +247,8 @@ display it to the people entitled to see it, back it up and make copies
 of it for export, and no more. We do not use your material to train AI
 models.
 
-9.2 Only you can read your reflections in Quill. We do not show them to
-your assessors, your sponsor or anyone else.
+9.2 Only you can read your reflections in Quill Medical. We do not show
+them to your assessors, your sponsor or anyone else.
 
 9.3 Reflections are not legally privileged. A court, a coroner or a
 regulator with a legal power can require them to be disclosed, and you
@@ -276,10 +280,10 @@ that could identify a patient into an external AI tool.
 
 ### 10. Education, not clinical advice
 
-10.1 Quill is an educational service. Content is provided for learning
-and for assessment. It is not clinical advice, it is not a substitute for
-your own professional judgement, and it does not replace your local
-guidelines, protocols or the advice of a senior colleague.
+10.1 Quill Medical is an educational service. Content is provided for
+learning and for assessment. It is not clinical advice, it is not a
+substitute for your own professional judgement, and it does not replace
+your local guidelines, protocols or the advice of a senior colleague.
 
 10.2 You remain responsible for every clinical assessment, decision and
 action you take. Check doses and treatments against a recognised
@@ -290,36 +294,39 @@ guidance before acting on anything you have learned.
 changes and mistakes happen. If you think something in a module is
 wrong, tell us.
 
-10.4 Quill is not a medical device and is not a clinical decision support
-tool. Do not use it in an emergency or to communicate about an individual
-patient's care. Quill does not currently offer any feature for holding
-patient records. If it ever does, separate terms will apply to it.
+10.4 Quill Medical is not a medical device and is not a clinical
+decision support tool. Do not use it in an emergency or to communicate
+about an individual patient's care. Quill Medical does not currently
+offer any feature for holding patient records. If it ever does, separate
+terms will apply to it.
 
 ### 11. Email and notifications
 
 11.1 We send service emails you cannot opt out of while you have an
 account: verifying your email address, resetting your password,
 invitations, certificates, reminders about modules you are enrolled in,
-and a notice when an assessment you passed is due to be repeated. We
+a notice when an assessment you passed is due to be repeated, requests
+to sign off somebody's passport entry when they name you as assessor,
+and notices about your account. Our privacy policy lists them. We
 send news and updates separately, and only if you have not said no. Our
 privacy policy explains how to stop them.
 
-11.2 Quill can send notifications to your browser or device if you turn
-them on. A notification never contains anything about a patient. Even so,
-we suggest you turn off notification previews on your device's lock
-screen.
+11.2 Quill Medical does not yet send notifications to your browser or
+device. When it does, you will choose whether to turn them on, and a
+notification will never contain anything about a patient. Even so, we
+suggest you turn off notification previews on your device's lock screen.
 
 ### 12. Availability and changes to the service
 
-12.1 We work to keep Quill available, and we will give notice of planned
-maintenance where we can, but we do not promise that it will be available
-at any particular time, and these terms give no service level. A sponsor
-agreement may.
+12.1 We work to keep Quill Medical available, and we will give notice of
+planned maintenance where we can, but we do not promise that it will be
+available at any particular time, and these terms give no service level.
+A sponsor agreement may.
 
 12.2 We may add, change or withdraw features. If a change would
-materially reduce what you can do with Quill, we will give at least 30
-days' notice by email or within the service, unless the change is needed
-for security or to comply with the law.
+materially reduce what you can do with Quill Medical, we will give at
+least 30 days' notice by email or within the service, unless the change
+is needed for security or to comply with the law.
 
 ### 13. Suspending or ending your access
 
@@ -352,12 +359,12 @@ accepted these terms. We are not responsible for loss you could have
 avoided by taking reasonable steps, such as keeping your own copy of your
 passport.
 
-14.3 Quill is supplied for your education and training. We are not
+14.3 Quill Medical is supplied for your education and training. We are not
 responsible for business losses, including loss of income, loss of
 profit, loss of business or loss of contracts, and we are not responsible
 for any decision made about you by a sponsor, an employer or a
 professional body on the basis of a result or a sign-off recorded in
-Quill.
+Quill Medical.
 
 14.4 If you have paid us for your plan, our total liability to you under
 these terms is limited to the greater of the amount you paid us for your
@@ -381,10 +388,11 @@ security or safety reason; or to make the terms clearer. We will not use
 a change to reduce your rights without the notice below.
 
 15.2 For a change that is not minor we will give at least 30 days' notice
-by email or within the service before it takes effect, and we will ask
-you to accept the new version the next time you sign in. If you do not
+by email or within the service before it takes effect. If you do not
 want to accept it, you may close your account before it takes effect,
-and if you have paid for a plan we will refund the unused part.
+and if you have paid for a plan we will refund the unused part. If you
+carry on using Quill Medical after that date, you accept the new
+version.
 
 15.3 Every version carries a version number and the date it took effect,
 and earlier versions stay available on our website, so you can always
@@ -403,8 +411,8 @@ are a consumer living in Scotland or Northern Ireland you may also bring
 proceedings in your own courts.
 
 16.3 These terms, our privacy policy and our cookie policy are the whole
-agreement between you and us about your use of Quill, unless you have a
-sponsor or a written agreement with us, as clause 3 describes.
+agreement between you and us about your use of Quill Medical, unless you
+have a sponsor or a written agreement with us, as clause 3 describes.
 
 16.4 We may transfer our rights and obligations under these terms to
 another organisation. We will tell you if this happens and make sure the
@@ -414,7 +422,7 @@ transfer does not affect your rights. You may not transfer yours.
 applies. If we delay enforcing these terms, we can still enforce them
 later. Nobody other than you and us has any rights under these terms.
 
-## Part B: If you use Quill through a sponsor
+## Part B: If you use Quill Medical through a sponsor
 
 ### 17. Your sponsor's agreement comes first
 
@@ -426,8 +434,8 @@ prevails over the rest of these terms between you and us.
 17.2 Your sponsor has agreed with us that everyone it gives access to
 accepts these terms, which are the end user agreement its agreement
 refers to. It is your sponsor's responsibility, not ours, to tell you
-about its own policies for using Quill, to give you its privacy notice,
-and to obtain any agreement from you that its own rules require.
+about its own policies for using Quill Medical, to give you its privacy
+notice, and to obtain any agreement from you that its own rules require.
 
 ### 18. What your sponsor can do
 
@@ -467,9 +475,9 @@ legal position.
 
 ### 20. Help, requests and complaints go to your sponsor first
 
-20.1 Your sponsor supports you in using Quill. Ask your sponsor first if
-you need help, want to change what you can do, or want to leave a
-programme.
+20.1 Your sponsor supports you in using Quill Medical. Ask your sponsor
+first if you need help, want to change what you can do, or want to leave
+a programme.
 
 20.2 Requests about your personal data in your training records, such as
 a copy, a correction or a deletion, go to your sponsor, because it
@@ -494,13 +502,14 @@ they carry on, and if you do not, none are sent.
 
 ### 22. When you leave your sponsor or its agreement ends
 
-22.1 If you leave your sponsor's programme, your sponsor keeps its copy of
-your training records for the period its agreement and its own retention
-rules set, and you keep access to your own account and to what you can
-download for as long as the account is open. Where a sponsor has given
-us a period after which its records about you are deleted, it is set
-out under that sponsor's name in clause 22.3. Records your sponsor owns, such as its assessment and sign-off
-records, remain its records, and you may keep a copy of them.
+22.1 If you leave your sponsor's programme, your sponsor keeps its copy
+of your training records for the period its agreement and its own
+retention rules set, and you keep access to your own account and to what
+you can download for as long as the account is open. Where a sponsor has
+given us a period after which its records about you are deleted, it is
+set out under that sponsor's name in clause 22.3. Records your sponsor
+owns, such as its assessment and sign-off records, remain its records,
+and you may keep a copy of them.
 
 22.2 If your sponsor's agreement with us ends, we return or delete the
 sponsor's records as it instructs, within the time its agreement sets.
@@ -547,11 +556,11 @@ treat you as a business because you are a healthcare professional.
 
 ### 24. Plans, ordering and prices
 
-24.1 Some of Quill is free to use. Where a plan has a price, we show the
-price, what it includes, how long it lasts, how it renews and how to end
-it before you order. We are not registered for VAT, so no VAT is added
-to our prices. If that changes, the price shown before you order will
-say whether VAT is included.
+24.1 Some of Quill Medical is free to use. Where a plan has a price, we
+show the price, what it includes, how long it lasts, how it renews and
+how to end it before you order. We are not registered for VAT, so no VAT
+is added to our prices. If that changes, the price shown before you
+order will say whether VAT is included.
 
 24.2 Your order is accepted, and the contract for the plan is made, when
 we confirm it by email. If we cannot accept an order we will tell you and
@@ -620,15 +629,15 @@ paid, and end the plan if it remains unpaid after a further 30 days.
 
 29.1 When a paid plan ends, your account stays open and you keep access
 to your own training records, your certificates and your passport, and to
-the free parts of Quill. Content that needs a paid plan is no longer
+the free parts of Quill Medical. Content that needs a paid plan is no longer
 available. Our privacy policy says how long we keep your data after an
 account stops being used.
 
 ### 30. Organisations contracting directly
 
-30.1 An organisation that buys Quill for its own people signs a written
-agreement with us, with a data processing schedule, and becomes the
-sponsor of the people it gives access to. That agreement governs the
+30.1 An organisation that buys Quill Medical for its own people signs a
+written agreement with us, with a data processing schedule, and becomes
+the sponsor of the people it gives access to. That agreement governs the
 service, its fees, its service level, liability between the organisation
 and us, and how we handle personal data on the organisation's behalf.
 
