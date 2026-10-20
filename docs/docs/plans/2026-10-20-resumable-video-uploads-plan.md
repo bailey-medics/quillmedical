@@ -40,7 +40,7 @@ admin's upload bandwidth sets the pace, and chunking will not change that.
 
 ## Phase 2: Send the file in chunks and resume after a failure
 
-- [ ] Replace the single `sendToSession` `PUT` for GCS URLs in
+- [x] Replace the single `sendToSession` `PUT` for GCS URLs in
       `use-module-media.ts` with a chunk loop. Each chunk is a
       `file.slice()` sent with `Content-Range: bytes start-end/total`. The
       chunk size is 16 MiB: GCS requires a multiple of 256 KiB, and 16 MiB
@@ -51,34 +51,44 @@ admin's upload bandwidth sets the pace, and chunking will not change that.
       a relative URL, keeps the single `PUT` it has now, because it does
       not speak the resumable protocol.
 
-- [ ] Prove that `XMLHttpRequest` hands a `308` with no `Location` to the
+- [x] Prove that `XMLHttpRequest` hands a `308` with no `Location` to the
       `load` handler rather than following it as a redirect. GCS sends no
-      `Location` on these, and Chrome, Firefox and Safari are understood to
-      pass them through. Check it in Chrome and Safari before relying on it,
-      using a small two-chunk upload to the `chest-xray-interpretation-test`
-      module in App production. There is no staging environment, and
-      nobody else uses that module. If a browser follows or hides
-      it, fall back to `fetch` for the chunk requests (progress is then per
-      chunk rather than per byte, which is acceptable at 16 MiB).
+      `Location` on these. The Fetch standard settles it: in HTTP-redirect
+      fetch, a redirect status whose location URL is null is returned as
+      the response, not followed, and `XMLHttpRequest` is defined on
+      Fetch, so `load` sees status 308. The same research turned up a
+      second point the code now handles: GCS leaves `Range` out entirely
+      until it holds a byte, so a missing header means offset 0
+      ([Google's resumable upload protocol](https://developers.google.com/gdata/docs/resumable_upload)).
+      The check in a real browser moved to Phase 5, where a real upload
+      exercises it anyway, because no browser can reach the new `Range`
+      header until Phase 1 has applied. A unit test cannot prove browser
+      behaviour. The `fetch` fallback, with progress per chunk rather than
+      per byte, is not built: the standard says it is not needed, and it
+      waits on Phase 5 showing otherwise.
 
-- [ ] On a network error or a 5xx, ask GCS how much it has (an empty `PUT`
+- [x] On a network error or a 5xx, ask GCS how much it has (an empty `PUT`
       with `Content-Range: bytes */total`), then carry on from the
       confirmed offset. Retry up to 6 times with backoff (1, 2, 4, 8, 16,
       30 seconds), resetting the count after any chunk succeeds, so a long
       upload with several short blips still completes. A 4xx other than
       408 or 429 is not retried, because it will not change. A 404 or 410
       means the session is gone, and the upload fails with a message
-      saying so. While offline (`navigator.onLine` false, or the
+      saying so. That message landed here rather than in Phase 4,
+      because the failure kind is new in this phase. While offline (`navigator.onLine` false, or the
       `ConnectivityContext` saying so), wait for the `online` event before
       the next attempt instead of using up retries.
 
-- [ ] Keep progress true across retries: percent is the confirmed offset
+- [x] Keep progress true across retries: percent is the confirmed offset
       plus the current chunk's `loaded`, over the file size, so the bar
       never jumps back after a retry. Add a `retrying` state per key to
       `ModuleMediaState` so the row can say "Connection lost, retrying"
-      under the bar instead of freezing it silently.
+      under the bar instead of freezing it silently. As built, the bar is
+      held at its highest value rather than recomputed: GCS may confirm
+      fewer bytes than were sent, and a bar that dips during a retry reads
+      as breaking. The row only shows `uploadRetrying` from Phase 4.
 
-- [ ] Tests in `use-module-media.test.ts`, extending the existing fake
+- [x] Tests in `use-module-media.test.ts`, extending the existing fake
       `XMLHttpRequest`: chunks carry the right `Content-Range`; the next
       chunk starts from the `Range` GCS confirmed, not from where the
       client thought it was; a network error triggers the status query
@@ -87,7 +97,11 @@ admin's upload bandwidth sets the pace, and chunking will not change that.
       session-gone message; the local relative URL still sends one `PUT`;
       progress never decreases across a retry. Use an injectable delay for
       the backoff, as `MEDIA_POLL_INTERVAL_MS` does for polling, rather
-      than fake timers.
+      than fake timers. As built, the chunk loop lives in its own module,
+      `frontend/src/features/teaching/resumable-upload.ts`, with its tests
+      beside it, and the hook's handling of retrying and of each failure
+      kind is in `use-module-media-retrying.test.ts`, which replaces the
+      chunk loop with a mock.
 
 ## Phase 3: Keep the computer awake while uploading
 
@@ -140,7 +154,9 @@ admin's upload bandwidth sets the pace, and chunking will not change that.
 ## Phase 5: Try it for real
 
 - [ ] In App production, on the `chest-xray-interpretation-test` module,
-      upload a video of at least 500 MB,
+      first upload a video of 40 MB or so (three chunks) in Chrome and in Safari and check, in
+      the network panel, that the chunk `PUT`s answer 308 with `Range` and
+      the upload links. Then upload a video of at least 500 MB,
       turn Wi-Fi off partway for 30 seconds, and turn it back on. The bar
       should say it is retrying, then finish, and the row should show the
       linked video. Then repeat with the lid closed for a minute. The

@@ -155,11 +155,14 @@ describe("useModuleMedia", () => {
     expect(calls[0]).toContain("/media/upload-url");
     expect(calls[1]).toContain("/media/lecture-01/link");
 
-    // Two requests: open the session, then send the bytes to it.
+    // Two requests: open the session, then send the bytes to it. The
+    // bytes go as a chunk naming its place in the file, so a dropped
+    // connection can resume rather than start again.
     expect(requests).toHaveLength(2);
     expect(requests[0].method).toBe("POST");
     expect(requests[1].method).toBe("PUT");
-    expect(requests[1].body).toBe(file);
+    expect(requests[1].headers["Content-Range"]).toBe("bytes 0-0/1");
+    expect((requests[1].body as Blob).size).toBe(file.size);
   });
 
   it("opens the session with the header the URL was signed for", async () => {
