@@ -27,7 +27,6 @@ Three figures sit above the list:
 Each row of the list is one delegate:
 
 - **Site** and **Clinical lead** say where they belong.
-- **Learning** is not filled in yet, and shows a dash.
 - **Assessment** shows their latest result.
 - **Date** is when they last sat it.
 

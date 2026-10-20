@@ -173,7 +173,6 @@ def delegate_rows(
                 email=person.email,
                 site_name=site_name,
                 clinical_lead=lead_name,
-                learning_completed=None,
                 assessment_result=result,
                 assessment_date=assessment_date,
                 first_time_pass=first_time_pass,

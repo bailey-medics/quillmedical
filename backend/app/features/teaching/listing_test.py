@@ -153,7 +153,6 @@ def test_somebody_with_no_attempt_is_listed_with_no_result(
         email="delegate@example.com",
         site_name=None,
         clinical_lead=None,
-        learning_completed=None,
         assessment_result=None,
         assessment_date=None,
         first_time_pass=False,

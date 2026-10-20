@@ -1,0 +1,4 @@
+generation: 1
+forces_reload: false
+change: "response-required-property-removed GET /api/teaching/admin/delegates removed the required property `items/learning_completed` from the response with the `200` status"
+reason: "Learning progress was never recorded, so this field was always null and the All delegates page showed only a dash. A tab still open on the old page would show the column as In progress until it updates, which the background update covers."

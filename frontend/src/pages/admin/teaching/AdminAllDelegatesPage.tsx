@@ -3,7 +3,7 @@
  *
  * Admin view showing all delegates across teaching modules.
  * Displays stat cards, a filter popover, and a data table of
- * delegates with learning and assessment status.
+ * delegates with their assessment results.
  *
  * Only shows delegates belonging to the current user's organisation(s).
  *
@@ -35,7 +35,6 @@ interface Delegate {
   email: string | null;
   site_name: string | null;
   clinical_lead: string | null;
-  learning_completed: boolean | null;
   assessment_result: "pass" | "fail" | "incomplete" | null;
   assessment_date: string | null;
   first_time_pass: boolean;
@@ -67,15 +66,6 @@ const columns: Column<Delegate>[] = [
     header: "Clinical lead",
     render: (d) => d.clinical_lead ?? "-",
     accessor: (d) => d.clinical_lead ?? "",
-  },
-  {
-    header: "Learning",
-    render: (d) => {
-      if (d.learning_completed === null) return "-";
-      return d.learning_completed ? "Complete" : "In progress";
-    },
-    accessor: (d) =>
-      d.learning_completed === null ? "" : d.learning_completed ? "1" : "0",
   },
   {
     header: "Assessment",
