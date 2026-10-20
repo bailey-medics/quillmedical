@@ -417,6 +417,39 @@ describe("AdminBankDetailPage media card", () => {
     await waitFor(() => expect(wouldBlock()).toBe(true));
   });
 
+  it("keeps the screen awake while a video is still going up", async () => {
+    // A computer that sleeps cuts the upload off, so the page holds a
+    // wake lock for as long as a file is going up.
+    const request = vi.fn(() =>
+      Promise.resolve({ released: false, release: vi.fn() }),
+    );
+    Object.defineProperty(navigator, "wakeLock", {
+      configurable: true,
+      value: { request },
+    });
+    holdUploadOpen();
+    routeGets({
+      module_id: "test-bank",
+      references: [{ key: "lecture-01", asset: null }],
+      unattached: [],
+      is_complete: false,
+    });
+    (api.post as Mock).mockResolvedValue({
+      upload_url: "https://storage.example/upload",
+      asset_id: "asset-1",
+    });
+
+    renderWithRouter(<AdminBankDetailPage />);
+    await waitFor(() => {
+      expect(screen.getByText("Test Bank")).toBeTruthy();
+    });
+    expect(request).not.toHaveBeenCalled();
+
+    await startUpload();
+    await waitFor(() => expect(request).toHaveBeenCalledWith("screen"));
+    Reflect.deleteProperty(navigator, "wakeLock");
+  });
+
   it("warns before a reload while a video is still going up", async () => {
     // The blocker only sees route changes. A tab close or refresh kills
     // the transfer outright, so it needs its own guard.

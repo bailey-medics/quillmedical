@@ -105,7 +105,7 @@ admin's upload bandwidth sets the pace, and chunking will not change that.
 
 ## Phase 3: Keep the computer awake while uploading
 
-- [ ] Request a Screen Wake Lock (`navigator.wakeLock.request("screen")`)
+- [x] Request a Screen Wake Lock (`navigator.wakeLock.request("screen")`)
       when the first upload starts, and release it when none are left in
       flight. It lives in the page beside the existing `uploading` flag in
       `frontend/src/pages/admin/teaching/AdminBankDetailPage.tsx`, because
@@ -118,9 +118,12 @@ admin's upload bandwidth sets the pace, and chunking will not change that.
       closing the lid, and nothing in a web page can. Put the lock in a
       small hook, `useWakeLockWhile(active)`, in `frontend/src/lib/`, with
       its own test covering request, release, re-request on visible, and a
-      browser without the API.
+      browser without the API. As built, it is
+      `frontend/src/lib/wake-lock/useWakeLockWhile.ts`. It also releases a
+      lock the browser grants after the upload has already finished,
+      since the request can still be out when that happens.
 
-- [ ] Leave the leaving-the-page warning as it is. `AdminBankDetailPage`
+- [x] Leave the leaving-the-page warning as it is. `AdminBankDetailPage`
       already blocks in-app navigation with `useBlocker` and a full page
       load with `beforeunload` while `uploading` is true, so that part of
       the original request already exists.
