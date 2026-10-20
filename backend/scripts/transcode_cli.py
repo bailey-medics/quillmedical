@@ -13,6 +13,10 @@ Environment Variables:
     TRANSCODE_ASSET_ID:   Required.  Generated id of the uploaded asset.
     TEACHING_VIDEOS_SOURCE_BUCKET:  Required.  Where the raw upload is.
     TEACHING_VIDEOS_BUCKET:         Required.  Where renditions go.
+    TEACHING_VIDEOS_SOURCE_MOUNT:   Optional.  Where the source bucket
+                                    is mounted as a folder. The upload
+                                    is read from there, and downloaded
+                                    only where it is not.
     TRANSCODE_CALLBACK_URL:      Optional.  Where to report completion.
     TRANSCODE_CALLBACK_AUDIENCE: Optional.  The audience of the identity
                                  token that report carries: the
@@ -305,21 +309,45 @@ def probe_container(path: Path) -> tuple[str, bool] | None:
     return container, has_video
 
 
-def build_rendition(
-    source: Path, dest: Path, height: int, bitrate: str
+def build_renditions(
+    source: Path, renditions: list[tuple[Path, int, str]]
 ) -> None:
-    """Encode one H.264 rendition at the given height.
+    """Encode every H.264 rendition in one FFmpeg run.
 
-    The scale filter takes width from the height and rounds it to an
-    even number: H.264 chroma subsampling requires even dimensions, and
-    an odd width from an unusual aspect ratio fails the encode outright.
+    One run rather than one per rendition, so the source is decoded once.
+    On a 4K lecture decoding is a large share of the work, and doing it
+    twice is what put a 27-minute lecture past the job's ceiling.
+
+    ``renditions`` is each output with its height and video bitrate. The
+    scale filter takes width from the height and rounds it to an even
+    number: H.264 chroma subsampling requires even dimensions, and an
+    odd width from an unusual aspect ratio fails the encode outright.
+
+    The first audio stream goes to every output, if there is one. Other
+    streams, such as a camera's timecode track, are left out, as they
+    were when FFmpeg chose the streams itself.
     """
-    _run_ffmpeg(
-        [
-            "-i",
-            str(source),
-            "-vf",
-            f"scale=-2:{height}",
+    if not renditions:
+        raise ValueError("no renditions to encode")
+
+    labels = [f"v{index}" for index in range(len(renditions))]
+    scales = ";".join(
+        f"[{label}]scale=-2:{height}[o{index}]"
+        for index, (label, (_dest, height, _bitrate)) in enumerate(
+            zip(labels, renditions, strict=True)
+        )
+    )
+    split = f"[0:v]split={len(renditions)}" + "".join(
+        f"[{label}]" for label in labels
+    )
+    args = ["-i", str(source), "-filter_complex", f"{split};{scales}"]
+
+    for index, (dest, _height, bitrate) in enumerate(renditions):
+        args += [
+            "-map",
+            f"[o{index}]",
+            "-map",
+            "0:a:0?",
             "-c:v",
             "libx264",
             "-preset",
@@ -336,7 +364,8 @@ def build_rendition(
             "+faststart",
             str(dest),
         ]
-    )
+
+    _run_ffmpeg(args)
 
 
 def build_poster(
@@ -371,6 +400,27 @@ def build_poster(
         raise RuntimeError(
             f"no frame at {at_seconds} seconds; is the video that long?"
         )
+
+
+def _mounted_source(source_path: str) -> Path | None:
+    """The upload's path in the mounted source bucket, if it is there.
+
+    None where no mount is configured, or the object cannot be seen
+    through it, and the caller downloads instead. The object path has
+    already been checked by ``media_object_path``, so it cannot climb
+    out of the mount.
+    """
+    mount = os.environ.get("TEACHING_VIDEOS_SOURCE_MOUNT", "").strip()
+
+    if not mount:
+        return None
+
+    candidate = Path(mount) / source_path
+
+    if not candidate.is_file():
+        return None
+
+    return candidate
 
 
 def transcode() -> int:
@@ -439,14 +489,23 @@ def transcode() -> int:
         )
         return 1
 
-    # A lecture is large, and the job's filesystem is the only place it
-    # can be worked on. The temporary directory is cleaned up whether
-    # the encode succeeds or fails.
+    # The renditions are written to the job's filesystem, which on Cloud
+    # Run is memory. The temporary directory is cleaned up whether the
+    # encode succeeds or fails.
     with tempfile.TemporaryDirectory() as tmp:
         tmpdir = Path(tmp)
-        local_source = tmpdir / "source"
-        print(f"Downloading {source_path}...")
-        source_blob.download_to_filename(str(local_source))
+        local_source = _mounted_source(source_path)
+
+        # A lecture is up to 3 GB, and copying it into a filesystem that
+        # is memory is what ran the job out of memory. Read in place
+        # from the mounted bucket where there is one; download only
+        # where there is not, as in local development.
+        if local_source is None:
+            local_source = tmpdir / "source"
+            print(f"Downloading {source_path}...")
+            source_blob.download_to_filename(str(local_source))
+        else:
+            print(f"Reading {source_path} from the mounted bucket...")
 
         # Refused deliberately, naming the cause, rather than left to
         # fail inside the 720p encode. The source is kept: nothing has
@@ -466,16 +525,19 @@ def transcode() -> int:
                 return 1
 
         outputs: list[tuple[Path, str, str]] = []
+        renditions: list[tuple[Path, int, str]] = []
 
         for label, height, bitrate in RENDITIONS:
             local = tmpdir / f"{asset_id}-{label}.mp4"
-            print(f"Encoding {label}...")
-            try:
-                build_rendition(local_source, local, height, bitrate)
-            except RuntimeError as exc:
-                print(f"✗ {exc}", file=sys.stderr)
-                return 1
+            renditions.append((local, height, bitrate))
             outputs.append((local, f"{asset_id}-{label}.mp4", "video/mp4"))
+
+        print(f"Encoding {', '.join(label for label, _, _ in RENDITIONS)}...")
+        try:
+            build_renditions(local_source, renditions)
+        except RuntimeError as exc:
+            print(f"✗ {exc}", file=sys.stderr)
+            return 1
 
         poster = tmpdir / f"{asset_id}-poster.jpg"
         print("Extracting poster frame...")
