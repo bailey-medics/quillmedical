@@ -91,6 +91,15 @@ export interface ModuleMediaState {
   savePosterFrame: (assetId: string, seconds: number) => Promise<boolean>;
 }
 
+/**
+ * The largest video an administrator may upload: 3 GiB.
+ *
+ * The same limit as `MAX_MEDIA_UPLOAD_BYTES` in the backend, which
+ * refuses anything larger. Checked here as well so the admin hears it
+ * at once, rather than after asking for somewhere to upload to.
+ */
+export const MAX_VIDEO_UPLOAD_BYTES = 3 * 1024 * 1024 * 1024;
+
 /** Round a byte count to something a person reads at a glance. */
 function formatSize(bytes: number): string {
   const mb = bytes / (1024 * 1024);
@@ -110,7 +119,7 @@ function formatSize(bytes: number): string {
  */
 function describeUploadFailure(status: number, file: File): string {
   if (status === 413) {
-    return `This file is too large to upload (${formatSize(file.size)}). Try a shorter recording or a more compressed export.`;
+    return `This file is too large to upload (${formatSize(file.size)}). The limit is ${formatSize(MAX_VIDEO_UPLOAD_BYTES)}: try a shorter recording or a more compressed export.`;
   }
   if (status === 415 || status === 400) {
     return `This file type cannot be uploaded (${file.type || "unknown type"}). Videos must be MP4, WebM or QuickTime.`;
@@ -404,6 +413,18 @@ export function useModuleMedia(
         delete next[key];
         return next;
       });
+
+      // Refused before anything is asked for or sent. The backend
+      // refuses it too, but the admin should not wait to hear it.
+      if (file.size > MAX_VIDEO_UPLOAD_BYTES) {
+        setUploadErrors((e) => ({
+          ...e,
+          [key]: describeUploadFailure(413, file),
+        }));
+
+        return;
+      }
+
       setUploadProgress((p) => ({ ...p, [key]: 0 }));
       setUploadNames((n) => ({ ...n, [key]: file.name }));
 

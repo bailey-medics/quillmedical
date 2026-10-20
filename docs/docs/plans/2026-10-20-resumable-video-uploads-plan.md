@@ -247,7 +247,7 @@ times that on Cloud Run's 4 vCPUs, against a 20-minute ceiling.
       downloaded instead, since a job invoked by hand could be given any
       key.
 
-- [ ] Refuse a video over 3 GB when the upload is asked for, and wait
+- [x] Refuse a video over 3 GB when the upload is asked for, and wait
       longer before calling a job stalled, in the backend and frontend.
       `create_media_upload_url` answers 413 for a `size_bytes` over
       `MAX_MEDIA_UPLOAD_BYTES`, 3 GiB, and 400 for one of zero or less.
@@ -259,7 +259,9 @@ times that on Cloud Run's 4 vCPUs, against a 20-minute ceiling.
       40, each just past its job's new timeout, so the card does not
       call a slow job stalled. Tests: the route's 413 and 400, the hook
       refusing an oversized file without a request, and the stalled
-      thresholds.
+      thresholds. As built, the link route still records whatever
+      size it is told, as its existing test pins: the limit is applied
+      once, when the upload address is asked for.
 
 - [ ] In App production, upload all three lectures to the
       `chest-xray-interpretation-test` module, one at a time, and follow

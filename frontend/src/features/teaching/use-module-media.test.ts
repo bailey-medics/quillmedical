@@ -14,7 +14,7 @@ vi.mock("@/lib/api", () => ({
 }));
 
 import { api } from "@/lib/api";
-import { useModuleMedia } from "./use-module-media";
+import { MAX_VIDEO_UPLOAD_BYTES, useModuleMedia } from "./use-module-media";
 
 const media = {
   module_id: "mod-1",
@@ -258,6 +258,55 @@ describe("useModuleMedia", () => {
 
     expect(result.current.uploadErrors["lecture-01"]).toContain("too large");
     expect(result.current.uploadErrors["lecture-01"]).not.toContain("413");
+  });
+
+  it("refuses a video over the limit without asking for anywhere to send it", async () => {
+    // The jobs after the upload are sized for files up to the limit,
+    // so the admin hears at once rather than an hour later.
+    const requests = stubUpload();
+    (api.get as Mock).mockResolvedValue(media);
+
+    const { result } = renderHook(() => useModuleMedia("mod-1", 20));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    const file = new File(["x"], "lecture.mov", { type: "video/quicktime" });
+    Object.defineProperty(file, "size", {
+      value: MAX_VIDEO_UPLOAD_BYTES + 1,
+    });
+    await act(async () => {
+      await result.current.upload("lecture-01", file);
+    });
+
+    expect(api.post).not.toHaveBeenCalled();
+    expect(requests).toHaveLength(0);
+    expect(result.current.uploadErrors["lecture-01"]).toContain(
+      "too large to upload",
+    );
+    expect(result.current.uploadErrors["lecture-01"]).toContain(
+      "The limit is 3.0 GB",
+    );
+    expect(result.current.uploading).toBe(false);
+  });
+
+  it("accepts a video at the limit", async () => {
+    stubUpload();
+    (api.get as Mock).mockResolvedValue(media);
+    (api.post as Mock).mockResolvedValue({
+      upload_url: "/api/teaching/admin/modules/mod-1/media/asset-1/content",
+      asset_id: "asset-1",
+    });
+
+    const { result } = renderHook(() => useModuleMedia("mod-1", 20));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    const file = new File(["x"], "lecture.mov", { type: "video/quicktime" });
+    Object.defineProperty(file, "size", { value: MAX_VIDEO_UPLOAD_BYTES });
+    await act(async () => {
+      await result.current.upload("lecture-01", file);
+    });
+
+    const calls = (api.post as Mock).mock.calls.map((c) => c[0] as string);
+    expect(calls[0]).toContain("/media/upload-url");
   });
 
   it("sends a local upload in one request, with no handshake", async () => {
