@@ -651,6 +651,10 @@ where the text is right and the system is not.
       of the terms and section 5 of the privacy policy, as a new version
       of each. Mark expects Stripe but has not chosen yet (6 October
       2026), so the terms promise only to name it on the order page.
+      The checkout has no "start now" tick box: decided by Mark on
+      20 October 2026, a plan starts as soon as the order is confirmed
+      and a cancellation within 14 days is refunded in full (clause
+      24.2), so there is no early-start request to collect.
 
 - [ ] **Tick Phase 1 of the Legal links at registration plan,** whose
       four steps this plan completes.

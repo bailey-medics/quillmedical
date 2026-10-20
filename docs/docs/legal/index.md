@@ -102,11 +102,21 @@ longer promises an "accept" screen at the next sign-in: a change that
 is not minor gets 30 days' notice, and carrying on using the service
 after it means accepting it.
 
+Changed again on 20 October 2026, by Mark's decision, still as version
+1.0: neither document mentions the clinician passport, because it is not
+offered to users yet and EoEETA, who review both, do not need it. Gone
+with it are sign-offs, assessors and their invitations, the logbook,
+self-declared records, evidence files and reflections. The sections and
+clauses after each removal are renumbered, so a section or clause number
+in an earlier note on this page may now point elsewhere. When the
+passport opens to users, its text comes back as a new version of each.
+
 Every version carries a version number and the date it took effect,
 because acceptance is not recorded per person, so that date is the only
 record of which version somebody was shown. When a version is replaced,
 keep the old one here under its number rather than deleting it, so that
-the "earlier versions stay available" promise in both documents is true.
+the promise in both documents, that we keep every earlier version and
+send a copy on request, is true.
 
 ## What is deliberately left out
 
