@@ -559,6 +559,54 @@ tracks.
 
 ## Phase 6: Review and publish
 
+The first six steps come from a review of both documents against the
+code and the law on 20 October 2026. The wording was corrected that day
+wherever the code was right and the text was not; these are the places
+where the text is right and the system is not.
+
+- [ ] **Fix what the review found in the system.** The logs, the
+      database backups and one alert break the promise that data stays
+      in London, the consent history goes with a deleted account
+      sooner than section 3.6 says, and clause 15.2 promises an
+      "accept" screen the app does not have. All five are the
+      [Legal review follow-ups plan](2026-10-20-legal-review-follow-ups-plan.md).
+
+- [ ] **Stop emails fetching Google Fonts.** Every HTML email links a
+      Google Fonts stylesheet (`backend/app/email/render.py`,
+      `templates/base.html.j2`), so opening one sends the reader's IP
+      address to Google. Use a system font stack. The YouTube step in
+      Phase 5 is the other third-party request still open.
+
+- [ ] **Give the Settings switch its own wording version.** The "News
+      and updates by email" switch records wording version "1", which
+      is the registration wording, though it shows different words.
+      Section 3.6 says the record shows which wording was shown, so the
+      switch needs a version of its own in
+      `backend/app/marketing/preferences.py` and
+      `frontend/src/lib/marketing/wording.ts`.
+
+- [ ] **Delete training records Quill controls.** Section 3.4 deletes a
+      direct customer's records two years after closure, but
+      `backend/app/retention.py` lists records only at an organisation
+      with `records_kept_months_after_closure` set, so an account with
+      none is never listed. Nobody is a direct customer yet; this must
+      be true before the first is.
+
+- [ ] **List browser storage on the cookie policy page.** PECR covers
+      storage as well as cookies, and the page lists only the four
+      cookies. Quill also keeps the colour scheme, the page-view opt-out
+      and the install prompt in local storage, and typed form text in
+      session storage during a forced reload. All fall within the
+      exceptions for strictly necessary storage and user preferences,
+      but the page should name them.
+
+- [ ] **Revisit three legal questions when Part C opens** to people
+      with no sponsor, or when payments launch, and not before: whether
+      a free sign-up or free webinar supports the soft opt-in, whether
+      the Online Safety Act reaches a direct consumer account, and the
+      DMCC subscription rules expected for contracts from 1 January
+      2027. None bites while every user has a sponsor.
+
 - [ ] **Read both drafts end to end and settle what is still open**
       before they go live: the bracketed facts (effective date, ICO
       registration number, VAT number, payment processor), the retention

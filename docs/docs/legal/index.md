@@ -77,8 +77,33 @@ was never confirmed, and section 3.6 points to that email for how to
 stop the newsletter. The same section says we email them again if the
 account is opened again.
 
+Corrected on 20 October 2026, after a review of both documents against
+the code and the law that day, still as version 1.0. The privacy policy
+now lists every email the service sends, the error reports a browser
+sends, the page-view count, how sign-in attempts are slowed, how the
+organisation is found at registration, and the staff check before an
+account or a sponsor's records are deleted. It no longer describes
+messages or browser notifications, which App production does not
+offer, and it gives the subject access timings and the automated
+decision rights as the Data (Use and Access) Act 2025 left them. The
+terms say an unverified account cannot sign in, and that notifications
+are not offered yet. What the review found that wording cannot fix is
+in the
+[Legal review follow-ups plan](../plans/2026-10-20-legal-review-follow-ups-plan.md)
+and at the top of Phase 6 of the
+[Terms and privacy policy plan](../plans/2026-10-06-terms-and-privacy-policy-plan.md).
+
+Changed again on 20 October 2026, by Mark's decision, still as version
+1.0. Both documents say "Quill Medical" wherever they said "Quill". The
+record of each newsletter answer is kept six years after the last one
+or until the account is deleted, whichever comes first, since the
+answer itself moves to the newsletter list. Clause 15.2 of the terms no
+longer promises an "accept" screen at the next sign-in: a change that
+is not minor gets 30 days' notice, and carrying on using the service
+after it means accepting it.
+
 Every version carries a version number and the date it took effect,
-because until acceptance is recorded per person that date is the only
+because acceptance is not recorded per person, so that date is the only
 record of which version somebody was shown. When a version is replaced,
 keep the old one here under its number rather than deleting it, so that
 the "earlier versions stay available" promise in both documents is true.

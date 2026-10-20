@@ -1,6 +1,6 @@
 # Privacy policy
 
-Version 1.0, effective 6 October 2026. This is the first version.
+Version 1.0, effective 20 October 2026. This is the first version.
 Nothing came before it except a placeholder page saying the policy was
 being written.
 
@@ -10,22 +10,22 @@ being written.
   registered with the UK data protection regulator under reference
   ZC262758.
 - If an organisation such as a training academy or an NHS trust gave you
-  access to Quill, that organisation is responsible for your training
-  records and decides how they are used. We process them on its
+  access to Quill Medical, that organisation is responsible for your
+  training records and decides how they are used. We process them on its
   instructions. Take questions about those records to that organisation
   first.
 - If you signed up with us directly, we are responsible for your data.
-- Whichever way you came to Quill, we are responsible for your account,
-  for keeping the service secure, for the service emails we send and for
-  your choice about news and updates.
+- Whichever way you came to Quill Medical, we are responsible for your
+  account, for keeping the service secure, for the service emails we
+  send and for your choice about news and updates.
 - Your data is held in the United Kingdom, and the email we send you is
   sent from the United Kingdom. The one exception is email you send to
   us: the company that provides our own mailboxes is in Switzerland,
   which is covered by a safeguard described below.
 - We do not sell your data, we do not show advertising, and we do not use
   analytics tools or tracking cookies.
-- Only you can read your reflections in Quill. Never put anything about
-  a patient anywhere in Quill.
+- Only you can read your reflections in Quill Medical. Never put
+  anything about a patient anywhere in Quill Medical.
 
 ## 1. Who we are and how to contact us
 
@@ -42,32 +42,33 @@ the person responsible for data protection will answer.
 
 1.3 This policy covers the Quill Medical service at quill-medical.com and
 its public website, and the newsletter we send, including to people who
-have no Quill account (section 3.11). Our cookie policy at
+have no Quill Medical account (section 3.11). Our cookie policy at
 <https://quill-medical.com/cookie-policy> covers the four cookies the
 service uses.
 
 ## 2. Which situation you are in
 
-2.1 There are two ways to reach Quill, and they change who is responsible
-for your data under the UK General Data Protection Regulation (UK GDPR)
-and the Data Protection Act 2018.
+2.1 There are two ways to reach Quill Medical, and they change who is
+responsible for your data under the UK General Data Protection
+Regulation (UK GDPR) and the Data Protection Act 2018.
 
 2.2 **If a sponsor gave you access.** A sponsor is an organisation that
 gives you access under an agreement with us: a training academy, an NHS
 trust, a royal college, a medical school or an employer. Your sponsor is
-the controller of your training records: your enrolments, your assessment
-attempts and answers, your results and certificates, and the sign-offs
-in your clinician passport made within its programme. We are its
-processor. That means your sponsor decides why those records exist, who
-at the sponsor sees them, how long they are kept and whether they are
-passed on, and we act on its written instructions under the data
+the controller of your training records: your enrolments, your
+assessment attempts and answers, your results and certificates, and the
+sign-offs in your clinician passport made within its programme. We are
+its processor. That means your sponsor decides why those records exist,
+who at the sponsor sees them, how long they are kept and whether they
+are passed on, and we act on its written instructions under the data
 protection terms of our agreement with it. Your sponsor should give you
-its own privacy notice; ask for it if you have not seen one. Requests about your training records go to
-your sponsor, and we help it answer them.
+its own privacy notice; ask for it if you have not seen one. Requests
+about your training records go to your sponsor, and we help it answer
+them.
 
 2.3 **If you deal with us directly.** If you created an account without a
 sponsor, or bought a plan from us for yourself, we are the controller of
-all of your data in Quill, including your training records, and this
+all of your data in Quill Medical, including your training records, and this
 policy is the whole story.
 
 2.4 **What we are responsible for whatever your situation.** Even for a
@@ -92,9 +93,11 @@ retention periods in one place.
 
 - **What** - your username, your full name, your email address, a
   one-way hash of your password (never the password itself), whether your
-  email address is verified, the organisation you chose at registration
-  if you were asked, and the module you registered for if you came through
-  a link to one.
+  email address is verified, the organisation and site you belong to, the
+  profession and permissions you have been given, and the module you
+  registered for if you came through a link to one. If you registered by
+  giving your clinical lead's email address, we use it to find your site
+  and do not keep it.
 - **Why** - so you can sign in and use the service, and so we can tell
   you apart from everybody else.
 - **Legal basis** - performing our contract with you (Article 6(1)(b)).
@@ -108,43 +111,54 @@ retention periods in one place.
   and where your answer about news and updates stands. We send nothing
   when the account is later deleted.
 - **How long** - while your account exists, and for two years after it
-  is closed or deactivated, so that a closed account cannot be re-created
-  by somebody else and so that we can answer questions about it. Then we
-  delete it or remove everything that identifies you: your name, your
-  email address, your username and your way of signing in are wiped,
-  and what you held in Quill is deleted. Two things you did for other
-  people stay, because they are part of somebody else's record. A
+  is closed or deactivated, so that a closed account cannot be
+  re-created by somebody else and so that we can answer questions about
+  it. Then, once a member of our staff has checked it, we delete it or
+  remove everything that identifies you: your name, your email address,
+  your username and your way of signing in are wiped, and what you held
+  in Quill Medical is deleted. Feedback you sent stays, with your
+  account removed from it, until its own period in section 3.8 ends. A
   sign-off you gave on another clinician's passport stays there under
-  the name you gave it with. A message you sent stays, shown as from a
-  deleted account, with no name. If a sponsor gave
-  you access, we keep the account for as long as that sponsor's training
-  records about you are kept, which may be longer: a result is no use to
-  your sponsor without the name it belongs to. Section 4.7 gives each
-  sponsor's period.
+  the name you gave it with, because it is part of that clinician's
+  record. If a sponsor gave you access, we keep the account for as long
+  as that sponsor's training records about you are kept, which may be
+  longer: a result is no use to your sponsor without the name it belongs
+  to. Section 4.7 gives each sponsor's period.
 
 ### 3.2 Keeping the service and your account secure
 
 - **What** - server logs of each request to the service, including your
   IP address, the page or endpoint requested, the time, and your browser
-  type; your two-factor authentication secret if you turn two-factor on;
-  and a token version that lets us end every session when your password
-  changes. Repeated failed sign-ins are counted for a few minutes so that
-  we can slow them down, and the count is not stored.
+  type; your two-factor authentication secret, from when you start to
+  set two-factor up; a token version that lets us end every session when
+  your password changes; and, if a page in Quill Medical fails, a report
+  of the error that your browser sends us, with the page, your browser
+  type and your account. Sign-in attempts from each internet address are
+  counted for a minute so that we can slow down repeated attempts, and
+  the count is not stored.
 - **Why** - to stop unauthorised access, to find and fix faults and
   attacks, and to show who did what if something goes wrong.
 - **Legal basis** - our legitimate interest in network and information
-  security (Article 6(1)(f)), which the law recognises as a legitimate
-  interest.
-- **How long** - server logs for 30 days. Your two-factor secret until
-  you turn two-factor off or close your account.
+  security (Article 6(1)(f)), which the law names as an example of a
+  legitimate interest (Article 6(11)).
+- **How long** - server logs and error reports for 30 days. Your
+  two-factor secret until you turn two-factor off or your account is
+  deleted.
 
 ### 3.3 Service emails
 
 - **What** - your name and email address, and the content of each
-  message: verifying your email address, resetting your password, an
-  invitation to Quill or to a module, a certificate when you pass a
-  module, reminders about modules you are enrolled in, and a notice when
-  an assessment you passed is due to be repeated.
+  message: verifying your email address, which we send again if you try
+  to sign in before you have; resetting or setting your password; an
+  invitation to Quill Medical; a certificate when you pass a module;
+  reminders about modules you are enrolled in; a notice when an
+  assessment you passed is due to be repeated; a request to sign off or
+  confirm somebody's passport entry, if they name you as their assessor;
+  a notice that we have replied to feedback you sent; and the emails
+  about your account being closed or opened again (section 3.1). If
+  somebody asks to reset the password for an address that has no Quill
+  Medical account, we email that address once to say so, and keep no
+  copy.
 - **Why** - the service does not work without them. You cannot opt out of
   them while you have an account.
 - **Legal basis** - performing our contract with you (Article 6(1)(b)).
@@ -168,8 +182,8 @@ applies instead.
   qualifications you declare, CPD entries, evidence files you upload, and
   your reflections.
 - **Why** - this is the record of your training that you came to Quill
-  to build. We keep every attempt and every answer, not only your best
-  result, so that the record is complete.
+  Medical to build. We keep every attempt and every answer, not only
+  your best result, so that the record is complete.
 - **Legal basis** - performing our contract with you (Article 6(1)(b)).
 - **How long** - while your account exists. Your passport is yours to
   download in full at any time. Two years after your account is closed we
@@ -192,7 +206,8 @@ applies instead.
 
 - **What** - your name, your email address, and a record of every answer
   you have given about news and updates: what you chose, when, where you
-  chose it, and the exact wording you were shown.
+  chose it, and which version of the wording you were shown, so that the
+  exact words can be found again.
 - **Why** - to send you news about Quill Medical, new modules and
   product updates, and only if you have not said no. When you register
   we tell you that we will email you news and updates and offer a box to
@@ -202,24 +217,27 @@ applies instead.
   email" switch in Settings, or with the unsubscribe link in any
   newsletter. The change applies straight away.
 - **Legal basis** - our legitimate interest in telling people who use
-  Quill about it (Article 6(1)(f)), together with the rules on electronic
-  marketing in the Privacy and Electronic Communications Regulations,
-  which we meet by offering you the chance to refuse when we collect your
-  address and in every message. The record of your answers is kept so
-  that we can show you were offered the choice.
+  Quill Medical about it (Article 6(1)(f)), direct marketing being one
+  of the examples the law gives (Article 6(11)), together with the rules
+  on electronic marketing in the Privacy and Electronic Communications
+  Regulations, which we meet by offering you the chance to refuse when
+  we collect your address and in every message. The record of your
+  answers is kept so that we can show you were offered the choice.
 - **How long** - your current answer for as long as your account exists,
   and after that on our newsletter list, as described below. The record
   of your answers for six years after the last one, as evidence of the
-  choice you made. The newsletter list is Quill's own,
-  held in our database, and no copy of it is kept by the company that
-  delivers our email. Each newsletter is sent by Amazon Web Services
-  from its London region; section 5 says more. If a newsletter to you
+  choice you made, or until your account is deleted, if that comes
+  first; your current answer carries on, on the newsletter list. The
+  newsletter list is Quill Medical's own, held in our database, and no
+  copy of it is kept by the company that delivers our email. Each newsletter is sent by Amazon Web Services
+  from its London region; section 5 says more. If any email to you
   cannot be delivered, or you report one as spam, we switch newsletters
-  off for you and record that as the reason.
+  off for you before the next one is sent and record that as the reason.
 - **If your account is closed** - closing an account does not take you
   off the newsletter, and does not change your recorded answer, because
   it is often an administrator who closes it and not you. When your
-  account is closed we move your name, your email address and your
+  account is closed, if your email address was confirmed and you had
+  given an answer, we move your name, your email address and your
   answer to the newsletter list in section 3.11, where it is kept apart
   from your account, and your answer stands, whether or not a sponsor
   gave you your account. If you want news and updates, they carry on,
@@ -231,38 +249,38 @@ applies instead.
 
 ### 3.7 Notifications to your browser or device
 
-- **What** - if you turn notifications on, the address your browser gives
-  us to deliver them to, and the keys needed to send to it.
-- **Why** - to tell you about things in Quill that need your attention. A
-  notification never contains anything about a patient.
-- **Legal basis** - your consent, given when you allow notifications in
-  your browser (Article 6(1)(a)). Withdraw it by turning notifications
-  off in your browser or in Settings.
-- **How long** - until you turn notifications off, or until your browser
-  tells us the address no longer works.
+Quill Medical does not yet send notifications to browsers or devices,
+and offers no way to turn them on. When it does, this section will
+describe what we hold, and we will tell you before it starts. A
+notification will never contain anything about a patient, and it will
+rely on your consent, given when you allow notifications in your browser
+(Article 6(1)(a)).
 
 ### 3.8 Feedback you send us
 
 - **What** - your message and the category you chose, the page you were
-  on, the version of Quill you were using, your screen size and browser
-  type, the pages you visited just before sending it, and any error the
-  page had shown. Your account is attached to the feedback if you were
-  signed in.
-- **Why** - to fix problems and improve Quill, and to reply to you.
+  on, the version of Quill Medical you were using, your screen size and
+  browser type, the pages you visited and what you did just before
+  sending it, such as signing in, and any error the page had shown. Your
+  account is attached to the feedback if you were signed in.
+- **Why** - to fix problems and improve Quill Medical, and to reply to you.
 - **Legal basis** - our legitimate interest in running and improving the
   service (Article 6(1)(f)).
 - **How long** - two years from when you sent it. An operator is emailed
-  when feedback arrives; that email carries a link to the feedback and
-  never its content.
+  when feedback arrives; that email carries a link to the feedback, your
+  username, the category and the page, and never your message.
 
 ### 3.9 Understanding how the service is used
 
 - **What** - totals worked out from the server logs in section 3.2, such
-  as how many people visited a page or completed a module. We do not use
-  an analytics service or tracking cookies for this, and the totals do
-  not identify you. Nothing is stored on your device for it unless you
-  switch the counting off in Settings, when that choice is remembered on
-  the device so that it is respected next time.
+  as how many people visited a page. When you open a page in Quill
+  Medical your browser tells us which kind of page it was, with a random
+  number for that visit that is forgotten when you reload or close the
+  tab; it does not say who you are. We do not use an analytics service
+  or tracking cookies for this, and the totals do not identify you.
+  Nothing is stored on your device for it unless you switch the counting
+  off in Settings, when that choice is remembered on the device so that
+  it is respected next time.
 - **Why** - to see what is used and what is not.
 - **Legal basis** - our legitimate interest in improving the service
   (Article 6(1)(f)).
@@ -280,18 +298,18 @@ applies instead.
 - **How long** - requests and complaints for six years. Tax records for
   the period HM Revenue and Customs requires.
 
-### 3.11 Our newsletter, if you have no Quill account
+### 3.11 Our newsletter, if you have no Quill Medical account
 
-- **Who** - people whose Quill account has been closed, as section 3.6
-  explains, and people who registered for a Let's Do Digital conference,
-  course or webinar. Let's Do Digital is the name Bailey Medics Ltd ran
-  those events under, so the company that holds your details has not
-  changed.
+- **Who** - people whose Quill Medical account has been closed, as
+  section 3.6 explains, and people who registered for a Let's Do Digital
+  conference, course or webinar. Let's Do Digital is the name Bailey
+  Medics Ltd ran those events under, so the company that holds your
+  details has not changed.
 - **What** - your email address, your name if you gave one, whether you
   are subscribed, and when you unsubscribed if you have. We also record
   which newsletters were sent to you, so that none is sent twice. This
-  list is kept apart from Quill's accounts: being on it does not give
-  you an account, and you cannot sign in with it.
+  list is kept apart from Quill Medical's accounts: being on it does not
+  give you an account, and you cannot sign in with it.
 - **Why** - to send you news from Let's Do Digital and Quill Medical,
   which are the same company's work.
 - **Legal basis** - our legitimate interest in telling people who came
@@ -307,9 +325,9 @@ applies instead.
 - **How long** - while you are subscribed. If you unsubscribe we keep
   your address, marked as unsubscribed, so that you are not added again
   from an old list; ask us and we will delete it altogether. If you
-  later create a Quill account with the same address and verify it, your
-  entry on this list is deleted and section 3.6 applies instead. A
-  refusal you gave on this list is carried to your account.
+  later create a Quill Medical account with the same address and verify
+  it, your entry on this list is deleted and section 3.6 applies
+  instead. A refusal you gave on this list is carried to your account.
 
 ## 4. Training records held for a sponsor
 
@@ -324,14 +342,16 @@ own purposes, other than the security and aggregate-use purposes in
 sections 3.2 and 3.9.
 
 4.3 Your sponsor decides who at the sponsor may see your records. In
-Quill that is done with permissions: people who manage teaching at your
-sponsor can see enrolments, attempts, answers, results and certificates;
-assessors can see the competencies they are asked to sign off and the
-evidence you attach to them. Where your sponsor asks us to, we send a
-copy of your certificate to the person it names, such as its clinical
-lead. Your sponsor may pass records on, for example to your employer, a
-deanery or a professional body, under its own rules and its own privacy
-notice.
+Quill Medical that is done with permissions: people who manage teaching
+at your sponsor can see enrolments, attempts, answers, results and
+certificates; assessors can see the competencies they are asked to sign
+off and the evidence you attach to them. Where your sponsor asks us to,
+we send a copy of your certificate to the person it names, such as its
+clinical lead. If your site has nobody in that role, we email our own
+staff your username, the module, your organisation and your site, so
+that the right person can be found. Your sponsor may pass records on,
+for example to your employer, a deanery or a professional body, under
+its own rules and its own privacy notice.
 
 4.4 Nobody can read your reflections except you. We do not show them to
 your sponsor, to assessors or to anyone else. Section 6 explains their
@@ -383,9 +403,9 @@ section, and its own privacy notice is the place to look.
 
 ## 5. Who we share your data with
 
-5.1 We use three outside companies to run Quill. Each is our processor,
-bound by a contract that meets Article 28 of UK GDPR, and each may use
-your data only to provide its service to us.
+5.1 We use three outside companies to run Quill Medical. Each is our
+processor, bound by a contract that meets Article 28 of UK GDPR, and
+each may use your data only to provide its service to us.
 
 - **Google Cloud** - hosts the service and the database, stores teaching
   content and files you upload, and holds the server logs and monitoring
@@ -420,14 +440,14 @@ do not share it with anyone else.
 
 ## 6. Reflections, sign-offs and sensitive information
 
-6.1 **Reflections.** Only you can read your reflections in Quill. They
-are not legally privileged. A court, a coroner or a regulator with a
-legal power can require them to be disclosed, and we would disclose them
-only in that case, telling you first where the law allows. The General
-Medical Council has said that it does not ask doctors for their
-reflective notes, and we never volunteer them. Write about what you
-learned, not the facts of an incident, and never include anything that
-could identify a patient, a colleague or anyone else.
+6.1 **Reflections.** Only you can read your reflections in Quill
+Medical. They are not legally privileged. A court, a coroner or a
+regulator with a legal power can require them to be disclosed, and we
+would disclose them only in that case, telling you first where the law
+allows. The General Medical Council has said that it does not ask
+doctors for their reflective notes, and we never volunteer them. Write
+about what you learned, not the facts of an incident, and never include
+anything that could identify a patient, a colleague or anyone else.
 
 6.2 **Sign-offs.** A sign-off records that a named assessor observed and
 judged your practice. It carries the assessor's name, the date, and the
@@ -435,9 +455,9 @@ evidence they cite, and it cannot be edited, only superseded. The history
 of every change to your passport is part of the record and is kept with
 it.
 
-6.3 **Information about patients.** Quill is not for patient
+6.3 **Information about patients.** Quill Medical is not for patient
 information, and nothing in it should identify a patient. If you put
-patient-identifiable information into Quill despite that, in a
+patient-identifiable information into Quill Medical despite that, in a
 reflection, a logbook entry, an evidence file or a message to us, we may
 remove it or ask you to amend it, and if you have a sponsor we may tell
 your sponsor. We hold no patient records and offer no feature for them.
@@ -454,8 +474,8 @@ sponsor's record under its own notice.
 6.5 **Images and video in teaching content.** Content is supplied by the
 organisation or author responsible for the module, which is responsible
 for removing anything that could identify a patient before it reaches
-Quill. If you think something in content identifies a patient, tell us
-and we will remove it while we check.
+Quill Medical. If you think something in content identifies a patient,
+tell us and we will remove it while we check.
 
 ## 7. How long we keep your data
 
@@ -468,12 +488,12 @@ and we will remove it while we check.
   see section 4.5, and your sponsor's own part of section 4.7. For the
   East of England Endoscopy Training Academy, three and a half years
   after your account is closed or deactivated.
-- **Server logs** - 30 days.
+- **Server logs and error reports** - 30 days.
 - **Your answer about news and updates** - while your account exists,
   and then on our newsletter list until you unsubscribe or ask us to
   delete it.
-  **The record of each answer** - six years after the last one.
-- **Notification addresses** - until you turn notifications off.
+- **The record of each answer** - six years after the last one, or
+  until your account is deleted, if that comes first.
 - **The newsletter list for people with no account** - while you are
   subscribed. A refusal is kept until you ask us to delete it.
 - **An address our email could not reach, or that reported it as spam** -
@@ -486,7 +506,9 @@ and we will remove it while we check.
   requires, currently six years.
 
 When a period ends we delete the data or remove everything in it that
-identifies you.
+identifies you. For an account, and for training records held for a
+sponsor, a member of our staff checks first, so the deletion follows
+that check rather than happening on the day.
 
 Deleting something removes it from the live service at once. A copy may
 remain in our backups for up to 30 days, until they are overwritten. We
@@ -521,7 +543,7 @@ needed.
 
 ## 9. How we keep your data safe
 
-9.1 Everything travels between you and Quill over an encrypted
+9.1 Everything travels between you and Quill Medical over an encrypted
 connection. Passwords are stored only as a one-way Argon2 hash. Sessions
 use short-lived tokens in cookies that scripts on a page cannot read,
 and every session ends when a password changes. Two-factor authentication
@@ -552,13 +574,15 @@ as well.
 - to restrict what we do with data while a question about it is sorted
   out;
 - for a copy of the data you gave us in a form you can take elsewhere.
-  Your passport can be downloaded in full at any time from within Quill;
+  Your passport can be downloaded in full at any time from within Quill
+  Medical;
 - to stop using data where we rely on legitimate interests, if your
   situation gives you a particular reason, and to stop sending you news
   and updates at any time, for any reason;
-- not to be subject to a decision made solely by automated means that
-  has a legal or similarly significant effect on you. We make no such
-  decisions; a result in Quill is evidence for a person to consider.
+- to be told about any significant decision about you made solely by
+  automated means, to give your view on it, and to have a person review
+  and, if need be, change it. We make no such decisions; a result in
+  Quill Medical is evidence for a person to consider.
 
 10.2 Where we rely on your consent, you can withdraw it at any time, and
 that does not affect what was done before you withdrew it.
@@ -566,8 +590,11 @@ that does not affect what was done before you withdrew it.
 10.3 To use any of these rights, email <info@quill-medical.com>. We will
 answer within one month, or tell you within that month if a complex
 request will take up to two months more. We may ask you to confirm who
-you are. There is no charge unless a request is plainly unfounded or
-excessive.
+you are, and the month then starts when you have. If we need you to
+make clear what you are asking for, the month pauses until you do. For a
+copy of your data we search everywhere it is reasonable and
+proportionate to look. There is no charge unless a request is plainly
+unfounded or excessive.
 
 10.4 If you have a sponsor, rights over your training records are
 exercised against your sponsor, because it is the controller. Send the
@@ -584,13 +611,14 @@ delay.
 
 11.2 You also have the right to complain to the UK regulator, the
 Information Commission, which replaced the Information Commissioner on
-30 September 2026 and is still known as the ICO. Its website,
+30 September 2026 and is still known as the ICO, the Information
+Commission's Office. Its website,
 <https://ico.org.uk>, says how to complain. The regulator may ask
 whether you have raised the matter with us first.
 
 ## 12. Cookies
 
-12.1 Quill uses four cookies, all of them needed for the service to
+12.1 Quill Medical uses four cookies, all of them needed for the service to
 work: two that keep you signed in, one that protects forms against
 forgery, and one that lets the content network serve you teaching video.
 We use no cookies for advertising or analytics and we do not track you
@@ -599,10 +627,10 @@ across other websites. Our cookie policy at
 
 ## 13. Children
 
-13.1 Quill is for adults working or training in healthcare. You must be
-18 or over to have an account, and we do not knowingly collect data from
-anyone younger. If you believe a child has an account, tell us and we
-will close it.
+13.1 Quill Medical is for adults working or training in healthcare. You
+must be 18 or over to have an account, and we do not knowingly collect
+data from anyone younger. If you believe a child has an account, tell us
+and we will close it.
 
 ## 14. Changes to this policy
 
