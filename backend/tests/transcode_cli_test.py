@@ -141,20 +141,32 @@ def fake_gcs():
         yield uploaded
 
 
+def _write_renditions(
+    source: Path, renditions: list[tuple[Path, int, str]]
+) -> None:
+    """Stand in for the encode: write a placeholder for every output."""
+    for dest, _height, _bitrate in renditions:
+        dest.write_bytes(b"encoded")
+
+
+def _write_poster(*args) -> None:
+    """Stand in for the poster grab: its destination is the second."""
+    Path(args[1]).write_bytes(b"encoded")
+
+
 @pytest.fixture
 def stub_ffmpeg():
     """Replace both encode helpers, writing a placeholder output file,
     and the probe, answering that the source is an MP4 with video."""
 
-    def _write(*args) -> None:
-        # Both helpers take the destination as their second argument.
-        Path(args[1]).write_bytes(b"encoded")
-
     with (
         patch(
-            "scripts.transcode_cli.build_rendition", side_effect=_write
+            "scripts.transcode_cli.build_renditions",
+            side_effect=_write_renditions,
         ) as r,
-        patch("scripts.transcode_cli.build_poster", side_effect=_write) as p,
+        patch(
+            "scripts.transcode_cli.build_poster", side_effect=_write_poster
+        ) as p,
         patch(
             "scripts.transcode_cli.probe_container",
             return_value=("mov,mp4,m4a,3gp,3g2,mj2", True),
@@ -168,19 +180,17 @@ class TestProbeBeforeEncoding:
     left to fail inside the 720p encode."""
 
     def _run(self, probed) -> tuple[int, MagicMock]:
-        def _write(*args) -> None:
-            Path(args[1]).write_bytes(b"encoded")
-
         with patch.dict(os.environ, BASE_ENV, clear=False):
             from scripts.transcode_cli import transcode
 
             with (
                 patch(
-                    "scripts.transcode_cli.build_rendition",
-                    side_effect=_write,
+                    "scripts.transcode_cli.build_renditions",
+                    side_effect=_write_renditions,
                 ) as rendition,
                 patch(
-                    "scripts.transcode_cli.build_poster", side_effect=_write
+                    "scripts.transcode_cli.build_poster",
+                    side_effect=_write_poster,
                 ),
                 patch(
                     "scripts.transcode_cli.probe_container",
@@ -331,15 +341,17 @@ class TestTranscode:
             assert blob.cache_control == "public, max-age=86400"
 
     def test_encodes_720p_and_1080p(self, fake_gcs, stub_ffmpeg) -> None:
-        build_rendition, _ = stub_ffmpeg
+        build_renditions, _ = stub_ffmpeg
 
         with patch.dict(os.environ, BASE_ENV, clear=False):
             from scripts.transcode_cli import transcode
 
             assert transcode() == 0
 
-        heights = [call.args[2] for call in build_rendition.call_args_list]
-        assert heights == [720, 1080]
+        # One call for both, so the source is decoded once.
+        build_renditions.assert_called_once()
+        renditions = build_renditions.call_args.args[1]
+        assert [height for _dest, height, _rate in renditions] == [720, 1080]
 
 
 class TestSourceCleanup:
@@ -417,7 +429,7 @@ class TestSourceCleanup:
             from scripts.transcode_cli import transcode
 
             with patch(
-                "scripts.transcode_cli.build_rendition",
+                "scripts.transcode_cli.build_renditions",
                 side_effect=RuntimeError("ffmpeg failed (1): bad codec"),
             ):
                 assert transcode() == 1
@@ -522,7 +534,7 @@ class TestFfmpegFailure:
             from scripts.transcode_cli import transcode
 
             with patch(
-                "scripts.transcode_cli.build_rendition",
+                "scripts.transcode_cli.build_renditions",
                 side_effect=RuntimeError("ffmpeg failed (1): bad codec"),
             ):
                 assert transcode() == 1
@@ -695,7 +707,7 @@ class TestRetakePoster:
     def test_takes_the_poster_from_the_1080p_rendition(
         self, fake_gcs, stub_ffmpeg
     ) -> None:
-        build_rendition, build_poster = stub_ffmpeg
+        build_renditions, build_poster = stub_ffmpeg
 
         with patch.dict(os.environ, self.ENV, clear=False):
             from scripts.transcode_cli import transcode
@@ -706,7 +718,7 @@ class TestRetakePoster:
         assert build_poster.call_args.args[2] == 42
         # The source is gone by now, so nothing is encoded and nothing
         # is read from the source bucket.
-        build_rendition.assert_not_called()
+        build_renditions.assert_not_called()
         assert not any(key.startswith("source-bucket/") for key in fake_gcs)
 
     def test_falls_back_to_720p_without_a_1080p_rendition(
@@ -801,3 +813,135 @@ class TestBuildPoster:
             build_poster(tmp_path / "in.mp4", dest, 42)
 
         assert run.call_args.args[0][:2] == ["-ss", "42"]
+
+
+class TestBuildRenditions:
+    """Both renditions come from one FFmpeg run, each with its own
+    settings, so a 4K source is decoded once rather than twice."""
+
+    def _args(self, tmp_path: Path) -> list[str]:
+        from scripts.transcode_cli import build_renditions
+
+        with patch("scripts.transcode_cli._run_ffmpeg") as run:
+            build_renditions(
+                tmp_path / "in.mov",
+                [
+                    (tmp_path / "a-720p.mp4", 720, "2500k"),
+                    (tmp_path / "a-1080p.mp4", 1080, "5000k"),
+                ],
+            )
+
+        run.assert_called_once()
+
+        return list(run.call_args.args[0])
+
+    def test_reads_the_source_once(self, tmp_path: Path) -> None:
+        args = self._args(tmp_path)
+
+        assert args.count("-i") == 1
+        assert args[args.index("-i") + 1] == str(tmp_path / "in.mov")
+
+    def test_splits_the_video_and_scales_each_branch(
+        self, tmp_path: Path
+    ) -> None:
+        args = self._args(tmp_path)
+        graph = args[args.index("-filter_complex") + 1]
+
+        assert graph == (
+            "[0:v]split=2[v0][v1];"
+            "[v0]scale=-2:720[o0];[v1]scale=-2:1080[o1]"
+        )
+
+    def test_gives_each_output_its_own_bitrate_and_the_old_settings(
+        self, tmp_path: Path
+    ) -> None:
+        args = self._args(tmp_path)
+        first = args.index(str(tmp_path / "a-720p.mp4"))
+        second = args.index(str(tmp_path / "a-1080p.mp4"))
+        for_720 = args[args.index("-map") : first]
+        for_1080 = args[first + 1 : second]
+
+        for options, label, bitrate in (
+            (for_720, "[o0]", "2500k"),
+            (for_1080, "[o1]", "5000k"),
+        ):
+            assert options[:4] == ["-map", label, "-map", "0:a:0?"]
+            assert options[options.index("-b:v") + 1] == bitrate
+            assert options[options.index("-c:v") + 1] == "libx264"
+            assert options[options.index("-preset") + 1] == "medium"
+            assert options[options.index("-c:a") + 1] == "aac"
+            assert options[options.index("-movflags") + 1] == "+faststart"
+
+    def test_refuses_an_empty_list(self, tmp_path: Path) -> None:
+        from scripts.transcode_cli import build_renditions
+
+        with pytest.raises(ValueError, match="no renditions"):
+            build_renditions(tmp_path / "in.mov", [])
+
+
+class TestMountedSource:
+    """A lecture is read from the mounted bucket rather than copied into
+    a filesystem that is memory, and downloaded only without a mount."""
+
+    SOURCE_KEY = "7/colonoscopy-basics/a1b2c3d4"
+
+    def test_reads_in_place_from_the_mount(
+        self, fake_gcs, stub_ffmpeg, tmp_path: Path
+    ) -> None:
+        build_renditions, _ = stub_ffmpeg
+        mounted = tmp_path / self.SOURCE_KEY
+        mounted.parent.mkdir(parents=True)
+        mounted.write_bytes(b"lecture")
+        env = {**BASE_ENV, "TEACHING_VIDEOS_SOURCE_MOUNT": str(tmp_path)}
+
+        with patch.dict(os.environ, env, clear=False):
+            from scripts.transcode_cli import transcode
+
+            assert transcode() == 0
+
+        source_blob = fake_gcs[f"source-bucket/{self.SOURCE_KEY}"]
+        source_blob.download_to_filename.assert_not_called()
+        assert build_renditions.call_args.args[0] == mounted
+
+    def test_downloads_when_the_mount_does_not_hold_it(
+        self, fake_gcs, stub_ffmpeg, tmp_path: Path
+    ) -> None:
+        env = {**BASE_ENV, "TEACHING_VIDEOS_SOURCE_MOUNT": str(tmp_path)}
+
+        with patch.dict(os.environ, env, clear=False):
+            from scripts.transcode_cli import transcode
+
+            assert transcode() == 0
+
+        source_blob = fake_gcs[f"source-bucket/{self.SOURCE_KEY}"]
+        source_blob.download_to_filename.assert_called_once()
+
+    def test_downloads_without_a_mount(self, fake_gcs, stub_ffmpeg) -> None:
+        env = {**BASE_ENV, "TEACHING_VIDEOS_SOURCE_MOUNT": ""}
+
+        with patch.dict(os.environ, env, clear=False):
+            from scripts.transcode_cli import transcode
+
+            assert transcode() == 0
+
+        source_blob = fake_gcs[f"source-bucket/{self.SOURCE_KEY}"]
+        source_blob.download_to_filename.assert_called_once()
+
+    def test_still_deletes_the_source_through_storage(
+        self, fake_gcs, stub_ffmpeg, tmp_path: Path
+    ) -> None:
+        # The mount is read-only. The source goes the way it always
+        # has, once the renditions verify.
+        mounted = tmp_path / self.SOURCE_KEY
+        mounted.parent.mkdir(parents=True)
+        mounted.write_bytes(b"lecture")
+        env = {**BASE_ENV, "TEACHING_VIDEOS_SOURCE_MOUNT": str(tmp_path)}
+
+        with patch.dict(os.environ, env, clear=False):
+            from scripts.transcode_cli import transcode
+
+            assert transcode() == 0
+
+        fake_gcs[
+            f"source-bucket/{self.SOURCE_KEY}"
+        ].delete.assert_called_once()

@@ -210,7 +210,7 @@ times that on Cloud Run's 4 vCPUs, against a 20-minute ceiling.
       a 30-minute timeout. This lands first, on its own: nothing reads
       the mount yet, so it is safe to deploy alone.
 
-- [ ] Read the source from the mount, and encode both renditions in one
+- [x] Read the source from the mount, and encode both renditions in one
       pass, in `backend/scripts/transcode_cli.py`. Where
       `TEACHING_VIDEOS_SOURCE_MOUNT` is set and the object is there, use
       that path directly; otherwise download as now, which keeps local
@@ -222,7 +222,11 @@ times that on Cloud Run's 4 vCPUs, against a 20-minute ceiling.
       path. Tests in `backend/scripts/transcode_cli_test.py` or the
       existing test module: the mount is used when present, the download
       when not, and the single FFmpeg call names both outputs with the
-      settings each had.
+      settings each had. As built, the first audio stream is mapped
+      explicitly (`0:a:0?`), since naming the video branches turns off
+      FFmpeg's own stream choice, and the camera's timecode track is left
+      out as it was before. Timed on the Mac, one minute of the 4K lecture
+      took 22 seconds in one pass against 28 in two, about a fifth less.
 
 - [ ] Read the source from the mount, and scan large files properly, in
       `backend/scripts/scan_cli.py`. Where the bucket being scanned is
