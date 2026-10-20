@@ -100,3 +100,13 @@ variable "service_account_email" {
   type        = string
   default     = ""
 }
+
+variable "gcs_volumes" {
+  description = "Cloud Storage buckets mounted read-only into the container through Cloud Storage FUSE, each at its own path. A job reads a large object from the mount in ranges rather than copying it into its in-memory filesystem first."
+  type = list(object({
+    name       = string
+    bucket     = string
+    mount_path = string
+  }))
+  default = []
+}

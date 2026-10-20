@@ -32,11 +32,14 @@ admin's upload bandwidth sets the pace, and chunking will not change that.
       applies on merge, and Phase 2 needs the header in place before it
       reaches production.
 
-- [ ] After merge, check the `terraform.yml` run applied, then confirm
+- [x] After merge, check the `terraform.yml` run applied, then confirm
       with `gcloud storage buckets describe
       gs://quill-teaching-videos-source-app --format="value(cors_config)"`
       that `Range` is listed. `app` is the only environment under
       `infra/environments/`, so this is the only bucket.
+      Done on 20 October 2026: the whole stack was enqueued at once and
+      every pull request landed on `main`, `terraform.yml` applied at
+      16:04 UTC, and the bucket lists `Range`.
 
 ## Phase 2: Send the file in chunks and resume after a failure
 
@@ -172,6 +175,92 @@ admin's upload bandwidth sets the pace, and chunking will not change that.
       upload should pause, then resume when the Mac wakes, as long as the
       tab was left open.
 
+## Phase 6: Videos of up to 3 GB
+
+The first real videos for EoEETA are three lectures of about 27 minutes
+each: two in 4K (2.1 GB and 2.8 GB) and one in 1080p (1.4 GB), recorded
+as H.264 with 24-bit PCM audio and a timecode track. Phases 1 to 5 get
+them into the source bucket. The jobs that run after the upload were
+sized for 50 MB tests, and would fail on every one of them: each job
+copies the whole file into its temporary folder before working on it,
+and a Cloud Run job has no disk, so that folder is memory. Timed on the
+Mac with the transcode's own FFmpeg settings at 4 threads, one minute of
+the 4K file took 18 seconds for the 1080p rendition and 10 for the 720p,
+so about 13 minutes for the whole lecture on the Mac, and two to three
+times that on Cloud Run's 4 vCPUs, against a 20-minute ceiling.
+
+- [x] Let the transcode and scan jobs read the source bucket as a folder,
+      and give them room, in `infra/`. Cloud Run jobs can mount a Cloud
+      Storage bucket through Cloud Storage FUSE, which reads an object
+      by ranges through the storage API instead of copying it locally,
+      costing about 1 MiB of memory per open file
+      ([Cloud Storage volume mounts for jobs](https://docs.cloud.google.com/run/docs/configuring/jobs/cloud-storage-volume-mounts)).
+      Add an optional `gcs_volumes` list to `modules/cloud-run-job`, each
+      a bucket mounted read-only at a path. Mount the video source bucket
+      at `/mnt/video-source` in the transcode job and in the scan job,
+      and pass the path as `TEACHING_VIDEOS_SOURCE_MOUNT`. Read-only, so
+      neither job gains a way to write through the mount; the transcode
+      still deletes its source through the storage client, as now. The
+      scan job is not gated on the teaching product, so its mount is
+      added only where the video pipeline exists. Raise the transcode to
+      8 vCPU, 8 GiB and a 90-minute timeout: the renditions still go to
+      the temporary folder, about 1.3 GB for a 27-minute lecture, and 8
+      vCPU roughly halves the encode. Raise the scan to 4 GiB, for
+      ClamAV's 1.3 GB of definitions with room for the file's pages, and
+      a 30-minute timeout. This lands first, on its own: nothing reads
+      the mount yet, so it is safe to deploy alone.
+
+- [ ] Read the source from the mount, and encode both renditions in one
+      pass, in `backend/scripts/transcode_cli.py`. Where
+      `TEACHING_VIDEOS_SOURCE_MOUNT` is set and the object is there, use
+      that path directly; otherwise download as now, which keeps local
+      development and a job without the mount working. One FFmpeg run
+      with a `split` filter writes both renditions, so the 4K source is
+      decoded once rather than twice, the slowest part of the encode on a
+      4K file. Each output still gets the same codec, bitrate, audio and
+      `+faststart` settings as before. The poster is taken from the same
+      path. Tests in `backend/scripts/transcode_cli_test.py` or the
+      existing test module: the mount is used when present, the download
+      when not, and the single FFmpeg call names both outputs with the
+      settings each had.
+
+- [ ] Read the source from the mount, and scan large files properly, in
+      `backend/scripts/scan_cli.py`. Where the bucket being scanned is
+      the video source bucket and the mount holds the object, scan it in
+      place; otherwise download, as passport evidence still is. Pass
+      `--max-filesize=4000M --max-scansize=4000M`, just under ClamAV's
+      ceiling of under 4 GB for both
+      ([clamscan manual](https://manpages.ubuntu.com/manpages/bionic/man1/clamscan.1.html)).
+      Left at the defaults, clamscan skips a large file and exits as if
+      it were clean, which is how every lecture would have passed
+      without being scanned. Add `--alert-exceeds-max=yes` too, and treat its
+      `Heuristics.Limits.Exceeded` finding as `failed`, not `infected`:
+      a file too big to scan has not been shown to be harmful, and
+      `infected` would delete it. Raise `_SCAN_CEILING` to 25 minutes.
+      Tests: the flags are passed, a limits finding reports `failed`, and
+      the mount is used only for the video source bucket.
+
+- [ ] Refuse a video over 3 GB when the upload is asked for, and wait
+      longer before calling a job stalled, in the backend and frontend.
+      `create_media_upload_url` answers 413 for a `size_bytes` over
+      `MAX_MEDIA_UPLOAD_BYTES`, 3 GiB, and 400 for one of zero or less.
+      3 GiB clears the largest real lecture (2.65 GiB) and stays inside
+      what ClamAV can scan. `useModuleMedia` checks `file.size` before
+      asking, so the admin hears it before waiting for anything, and
+      the 413 message names the limit. In `media.py`,
+      `_TRANSCODE_PATIENCE` goes to 100 minutes and `_SCAN_PATIENCE` to
+      40, each just past its job's new timeout, so the card does not
+      call a slow job stalled. Tests: the route's 413 and 400, the hook
+      refusing an oversized file without a request, and the stalled
+      thresholds.
+
+- [ ] In App production, upload all three lectures to the
+      `chest-xray-interpretation-test` module, one at a time, and follow
+      each through scan, transcode and captions: all three should finish
+      and play at 720p and 1080p. Record how long each stage took here,
+      against the timeouts above, and lower or raise them if the real
+      times are far off.
+
 ## Decisions
 
 - **Resume within the tab, not across a reload** - GCS keeps a session for
@@ -191,3 +280,11 @@ admin's upload bandwidth sets the pace, and chunking will not change that.
   The page knows when an upload is running and can hold the computer
   awake for just that long. Asking every administrator to run a keep-awake tool
   or change their power settings would be forgotten.
+
+- **The upload's size is declared, not enforced by storage** - GCS can
+  hold a resumable upload to a declared length if the session is opened
+  with `x-upload-content-length`, but that means signing a new header
+  and sending it from the browser, which cannot be checked without a
+  real upload, and an unattended change that broke every upload would
+  cost more than it saves. A file larger than declared would only make
+  its own jobs fail, so the cap is checked on the size the page reports.
