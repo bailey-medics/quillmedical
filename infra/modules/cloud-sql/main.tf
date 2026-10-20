@@ -49,6 +49,14 @@ resource "google_sql_database_instance" "instance" {
       enabled                        = var.backup_enabled
       point_in_time_recovery_enabled = var.pitr_enabled
 
+      # Where the backups are kept. Left unset, Google keeps them in the
+      # multi-region nearest the instance, which for London is "eu": on
+      # 20 October 2026 every one of App production's backups was there,
+      # though the privacy policy says the data stays in the UK. The
+      # point-in-time recovery logs need no setting; they are kept in the
+      # instance's own region.
+      location = var.region
+
       backup_retention_settings {
         retained_backups = var.backup_retained_count
         retention_unit   = "COUNT"
