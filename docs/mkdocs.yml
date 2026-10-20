@@ -161,6 +161,10 @@ nav:
   - Learnings:
       - Overview: learnings/index.md
       - FHIR & EHRbase Staging Issues: learnings/fhir-ehrbase-issues.md
+  - Incidents:
+      - Overview: incidents/index.md
+      - 2026-10-19 GitHub Actions degraded: incidents/2026-10-19-github-actions-degraded.md
+      - 2026-10-20 europe-west2 power outage: incidents/2026-10-20-europe-west2-power-outage.md
   - Research:
       - Overview: research/index.md
       - ePortfolio Market Research: research/2026-10-04-eportfolio-market-research.md
