@@ -124,8 +124,18 @@ function describeUploadFailure(status: number, file: File): string {
   if (status >= 500) {
     return `The server could not accept the upload (${status}). This is not a problem with your file - try again shortly.`;
   }
-  return `Upload failed (${status})`;
+  return `Upload failed (${status}). Try again.`;
 }
+
+/**
+ * What a dropped connection says.
+ *
+ * The commonest way an upload fails is the computer going to sleep or
+ * the network dropping, and a bare "Upload failed" gave no hint of
+ * either. This names the cause and the two things that prevent it.
+ */
+const CONNECTION_LOST =
+  "The connection was lost during the upload. Keep this tab open and the computer awake, then try again.";
 
 /**
  * Open a resumable upload session and return the URL to send bytes to.
@@ -155,14 +165,16 @@ function startResumableUpload(url: string, file: File): Promise<string> {
       if (!session) {
         // The bucket's CORS policy has to expose Location, or the
         // browser hides it and the upload has nowhere to go.
-        reject(new Error("Upload session was not returned"));
+        reject(
+          new Error(
+            "Storage did not open an upload session. Try again, and if it happens again the storage settings need checking.",
+          ),
+        );
         return;
       }
       resolve(session);
     });
-    request.addEventListener("error", () =>
-      reject(new Error("Could not start upload")),
-    );
+    request.addEventListener("error", () => reject(new Error(CONNECTION_LOST)));
 
     request.send();
   });
@@ -204,7 +216,7 @@ function sendToSession(
         reject(new Error(describeUploadFailure(request.status, file)));
       }
     });
-    request.addEventListener("error", () => reject(new Error("Upload failed")));
+    request.addEventListener("error", () => reject(new Error(CONNECTION_LOST)));
     request.addEventListener("abort", () =>
       reject(new Error("Upload cancelled")),
     );
@@ -226,7 +238,7 @@ function describeStoppedUpload(failure: UploadFailure, file: File): string {
   if (failure.kind === "refused" && failure.status !== null) {
     return describeUploadFailure(failure.status, file);
   }
-  return "Upload failed";
+  return CONNECTION_LOST;
 }
 
 /**
@@ -438,11 +450,10 @@ export function useModuleMedia(
 
         await refresh();
       } catch (err) {
-        const message = err instanceof Error ? err.message : "Upload failed";
-        // Recorded against the key as well as on the card. The card
-        // message is transient and easy to miss; the row keeps saying
-        // so until the admin tries again.
-        setError(message);
+        const message = err instanceof Error ? err.message : CONNECTION_LOST;
+        // Recorded against the key only. It used to go on the card as
+        // well, which showed the same failure twice under a heading,
+        // "Something went wrong", that said less than the row did.
         setUploadErrors((e) => ({ ...e, [key]: message }));
       } finally {
         // Cleared whether it worked or not, so a failed upload returns

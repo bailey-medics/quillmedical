@@ -167,6 +167,27 @@ export const UploadInProgress: Story = {
   ),
 };
 
+export const UploadRetrying: Story = {
+  args: {
+    media: incomplete,
+    uploadProgress: { debrief: 42 },
+    uploadNames: { debrief: "Echocardiogram_panel_debrief_take4.mp4" },
+    uploadRetrying: { debrief: true },
+  },
+  render: (args) => (
+    <Stack gap="sm">
+      <ModuleMediaCard {...args} />
+      <StoryNote>
+        The connection dropped partway, perhaps because the computer slept. The
+        bar holds where it was and the line beneath says so, because a bar that
+        has simply stopped looks the same as a page that has hung. Once the
+        connection is back the upload carries on from what storage already
+        holds, and the line returns to "Uploading".
+      </StoryNote>
+    </Stack>
+  ),
+};
+
 export const RowActions: Story = {
   args: {
     media: {
@@ -231,19 +252,19 @@ export const NoMediaReferenced: Story = {
   ),
 };
 
-export const UploadFailed: Story = {
+export const DeleteFailed: Story = {
   args: {
     media: incomplete,
-    error: "Media upload is not configured",
+    error: "Delete failed",
   },
   render: (args) => (
     <Stack gap="sm">
       <ModuleMediaCard {...args} />
       <StoryNote>
-        What a failed upload, delete or load says. Shown rather than swallowed:
-        an upload that fails silently is indistinguishable from a button that
-        does nothing, and the admin has no other way to find out. This
-        particular message means the deployment has no media bucket.
+        What a failed delete or load says. Shown rather than swallowed: an
+        action that fails silently is indistinguishable from a button that does
+        nothing. A failed upload is not shown here, but on its own row: see the
+        next story.
       </StoryNote>
     </Stack>
   ),
@@ -262,27 +283,28 @@ export const OneRowsUploadFailed: Story = {
     },
     uploadErrors: {
       "lecture-01":
-        "The server could not accept the upload (500). This is not a problem with your file - try again shortly.",
+        "The connection was lost during the upload. Keep this tab open and the computer awake, then try again.",
     },
   },
   render: (args) => (
     <Stack gap="sm">
       <ModuleMediaCard {...args} />
       <StoryNote>
-        The row that failed is the row that says so, and the dropzone stays
-        beneath it. A failed upload leaves nothing behind - no partial file and
-        no half-made asset - so trying again is a clean slate rather than a
-        resume. The second row is untouched, which is the point of keeping this
-        per reference key rather than one message for the card.
+        The row that failed is the row that says so, once, and the dropzone
+        stays beneath it. The message names the cause and what to do: here the
+        connection was lost, after the upload had already retried and given up.
+        Nothing half-uploaded is linked, so trying again starts afresh. The
+        second row is untouched, which is the point of keeping this per
+        reference key rather than one message for the card.
       </StoryNote>
     </Stack>
   ),
 };
 
-export const UploadFailedOnACompleteModule: Story = {
+export const DeleteFailedOnACompleteModule: Story = {
   args: {
     media: complete,
-    error: "Upload failed",
+    error: "Delete failed",
   },
   render: (args) => (
     <Stack gap="sm">

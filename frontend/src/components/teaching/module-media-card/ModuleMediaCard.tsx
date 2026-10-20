@@ -72,6 +72,14 @@ export interface ModuleMediaCardProps {
    * identical to never having tried.
    */
   uploadErrors?: Record<string, string>;
+  /**
+   * Reference keys whose upload lost its connection and is trying
+   * again.
+   *
+   * Without it the bar simply stops moving, which looks the same as a
+   * page that has hung. The upload resumes from where it stopped.
+   */
+  uploadRetrying?: Record<string, boolean>;
   /** Called with the file dropped against a reference key. */
   onUpload?: (key: string, file: File) => void;
   /** Called once the admin has confirmed removing an asset. */
@@ -93,12 +101,12 @@ export interface ModuleMediaCardProps {
   /** Shows skeleton rows while the media list is in flight. */
   loading?: boolean;
   /**
-   * What went wrong with the last upload, delete or load.
+   * What went wrong with the last delete or load.
    *
-   * Shown rather than swallowed: an upload that fails silently is
+   * Shown rather than swallowed: an action that fails silently is
    * indistinguishable from a button that does nothing, and the admin
-   * has no other way to find out. A 503 here means the deployment has
-   * no media bucket configured, which is the answer they need.
+   * has no other way to find out. A failed upload is not shown here:
+   * it goes on its own row, through `uploadErrors`.
    */
   error?: string | null;
 }
@@ -117,6 +125,7 @@ export default function ModuleMediaCard({
   uploadProgress = {},
   uploadNames = {},
   uploadErrors = {},
+  uploadRetrying = {},
   onUpload,
   onDelete,
   onEditCaptions,
@@ -210,7 +219,7 @@ export default function ModuleMediaCard({
                     <Stack gap={4}>
                       {failed ? (
                         <BodyTextInline c="var(--alert-text-color)">
-                          {failed} Nothing was saved - try again.
+                          {failed}
                         </BodyTextInline>
                       ) : null}
                       <MediaDropzone
@@ -286,7 +295,20 @@ export default function ModuleMediaCard({
                           fill={Math.min(percent, 100) / 100}
                           showCount={false}
                         />
-                        <BodyTextInline>Uploading</BodyTextInline>
+                        {/* Retrying is said in words, not only by a bar
+                            that has stopped: a stopped bar looks the
+                            same as a page that has hung. */}
+                        <BodyTextInline
+                          c={
+                            uploadRetrying[row.key]
+                              ? "var(--alert-text-color)"
+                              : undefined
+                          }
+                        >
+                          {uploadRetrying[row.key]
+                            ? "Connection lost, retrying"
+                            : "Uploading"}
+                        </BodyTextInline>
                       </>
                     ) : progress && done ? (
                       /* Finished: the line alone, dimmed. Nothing is

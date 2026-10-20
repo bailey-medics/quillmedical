@@ -67,6 +67,7 @@ function OrganisationVideos({
     uploadNames,
     uploading,
     uploadErrors,
+    uploadRetrying,
     upload,
     remove,
     loadCaptions,
@@ -123,6 +124,7 @@ function OrganisationVideos({
         uploadProgress={uploadProgress}
         uploadNames={uploadNames}
         uploadErrors={uploadErrors}
+        uploadRetrying={uploadRetrying}
         onUpload={upload}
         onDelete={remove}
         onEditCaptions={openCaptions}
