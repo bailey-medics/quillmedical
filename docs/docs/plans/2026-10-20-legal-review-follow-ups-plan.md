@@ -135,7 +135,7 @@ its own pull request, in rising order of risk.
 
 ## Phase 4: Logs in London
 
-- [ ] **Make a London log bucket and send the logs to it.** A bucket's
+- [x] **Make a London log bucket and send the logs to it.** A bucket's
       location cannot be changed, so add, in a new `infra/logging.tf`:
       a `google_logging_project_bucket_config` with `bucket_id =
       "quill-logs"`, `location = var.region` and `retention_days = 30`;
@@ -151,14 +151,15 @@ its own pull request, in rising order of risk.
       of changes to the infrastructure. The old entries age out of the
       global `_Default` bucket within 30 days; nothing needs deleting.
 
-- [ ] **Point the `Justfile`'s log reads at the new bucket.** The three
+- [x] **Point the `Justfile`'s log reads at the new bucket.** The three
       `gcloud logging read` calls that read an admin job's output (in
       the migration-status recipe and the two that follow an admin
       action) gain `--bucket=quill-logs --location=europe-west2
       --view=_AllLogs`. Naming the bucket is certain where relying on
       the project-wide default is not.
 
-- [ ] **Check the four things that read logs.** After the apply, in App
+- [ ] **Check the four things that read logs.** Done after this phase
+      merges, since it needs the Terraform apply. Then, in App
       production: run one admin job recipe and confirm its output
       prints; post one report to `/api/analytics/client-errors` and
       confirm it appears in Error Reporting, which has read a regional

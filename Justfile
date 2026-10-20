@@ -873,6 +873,7 @@ migrate-current env:
     gcloud logging read \
         "resource.type=cloud_run_job AND labels.\"run.googleapis.com/execution_name\"=\"${execution}\"" \
         --project="$PROJECT" \
+        --bucket=quill-logs --location="$REGION" --view=_AllLogs \
         --order=asc \
         --format="value(textPayload)"
 
@@ -1031,6 +1032,7 @@ newsletter-send env campaign confirm="" only_to="" limit="":
         gcloud logging read \
             "resource.type=cloud_run_job AND labels.\"run.googleapis.com/execution_name\"=${EXECUTION}" \
             --project="$PROJECT" \
+            --bucket=quill-logs --location="$REGION" --view=_AllLogs \
             --order=asc \
             --freshness=1h \
             --format='value(textPayload)'
@@ -1115,6 +1117,7 @@ passport-delete env username confirm="":
         gcloud logging read \
             "resource.type=cloud_run_job AND labels.\"run.googleapis.com/execution_name\"=${EXECUTION}" \
             --project="$PROJECT" \
+            --bucket=quill-logs --location="$REGION" --view=_AllLogs \
             --order=asc \
             --freshness=1h \
             --format='value(textPayload)'
