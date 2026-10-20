@@ -100,8 +100,17 @@ class TestTranscodeRunning:
         assert p.in_progress is True
         assert p.stalled is False
 
+    def test_an_hour_long_encode_is_not_called_a_failure(self) -> None:
+        # A 3 GB 4K lecture may take most of the job's ninety minutes.
+        p = describe_progress(
+            _link(transcode_started_at=NOW - timedelta(minutes=60)), now=NOW
+        )
+
+        assert p.in_progress is True
+        assert p.stalled is False
+
     def test_a_long_overrun_is_called_a_failure(self) -> None:
-        # The job's own timeout is twenty minutes, so past this it has
+        # The job's own timeout is ninety minutes, so past this it has
         # certainly failed rather than been unlucky. Saying "preparing"
         # forever is how someone waits all afternoon for nothing.
         p = describe_progress(
@@ -264,11 +273,26 @@ class TestScan:
             _link(),
             now=NOW,
             scan="pending",
-            scan_requested_at=NOW - timedelta(minutes=16),
+            scan_requested_at=NOW - timedelta(minutes=41),
         )
 
         assert p.stalled is True
         assert "seems to have failed" in p.label
+
+    def test_a_long_lecture_still_scanning_is_not_called_a_failure(
+        self,
+    ) -> None:
+        # Reading a 3 GB lecture end to end takes a while, and the job
+        # allows thirty minutes for it.
+        p = describe_progress(
+            _link(),
+            now=NOW,
+            scan="pending",
+            scan_requested_at=NOW - timedelta(minutes=30),
+        )
+
+        assert p.stalled is False
+        assert p.in_progress is True
 
     def test_infected_ends_the_row_and_names_the_signature(self) -> None:
         p = describe_progress(

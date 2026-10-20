@@ -739,6 +739,15 @@ ALLOWED_MEDIA_TYPES: dict[str, str] = {
 }
 
 
+#: The largest video an administrator may upload: 3 GiB.
+#:
+#: Clears the largest real lecture so far, 27 minutes of 4K at 2.65 GiB,
+#: and stays inside the 4 GB that ClamAV can scan in full. The transcode
+#: and scan jobs are sized for files up to this, so a larger one is
+#: refused before it is uploaded rather than failing an hour later.
+MAX_MEDIA_UPLOAD_BYTES = 3 * 1024 * 1024 * 1024
+
+
 def create_resumable_upload_url(
     bucket_name: str,
     org_id: int,

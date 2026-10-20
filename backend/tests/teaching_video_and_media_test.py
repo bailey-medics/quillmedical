@@ -571,6 +571,69 @@ def test_a_module_id_that_cannot_be_part_of_a_path_gets_no_upload_address(
     assert asked == []
 
 
+def test_a_video_over_the_size_limit_gets_no_upload_address(
+    test_client: TestClient,
+    trust: OrgUnit,
+    admin: User,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # The jobs after the upload are sized for files up to the limit, so
+    # a larger one is refused before a byte is sent.
+    from app.features.teaching.storage import MAX_MEDIA_UPLOAD_BYTES
+
+    _source_bucket(monkeypatch, "source")
+    asked = _signing_uploads(monkeypatch)
+
+    resp = test_client.post(
+        UPLOAD_URL,
+        json=_upload_request(size_bytes=MAX_MEDIA_UPLOAD_BYTES + 1),
+        headers=_login(test_client, admin),
+    )
+
+    assert resp.status_code == 413
+    assert "3 GB" in resp.json()["detail"]
+    assert asked == []
+
+
+def test_a_video_at_the_size_limit_is_accepted(
+    test_client: TestClient,
+    trust: OrgUnit,
+    admin: User,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.features.teaching.storage import MAX_MEDIA_UPLOAD_BYTES
+
+    _source_bucket(monkeypatch, "source")
+    _signing_uploads(monkeypatch)
+
+    resp = test_client.post(
+        UPLOAD_URL,
+        json=_upload_request(size_bytes=MAX_MEDIA_UPLOAD_BYTES),
+        headers=_login(test_client, admin),
+    )
+
+    assert resp.status_code == 200, resp.text
+
+
+def test_an_empty_file_gets_no_upload_address(
+    test_client: TestClient,
+    trust: OrgUnit,
+    admin: User,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _source_bucket(monkeypatch, "source")
+    asked = _signing_uploads(monkeypatch)
+
+    resp = test_client.post(
+        UPLOAD_URL,
+        json=_upload_request(size_bytes=0),
+        headers=_login(test_client, admin),
+    )
+
+    assert resp.status_code == 400
+    assert asked == []
+
+
 def test_with_no_bucket_the_upload_is_sent_back_through_the_application(
     test_client: TestClient,
     trust: OrgUnit,
@@ -729,10 +792,11 @@ def test_a_link_records_whatever_size_it_is_told(
     admin: User,
     size_bytes: int,
 ) -> None:
-    """Found, and not changed: no size is refused, here or at upload.
+    """Found, and not changed: the link refuses no size.
 
-    The size is what the caller says it is. Nothing compares it with a
-    limit or with the file.
+    The size is what the caller says it is, and nothing here compares it
+    with a limit or with the file. The limit is applied earlier, when the
+    upload address is asked for.
     """
     resp = test_client.post(
         LINK,

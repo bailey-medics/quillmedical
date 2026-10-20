@@ -32,14 +32,14 @@ from app.features.uploads.scan import ScanState
 #: someone re-upload a video that was merely slow, which is the mistake
 #: this whole feature exists to stop.
 #:
-#: The jobs' own timeouts are 20 minutes for transcode and an hour for
+#: The jobs' own timeouts are 90 minutes for transcode and an hour for
 #: captions, so a job past these has certainly failed rather than being
-#: unlucky.
-_TRANSCODE_PATIENCE = timedelta(minutes=25)
+#: unlucky. The transcode's is long because a lecture may be 3 GB of 4K.
+_TRANSCODE_PATIENCE = timedelta(minutes=100)
 _CAPTION_PATIENCE = timedelta(minutes=70)
-#: The scan job's own timeout is ten minutes, and a scan of a file this
-#: size takes under one.
-_SCAN_PATIENCE = timedelta(minutes=15)
+#: The scan job's own timeout is thirty minutes, for reading a 3 GB
+#: lecture end to end.
+_SCAN_PATIENCE = timedelta(minutes=40)
 
 #: Uploaded, transcoded, captioned, reviewed.
 _TOTAL_STAGES = 4

@@ -1796,6 +1796,7 @@ def create_media_upload_url(
     """
     from app.features.teaching.storage import (
         ALLOWED_MEDIA_TYPES,
+        MAX_MEDIA_UPLOAD_BYTES,
         create_resumable_upload_url,
     )
 
@@ -1815,6 +1816,18 @@ def create_media_upload_url(
     if body.content_type != expected:
         raise HTTPException(
             400, f"Content type does not match {ext} (expected {expected})"
+        )
+
+    if body.size_bytes <= 0:
+        raise HTTPException(400, "The file is empty")
+
+    # The size is what the page says the file is. Refused here, before
+    # anything is uploaded, because the jobs after the upload are sized
+    # for files up to this and a larger one would fail an hour later.
+    if body.size_bytes > MAX_MEDIA_UPLOAD_BYTES:
+        limit_gb = MAX_MEDIA_UPLOAD_BYTES // (1024 * 1024 * 1024)
+        raise HTTPException(
+            413, f"This video is larger than the {limit_gb} GB limit"
         )
 
     org_id = _media_org_unit_id(user, db, module_id, org_unit_id)
