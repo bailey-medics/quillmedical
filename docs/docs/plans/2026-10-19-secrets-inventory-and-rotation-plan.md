@@ -154,6 +154,44 @@ on that stack's code.
       of the script that builds the apply arguments, as the other
       workflow scripts have.
 
+## Phase 4: Prove a rotation end to end
+
+- [x] Before merging, check the allow-list against the live state.
+      A read-only `terraform state list` on the `app` workspace showed
+      `random_password.jwt_secret`,
+      `module.cloud_sql_core.random_password.db_password`,
+      `module.teaching_video_pipeline[0].random_bytes.signing_key` and
+      `random_password.vapid_placeholder`, so every allowed address that
+      can exist in App production does, and the one deliberately left off
+      is there to be refused. The two EHR database passwords are absent
+      because `enable_fhir` is false; naming one would make Terraform
+      refuse the apply, harmlessly.
+
+- [x] Merge the stack. #2141, #2143, #2145 and #2146 merged together on
+      2026-10-19 at 19:47 UTC, GitHub reporting the upper three as merged
+      into the branch below; `replace-argument.sh` was on `main`
+      afterwards, so the whole stack had landed.
+
+- [x] Rotate `jwt-secret` through the dispatch. The run had to be started
+      by Mark: the permission layer refuses an assistant a production
+      Terraform apply, which is the intended gate. Run 39322132314
+      (`environment=app`, `replace=random_password.jwt_secret`) resolved
+      `-replace=random_password.jwt_secret`, replaced the password "as
+      requested", destroyed `jwt-secret` version 1, created version 2,
+      and completed. The backend still served revision
+      `quill-backend-app-00445-faq` afterwards, which is the no-traffic
+      revision the procedure warns about.
+
+- [x] Re-run `deploy.yml`. Run 39322300678 succeeded; the serving revision
+      moved to `quill-backend-app-00448-qak` at 100 percent, and
+      `/api/health` answered 200. Every session was signed out, as the
+      procedure says, and signing in again worked, so tokens are being
+      issued and accepted under the new secret. One finding for the
+      procedure: a Terraform-generated rotation leaves no old version to
+      disable, because the apply destroys it; the "disable, then destroy a
+      week later" step applies to hand-set values only, which is how
+      `gcp.md` already words it.
+
 ## Decisions
 
 - **Settle the staging item with evidence, not a rotation** - the
