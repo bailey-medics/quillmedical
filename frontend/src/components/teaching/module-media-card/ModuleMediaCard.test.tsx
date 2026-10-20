@@ -437,6 +437,27 @@ describe("ModuleMediaCard", () => {
     expect(screen.queryByText(/\d+ of \d+/)).toBeNull();
   });
 
+  it("says when an upload has lost its connection and is retrying", () => {
+    // A bar that has simply stopped looks the same as a page that has
+    // hung, so the row says what is happening in words.
+    renderWithMantine(
+      <ModuleMediaCard
+        media={{
+          module_id: "mod-1",
+          references: [{ key: "lecture-01", asset: null }],
+          unattached: [],
+          is_complete: false,
+        }}
+        uploadProgress={{ "lecture-01": 42 }}
+        uploadNames={{ "lecture-01": "Echocardiogram_overview.mp4" }}
+        uploadRetrying={{ "lecture-01": true }}
+      />,
+    );
+
+    expect(screen.getByText("Connection lost, retrying")).toBeInTheDocument();
+    expect(screen.queryByText("Uploading")).toBeNull();
+  });
+
   it("names the file while it is still uploading", async () => {
     // The row shows the same name throughout rather than renaming
     // itself from "Sending the file…" the moment the upload lands.
@@ -492,7 +513,9 @@ describe("ModuleMediaCard", () => {
     );
 
     expect(screen.getByText(/Upload failed \(500\)\./)).toBeInTheDocument();
-    expect(screen.getByText(/Nothing was saved/)).toBeInTheDocument();
+    // Each message carries its own advice, so the row adds nothing of
+    // its own after it.
+    expect(screen.queryByText(/Nothing was saved/)).toBeNull();
   });
 
   it("still offers the dropzone after a failure", async () => {
@@ -516,19 +539,13 @@ describe("ModuleMediaCard", () => {
   });
 
   it("shows what went wrong", () => {
-    // An upload that fails silently is indistinguishable from a button
-    // that does nothing - which is exactly how a 503 from an
-    // unconfigured deployment presented before this.
+    // A delete that fails silently is indistinguishable from a button
+    // that does nothing.
     renderWithMantine(
-      <ModuleMediaCard
-        media={complete}
-        error="Media upload is not configured"
-      />,
+      <ModuleMediaCard media={complete} error="Delete failed" />,
     );
 
-    expect(
-      screen.getByText("Media upload is not configured"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Delete failed")).toBeInTheDocument();
   });
 
   it("shows nothing when there is no error", () => {
@@ -541,10 +558,10 @@ describe("ModuleMediaCard", () => {
     // They answer different questions - what is absent, and what just
     // failed - so one must not hide the other.
     renderWithMantine(
-      <ModuleMediaCard media={incomplete} error="Upload failed" />,
+      <ModuleMediaCard media={incomplete} error="Delete failed" />,
     );
 
-    expect(screen.getByText("Upload failed")).toBeInTheDocument();
+    expect(screen.getByText("Delete failed")).toBeInTheDocument();
     expect(screen.getByText("1 video is missing")).toBeInTheDocument();
   });
 

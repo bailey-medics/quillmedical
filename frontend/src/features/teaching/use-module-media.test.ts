@@ -231,7 +231,7 @@ describe("useModuleMedia", () => {
       );
     });
 
-    expect(result.current.error).toContain("session");
+    expect(result.current.uploadErrors["lecture-01"]).toContain("session");
     const calls = (api.post as Mock).mock.calls.map((c) => c[0] as string);
     expect(calls.some((c) => c.includes("/link"))).toBe(false);
   });
@@ -256,8 +256,8 @@ describe("useModuleMedia", () => {
       );
     });
 
-    expect(result.current.error).toContain("too large");
-    expect(result.current.error).not.toContain("413");
+    expect(result.current.uploadErrors["lecture-01"]).toContain("too large");
+    expect(result.current.uploadErrors["lecture-01"]).not.toContain("413");
   });
 
   it("sends a local upload in one request, with no handshake", async () => {
@@ -359,7 +359,11 @@ describe("useModuleMedia", () => {
     // A 500 is ours, not the file's, and the message says so - an
     // admin who reads "too large" starts re-exporting a video that was
     // never the problem.
-    expect(result.current.error).toContain("not a problem with your file");
+    expect(result.current.uploadErrors["lecture-01"]).toContain(
+      "not a problem with your file",
+    );
+    // The row says it, and the card does not say it a second time.
+    expect(result.current.error).toBeNull();
   });
 
   it("clears progress after a failure", async () => {
@@ -490,8 +494,13 @@ describe("useModuleMedia", () => {
       );
     });
 
-    expect(result.current.uploadErrors["lecture-01"]).toBe(
-      "Could not start upload",
+    // No status at all means the connection went, and the message
+    // says so and what prevents it, rather than a bare "failed".
+    expect(result.current.uploadErrors["lecture-01"]).toContain(
+      "connection was lost",
+    );
+    expect(result.current.uploadErrors["lecture-01"]).toContain(
+      "computer awake",
     );
 
     // The retry succeeds, and must not carry the old message with it.

@@ -130,16 +130,19 @@ admin's upload bandwidth sets the pace, and chunking will not change that.
 
 ## Phase 4: Say what went wrong, once
 
-- [ ] Add a connection-lost case to `describeUploadFailure`, or a
+- [x] Add a connection-lost case to `describeUploadFailure`, or a
       sibling for errors with no status, worded: "The connection was lost
       during the upload. Keep this tab open and the computer awake, then
       try again." Use it where `sendToSession` and the chunk loop now
       reject with a bare "Upload failed", and where `startResumableUpload`
       rejects with "Could not start upload". Add a session-gone message for
       404 or 410 from the session URL: "The upload took too long and
-      Google closed it. Try again."
+      Google closed it. Try again." That one landed in Phase 2. As built,
+      the bare "Upload session was not returned" also became a sentence a
+      person can act on, and the fallback for an unlisted status now ends
+      "Try again.", since the row no longer adds that itself.
 
-- [ ] Stop the card-level "Something went wrong" alert repeating an
+- [x] Stop the card-level "Something went wrong" alert repeating an
       upload's failure. In the `upload` callback, set `uploadErrors[key]`
       only, not `setError`, so the row that failed is the one that says so.
       `error` stays for loading, deleting and captions, which have no row
@@ -147,9 +150,12 @@ admin's upload bandwidth sets the pace, and chunking will not change that.
       story shows the new wording on the row only, and a new story shows
       the "Connection lost, retrying" state under a part-filled bar.
       Update the matching tests in `ModuleMediaCard.test.tsx` and
-      `use-module-media.test.ts`.
+      `use-module-media.test.ts`. As built, the two stories that showed an
+      upload failure through the card-level `error` now show a failed
+      delete, and are renamed `DeleteFailed` and
+      `DeleteFailedOnACompleteModule` to match.
 
-- [ ] Soften the row suffix "Nothing was saved - try again." in
+- [x] Soften the row suffix "Nothing was saved - try again." in
       `ModuleMediaCard.tsx`. It is still true, since a failed session is
       never linked, but it now follows a message that already says what
       to do. Drop the suffix, and let each message carry its own advice.
