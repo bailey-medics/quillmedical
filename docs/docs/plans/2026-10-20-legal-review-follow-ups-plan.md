@@ -69,7 +69,7 @@ its own pull request, in rising order of risk.
 
 ## Phase 2: No identifiers in alerts
 
-- [ ] **Log the route template with every request.** The request log
+- [x] **Log the route template with every request.** The request log
       line in `backend/app/main.py` (the middleware that writes
       `method`, `path`, `status`) gains a `route` field: the matched
       route's template, such as `/api/users/{user_id}/deactivate`, read
@@ -77,8 +77,12 @@ its own pull request, in rising order of risk.
       sets on the scope when a route matches. A request that matched no
       route logs `unmatched`. Test it beside the module, with one route
       that has a path parameter and one path that matches nothing.
+      Found while building: FastAPI 0.143 keeps an included router's
+      route relative to its prefix (`/users/{user_id}/deactivate`), so
+      `route_template` in `backend/app/log_context.py` looks the full
+      template up through `served_routes`, cached once per app.
 
-- [ ] **Quote nothing that identifies anybody in the "Backend error
+- [x] **Quote nothing that identifies anybody in the "Backend error
       logged" alert.** Its `label_extractors` in
       `infra/modules/monitoring/main.tf` quote the log message and the
       request path, so `/api/users/123/deactivate` and the text of a
@@ -92,12 +96,19 @@ its own pull request, in rising order of risk.
       logs by request id. Rewrite the long comment over the extractors
       to give the new reason. No other alert policy quotes anything; the
       feedback notice in `backend/app/feedback/slack.py` already sends
-      no identifiers.
+      no identifiers. Departed from this step while building: the alert
+      matches only entries at `ERROR`, and the request line carrying
+      `route` is logged at `INFO`, so the route cannot be quoted. For
+      Cloud Run's own record of a failed request the alert quotes
+      instead the first segment after `/api` (`area`, a route name such
+      as `users`, never an id) and the trace id, which is the request id
+      the backend's own lines carry. The `route` field stays on the
+      request line, where a search by request id finds it.
 
-- [ ] **Check it in App production.** After the deploy and the
-      Terraform apply, write one test entry with `gcloud logging write`
-      at severity `ERROR` against the backend's `cloud_run_revision`
-      resource, and confirm that the Slack message shows the logger,
+- [ ] **Check it in App production.** Done after this phase merges,
+      since it needs the deploy and the Terraform apply. Then write one
+      test entry with `gcloud logging write` at severity `ERROR` against
+      the backend's `cloud_run_revision` resource, and confirm that the Slack message shows the logger,
       the request id and no path. This is the alert's first test since
       it changed, so an empty label is worth catching here and not on
       a real fault.
