@@ -58,13 +58,20 @@ Decisions.
       PDF the scan missed cannot reach the app's cookies or API even when
       the browser's viewer runs its script.
 
-- [ ] Check in a real browser, against the dev stack, that a certificate
+- [x] Check in a real browser, against the dev stack, that a certificate
       page still shows a PDF and an image inline under the new headers.
       Chrome, Firefox and Safari all document rendering under `sandbox`,
       but a header that blanked the certificate page would be worse than
       the risk, so this is confirmed by eye before the pull request
       merges. Not done in the unattended run that built the step: the dev
       stack lives in the main checkout and the run had no browser.
+
+      Done on 19 October 2026, in App production rather than the dev
+      stack: a real certificate PDF showed in Chrome's own viewer inside
+      the certificate page under the `sandbox` header. Chrome's viewer
+      was the one most likely to be blocked in a sandboxed page; Safari
+      and Firefox document rendering under it. Phones and tablets draw
+      PDF pages themselves, which the header does not affect.
 
 - [x] Pin the headers in `backend/app/features/passport/router_test.py`
       beside the existing `nosniff` check, so a later refactor cannot
@@ -366,11 +373,18 @@ upload marked, so the person who uploaded it can see why it went.
       was run by hand: the serving revision carried `UPLOAD_SCAN_JOB` and
       accepted `run-scan`'s reports, and the job ran the real image.
 
-- [ ] Prove it end to end in App production: upload a file containing
+- [x] Prove it end to end in App production: upload a file containing
       the EICAR test string as passport evidence, see it refused with
       the signature named, and confirm the object is gone from the
       bucket; upload a real scan and see it served once the verdict
       arrives. Record the definitions date the report carried.
+
+      The real-file half was done the same evening, after Phase 6 and 7
+      had deployed: a real certificate PDF was scanned with ClamAV
+      1.4.6 and the day's definitions, reported clean about 17 seconds
+      later, and only then attached by the drop area. The EICAR file was
+      also run again on the new setup, and the drop area showed the red
+      "Malware found" message and attached nothing.
 
       The EICAR half is done, on 19 October 2026: `eicar-in-a-pdf.pdf`, a
       real PDF carrying the EICAR string in its content stream, was
@@ -569,7 +583,7 @@ stops fetching anything.
       date against each verdict, as before. No upload makes an outgoing
       call to ClamAV.
 
-- [ ] The teaching content check (`validate` in
+- [x] The teaching content check (`validate` in
       `teaching-pipeline.yml`) installs ClamAV from the mirror's package
       and scans with the mirror's definitions, instead of installing
       Ubuntu's ClamAV and running `freshclam` on every push. The
@@ -579,6 +593,13 @@ stops fetching anything.
       `eoeeta-teaching-testing` and `respiratory-teaching` read access.
       Until that is done the content check fails, closed, at the step
       that fetches the mirror.
+
+      Read access for the three teaching repositories was granted on
+      19 October 2026, once the first mirror run had created the package.
+      Not yet seen in a teaching repository's own run, since none had an
+      open content pull request: the first one will show "Install ClamAV
+      from the mirror" and "Scan the content for malware" passing, or
+      say why not.
 
       Built; the access grant is still to do, by hand, after the first
       run of `clamav-mirror.yml` has created the package.
