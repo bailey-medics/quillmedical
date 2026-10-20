@@ -15,6 +15,10 @@ import { useCallback, useEffect, useState } from "react";
 
 import { api } from "@/lib/api";
 import { csrfHeader } from "@lib/csrf";
+import {
+  UploadFailure,
+  uploadResumable,
+} from "@/features/teaching/resumable-upload";
 import type {
   Captions,
   MediaUploadUrl,
@@ -58,6 +62,15 @@ export interface ModuleMediaState {
    * second attempt haunted by the first one's message.
    */
   uploadErrors: Record<string, string>;
+  /**
+   * Reference keys whose upload lost its connection and is waiting to
+   * try again.
+   *
+   * Without it the bar simply stops, which looks the same as a hung
+   * page. Cleared as soon as GCS accepts bytes again, and when the
+   * upload ends either way.
+   */
+  uploadRetrying: Record<string, boolean>;
   upload: (key: string, file: File) => Promise<void>;
   remove: (assetId: string) => Promise<void>;
   /**
@@ -155,7 +168,12 @@ function startResumableUpload(url: string, file: File): Promise<string> {
   });
 }
 
-/** Send the file to an open session, reporting progress as it goes. */
+/**
+ * Send the whole file in one request, reporting progress as it goes.
+ *
+ * Only the local development route takes a file this way. GCS gets it
+ * in chunks, through `uploadResumable`.
+ */
 function sendToSession(
   sessionUrl: string,
   file: File,
@@ -196,16 +214,36 @@ function sendToSession(
 }
 
 /**
+ * Say why a resumable upload stopped.
+ *
+ * A refusal has a status, and is described like any other. The other
+ * two have none worth showing.
+ */
+function describeStoppedUpload(failure: UploadFailure, file: File): string {
+  if (failure.kind === "session-gone") {
+    return "The upload took too long and Google closed it. Try again.";
+  }
+  if (failure.kind === "refused" && failure.status !== null) {
+    return describeUploadFailure(failure.status, file);
+  }
+  return "Upload failed";
+}
+
+/**
  * Send one file to GCS.
  *
  * Two steps, not one. A local development URL is not a GCS resumable
  * URL, so it takes the single PUT it expects instead - the backend
  * decides which by whether it handed back an absolute URL.
+ *
+ * To GCS the file goes in chunks, so a dropped connection costs one
+ * chunk rather than the whole upload: see `resumable-upload.ts`.
  */
 async function putToBucket(
   url: string,
   file: File,
   onProgress: (percent: number) => void,
+  onRetrying: (retrying: boolean) => void,
 ): Promise<void> {
   // A relative URL is the local route, which receives the body
   // directly. Only GCS speaks the resumable handshake.
@@ -219,7 +257,15 @@ async function putToBucket(
   }
 
   const session = await startResumableUpload(url, file);
-  return sendToSession(session, file, onProgress);
+
+  try {
+    await uploadResumable(session, file, { onProgress, onRetrying });
+  } catch (err) {
+    if (err instanceof UploadFailure) {
+      throw new Error(describeStoppedUpload(err, file), { cause: err });
+    }
+    throw err;
+  }
 }
 
 /**
@@ -258,6 +304,9 @@ export function useModuleMedia(
   );
   const [uploadNames, setUploadNames] = useState<Record<string, string>>({});
   const [uploadErrors, setUploadErrors] = useState<Record<string, string>>({});
+  const [uploadRetrying, setUploadRetrying] = useState<Record<string, boolean>>(
+    {},
+  );
 
   const refresh = useCallback(async () => {
     if (!moduleId) return;
@@ -357,8 +406,21 @@ export function useModuleMedia(
           },
         );
 
-        await putToBucket(grant.upload_url, file, (percent) =>
-          setUploadProgress((p) => ({ ...p, [key]: percent })),
+        await putToBucket(
+          grant.upload_url,
+          file,
+          (percent) => setUploadProgress((p) => ({ ...p, [key]: percent })),
+          (retrying) =>
+            setUploadRetrying((r) => {
+              const next = { ...r };
+              if (retrying) {
+                next[key] = true;
+              } else {
+                delete next[key];
+              }
+
+              return next;
+            }),
         );
 
         // The backend never saw the bytes, so this is what records that
@@ -392,6 +454,11 @@ export function useModuleMedia(
         });
         setUploadNames((n) => {
           const next = { ...n };
+          delete next[key];
+          return next;
+        });
+        setUploadRetrying((r) => {
+          const next = { ...r };
           delete next[key];
           return next;
         });
@@ -498,6 +565,7 @@ export function useModuleMedia(
       uploadNames: {},
       uploading: false,
       uploadErrors: {},
+      uploadRetrying: {},
       upload,
       remove,
       loadCaptions,
@@ -514,6 +582,7 @@ export function useModuleMedia(
     uploadNames,
     uploading,
     uploadErrors,
+    uploadRetrying,
     upload,
     remove,
     loadCaptions,
