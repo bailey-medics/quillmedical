@@ -39,22 +39,35 @@ interaction between two queued PRs, neither breaking alone, isn't caught by
 these two checks specifically - the other required checks (unit tests,
 E2E) still verify the combined functional behaviour of the merge-group ref.
 
-## A stacked pull request: check the base before merging
+## A stacked pull request: enqueue the stack, or check the base
 
-A stacked pull request's base is the branch below it, and GitHub's merge
-button merges into the base. Only the bottom of a stack has `main` as its
-base. A pull request merged into the branch below is not on `main`, and
-nothing carries it there: on 15 October 2026 #2023 and #2026 were merged
-that way and their work sat on a branch until a separate pull request
-carried it over.
+A stacked pull request's base is the branch below it. Only the bottom of a
+stack has `main` as its base. There are two ways to land a stack, and they
+behave differently.
+
+- **Enqueueing the stack lands every pull request on `main`.** GitHub's
+  stacked pull requests add the whole stack to the merge queue in order,
+  and the queue merges them onto `main` one after the other. If one is
+  ejected, every pull request above it comes out too. This needs the stack
+  registered on GitHub, which `just stack-submit` does ("Stack created on
+  GitHub"), and every pull request out of draft. See GitHub's
+  [merging stacked pull requests](https://docs.github.com/en/enterprise-cloud@latest/pull-requests/how-tos/merge-and-close-pull-requests/merging-stacked-pull-requests).
+- **A pull request's own merge button merges into its base**, whatever the
+  stack around it. A pull request merged that way into the branch below is
+  not on `main`, and nothing carries it there: on 15 October 2026 #2023
+  and #2026 were merged that way and their work sat on a branch until a
+  separate pull request carried it over.
+
+So, merging one pull request at a time:
 
 - **Merge only a pull request whose base reads `main`.** The base is shown
   at the top of the pull request, "into `<branch>`".
-- **If it reads a `feature/…` branch, do not merge it.** Merge the one
-  below first, then run `just stack-sync`, which moves the next one onto
-  `main`, and queue it then.
+- **If it reads a `feature/…` branch, do not merge it on its own.** Merge
+  the one below first, then run `just stack-sync`, which moves the next
+  one onto `main`, and queue it then.
 - **Run `just stack-sync` after any part of a stack merges**, before
-  merging or building anything more on it.
+  merging or building anything more on it. Once the whole stack has
+  merged, `just stack-fresh` moves the checkout to `main` instead.
 - **A stacked pull request GitHub has closed is not lost.** When the
   branch beneath it is deleted after a merge, GitHub can close the pull
   request above rather than move it to `main`. Its branch and commits are
