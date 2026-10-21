@@ -396,6 +396,29 @@ class TestLargeFiles:
         assert "--alert-exceeds-max=yes" in args
         assert args[-1] == "upload"
 
+    def test_clamav_has_nearly_as_long_as_the_scan_ceiling(self) -> None:
+        # Its default of two minutes is less than a 2 GB lecture takes.
+        # A minute inside the ceiling, so ClamAV stops first and says why.
+        from scripts.scan_cli import _SCAN_CEILING, scan_file
+
+        with _clam(scan_code=0) as run:
+            scan_file(Path("upload"))
+
+        args = run.call_args.args[0]
+        assert f"--max-scantime={(_SCAN_CEILING - 60) * 1000}" in args
+        assert _SCAN_CEILING - 60 > 120
+
+    def test_a_scan_out_of_time_says_so_rather_than_too_large(self) -> None:
+        from scripts.scan_cli import scan_file
+
+        stdout = "upload: Heuristics.Limits.Exceeded.MaxScanTime FOUND\n"
+        with _clam(scan_code=1, scan_stdout=stdout):
+            verdict, detail = scan_file(Path("upload"))
+
+        assert verdict == "failed"
+        assert detail is not None and "took too long to scan" in detail
+        assert "too large" not in detail
+
     def test_a_file_too_big_to_scan_is_a_fault_not_an_infection(
         self,
     ) -> None:
