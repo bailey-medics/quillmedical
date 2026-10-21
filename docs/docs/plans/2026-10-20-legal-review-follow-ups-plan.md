@@ -212,6 +212,13 @@ its own pull request, in rising order of risk.
       status; if `REGEXP_EXTRACT` will not read the numeric
       `httpRequest.status`, the label comes out empty on a real 500 as
       well, so check a real 5xx record's alert too when one next comes.
+      Tried on 21 October 2026 after the apply: the alert still read
+      "status": "0". Cloud Monitoring gives 0 for a missing numeric
+      field whichever extractor is used, so the pattern did not help,
+      and it may not read a real 500's status at all. So the extractor
+      went back to `EXTRACT(httpRequest.status)`, and the alert now
+      reads "Answered: 0, where 0 means the entry had no request". Tick
+      this once the test entry shows that line after the apply.
 
 - [x] **Tick "Fix what the review found in the system"** in Phase 6 of
       the
