@@ -542,14 +542,27 @@ class DelegateModuleOut(BaseModel):
     title: str
 
 
+class DelegateSiteOut(BaseModel):
+    """One site a delegate belongs to, and who leads it."""
+
+    name: str
+    clinical_lead: str | None
+
+
 class DelegateOut(BaseModel):
-    """One delegate row for the admin all-delegates view."""
+    """One delegate row for the admin all-delegates view.
+
+    ``sites`` is every site they belong to. ``site_name`` and
+    ``clinical_lead`` are the first of them, kept for a page loaded
+    before ``sites`` was added.
+    """
 
     id: int
     name: str
     email: str | None
     site_name: str | None
     clinical_lead: str | None
+    sites: list[DelegateSiteOut] = []
     assessment_result: str | None
     assessment_date: datetime | None
     first_time_pass: bool

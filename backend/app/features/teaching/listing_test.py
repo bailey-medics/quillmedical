@@ -397,19 +397,59 @@ def test_the_site_they_train_at_is_shown_before_one_they_staff(
     assert row.site_name == "Ward 2"
 
 
-def test_of_two_sites_in_one_capacity_the_earlier_made_is_shown(
+def test_of_two_sites_in_one_capacity_the_first_by_name_is_shown(
     db_session: Session,
 ) -> None:
     org = _organisation(db_session)
-    first = _ward(db_session, org, "Ward 1")
-    second = _ward(db_session, org, "Ward 2")
+    made_first = _ward(db_session, org, "Ward B")
+    made_second = _ward(db_session, org, "Ward A")
     person = _person(db_session, "delegate")
-    add_org_unit_member(db_session, second.id, person.id, "staff")
-    add_org_unit_member(db_session, first.id, person.id, "staff")
+    add_org_unit_member(db_session, made_first.id, person.id, "staff")
+    add_org_unit_member(db_session, made_second.id, person.id, "staff")
 
-    row = _one_row(db_session, _view(org, person, places=(first, second)))
+    row = _one_row(
+        db_session, _view(org, person, places=(made_first, made_second))
+    )
 
-    assert row.site_name == "Ward 1"
+    assert row.site_name == "Ward A"
+
+
+def test_every_site_is_listed_with_its_own_clinical_lead(
+    db_session: Session,
+) -> None:
+    """Somebody who moves between sites is shown at each of them."""
+    org = _organisation(db_session)
+    north = _ward(db_session, org, "North")
+    south = _ward(db_session, org, "South")
+    day_unit = _ward(db_session, org, "Day unit")
+    set_clinical_lead(db_session, north, _person(db_session, "n", "Dr North"))
+    set_clinical_lead(db_session, south, _person(db_session, "s", "Dr South"))
+    person = _person(db_session, "delegate")
+    add_org_unit_member(db_session, south.id, person.id, "staff")
+    add_org_unit_member(db_session, north.id, person.id, "trainee")
+    add_org_unit_member(db_session, day_unit.id, person.id, "staff")
+    db_session.flush()
+
+    row = _one_row(
+        db_session, _view(org, person, places=(north, south, day_unit))
+    )
+
+    # The trainee site first, then the rest by name. The day unit has no
+    # clinical lead, and does not borrow another site's.
+    assert [(s.name, s.clinical_lead) for s in row.sites] == [
+        ("North", "Dr North"),
+        ("Day unit", None),
+        ("South", "Dr South"),
+    ]
+    assert row.site_name == "North"
+    assert row.clinical_lead == "Dr North"
+
+
+def test_somebody_at_no_site_has_no_sites(db_session: Session) -> None:
+    org = _organisation(db_session)
+    person = _person(db_session, "delegate")
+
+    assert _one_row(db_session, _view(org, person)).sites == []
 
 
 def test_a_site_outside_the_callers_organisations_is_not_shown(

@@ -363,9 +363,11 @@ export default function MarkdownView({
   }
 
   function handleClick(e: React.MouseEvent) {
-    const target = e.target as HTMLElement | null;
-    if (target && target.tagName === "A") {
-      const href = (target as HTMLAnchorElement).getAttribute("href") || "";
+    // The click lands on whatever is innermost, which for a link written
+    // `[**Users**](/admin/users)` is the bold text and not the link.
+    const link = e.target instanceof Element ? e.target.closest("a") : null;
+    if (link) {
+      const href = link.getAttribute("href") || "";
       if (onLinkClick) {
         e.preventDefault();
         onLinkClick(href);

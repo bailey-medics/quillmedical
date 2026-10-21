@@ -42,6 +42,7 @@ from app.features.teaching.schemas import (
     AdminBankOut,
     BankOrgRow,
     DelegateOut,
+    DelegateSiteOut,
 )
 from app.models import OrgUnit, User, org_unit_member
 from app.organisations import get_member_org_unit_ids
@@ -65,8 +66,8 @@ def delegate_rows(
     organisations do not serve has no attempts there, so naming one
     lists nobody.
 
-    The site and its clinical lead are looked up one person at a time:
-    up to three queries for each person listed.
+    The sites and their clinical leads are looked up one person at a
+    time: up to three queries for each person listed.
 
     Args:
         db: Core database session.
@@ -127,9 +128,8 @@ def delegate_rows(
         if assessment.user_id not in latest_by_person:
             latest_by_person[assessment.user_id] = assessment
 
-    # Get site and clinical lead info for each delegate
-    site_and_lead = {
-        person_id: _site_and_lead(db, person_id, view.place_ids)
+    sites_by_person = {
+        person_id: _sites_and_leads(db, person_id, view.place_ids)
         for person_id in people_ids
     }
     rows: list[DelegateOut] = []
@@ -164,15 +164,17 @@ def delegate_rows(
             ]
             first_time_pass = latest.is_passed is True and len(completed) == 1
 
-        site_name, lead_name = site_and_lead[person_id]
+        sites = sites_by_person[person_id]
+        first = sites[0] if sites else None
 
         rows.append(
             DelegateOut(
                 id=person_id,
                 name=person.full_name or person.username,
                 email=person.email,
-                site_name=site_name,
-                clinical_lead=lead_name,
+                site_name=first.name if first else None,
+                clinical_lead=first.clinical_lead if first else None,
+                sites=sites,
                 assessment_result=result,
                 assessment_date=assessment_date,
                 first_time_pass=first_time_pass,
@@ -182,10 +184,15 @@ def delegate_rows(
     return rows
 
 
-def _site_and_lead(
+def _sites_and_leads(
     db: Session, person_id: int, place_ids: set[int]
-) -> tuple[str | None, str | None]:
-    """The site one person is shown at, and who leads it.
+) -> list[DelegateSiteOut]:
+    """Every site one person belongs to, and who leads each.
+
+    Sites where they are a trainee come first, then any they belong to in
+    another capacity: an admin or a nurse who sat the module is at a site
+    as staff, and used to be shown with no site and so no clinical lead.
+    Within each, in order of name.
 
     Args:
         db: Core database session.
@@ -194,11 +201,11 @@ def _site_and_lead(
             membership anywhere else is not looked at.
 
     Returns:
-        The site's name and its clinical lead's name, either of which
-        may be None: no site among *place_ids*, a vacant post, or a post
-        held by an account that is no longer there.
+        The sites, each with its clinical lead's name, or None for a
+        vacant post or one held by an account that is no longer there.
+        Empty where they belong to no site among *place_ids*.
     """
-    site_row = db.execute(
+    site_rows = db.execute(
         select(OrgUnit.id, OrgUnit.name)
         .join(
             org_unit_member,
@@ -208,33 +215,46 @@ def _site_and_lead(
             org_unit_member.c.user_id == person_id,
             OrgUnit.id.in_(place_ids),
         )
-        # Where they are a trainee, if anywhere. Failing that, a site
-        # they belong to in another capacity: an admin or a nurse who
-        # sat the module is at a site as staff, and used to be shown
-        # with no site and so no clinical lead.
         .order_by(
             (org_unit_member.c.capacity != "trainee"),
+            OrgUnit.name,
             OrgUnit.id,
         )
-    ).first()
-    site_id = site_row[0] if site_row else None
-    site_name = site_row[1] if site_row else None
+    ).all()
 
-    # Whoever holds that site's clinical lead post. Keyed on the site's
+    if not site_rows:
+        return []
+
+    # Whoever holds each site's clinical lead post. Keyed on the site's
     # id rather than its name: two organisations may each have a
     # "Ward 1", and matching on name named the wrong trust's lead.
-    lead_name: str | None = None
+    lead_by_site = clinical_leads_of(db, [int(row[0]) for row in site_rows])
+    lead_names: dict[int, str] = {}
 
-    if site_id is not None:
-        lead_id = clinical_leads_of(db, [int(site_id)]).get(int(site_id))
-        if lead_id is not None:
-            lead_row = db.execute(
-                select(User.full_name, User.username).where(User.id == lead_id)
-            ).first()
-            if lead_row:
-                lead_name = lead_row[0] or lead_row[1]
+    if lead_by_site:
+        lead_names = {
+            int(user_id): full_name or username
+            for user_id, full_name, username in db.execute(
+                select(User.id, User.full_name, User.username).where(
+                    User.id.in_(set(lead_by_site.values()))
+                )
+            ).all()
+        }
 
-    return site_name, lead_name
+    sites: list[DelegateSiteOut] = []
+
+    for site_id, site_name in site_rows:
+        lead_id = lead_by_site.get(int(site_id))
+        sites.append(
+            DelegateSiteOut(
+                name=site_name,
+                clinical_lead=(
+                    lead_names.get(lead_id) if lead_id is not None else None
+                ),
+            )
+        )
+
+    return sites
 
 
 def learning_module_rows(

@@ -6,39 +6,37 @@ organisations.
 
 ## Open the page
 
-1. In the side menu, choose [**Admin**](/admin), then [**Teaching**](/admin/teaching).
-   ![The Teaching page under Admin, with the All delegates card](see-delegates-results/teaching-admin.png)
+1. In the side menu, choose [**Admin**](/admin) and then [**Teaching**](/admin/teaching).
 2. On the **All delegates** card, press **View delegates**.
+   ![The Teaching page under Admin, with the All delegates card](see-delegates-results/teaching-admin.png)
+3. You should now see the below page.
    ![The All delegates page](see-delegates-results/all-delegates.png)
 
-## Read the page
+## Reading the page
 
-Results are shown for one module at a time. If your organisation runs
-more than one, choose which under **Module** drop down.
+Results are shown for one module at a time. If your organisation holds more than one module, you can select from the drop down field.
 
-![The Module drop down open, with each module listed](see-delegates-results/module.png)
+![The Module drop down above the three figures](see-delegates-results/module.png)
 
 Three figures sit above the list:
 
-- **Total delegates** is how many people have attempted the module.
-- **Passed** is how many of them have passed it.
-- **1st pass rate** is the share who passed at their first attempt.
+- **Total delegates:** how many people have attempted the module.
+- **Passed:** how many of them have passed.
+- **1st pass rate:** the share of those who passed on their first attempt.
 
-Each row of the list is one delegate:
+Each row of the table is one delegate:
 
-- **Site** and **Clinical lead** say where they belong.
-- **Assessment** shows their latest result.
-- **Date** is when they last sat it.
+- **Site and Clinical lead:** where they belong. Somebody at more than one site has a line for each, with that site's clinical lead beside it.
+- **Assessment:** shows their latest result.
+- **Date:** when they last sat their assessment.
 
-Somebody who has an account but has not opened the module is not listed.
+**NB:** Somebody who has an account but has not opened the module is not listed.
 
-## Find somebody
+## Finding a teaching delegate
 
-- Type in the search box to find a delegate by name, email or site.
-- Press **Filter delegates** to narrow the list to a site or a clinical lead, or to **1st time passers only**.
+- Click on the magnifying glass icon to open the search field. In the search field, find a delegate by typing their name, email or site.
+- Press funnel icon (right of the magnifying glass) to narrow the list to a site, a clinical lead, or to **1st time passers only**. Somebody at more than one site is found at any of them.
   ![The filter, open over the list of delegates](see-delegates-results/filter.png)
 
-The three figures follow the filter, so they describe what the list is
-showing.
-
-A row cannot be opened: there is no page for one delegate's answers yet.
+When you search or filter, the three figures at the top of the page
+change to match. They count only the delegates left in the list.
