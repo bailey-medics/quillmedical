@@ -835,7 +835,9 @@ resource "google_monitoring_alert_policy" "backend_errors" {
       # - An entry the code logged gives the logger's name and the
       #   request id, which finds the whole entry, message and all.
       # - Cloud Run's own record of a request that answered 500 or above
-      #   gives its method, its status, the first segment after /api (a
+      #   gives its method, its status (extracted by pattern, so that an
+      #   entry with no request reads "(null)" and not "0", as the test
+      #   alert on 21 October 2026 did), the first segment after /api (a
       #   route name such as "users", never an id), and its trace id,
       #   which is the request id the code's own lines carry.
       # - Cloud Run's own faults, such as an instance stopped for
@@ -848,7 +850,7 @@ resource "google_monitoring_alert_policy" "backend_errors" {
         trace      = "REGEXP_EXTRACT(trace, \"traces/([0-9a-f]+)\")"
         method     = "EXTRACT(httpRequest.requestMethod)"
         area       = "REGEXP_EXTRACT(httpRequest.requestUrl, \"^https?://[^/]+(/api/[a-z_-]+)\")"
-        status     = "EXTRACT(httpRequest.status)"
+        status     = "REGEXP_EXTRACT(httpRequest.status, \"^([0-9]+)$\")"
         platform   = "REGEXP_EXTRACT(textPayload, \"^(.{1,200})\")"
       }
     }
@@ -900,6 +902,10 @@ resource "google_monitoring_alert_policy" "client_errors" {
       interface that failed.
 
       Errors: https://console.cloud.google.com/errors?project=$${project}
+
+      Error Reporting files an error under the region of the log bucket
+      that holds it, and the app's logs are kept in London, so switch the
+      Region menu at the top of that page from "global" to europe-west2.
 
       For the circumstances rather than the fault - the breadcrumbs leading up
       to it, the route, the browser, and which build it came from:

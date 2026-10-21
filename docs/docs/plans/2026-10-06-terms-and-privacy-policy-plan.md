@@ -564,7 +564,7 @@ code and the law on 20 October 2026. The wording was corrected that day
 wherever the code was right and the text was not; these are the places
 where the text is right and the system is not.
 
-- [ ] **Fix what the review found in the system.** The logs, the
+- [x] **Fix what the review found in the system.** The logs, the
       database backups and one alert break the promise that data stays
       in London, the consent history goes with a deleted account
       sooner than section 3.6 says, and clause 15.2 promises an
