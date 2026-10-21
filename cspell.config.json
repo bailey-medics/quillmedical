@@ -826,6 +826,7 @@
     "sbtci",
     "scannable",
     "scansize",
+    "scantime",
     "schemathesis",
     "SCORM",
     "SCPHN",

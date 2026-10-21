@@ -246,6 +246,12 @@ times that on Cloud Run's 4 vCPUs, against a 20-minute ceiling.
       resolve outside the mount is not read through it, and is
       downloaded instead, since a job invoked by hand could be given any
       key.
+      The first real lecture still failed, on 20 October: ClamAV has a
+      third limit, `--max-scantime`, two minutes by default, and gave up
+      on the 2.1 GB file at 2 minutes 15 seconds with
+      `Heuristics.Limits.Exceeded.MaxScanTime`. It is now set a minute
+      inside `_SCAN_CEILING`, 24 minutes, and that finding is reported as
+      "took too long to scan" rather than "too large".
 
 - [x] Refuse a video over 3 GB when the upload is asked for, and wait
       longer before calling a job stalled, in the backend and frontend.

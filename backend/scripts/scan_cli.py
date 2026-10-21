@@ -79,10 +79,20 @@ _SCAN_CEILING = 25 * 60
 #: inside.
 _SIZE_LIMITS = ("--max-filesize=4000M", "--max-scansize=4000M")
 
+#: How long ClamAV may spend on one file, in milliseconds. Its default is
+#: two minutes, and a 2 GB lecture took longer than that on 20 October
+#: 2026, so it gave up and the upload failed. Set a minute inside
+#: `_SCAN_CEILING`, so ClamAV stops first and says which limit it hit,
+#: rather than being killed with nothing to say.
+_TIME_LIMIT = f"--max-scantime={(_SCAN_CEILING - 60) * 1000}"
+
 #: What ClamAV names a file it could not scan in full, with
 #: ``--alert-exceeds-max``. The full name says which limit, such as
 #: ``Heuristics.Limits.Exceeded.MaxFileSize``.
 _LIMITS_EXCEEDED = "Heuristics.Limits.Exceeded"
+
+#: The one limit that is about time rather than size.
+_TIME_LIMIT_EXCEEDED = f"{_LIMITS_EXCEEDED}.MaxScanTime"
 
 
 def definitions_version() -> str:
@@ -128,6 +138,7 @@ def scan_file(path: Path) -> tuple[Verdict, str | None]:
                 "--no-summary",
                 "--infected",
                 *_SIZE_LIMITS,
+                _TIME_LIMIT,
                 # A file over the limits is reported rather than skipped
                 # as clean. It comes back as a finding, and is a fault
                 # below, never an infection.
@@ -151,6 +162,9 @@ def scan_file(path: Path) -> tuple[Verdict, str | None]:
         # Too big to scan is not shown to be harmful, and "infected"
         # would have the backend delete it. It is a fault: the upload
         # waits, and the reason is in the report.
+        if signature.startswith(_TIME_LIMIT_EXCEEDED):
+            return "failed", f"took too long to scan ({signature})"
+
         if signature.startswith(_LIMITS_EXCEEDED):
             return "failed", f"too large to scan in full ({signature})"
 
