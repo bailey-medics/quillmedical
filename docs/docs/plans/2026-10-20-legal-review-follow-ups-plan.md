@@ -105,13 +105,25 @@ its own pull request, in rising order of risk.
       the backend's own lines carry. The `route` field stays on the
       request line, where a search by request id finds it.
 
-- [ ] **Check it in App production.** Done after this phase merges,
+- [x] **Check it in App production.** Done after this phase merges,
       since it needs the deploy and the Terraform apply. Then write one
       test entry with `gcloud logging write` at severity `ERROR` against
-      the backend's `cloud_run_revision` resource, and confirm that the Slack message shows the logger,
-      the request id and no path. This is the alert's first test since
+      the backend's `cloud_run_revision` resource, and confirm that the
+      Slack message shows the logger, the request id and no path. This
+      is the alert's first test since
       it changed, so an empty label is worth catching here and not on
       a real fault.
+      Done on 21 October 2026: the test entry reached the London bucket
+      and opened the alert a minute later, quoting only `logger` and
+      `request_id`, with no path and no message.
+
+- [x] **Show no status for an entry with no request.** The test alert
+      read "Answered: 0", because `EXTRACT(httpRequest.status)` gives 0
+      when the field is missing. Extract it with
+      `REGEXP_EXTRACT(httpRequest.status, "^([0-9]+)$")` in
+      `infra/modules/monitoring/main.tf`, as `area` already is, so an
+      entry the code logged reads "(null)" like the other empty fields.
+      Check it with the same test entry after the apply.
 
 ## Phase 3: Database backups in London
 
@@ -122,7 +134,7 @@ its own pull request, in rising order of risk.
       on. The point-in-time recovery logs need nothing: they are kept in
       Cloud Storage in the instance's own region.
 
-- [ ] **Delete the EU backups once a London one exists.** Done after
+- [x] **Delete the EU backups once a London one exists.** Done after
       this phase merges, since it needs the Terraform apply. Then wait
       for the next automatic backup at 03:00 UTC, or take an on-demand
       one with `gcloud sql backups create`, and confirm with
@@ -132,6 +144,10 @@ its own pull request, in rising order of risk.
       30 days, after go-live, holding the first real users' data
       outside London until then. Decided on 20 October 2026: a London
       backup taken minutes earlier covers the same ground.
+      Done on 21 October 2026, at Mark's explicit confirmation: the
+      first London backup, taken at 03:00 that day, had succeeded, and
+      all fifteen backups in `eu` were deleted. `gcloud sql backups
+      list` then showed one backup, in `europe-west2`.
 
 ## Phase 4: Logs in London
 
@@ -158,7 +174,7 @@ its own pull request, in rising order of risk.
       --view=_AllLogs`. Naming the bucket is certain where relying on
       the project-wide default is not.
 
-- [ ] **Check the four things that read logs.** Done after this phase
+- [x] **Check the four things that read logs.** Done after this phase
       merges, since it needs the Terraform apply. Then, in App
       production: run one admin job recipe and confirm its output
       prints; post one report to `/api/analytics/client-errors` and
@@ -169,8 +185,35 @@ its own pull request, in rising order of risk.
       though it is a separate route and should not change. If Error
       Reporting does not see the report, record what it needs here
       before changing anything else.
+      Done on 21 October 2026. `just migrate-current app` printed the
+      admin job's output from the London bucket; a test report to
+      `/api/analytics/client-errors` reached Error Reporting; the test
+      entry from Phase 2 opened the alert; and the BigQuery analytics
+      table had rows written a minute earlier. Error Reporting files an
+      error under the region of the bucket that holds it, so the test
+      report appeared under `europe-west2` and not in the global view:
+      `projects/quill-medical-app/locations/europe-west2/groupStats`
+      found it where `projects/quill-medical-app/groupStats` did not.
+      Plain `gcloud logging read --project` also finds entries in the
+      London bucket, so the `Justfile` flags are belt and braces.
 
-- [ ] **Tick "Fix what the review found in the system"** in Phase 6 of
+- [x] **Point the browser-errors alert's link at the London errors.**
+      Its documentation in `infra/modules/monitoring/main.tf` links to
+      `https://console.cloud.google.com/errors?project=…`, which opens
+      the global view, now empty. Departed from this step while
+      building: Google documents a Region menu on that page but no
+      address parameter for it, so rather than guess one, the link
+      stays and the documentation tells the reader to switch the Region
+      menu to `europe-west2`. The address was not read from the console:
+      a browser is not used from these sessions.
+
+- [ ] **Check both alert changes after the apply.** Write the Phase 2
+      test entry again and confirm the alert reads "(null)" for the
+      status; if `REGEXP_EXTRACT` will not read the numeric
+      `httpRequest.status`, the label comes out empty on a real 500 as
+      well, so check a real 5xx record's alert too when one next comes.
+
+- [x] **Tick "Fix what the review found in the system"** in Phase 6 of
       the
       [Terms and privacy policy plan](2026-10-06-terms-and-privacy-policy-plan.md),
       the one step there that points here.
