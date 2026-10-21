@@ -57,7 +57,7 @@ reportlab = ">=5.0.1,<5.1.0"
 # file is stored and the EXIF block, which carries a phone photo's GPS
 # position, is dropped. Already in the lock file as a dependency of
 # reportlab; named here because the application imports it itself.
-pillow = ">=12.3.0,<13.0.0"
+pillow = ">=13.0.0,<14.0.0"
 # Decodes HEIC, which phones write and which Pillow cannot read alone.
 # Ships its own libheif in the wheel, so the image gains no apt package.
 pillow-heif = ">=1.8.1,<2.0.0"
