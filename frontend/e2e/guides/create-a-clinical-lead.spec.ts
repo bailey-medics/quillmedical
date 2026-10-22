@@ -33,7 +33,7 @@ test("create a clinical lead", async ({ page }) => {
   ).toBeVisible();
 
   await page.getByLabel("Full name").fill("Dr Hannah Price");
-  await page.getByLabel("Email").fill("hannah.price@northfield.example");
+  await page.getByLabel("Email").fill("hannah.price@northfield.nhs.uk");
   await page.getByLabel("Username").fill("hannah.price");
   await page.getByLabel("Initial password").fill("a-first-password");
   await page.getByRole("combobox", { name: "Base profession" }).click();

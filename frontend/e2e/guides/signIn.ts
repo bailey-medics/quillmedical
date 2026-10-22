@@ -35,7 +35,7 @@ export const PEOPLE = {
 export const SEEDED = {
   organisation: "Northfield Endoscopy Academy",
   site: "Northfield General Hospital",
-  clinicalLeadEmail: "guide_lead@northfield.example",
+  clinicalLeadEmail: "thomas.kowalski@northfield.nhs.uk",
 } as const;
 
 export async function signIn(

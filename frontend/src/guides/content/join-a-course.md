@@ -1,17 +1,16 @@
 # Join a course
 
-You create your own account. It takes a few minutes, and you need three
-things:
+You first need to create an account. It takes a few minutes, and you need three things:
 
 - your name as it should appear on your certificate
-- an email address you can open now
+- an email address you have access to
 - the email address of your clinical lead, who must already be on Quill
 
 ## Choose your module
 
 1. Open the [register page](/register). You can also reach it from the [sign-in page](/login), by choosing **Don't have an account? Register**.
 2. Under **Teaching module**, choose the module you are joining.
-3. Under **Clinical lead email address**, type your clinical lead's email address. This is how Quill knows which site you belong to.
+3. Under **Clinical lead email address**, type your clinical lead's email address.
 4. Press **Continue**.
    ![The first registration step, asking for a module and a clinical lead](join-a-course/choose-module.png)
 
@@ -21,6 +20,8 @@ yet. Ask them, or whoever runs the course, to sort that out first.
 If your clinical lead covers more than one site, Quill asks **Which site
 are you joining?** Choose yours and press **Continue**.
 
+![The step asking which site you are joining, with a choice of two sites](join-a-course/choose-site.png)
+
 ## Create your account
 
 The form names the site you are joining, under **Create an account**. If
@@ -28,10 +29,11 @@ it is the wrong site, or you chose the wrong module, press **Back**. What
 you have typed into this form is not kept.
 
 1. Enter your **Full name**, as it should appear on certificates.
-2. Choose a **Username** and enter your **Email**.
-3. Choose a **Password** of at least 8 characters, and type it again under **Confirm password**.
-4. Tick the box if you would rather not get news and updates.
-5. Press **Register**.
+2. Choose a **Username**
+3. Enter your **Email**.
+4. Choose a **Password** of at least 8 characters, and type it again under **Confirm password**.
+5. Tick the box if you would rather not get news and updates.
+6. Press **Register**.
    ![The form for creating an account](join-a-course/create-account.png)
 
 ## Confirm your email address

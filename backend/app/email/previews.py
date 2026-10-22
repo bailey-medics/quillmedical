@@ -163,10 +163,12 @@ def previews() -> list[Preview]:
             id="email-verification",
             label="Email verification",
             template="email_verification.html.j2",
+            # The person the guide "Join a course" registers, so its
+            # picture of this email follows on from its form.
             context={
-                "name": "John Smith",
-                "username": "john.smith",
-                "email": "john.smith@example.org",
+                "name": "Lucy Bennett",
+                "username": "lucy.bennett",
+                "email": "lucy.bennett@northfield.nhs.uk",
                 "verify_url": (
                     "https://quill-medical.com/verify-email?token=example"
                 ),

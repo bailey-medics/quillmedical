@@ -141,7 +141,7 @@ class TestLayout:
         html = _render(env)["html_body"]
 
         assert "You asked for this." in html
-        assert "Quill Medical is a trading name of Bailey Medics Ltd." in html
+        assert "Quill Medical is a trade name of Bailey Medics Ltd." in html
 
     def test_headings_shrink_on_a_phone(self, env: Environment) -> None:
         html = _render(env)["html_body"]

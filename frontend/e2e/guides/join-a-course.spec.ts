@@ -11,6 +11,22 @@ import { test, expect } from "@playwright/test";
 import { shot } from "./shot";
 import { SEEDED } from "./signIn";
 
+/** The request that checks the clinical lead and names their sites. */
+const LEAD_CHECK = "**/api/teaching/public/validate-clinical-lead";
+
+/** A made-up second site, so the lead covers two and the guide's site step shows. */
+const SECOND_SITE = {
+  site_id: 999_999,
+  site_name: "Riverside Community Hospital",
+};
+
+/** One site, as the clinical lead check names it. */
+interface LeadSite {
+  site_id: number;
+  site_name: string;
+  org_unit_id: number;
+}
+
 test("join a course", async ({ page }) => {
   await page.goto("/register");
   await expect(
@@ -26,19 +42,54 @@ test("join a course", async ({ page }) => {
     .fill(SEEDED.clinicalLeadEmail);
   await shot(page, "join-a-course/choose-module");
 
-  // On to the second step the way a delegate gets there: the clinical
-  // lead is in post at the seeded site, so the first step accepts them.
+  // The seeded clinical lead holds one site, and the site step shows only
+  // for a lead of several. A second is added to what the check answers,
+  // for the picture only: it is never chosen, so nothing is sent naming
+  // a site that does not exist.
+  await page.route(LEAD_CHECK, async (route) => {
+    const response = await route.fetch();
+    const checked = (await response.json()) as { sites: LeadSite[] };
+    const [seeded] = checked.sites;
+    const sites = seeded
+      ? [seeded, { ...SECOND_SITE, org_unit_id: seeded.org_unit_id }]
+      : checked.sites;
+    await route.fulfill({ response, json: { ...checked, sites } });
+  });
+
   await page.getByRole("button", { name: "Continue" }).click();
+  await expect(
+    page.getByRole("radiogroup", { name: /Which site are you joining\?/ }),
+  ).toBeVisible();
+  // The seeded site, the one the clinical lead really holds, chosen
+  // before the picture so it shows a delegate ready to continue.
+  await page.getByRole("radio").first().check();
+  await shot(page, "join-a-course/choose-site");
+
+  await page.getByRole("button", { name: "Continue" }).click();
+  await page.unroute(LEAD_CHECK);
   await expect(
     page.getByRole("heading", { name: "Create an account" }),
   ).toBeVisible();
-  await page.getByLabel("Full name").fill("Sam Sample");
-  await page.getByLabel("Username").fill("sam.sample");
-  await page.getByLabel("Email").fill("sam.sample@example.org");
+  await page.getByLabel("Full name").fill("Lucy Bennett");
+  await page.getByLabel("Username").fill("lucy.bennett");
+  await page.getByLabel("Email").fill("lucy.bennett@northfield.nhs.uk");
+  // Shown only as dots, and the form is never submitted.
+  await page
+    .getByRole("textbox", { name: "Password", exact: true })
+    .fill("a-made-up-password");
+  await page
+    .getByRole("textbox", { name: "Confirm password" })
+    .fill("a-made-up-password");
   await shot(page, "join-a-course/create-account");
 
   await page.goto("/login");
   await expect(page.getByLabel("Username")).toBeVisible();
+  // Filled in as Lucy, who registered above. The password shows only as
+  // dots, and nothing is submitted.
+  await page.getByLabel("Username").fill("lucy.bennett");
+  await page
+    .getByRole("textbox", { name: "Password" })
+    .fill("a-made-up-password");
   await shot(page, "join-a-course/sign-in");
 });
 

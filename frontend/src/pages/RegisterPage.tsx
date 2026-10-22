@@ -21,7 +21,6 @@ import PageHeader from "@/components/page-header";
 import { QuillLogo } from "@components/images";
 import BaseCard from "@components/base-card/BaseCard";
 import { SelectField, TextField } from "@components/form";
-import RadioField from "@components/form/RadioField";
 import { TextLink } from "@components/typography";
 import { guidePath } from "@/guides/registry";
 import { api } from "@/lib/api";
@@ -34,6 +33,7 @@ import {
 import type { FormSubmitResult } from "@/components/form/Form";
 import { registrationError } from "@/lib/auth/registrationError";
 import {
+  ChooseSiteForm,
   RegistrationForm,
   type RegistrationFormData,
 } from "@components/registration";
@@ -83,46 +83,6 @@ function sitesOf(result: LeadCheck): LeadSite[] {
 /** The module and lead that were checked, and the sites that lead holds. */
 interface Checked extends TeachingRegisterFormValues {
   sites: LeadSite[];
-}
-
-function ChooseSiteFields({
-  sites,
-  onBack,
-}: {
-  sites: LeadSite[];
-  onBack: () => void;
-}) {
-  const { methods } = useFormContext<{ site: string }>();
-
-  return (
-    <Stack gap="md">
-      <Stack align="center" gap="md">
-        <QuillLogo />
-        <PageHeader title="Register for Quill Teaching" />
-      </Stack>
-      <FormStatus />
-      <Controller
-        name="site"
-        control={methods.control}
-        rules={{ required: "Please choose a site" }}
-        render={({ field, fieldState }) => (
-          <RadioField
-            label="Which site are you joining?"
-            description="Your clinical lead covers more than one site."
-            options={sites.map((site) => ({
-              value: String(site.site_id),
-              label: site.site_name,
-            }))}
-            value={field.value || null}
-            onChange={field.onChange}
-            error={fieldState.error?.message}
-            required
-          />
-        )}
-      />
-      <SubmitButton onCancel={onBack} cancelLabel="Back" />
-    </Stack>
-  );
 }
 
 function TeachingRegisterFields({
@@ -254,9 +214,9 @@ function TeachingRegisterPage() {
     }
   }
 
-  function chooseSite(data: { site: string }): FormSubmitResult {
+  function chooseSite(value: string): FormSubmitResult {
     const chosen = checked?.sites.find(
-      (candidate) => String(candidate.site_id) === data.site,
+      (candidate) => String(candidate.site_id) === value,
     );
     if (!chosen) {
       return { state: "error", message: { title: "Please choose a site" } };
@@ -315,20 +275,18 @@ function TeachingRegisterPage() {
   if (checked) {
     return (
       <Center mih="100dvh">
-        <BaseCard w={400}>
-          {/* Keyed, as the first view's form is: both sit at the same
-              place in the tree, and without a key React hands one the
-              other's fields when the view changes. */}
-          <Form<{ site: string }>
-            key="choose-site"
-            defaultValues={{ site: "" }}
-            onSubmit={chooseSite}
-            submitLabel="Continue"
-            submittingLabel="Continuing…"
-          >
-            <ChooseSiteFields sites={checked.sites} onBack={startAgain} />
-          </Form>
-        </BaseCard>
+        {/* Keyed, as the first view's form is: both sit at the same
+            place in the tree, and without a key React hands one the
+            other's fields when the view changes. */}
+        <ChooseSiteForm
+          key="choose-site"
+          sites={checked.sites.map((option) => ({
+            value: String(option.site_id),
+            label: option.site_name,
+          }))}
+          onSubmit={chooseSite}
+          onBack={startAgain}
+        />
       </Center>
     );
   }
