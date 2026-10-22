@@ -774,7 +774,7 @@ resource "google_monitoring_alert_policy" "backend_errors" {
       - **Logged by:** $${log.extracted_label.logger}
       - **Request id:** $${log.extracted_label.request_id} $${log.extracted_label.trace}
       - **Request:** $${log.extracted_label.method} $${log.extracted_label.area}
-      - **Answered:** $${log.extracted_label.status}
+      - **Answered:** $${log.extracted_label.status}, where 0 means the entry had no request
       - **Cloud Run said:** $${log.extracted_label.platform}
 
       An error is logged in one of three ways, and each fills in part of
@@ -835,22 +835,26 @@ resource "google_monitoring_alert_policy" "backend_errors" {
       # - An entry the code logged gives the logger's name and the
       #   request id, which finds the whole entry, message and all.
       # - Cloud Run's own record of a request that answered 500 or above
-      #   gives its method, its status (extracted by pattern, so that an
-      #   entry with no request reads "(null)" and not "0", as the test
-      #   alert on 21 October 2026 did), the first segment after /api (a
+      #   gives its method, its status, the first segment after /api (a
       #   route name such as "users", never an id), and its trace id,
       #   which is the request id the code's own lines carry.
+      #
       # - Cloud Run's own faults, such as an instance stopped for
       #   exceeding its memory, are plain text in Cloud Run's wording,
       #   not the app's, so the start of it is quoted, cut at 200
       #   characters.
+      #
+      # A missing status reads 0, not "(null)": Cloud Monitoring gives a
+      # numeric label 0 when the field is absent, whatever extracts it.
+      # A pattern was tried on 21 October 2026 and changed nothing, so
+      # the alert says what 0 means instead.
       label_extractors = {
         logger     = "EXTRACT(jsonPayload.name)"
         request_id = "EXTRACT(jsonPayload.request_id)"
         trace      = "REGEXP_EXTRACT(trace, \"traces/([0-9a-f]+)\")"
         method     = "EXTRACT(httpRequest.requestMethod)"
         area       = "REGEXP_EXTRACT(httpRequest.requestUrl, \"^https?://[^/]+(/api/[a-z_-]+)\")"
-        status     = "REGEXP_EXTRACT(httpRequest.status, \"^([0-9]+)$\")"
+        status     = "EXTRACT(httpRequest.status)"
         platform   = "REGEXP_EXTRACT(textPayload, \"^(.{1,200})\")"
       }
     }
