@@ -118,6 +118,76 @@ describe("MarkdownView", () => {
       expect(ol?.textContent).toContain("Second");
       expect(ol?.textContent).toContain("Third");
     });
+
+    // A long item is wrapped in the source with its next line indented.
+    // Read as a line of its own, it ended the list, and every item after
+    // it ran together into one paragraph, "- " markers and all.
+    it("keeps a wrapped bullet as one item", () => {
+      const source = [
+        "- Press **Finish** to go back to the module page, where the",
+        "  assessment starts.",
+        "- Each question shows a polyp twice: once under white light",
+        "  and once under narrow band imaging.",
+        "- When you pass, your certificate is emailed to you.",
+      ].join("\n");
+
+      const { container } = renderWithMantine(<MarkdownView source={source} />);
+
+      const items = container.querySelectorAll("ul > li");
+      expect(container.querySelectorAll("ul")).toHaveLength(1);
+      expect(items).toHaveLength(3);
+      expect(items[0].textContent).toBe(
+        "Press Finish to go back to the module page, where the assessment starts.",
+      );
+      expect(items[1].textContent).toContain("narrow band imaging.");
+      expect(container.querySelector("p")).toBeNull();
+    });
+
+    it("keeps a wrapped numbered item as one item", () => {
+      const source = [
+        "1. Open the form, which may take",
+        "   a moment to load",
+        "2. Press save",
+      ].join("\n");
+
+      const { container } = renderWithMantine(<MarkdownView source={source} />);
+
+      const items = container.querySelectorAll("ol > li");
+      expect(items).toHaveLength(2);
+      expect(items[0].textContent).toBe(
+        "Open the form, which may take a moment to load",
+      );
+    });
+
+    it("still starts a paragraph after a blank line", () => {
+      const source = ["- One", "  carried on", "", "After the list."].join(
+        "\n",
+      );
+
+      const { container } = renderWithMantine(<MarkdownView source={source} />);
+
+      expect(container.querySelectorAll("ul > li")).toHaveLength(1);
+      expect(container.querySelector("p")?.textContent).toBe("After the list.");
+    });
+
+    it("still starts a paragraph on an unindented line after a list", () => {
+      // Only indented lines carry an item on, so text written straight
+      // after a list reads as it always has.
+      const source = ["- One", "Straight after."].join("\n");
+
+      const { container } = renderWithMantine(<MarkdownView source={source} />);
+
+      expect(container.querySelector("li")?.textContent).toBe("One");
+      expect(container.querySelector("p")?.textContent).toBe("Straight after.");
+    });
+
+    it("does not carry an item into a heading", () => {
+      const source = ["- One", "  ## Next part"].join("\n");
+
+      const { container } = renderWithMantine(<MarkdownView source={source} />);
+
+      expect(container.querySelector("li")?.textContent).toBe("One");
+    });
   });
 
   describe("Code blocks", () => {

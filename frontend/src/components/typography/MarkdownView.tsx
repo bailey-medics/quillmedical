@@ -78,6 +78,33 @@ const IMAGE_PATH = /^[a-z0-9-]+(\/[a-z0-9-]+)*\.(png|jpe?g|webp)$/;
 /** An image on a line of its own, indented under the list item it shows. */
 const IMAGE_UNDER_ITEM = /^\s{2,}!\[[^\]]*\]\([^)]+\)\s*$/;
 
+/** An image on a line of its own, indented or not. */
+const IMAGE_ONLY = /^\s*!\[[^\]]*\]\([^)]+\)\s*$/;
+
+/** The start of a list item, bulleted or numbered, at any indent. */
+const LIST_ITEM = /^\s*([-*]|\d+\.)\s+/;
+
+/**
+ * A line that carries on the list item above it: indented, and not a new
+ * item, a heading, a code fence or an image.
+ *
+ * A long item is wrapped in the source with its next line indented, as
+ * Markdown allows. Read as a line of its own it ended the list, and every
+ * item after it ran together into one paragraph. Only indented lines
+ * count, so text straight after a list, with no blank line between,
+ * still starts a paragraph as it always has.
+ */
+function continuesItem(line: string | undefined): line is string {
+  return (
+    line !== undefined &&
+    /^\s+\S/.test(line) &&
+    !LIST_ITEM.test(line) &&
+    !/^\s*#{1,6}\s/.test(line) &&
+    !/^\s*```/.test(line) &&
+    !IMAGE_ONLY.test(line)
+  );
+}
+
 // SSR/Node safety checks
 const CAN_USE_DOM =
   typeof window !== "undefined" && typeof document !== "undefined";
@@ -217,7 +244,7 @@ function mdToHtml(src: string, imageBase?: string) {
       while (i < lines.length && /^\s*[-*]\s+/.test(lines[i])) {
         let item = lines[i].replace(/^\s*[-*]\s+/, "");
         i++;
-        while (isImageUnderItem(lines[i])) {
+        while (isImageUnderItem(lines[i]) || continuesItem(lines[i])) {
           item += ` ${lines[i].trim()}`;
           i++;
         }
@@ -236,7 +263,7 @@ function mdToHtml(src: string, imageBase?: string) {
       while (i < lines.length && /^\s*\d+\.\s+/.test(lines[i])) {
         let item = lines[i].replace(/^\s*\d+\.\s+/, "");
         i++;
-        while (isImageUnderItem(lines[i])) {
+        while (isImageUnderItem(lines[i]) || continuesItem(lines[i])) {
           item += ` ${lines[i].trim()}`;
           i++;
         }
