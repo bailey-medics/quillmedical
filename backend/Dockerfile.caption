@@ -55,6 +55,17 @@ ENV WHISPER_MODEL=small
 COPY backend/app ./app
 COPY backend/scripts/caption_cli.py ./scripts/caption_cli.py
 
+# The teaching tooling keeps its own copy of Whisper's language codes, to
+# check a module's `captionLanguage` without Whisper installed. Compared
+# here, where Whisper is, so an upgrade that changes the list fails the
+# build rather than letting a module name a language Whisper refuses.
+RUN python -c "import sys; \
+from whisper.tokenizer import LANGUAGES; \
+from app.features.teaching.tooling.caption_languages import CAPTION_LANGUAGES; \
+sys.exit(0 if CAPTION_LANGUAGES == LANGUAGES else \
+  'caption_languages.py no longer matches Whisper: ' \
+  + str(sorted(set(CAPTION_LANGUAGES) ^ set(LANGUAGES))))"
+
 RUN useradd --uid 10001 --create-home appuser \
  && chown -R appuser:appuser /app
 USER appuser

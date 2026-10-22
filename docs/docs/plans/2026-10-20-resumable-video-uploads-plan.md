@@ -332,6 +332,55 @@ gap in the video itself, which EoEETA are fixing.)
       Read the result against the video before the captions are marked
       reviewed.
 
+## Phase 8: A module says which language its videos are in
+
+Phase 7 made captions English unless the caption job's
+`CAPTION_LANGUAGE` setting says otherwise. That setting covers every
+module at once, or one video re-captioned by hand, so a module whose
+videos are in Welsh, say, has no way to say so. The language belongs
+with the module, beside its `captionVocabulary`.
+
+- [x] Let a module name its videos' language, as `captionLanguage` in its
+      `module.yaml`, checked by `ModuleYaml` in
+      `tooling/module_schema.py`. Left out, the videos are English, so no
+      existing module needs changing. The value is one of Whisper's
+      language codes, such as `cy` for Welsh or `fr` for French. The
+      tooling cannot import Whisper, which is installed only in the
+      caption image, so the codes are kept as a list in the schema, copied
+      from `whisper.tokenizer.LANGUAGES` with a comment saying where they
+      came from. `validate-teaching` then refuses a code Whisper would
+      not know, such as `cyy` or `welsh`, in the teaching repository
+      rather than on the first video. A test in the caption image's own
+      suite, or a check in its build, compares the copied list with
+      Whisper's so the two cannot drift. Tests: a module without the
+      field, a good code, an unknown code, and a full name in place of a
+      code are each judged right. As built, the codes live in
+      `tooling/caption_languages.py`, a module that imports nothing,
+      because the caption image has Whisper but not pydantic; the image's
+      build (`backend/Dockerfile.caption`) compares it with
+      `whisper.tokenizer.LANGUAGES` and fails if they differ. A full name
+      such as `welsh` is refused with the code it should be.
+
+- [x] Pass the language to the caption job when captions start, in
+      `start_caption` (`backend/app/features/teaching/transcode.py`),
+      read alongside `captionVocabulary` from the same `module.yaml`, and
+      sent as `CAPTION_LANGUAGE`. Nothing is sent where the module names
+      none, so the job keeps its English default. Reading it never stops
+      captions starting: an unreadable file or an unknown code sends
+      nothing and logs why. The two fields are read in one pass over the
+      file, so a module's captions are started from one reading of it.
+      Tests: the language is passed when named, nothing is passed
+      otherwise, and an unknown code is not passed. As built,
+      `caption_prompt` became `caption_settings`, which returns both from
+      one reading of the file.
+
+- [x] Describe both caption fields in `docs/docs/teaching/index.md`,
+      the one page that explains `module.yaml`: `captionVocabulary`, from
+      Phase 7, which no page mentions yet, and `captionLanguage`. Say
+      that English needs neither field set, that the word list should be
+      in the same language as the videos, and what the caps on the list
+      are and why.
+
 ## Decisions
 
 - **Resume within the tab, not across a reload** - GCS keeps a session for
@@ -359,3 +408,11 @@ gap in the video itself, which EoEETA are fixing.)
   real upload, and an unattended change that broke every upload would
   cost more than it saves. A file larger than declared would only make
   its own jobs fail, so the cap is checked on the size the page reports.
+
+- **The caption language is set per module, not per video** - a module's
+  videos are made together, for one audience, and per module needs no
+  admin screen: it is a line in `module.yaml`. A module that ever mixes
+  languages would need a per-video setting, and that can be added on
+  top of this without undoing it. The MDX was considered and not used:
+  it holds the slides' content, and the videos' language is a fact about
+  the module as a whole, like its word list.

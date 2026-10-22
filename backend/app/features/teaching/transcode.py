@@ -18,6 +18,7 @@ path can be tested without a bucket and without the media inventory.
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -32,43 +33,53 @@ RENDITION_FLAGS: tuple[tuple[str, str], ...] = (
 )
 
 
-def caption_prompt(module_id: str) -> str | None:
-    """The module's ``captionVocabulary``, as text to hand Whisper.
+@dataclass(frozen=True)
+class CaptionSettings:
+    """What a module tells the caption job, read from its ``module.yaml``.
 
-    Read from the module's ``module.yaml`` the way the module listing
-    reads it: from the content bucket, or from disk in development.
-    Written as "Glossary: colonoscopy, adenoma." because Whisper treats
-    its prompt as text already heard, and spells what it has heard.
-
-    **Never raises.** A missing file, an unreadable one, or a list of the
-    wrong shape gives None, and captions start without a prompt, as they
-    did before modules could list words. A list over the schema's limits
-    is refused too: one that never went through ``validate-teaching``
-    must not hand Whisper more than it reads.
+    Either may be None, and then the job uses its own default: no prompt,
+    and English.
     """
+
+    #: The module's ``captionVocabulary``, as text to hand Whisper.
+    prompt: str | None = None
+    #: The module's ``captionLanguage``, as Whisper's code.
+    language: str | None = None
+
+
+def _read_module_yaml(module_id: str) -> dict[str, Any]:
+    """The module's ``module.yaml``, read the way the module listing reads
+    it: from the content bucket, or from disk in development. Empty where
+    there is none. Raises whatever reading it raises."""
     from app.config import settings
     from app.features.teaching import mdx_parser, storage
+
+    bucket = settings.TEACHING_GCS_BUCKET
+
+    if bucket:
+        return storage.download_module_yaml_from_gcs(bucket, module_id) or {}
+
+    if settings.TEACHING_QUESTION_BANK_PATH:
+        module_dir = storage.resolve_module_dir(
+            settings.TEACHING_QUESTION_BANK_PATH, module_id
+        )
+        if module_dir is not None:
+            return mdx_parser.load_module_yaml(module_dir)
+
+    return {}
+
+
+def _caption_prompt(meta: dict[str, Any], module_id: str) -> str | None:
+    """``captionVocabulary`` as "Glossary: colonoscopy, adenoma."
+
+    Whisper treats its prompt as text already heard, and spells what it
+    has heard. A list of the wrong shape, or over the schema's limits, is
+    not used: one that never went through ``validate-teaching`` must not
+    hand Whisper more than it reads.
+    """
     from app.features.teaching.tooling.module_schema import (
         caption_vocabulary_problem,
     )
-
-    try:
-        bucket = settings.TEACHING_GCS_BUCKET
-        meta: dict[str, Any] = {}
-
-        if bucket:
-            meta = (
-                storage.download_module_yaml_from_gcs(bucket, module_id) or {}
-            )
-        elif settings.TEACHING_QUESTION_BANK_PATH:
-            module_dir = storage.resolve_module_dir(
-                settings.TEACHING_QUESTION_BANK_PATH, module_id
-            )
-            if module_dir is not None:
-                meta = mdx_parser.load_module_yaml(module_dir)
-    except Exception:
-        logger.exception("caption vocabulary unreadable module=%s", module_id)
-        return None
 
     terms = meta.get("captionVocabulary")
 
@@ -96,6 +107,58 @@ def caption_prompt(module_id: str) -> str | None:
         return None
 
     return f"Glossary: {', '.join(cleaned)}."
+
+
+def _caption_language(meta: dict[str, Any], module_id: str) -> str | None:
+    """``captionLanguage``, where it is one Whisper knows.
+
+    An unknown code is not passed: the job would refuse it and make no
+    captions at all, where English captions can at least be corrected.
+    """
+    from app.features.teaching.tooling.module_schema import (
+        caption_language_problem,
+    )
+
+    code = meta.get("captionLanguage")
+
+    if code is None:
+        return None
+
+    if not isinstance(code, str):
+        logger.warning("caption language is not a code module=%s", module_id)
+        return None
+
+    problem = caption_language_problem(code.strip())
+
+    if problem is not None:
+        logger.warning(
+            "caption language refused module=%s: %s", module_id, problem
+        )
+        return None
+
+    return code.strip()
+
+
+def caption_settings(module_id: str) -> CaptionSettings:
+    """The module's caption word list and language, from one reading of
+    its ``module.yaml``.
+
+    **Never raises.** A missing or unreadable file, or a field of the
+    wrong shape, leaves that setting unset, and captions start with the
+    job's defaults, as they did before modules could set either.
+    """
+    try:
+        meta = _read_module_yaml(module_id)
+    except Exception:
+        logger.exception(
+            "module.yaml unreadable for captions module=%s", module_id
+        )
+        return CaptionSettings()
+
+    return CaptionSettings(
+        prompt=_caption_prompt(meta, module_id),
+        language=_caption_language(meta, module_id),
+    )
 
 
 def start_caption(
@@ -143,12 +206,20 @@ def start_caption(
             run_v2.EnvVar(name="CAPTION_ASSET_ID", value=asset_id),
         ]
 
-        # The module's own words, so its captions spell them right.
-        # Left out where it lists none, and the job captions without.
-        prompt = caption_prompt(module_id)
+        # The module's own words and language. Each is left out where the
+        # module sets none, and the job uses its default: no prompt, and
+        # English.
+        chosen = caption_settings(module_id)
 
-        if prompt is not None:
-            env.append(run_v2.EnvVar(name="CAPTION_PROMPT", value=prompt))
+        if chosen.prompt is not None:
+            env.append(
+                run_v2.EnvVar(name="CAPTION_PROMPT", value=chosen.prompt)
+            )
+
+        if chosen.language is not None:
+            env.append(
+                run_v2.EnvVar(name="CAPTION_LANGUAGE", value=chosen.language)
+            )
 
         client = run_v2.JobsClient()
         request = run_v2.RunJobRequest(
