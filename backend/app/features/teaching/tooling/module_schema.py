@@ -58,6 +58,53 @@ ALLOWED_QUESTION_TYPES = frozenset({"single", "multiple"})
 IMAGE_FILENAME_PATTERN = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_-]*$")
 
 
+#: How many words a module may list for its captions, how long each may
+#: be, and how long the list may be in all. Whisper is handed the list as
+#: text it has already heard, and reads only about the last 220 tokens of
+#: it, so a longer list would lose its first words without saying so.
+#: 600 characters stays inside that.
+CAPTION_VOCABULARY_MAX_TERMS = 40
+CAPTION_VOCABULARY_MAX_TERM_LENGTH = 40
+CAPTION_VOCABULARY_MAX_TOTAL = 600
+
+
+def caption_vocabulary_problem(terms: list[str]) -> str | None:
+    """What is wrong with a ``captionVocabulary`` list, or None.
+
+    Shared by the schema, which refuses a bad list in the teaching
+    repository, and by the backend, which will not hand Whisper one that
+    never went through it.
+    """
+    if len(terms) > CAPTION_VOCABULARY_MAX_TERMS:
+        return (
+            f"captionVocabulary lists {len(terms)} terms; "
+            f"at most {CAPTION_VOCABULARY_MAX_TERMS} are read"
+        )
+
+    for term in terms:
+        if not term.strip():
+            return "captionVocabulary has an empty term"
+
+        if "\n" in term or "\r" in term:
+            return f"captionVocabulary term {term!r} runs over one line"
+
+        if len(term) > CAPTION_VOCABULARY_MAX_TERM_LENGTH:
+            return (
+                f"captionVocabulary term {term!r} is longer than "
+                f"{CAPTION_VOCABULARY_MAX_TERM_LENGTH} characters"
+            )
+
+    total = len(", ".join(terms))
+
+    if total > CAPTION_VOCABULARY_MAX_TOTAL:
+        return (
+            f"captionVocabulary is {total} characters in all; at most "
+            f"{CAPTION_VOCABULARY_MAX_TOTAL} are read"
+        )
+
+    return None
+
+
 class ModuleYaml(BaseModel):
     """Schema for ``module.yaml``.
 
@@ -79,6 +126,10 @@ class ModuleYaml(BaseModel):
     enrolmentReminderCount: Whole | None = Field(default=None, gt=0)
     coverImage: str | None = None
     coverImageFocus: Whole | None = None
+    #: Words the module's video captions should spell right, such as
+    #: "colonoscopy" or "adenoma". Handed to Whisper as text it has
+    #: already heard. Left out, captions are made without it.
+    captionVocabulary: list[str] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def _reminders_are_both_or_neither(self) -> ModuleYaml:
@@ -96,5 +147,15 @@ class ModuleYaml(BaseModel):
                 "enrolmentReminderEveryDays and enrolmentReminderCount "
                 "must be set together, or both left out"
             )
+
+        return self
+
+    @model_validator(mode="after")
+    def _caption_vocabulary_fits(self) -> ModuleYaml:
+        """Refuse a list Whisper would not read in full."""
+        problem = caption_vocabulary_problem(self.captionVocabulary)
+
+        if problem is not None:
+            raise ValueError(problem)
 
         return self

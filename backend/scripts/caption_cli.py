@@ -15,6 +15,11 @@ Environment Variables:
     TEACHING_VIDEOS_BUCKET:  Required.  Where renditions live, and where
                              the WebVTT is written.
     WHISPER_MODEL:      Optional.  Defaults to ``small``.
+    CAPTION_LANGUAGE:   Optional.  The language spoken, as Whisper names
+                        it. Defaults to ``en``.
+    CAPTION_PROMPT:     Optional.  Words the captions should spell right,
+                        from the module's ``captionVocabulary``. Handed
+                        to Whisper as text it has already heard.
     CAPTION_CALLBACK_URL:      Optional.  Where to report the track exists.
     CAPTION_CALLBACK_AUDIENCE: Optional.  The audience of the identity
                                token that report carries: the backend's
@@ -303,12 +308,30 @@ def has_audio_stream(path: Path) -> bool:
     return bool(result.stdout.strip())
 
 
-def transcribe(path: Path, model_name: str) -> list[dict[str, Any]]:
+# cspell:ignore conosby
+def transcribe(
+    path: Path,
+    model_name: str,
+    *,
+    language: str = "en",
+    prompt: str | None = None,
+) -> list[dict[str, Any]]:
     """Run Whisper over one audio or video file.
 
     Imported inside the function so the module can be imported - and its
     formatting tested - on a machine with no torch installed, which is
     every machine but this job's own image.
+
+    The language is given, never guessed. Left to guess, Whisper listens
+    to the first 30 seconds, and the first EoEETA lecture opens with
+    music: it guessed Welsh, and captioned 27 minutes of English as
+    invented Welsh.
+
+    Each 30-second window stands on its own rather than being given the
+    text before it (``condition_on_previous_text=False``). Given it,
+    one bad window misleads the next, and the same lecture repeated one
+    phrase for minutes. ``prompt`` is the module's own vocabulary, so
+    "colonoscopy" is not heard as "conosby".
     """
     # Not installed outside the caption image, by design - see
     # Dockerfile.caption. The ignore is what lets this module be imported
@@ -318,7 +341,13 @@ def transcribe(path: Path, model_name: str) -> list[dict[str, Any]]:
     model = whisper.load_model(model_name)
     # fp16 is a GPU feature and a Cloud Run Job has none; leaving it on
     # produces a warning on every run and falls back to fp32 anyway.
-    result = model.transcribe(str(path), fp16=False)
+    result = model.transcribe(
+        str(path),
+        fp16=False,
+        language=language,
+        condition_on_previous_text=False,
+        initial_prompt=prompt or None,
+    )
     segments: list[dict[str, Any]] = result.get("segments", [])
 
     return segments
@@ -333,6 +362,8 @@ def caption() -> int:
         "TEACHING_VIDEOS_BUCKET",
     )
     model_name = os.environ.get("WHISPER_MODEL", "small").strip() or "small"
+    language = os.environ.get("CAPTION_LANGUAGE", "").strip() or "en"
+    prompt = os.environ.get("CAPTION_PROMPT", "").strip() or None
 
     from google.cloud import storage  # type: ignore[attr-defined]
 
@@ -394,7 +425,9 @@ def caption() -> int:
 
         print(f"Transcribing with Whisper ({model_name})...")
         try:
-            segments = transcribe(local_source, model_name)
+            segments = transcribe(
+                local_source, model_name, language=language, prompt=prompt
+            )
         except Exception as exc:  # noqa: BLE001
             print(f"✗ Transcription failed: {exc}", file=sys.stderr)
             return 1

@@ -106,6 +106,40 @@ class TestStartTranscode:
         # Zero is a real choice, the very first frame, not "unset".
         assert passed["TRANSCODE_POSTER_AT"] == "0"
 
+    def _passed_env(self, monkeypatch, prompt: str | None) -> dict[str, str]:
+        from app.features.teaching.transcode import start_caption
+
+        monkeypatch.setattr(
+            "app.config.settings.TEACHING_CAPTION_JOB",
+            "projects/p/locations/l/jobs/quill-caption-teaching",
+        )
+        monkeypatch.setattr(
+            "app.features.teaching.transcode.caption_prompt",
+            lambda module_id: prompt,
+        )
+        client = MagicMock()
+        client.run_job.return_value.operation.name = "operations/xyz"
+
+        with patch("google.cloud.run_v2.JobsClient", return_value=client):
+            start_caption(7, "colonoscopy-basics", "a1b2c3d4")
+
+        env = client.run_job.call_args.kwargs["request"].overrides
+        variables = env.container_overrides[0].env
+
+        return {var.name: var.value for var in variables}
+
+    def test_passes_the_modules_vocabulary_as_the_prompt(
+        self, monkeypatch
+    ) -> None:
+        passed = self._passed_env(monkeypatch, "Glossary: colonoscopy.")
+
+        assert passed["CAPTION_PROMPT"] == "Glossary: colonoscopy."
+
+    def test_passes_no_prompt_without_a_vocabulary(self, monkeypatch) -> None:
+        passed = self._passed_env(monkeypatch, None)
+
+        assert "CAPTION_PROMPT" not in passed
+
     def test_a_failure_is_swallowed_not_raised(self, monkeypatch) -> None:
         """The property the whole design rests on.
 
@@ -275,3 +309,64 @@ class TestStartCaption:
             side_effect=RuntimeError("no credentials"),
         ):
             assert start_caption(7, "mod", "asset") is None
+
+
+class TestCaptionPrompt:
+    """The module's ``captionVocabulary``, read for the caption job.
+
+    Never a reason for captions not to start: anything wrong gives no
+    prompt, and the job captions without one as it did before.
+    """
+
+    def _prompt(self, monkeypatch, meta) -> str | None:
+        from app.features.teaching import transcode
+
+        monkeypatch.setattr(
+            "app.config.settings.TEACHING_GCS_BUCKET", "content-bucket"
+        )
+
+        def _download(bucket: str, module_id: str):
+            if isinstance(meta, Exception):
+                raise meta
+
+            return meta
+
+        monkeypatch.setattr(
+            "app.features.teaching.storage.download_module_yaml_from_gcs",
+            _download,
+        )
+
+        return transcode.caption_prompt("colonoscopy-basics")
+
+    def test_a_list_becomes_a_glossary(self, monkeypatch) -> None:
+        meta = {"captionVocabulary": ["colonoscopy", " adenoma ", "NBI"]}
+
+        assert self._prompt(monkeypatch, meta) == (
+            "Glossary: colonoscopy, adenoma, NBI."
+        )
+
+    def test_no_list_gives_no_prompt(self, monkeypatch) -> None:
+        assert self._prompt(monkeypatch, {"title": "x"}) is None
+
+    def test_an_empty_list_gives_no_prompt(self, monkeypatch) -> None:
+        assert self._prompt(monkeypatch, {"captionVocabulary": []}) is None
+
+    def test_no_module_yaml_gives_no_prompt(self, monkeypatch) -> None:
+        assert self._prompt(monkeypatch, None) is None
+
+    def test_an_unreadable_file_gives_no_prompt(self, monkeypatch) -> None:
+        assert self._prompt(monkeypatch, RuntimeError("bucket down")) is None
+
+    def test_a_list_of_the_wrong_shape_gives_no_prompt(
+        self, monkeypatch
+    ) -> None:
+        meta = {"captionVocabulary": "colonoscopy, adenoma"}
+
+        assert self._prompt(monkeypatch, meta) is None
+
+    def test_a_list_over_the_limits_gives_no_prompt(self, monkeypatch) -> None:
+        # One that never went through validate-teaching must not hand
+        # Whisper more than it reads.
+        meta = {"captionVocabulary": [f"term{i}" for i in range(100)]}
+
+        assert self._prompt(monkeypatch, meta) is None
