@@ -66,8 +66,14 @@ jobs:
     # ClamAV and its definitions from the mirror, and scanning, add a
     # minute or two.
     timeout-minutes: 15
+    # packages: read is for the ClamAV mirror, a private image in Quill's
+    # GHCR. A job that lists its permissions gets none it does not list,
+    # so without this the pull is "denied" however the package is shared.
+    # The calling workflow in each teaching repository must grant it too:
+    # a reusable workflow cannot hold more than its caller gives.
     permissions:
       contents: read
+      packages: read
     steps:
       # lfs: true so that a repo genuinely using LFS gets real images
       # rather than pointers, which carry the right name and extension and

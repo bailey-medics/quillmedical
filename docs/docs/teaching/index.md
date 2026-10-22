@@ -67,6 +67,45 @@ path in both environments.
 See [Teaching video storage](../backend/files/index.md) for the buckets, object
 key contract, cookie mechanics and monitoring.
 
+#### Captions
+
+Each video's captions are made by Whisper, a speech-to-text model, once
+the video is transcoded. Two optional fields in the module's
+`module.yaml` steer it, and a module of English videos needs neither:
+
+```yaml
+# The language spoken in the module's videos, as Whisper's code.
+# Left out, the videos are English.
+captionLanguage: cy
+
+# Words the captions should spell right. Whisper treats them as words
+# it has already heard.
+captionVocabulary:
+  - colonoscopy
+  - adenoma
+  - resect and discard
+```
+
+- **`captionLanguage`** - one of Whisper's language codes, such as `cy`
+  for Welsh or `fr` for French. Without it Whisper is told English. It
+  is never left to guess: on 21 October 2026 it guessed Welsh from a
+  lecture's opening music and captioned 27 minutes of English as
+  invented Welsh. `validate-teaching` refuses a code Whisper does not
+  know, and a full name such as `welsh`, naming the code it should be.
+
+- **`captionVocabulary`** - the module's specialist words, in the same
+  language as the videos. At most 40 terms, each up to 40 characters on
+  one line, and 600 characters in all: Whisper reads only about the last
+  220 tokens of what it is handed, so a longer list would lose its first
+  words without saying so. `validate-teaching` refuses a list over the
+  limits.
+
+Both are read each time a video's captions are made, so a change reaches
+the next video uploaded, not captions already made. Captions are still
+read by a person before they are marked reviewed: the word list nudges
+Whisper towards its words, which can put one where a similar-sounding
+word was said.
+
 ---
 
 ## Question bank format

@@ -106,16 +106,26 @@ class TestStartTranscode:
         # Zero is a real choice, the very first frame, not "unset".
         assert passed["TRANSCODE_POSTER_AT"] == "0"
 
-    def _passed_env(self, monkeypatch, prompt: str | None) -> dict[str, str]:
-        from app.features.teaching.transcode import start_caption
+    def _passed_env(
+        self,
+        monkeypatch,
+        prompt: str | None,
+        language: str | None = None,
+    ) -> dict[str, str]:
+        from app.features.teaching.transcode import (
+            CaptionSettings,
+            start_caption,
+        )
 
         monkeypatch.setattr(
             "app.config.settings.TEACHING_CAPTION_JOB",
             "projects/p/locations/l/jobs/quill-caption-teaching",
         )
         monkeypatch.setattr(
-            "app.features.teaching.transcode.caption_prompt",
-            lambda module_id: prompt,
+            "app.features.teaching.transcode.caption_settings",
+            lambda module_id: CaptionSettings(
+                prompt=prompt, language=language
+            ),
         )
         client = MagicMock()
         client.run_job.return_value.operation.name = "operations/xyz"
@@ -139,6 +149,19 @@ class TestStartTranscode:
         passed = self._passed_env(monkeypatch, None)
 
         assert "CAPTION_PROMPT" not in passed
+
+    def test_passes_the_modules_language(self, monkeypatch) -> None:
+        passed = self._passed_env(monkeypatch, None, language="cy")
+
+        assert passed["CAPTION_LANGUAGE"] == "cy"
+
+    def test_passes_no_language_where_the_module_names_none(
+        self, monkeypatch
+    ) -> None:
+        # The job's own default, English, then applies.
+        passed = self._passed_env(monkeypatch, None)
+
+        assert "CAPTION_LANGUAGE" not in passed
 
     def test_a_failure_is_swallowed_not_raised(self, monkeypatch) -> None:
         """The property the whole design rests on.
@@ -336,7 +359,7 @@ class TestCaptionPrompt:
             _download,
         )
 
-        return transcode.caption_prompt("colonoscopy-basics")
+        return transcode.caption_settings("colonoscopy-basics").prompt
 
     def test_a_list_becomes_a_glossary(self, monkeypatch) -> None:
         meta = {"captionVocabulary": ["colonoscopy", " adenoma ", "NBI"]}
@@ -370,3 +393,68 @@ class TestCaptionPrompt:
         meta = {"captionVocabulary": [f"term{i}" for i in range(100)]}
 
         assert self._prompt(monkeypatch, meta) is None
+
+
+# cspell:ignore meddyg
+class TestCaptionLanguage:
+    """The module's ``captionLanguage``, read for the caption job.
+
+    An unknown code is not passed: the job would refuse it and make no
+    captions, where English ones can at least be corrected.
+    """
+
+    def _language(self, monkeypatch, meta) -> str | None:
+        from app.features.teaching import transcode
+
+        monkeypatch.setattr(
+            "app.config.settings.TEACHING_GCS_BUCKET", "content-bucket"
+        )
+        monkeypatch.setattr(
+            "app.features.teaching.storage.download_module_yaml_from_gcs",
+            lambda bucket, module_id: meta,
+        )
+
+        return transcode.caption_settings("colonoscopy-basics").language
+
+    def test_a_known_code_is_passed(self, monkeypatch) -> None:
+        assert self._language(monkeypatch, {"captionLanguage": "cy"}) == "cy"
+
+    def test_no_code_is_english(self, monkeypatch) -> None:
+        assert self._language(monkeypatch, {"title": "x"}) is None
+
+    def test_an_unknown_code_is_not_passed(self, monkeypatch) -> None:
+        assert self._language(monkeypatch, {"captionLanguage": "cyy"}) is None
+
+    def test_a_full_name_is_not_passed(self, monkeypatch) -> None:
+        meta = {"captionLanguage": "welsh"}
+
+        assert self._language(monkeypatch, meta) is None
+
+    def test_a_code_of_the_wrong_shape_is_not_passed(
+        self, monkeypatch
+    ) -> None:
+        assert self._language(monkeypatch, {"captionLanguage": 7}) is None
+
+    def test_both_settings_come_from_one_reading(self, monkeypatch) -> None:
+        from app.features.teaching import transcode
+
+        reads: list[str] = []
+
+        def _download(bucket: str, module_id: str):
+            reads.append(module_id)
+
+            return {"captionLanguage": "cy", "captionVocabulary": ["meddyg"]}
+
+        monkeypatch.setattr(
+            "app.config.settings.TEACHING_GCS_BUCKET", "content-bucket"
+        )
+        monkeypatch.setattr(
+            "app.features.teaching.storage.download_module_yaml_from_gcs",
+            _download,
+        )
+
+        chosen = transcode.caption_settings("colonoscopy-basics")
+
+        assert chosen.language == "cy"
+        assert chosen.prompt == "Glossary: meddyg."
+        assert reads == ["colonoscopy-basics"]

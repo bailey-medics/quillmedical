@@ -16,6 +16,7 @@ from typing import Literal
 from pydantic import BaseModel, Field, model_validator
 
 from app.features.teaching.tooling.annotations import Whole
+from app.features.teaching.tooling.caption_languages import CAPTION_LANGUAGES
 
 #: Lifecycle states a module may declare.
 ModuleStatus = Literal["draft", "live", "retired"]
@@ -105,6 +106,29 @@ def caption_vocabulary_problem(terms: list[str]) -> str | None:
     return None
 
 
+def caption_language_problem(code: str) -> str | None:
+    """What is wrong with a ``captionLanguage``, or None.
+
+    It must be one of Whisper's codes, such as ``cy``. A full name such
+    as ``welsh`` is refused, with the code it should have been, so the
+    mistake is fixed in the teaching repository rather than found on the
+    first video.
+    """
+    if code in CAPTION_LANGUAGES:
+        return None
+
+    by_name = {name: key for key, name in CAPTION_LANGUAGES.items()}
+    suggestion = by_name.get(code.strip().lower())
+
+    if suggestion is not None:
+        return f"captionLanguage {code!r} should be the code {suggestion!r}"
+
+    return (
+        f"captionLanguage {code!r} is not a language Whisper knows; use a "
+        f"code such as 'cy' for Welsh"
+    )
+
+
 class ModuleYaml(BaseModel):
     """Schema for ``module.yaml``.
 
@@ -130,6 +154,10 @@ class ModuleYaml(BaseModel):
     #: "colonoscopy" or "adenoma". Handed to Whisper as text it has
     #: already heard. Left out, captions are made without it.
     captionVocabulary: list[str] = Field(default_factory=list)
+    #: The language spoken in the module's videos, as Whisper's code,
+    #: such as ``cy`` for Welsh. Left out, they are English. The word
+    #: list above should be in the same language.
+    captionLanguage: str | None = None
 
     @model_validator(mode="after")
     def _reminders_are_both_or_neither(self) -> ModuleYaml:
@@ -147,6 +175,19 @@ class ModuleYaml(BaseModel):
                 "enrolmentReminderEveryDays and enrolmentReminderCount "
                 "must be set together, or both left out"
             )
+
+        return self
+
+    @model_validator(mode="after")
+    def _caption_language_is_known(self) -> ModuleYaml:
+        """Refuse a language Whisper would not accept."""
+        if self.captionLanguage is None:
+            return self
+
+        problem = caption_language_problem(self.captionLanguage)
+
+        if problem is not None:
+            raise ValueError(problem)
 
         return self
 
