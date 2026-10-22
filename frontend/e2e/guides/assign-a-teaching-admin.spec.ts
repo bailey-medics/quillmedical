@@ -1,9 +1,10 @@
 /**
  * Screenshots for the guide "Assign a teaching admin".
  *
- * Taken as the seeded operator, who can open every part of Admin. The new
- * user form is left at its first step: the guide's point there is which
- * profession to choose.
+ * Taken as the seeded operator, who can open every part of Admin. A new
+ * person is found missing on the organisation's Add staff page, and the
+ * new user form it opens is left at its first step: the guide's point
+ * there is which profession to choose.
  */
 
 import { test, expect } from "@playwright/test";
@@ -27,9 +28,26 @@ test("assign a teaching admin", async ({ page }) => {
   await expect(page.getByText("Available features")).toBeVisible();
   await shot(page, "assign-a-teaching-admin/features");
 
-  await page.goto("/admin/users/new");
+  // A new person, from the organisation's Add staff page: the lookup
+  // finds nobody, and the form it opens has the email and organisation.
+  await page.goto("/admin/organisations");
+  await page.getByText(SEEDED.organisation).click();
+  await page.getByRole("button", { name: "Add staff" }).click();
+  await expect(
+    page.getByRole("heading", { level: 1, name: /Add staff/ }),
+  ).toBeVisible();
+  await page
+    .getByLabel("Username or email address")
+    .fill("lucy.bennett@northfield.nhs.uk");
+  await page.getByRole("button", { name: "Find" }).click();
+  await expect(page.getByText(/Nobody on Quill uses/)).toBeVisible();
+  await shot(page, "assign-a-teaching-admin/not-found");
+
+  await page.getByRole("button", { name: "Create new user" }).click();
+  await expect(page.getByLabel("Email")).toHaveValue(
+    "lucy.bennett@northfield.nhs.uk",
+  );
   await page.getByLabel("Full name").fill("Lucy Bennett");
-  await page.getByLabel("Email").fill("lucy.bennett@northfield.nhs.uk");
   await page.getByLabel("Username").fill("lucy.bennett");
   await page.getByLabel("Initial password").fill("a-first-password");
   await page.getByRole("combobox", { name: "Base profession" }).click();
