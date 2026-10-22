@@ -44,6 +44,15 @@
           --mantine-color-body: #001a36;
         }
 
+        /*
+         * Mantine's stylesheet takes the browser's 8px off the body. In
+         * development that stylesheet arrives with the scripts, partway
+         * through the turn, and the quill would jump up to meet it.
+         */
+        body {
+          margin: 0;
+        }
+
         .quill-splash {
           display: flex;
           align-items: center;

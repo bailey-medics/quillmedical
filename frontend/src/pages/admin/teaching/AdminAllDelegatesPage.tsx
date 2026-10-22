@@ -12,6 +12,10 @@
  * one module that has an assessment, a real one and a practice one say,
  * gets a module select under the header. Read together, a practice
  * attempt would hide a real pass and count against a first-time pass.
+ *
+ * Somebody who moves between sites is shown at every one of them, one
+ * line each, with each site's clinical lead on the same line beside it.
+ * The filter finds them at any of their sites.
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -20,6 +24,7 @@ import PageHeader from "@/components/typography/PageHeader";
 import StatCard from "@/components/stats-card/StatCard";
 import type { Column } from "@/components/tables/DataTable";
 import DataTableControlled from "@/components/tables/DataTableControlled";
+import CellLines from "@/components/tables/CellLines";
 import SelectField from "@/components/form/SelectField";
 import AssessmentResultBadge from "@/components/badge/AssessmentResultBadge";
 import FormattedDate from "@/components/data/Date";
@@ -29,12 +34,17 @@ import { api } from "@/lib/api";
 
 // ── Types ────────────────────────────────────────────────────────────
 
+/** One site a delegate belongs to, and who leads it. */
+interface DelegateSite {
+  name: string;
+  clinical_lead: string | null;
+}
+
 interface Delegate {
   id: number;
   name: string;
   email: string | null;
-  site_name: string | null;
-  clinical_lead: string | null;
+  sites: DelegateSite[];
   assessment_result: "pass" | "fail" | "incomplete" | null;
   assessment_date: string | null;
   first_time_pass: boolean;
@@ -59,13 +69,15 @@ const columns: Column<Delegate>[] = [
   { header: "Name", render: (d) => d.name, accessor: (d) => d.name },
   {
     header: "Site",
-    render: (d) => d.site_name ?? "-",
-    accessor: (d) => d.site_name ?? "",
+    render: (d) => <CellLines lines={d.sites.map((s) => s.name)} />,
+    accessor: (d) => d.sites[0]?.name ?? "",
   },
   {
     header: "Clinical lead",
-    render: (d) => d.clinical_lead ?? "-",
-    accessor: (d) => d.clinical_lead ?? "",
+    render: (d) => (
+      <CellLines lines={d.sites.map((s) => s.clinical_lead ?? "-")} />
+    ),
+    accessor: (d) => d.sites[0]?.clinical_lead ?? "",
   },
   {
     header: "Assessment",
@@ -158,12 +170,11 @@ export default function AdminAllDelegatesPage() {
 
   // Build filter options from loaded data
   const filterOptions = useMemo(() => {
-    const sites = [
-      ...new Set(delegates.map((d) => d.site_name).filter(Boolean) as string[]),
-    ];
+    const everySite = delegates.flatMap((d) => d.sites);
+    const sites = [...new Set(everySite.map((s) => s.name))];
     const leads = [
       ...new Set(
-        delegates.map((d) => d.clinical_lead).filter(Boolean) as string[],
+        everySite.flatMap((s) => (s.clinical_lead ? [s.clinical_lead] : [])),
       ),
     ];
     return [
@@ -199,16 +210,20 @@ export default function AdminAllDelegatesPage() {
       .map((f) => f.slice(5));
     const firstPassOnly = filters.includes("first-pass-only");
 
+    // Somebody at several sites is found at any of them.
     return (d: Delegate) => {
       if (
         siteFilters.length > 0 &&
-        (!d.site_name || !siteFilters.includes(d.site_name))
+        !d.sites.some((s) => siteFilters.includes(s.name))
       ) {
         return false;
       }
       if (
         leadFilters.length > 0 &&
-        (!d.clinical_lead || !leadFilters.includes(d.clinical_lead))
+        !d.sites.some(
+          (s) =>
+            s.clinical_lead !== null && leadFilters.includes(s.clinical_lead),
+        )
       ) {
         return false;
       }
@@ -220,7 +235,7 @@ export default function AdminAllDelegatesPage() {
   }, []);
 
   const searchFields = useCallback(
-    (d: Delegate) => [d.name, d.email, d.site_name],
+    (d: Delegate) => [d.name, d.email, ...d.sites.map((s) => s.name)],
     [],
   );
 

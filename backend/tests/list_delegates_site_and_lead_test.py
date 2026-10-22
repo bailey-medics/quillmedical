@@ -156,6 +156,28 @@ class TestTheDelegatesSite:
         }
         assert found.get("delegate") == "Ward 2"
 
+    def test_every_site_they_belong_to_is_returned(
+        self, authenticated_superadmin_client, db_session, test_superadmin
+    ):
+        org = _org(db_session, "Trust")
+        _in_org(db_session, org, test_superadmin)
+        first = _site_of(db_session, org, "Ward 1")
+        second = _site_of(db_session, org, "Ward 2")
+        delegate = _user(
+            db_session, "delegate", profession="teaching_delegate"
+        )
+        _member(db_session, first, delegate, "trainee")
+        _member(db_session, second, delegate, "trainee")
+
+        found = {
+            d["name"]: d["sites"]
+            for d in _delegates(authenticated_superadmin_client)
+        }
+        assert found.get("delegate") == [
+            {"name": "Ward 1", "clinical_lead": None},
+            {"name": "Ward 2", "clinical_lead": None},
+        ]
+
     def test_a_member_of_the_organisation_alone_has_no_site(
         self, authenticated_superadmin_client, db_session, test_superadmin
     ):

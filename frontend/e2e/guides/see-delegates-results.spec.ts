@@ -47,17 +47,9 @@ test("see delegates' results", async ({ page }) => {
   await expect(page.getByRole("cell", { name: "Aisha Rahman" })).toBeVisible();
   await shot(page, "see-delegates-results/all-delegates");
 
-  const module = page.getByRole("combobox", { name: "Module" });
-  await module.click();
-  await expect(
-    page.getByRole("option", { name: SECOND_MODULE.title }),
-  ).toBeVisible();
+  // Left closed: open, its list covers the three figures below it.
+  await expect(page.getByRole("combobox", { name: "Module" })).toBeVisible();
   await shot(page, "see-delegates-results/module");
-  // Closed with nothing chosen.
-  await page.keyboard.press("Escape");
-  await expect(
-    page.getByRole("option", { name: SECOND_MODULE.title }),
-  ).toBeHidden();
   await page.unroute(MODULES);
 
   await page.getByRole("button", { name: "Filter delegates" }).click();

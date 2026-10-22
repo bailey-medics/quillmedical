@@ -207,6 +207,25 @@ describe("MarkdownView", () => {
       expect(onLinkClick).toHaveBeenCalledWith("https://example.com");
     });
 
+    it("calls onLinkClick when the bold text inside a link is clicked", async () => {
+      const user = userEvent.setup();
+      const onLinkClick = vi.fn();
+      const { container } = renderWithMantine(
+        <MarkdownView
+          source="[**Users**](/admin/users)"
+          onLinkClick={onLinkClick}
+        />,
+      );
+
+      const bold = container.querySelector("a strong");
+      expect(bold).not.toBeNull();
+      if (bold) {
+        await user.click(bold);
+      }
+
+      expect(onLinkClick).toHaveBeenCalledWith("/admin/users");
+    });
+
     it("prevents default when onLinkClick is provided", async () => {
       const user = userEvent.setup();
       const onLinkClick = vi.fn();

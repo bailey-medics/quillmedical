@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithRouter } from "@/test/test-utils";
 import * as apiLib from "@/lib/api";
@@ -20,13 +20,18 @@ const practice = {
   title: "Colonoscopy (practice)",
 };
 
-function delegate(name: string, result: "pass" | "fail" | null) {
+function delegate(
+  name: string,
+  result: "pass" | "fail" | null,
+  sites: { name: string; clinical_lead: string | null }[] = [
+    { name: "Ward 1", clinical_lead: null },
+  ],
+) {
   return {
     id: name.length,
     name,
     email: `${name}@example.test`,
-    site_name: "Ward 1",
-    clinical_lead: null,
+    sites,
     assessment_result: result,
     assessment_date: result ? "2026-10-01T10:00:00Z" : null,
     first_time_pass: result === "pass",
@@ -134,6 +139,64 @@ describe("AdminAllDelegatesPage", () => {
       screen.queryByRole("combobox", { name: "Module" }),
     ).not.toBeInTheDocument();
     expect(get).toHaveBeenCalledWith("/teaching/admin/delegates");
+  });
+
+  describe("somebody at several sites", () => {
+    const moves = delegate("ben", "pass", [
+      { name: "Northfield", clinical_lead: "Dr Kowalski" },
+      { name: "Riverside", clinical_lead: "Dr Hughes" },
+      { name: "Day unit", clinical_lead: null },
+    ]);
+    const stays = delegate("ada", "pass", [
+      { name: "Northfield", clinical_lead: "Dr Kowalski" },
+    ]);
+
+    function showBoth() {
+      mockApi([real], {
+        "/teaching/admin/delegates?bank_id=colonoscopy": [moves, stays],
+      });
+      renderWithRouter(<AdminAllDelegatesPage />);
+    }
+
+    it("is shown at every site, each beside its clinical lead", async () => {
+      showBoth();
+
+      const row = (await screen.findByText("ben")).closest("tr");
+      expect(row).not.toBeNull();
+      const cells = within(row as HTMLElement).getAllByRole("cell");
+
+      // The second and third columns, a line for each site.
+      expect(cells[1]?.innerHTML.split("<br>")).toHaveLength(3);
+      expect(cells[1]).toHaveTextContent("NorthfieldRiversideDay unit");
+      expect(cells[2]).toHaveTextContent("Dr KowalskiDr Hughes-");
+    });
+
+    it("is found by filtering on their second site's clinical lead", async () => {
+      const user = userEvent.setup();
+      showBoth();
+
+      await user.click(await screen.findByLabelText("Filter delegates"));
+      await user.click(await screen.findByRole("combobox"));
+      await user.click(
+        await screen.findByRole("option", { name: "Dr Hughes" }),
+      );
+
+      await waitFor(() =>
+        expect(screen.queryByText("ada")).not.toBeInTheDocument(),
+      );
+      expect(screen.getByText("ben")).toBeInTheDocument();
+    });
+
+    it("is found by searching for any of their sites", async () => {
+      const user = userEvent.setup();
+      showBoth();
+
+      await user.click(await screen.findByLabelText("Open search"));
+      await user.type(screen.getByLabelText("Search"), "Riverside");
+
+      expect(screen.getByText("ben")).toBeInTheDocument();
+      expect(screen.queryByText("ada")).not.toBeInTheDocument();
+    });
   });
 
   it("says when the delegates cannot be loaded", async () => {
