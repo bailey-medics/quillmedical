@@ -231,6 +231,34 @@ class TestCaptionJob:
 
                     return caption()
 
+    def test_english_is_asked_for_and_no_prompt_is_given_by_default(
+        self,
+    ) -> None:
+        # Left to guess, Whisper heard the first EoEETA lecture as Welsh.
+        with patch.dict(
+            os.environ, {"CAPTION_LANGUAGE": "", "CAPTION_PROMPT": ""}
+        ):
+            assert self._run(self._bucket()) == 0
+
+        kwargs = self.transcribe.call_args.kwargs
+        assert kwargs["language"] == "en"
+        assert kwargs["prompt"] is None
+
+    def test_the_language_and_prompt_are_taken_from_the_environment(
+        self,
+    ) -> None:
+        env = {
+            "CAPTION_LANGUAGE": "cy",
+            "CAPTION_PROMPT": "Glossary: colonoscopy, adenoma.",
+        }
+
+        with patch.dict(os.environ, env):
+            assert self._run(self._bucket()) == 0
+
+        kwargs = self.transcribe.call_args.kwargs
+        assert kwargs["language"] == "cy"
+        assert kwargs["prompt"] == "Glossary: colonoscopy, adenoma."
+
     def test_it_reads_the_720p_rendition(self) -> None:
         """Not the source object: the transcode job deletes its master
         once the renditions verify, so it is usually gone by now."""
@@ -330,6 +358,49 @@ class TestCaptionJob:
             with pytest.raises(SystemExit) as exc:
                 caption()
             assert exc.value.code == 1
+
+
+class TestTranscribe:
+    """What reaches Whisper itself. Whisper is not installed outside the
+    caption image, so a stand-in takes its place."""
+
+    def _transcribe(self, **kwargs) -> MagicMock:
+        from pathlib import Path
+
+        whisper = MagicMock()
+        model = whisper.load_model.return_value
+        model.transcribe.return_value = {"segments": []}
+
+        with patch.dict("sys.modules", {"whisper": whisper}):
+            from scripts.caption_cli import transcribe
+
+            transcribe(Path("lecture.mp4"), "small", **kwargs)
+
+        return model.transcribe
+
+    def test_the_language_is_given_not_guessed(self) -> None:
+        call = self._transcribe(language="en")
+
+        assert call.call_args.kwargs["language"] == "en"
+
+    def test_each_window_stands_on_its_own(self) -> None:
+        # Fed the text before it, one bad window misleads the next, and
+        # the first lecture repeated one phrase for minutes.
+        call = self._transcribe()
+
+        assert call.call_args.kwargs["condition_on_previous_text"] is False
+
+    def test_the_prompt_is_passed_as_the_initial_prompt(self) -> None:
+        call = self._transcribe(prompt="Glossary: colonoscopy.")
+
+        assert call.call_args.kwargs["initial_prompt"] == (
+            "Glossary: colonoscopy."
+        )
+
+    def test_no_prompt_passes_none(self) -> None:
+        call = self._transcribe()
+
+        assert call.call_args.kwargs["initial_prompt"] is None
 
 
 class TestCaptionReport:

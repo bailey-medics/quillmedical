@@ -276,6 +276,62 @@ times that on Cloud Run's 4 vCPUs, against a 20-minute ceiling.
       against the timeouts above, and lower or raise them if the real
       times are far off.
 
+## Phase 7: Captions in English, with the module's own words
+
+<!-- cspell:ignore dweud conosby -->
+
+The first lecture's captions came out on 21 October as mostly invented
+Welsh. The caption job never told Whisper what language to expect, so it
+guessed from the first 30 seconds, guessed Welsh, and kept to that for
+the whole lecture, slipping into English only in places. It also fed
+each line it wrote into the next, so once lost it repeated itself ("Mae'n
+dweud yw'n dweud...") for minutes. Where it did write English, it
+misheard the specialist words: "conosby" for colonoscopy, "caret of
+cancer" for colorectal cancer. (The six minutes with no captions is a
+gap in the video itself, which EoEETA are fixing.)
+
+- [x] Tell Whisper the language, and stop it feeding each line into the
+      next, in `backend/scripts/caption_cli.py`. `language` comes from
+      `CAPTION_LANGUAGE`, English (`en`) where unset, so a module in
+      another language can still be captioned later without a code
+      change. `condition_on_previous_text=False` makes each 30-second
+      window stand on its own, which is Whisper's own advice for long
+      recordings that fall into repetition. Tests: the language and the
+      setting reach `model.transcribe`.
+
+- [x] Let a module list the words its captions should spell right, as
+      `captionVocabulary` in its `module.yaml`, checked by
+      `ModuleYaml` in `tooling/module_schema.py` so `validate-teaching`
+      refuses a bad list. Whisper takes these as `initial_prompt`, text it
+      treats as already heard, and reads only about the last 220 tokens of
+      it, so the list is capped: at most 40 terms, each at most 40
+      characters on one line, and 600 characters in all, which stays
+      inside that limit. A module without the list is captioned as before.
+      Tests: a good list, too many terms, a term too long, a term with a
+      line break, and a list too long in all are each judged right.
+
+- [x] Pass the list to the caption job when captions start, in
+      `start_caption` (`backend/app/features/teaching/transcode.py`).
+      The module's `module.yaml` is read the way the module listing reads
+      it, from the content bucket or, in development, from disk, and its
+      list goes to the job as `CAPTION_PROMPT`, written as "Glossary:
+      colonoscopy, adenoma, ...". The job passes that to Whisper as
+      `initial_prompt`. Reading the list never stops captions starting: a
+      module with no list, a file that cannot be read, or a list of the
+      wrong shape starts the job without a prompt and logs why. The
+      backend applies the same caps as the schema, so a list that never
+      went through `validate-teaching` cannot exceed what Whisper reads.
+      Tests: the prompt is passed when there is a list, nothing is passed
+      without one, and an unreadable `module.yaml` still starts the job.
+
+- [ ] Add `captionVocabulary` to `colonoscopy-optical-diagnosis` in the
+      EoEETA teaching repository, then run the caption job again for its
+      first lecture by hand with `gcloud run jobs execute
+      quill-caption-app`, passing `CAPTION_ORG_ID`, `CAPTION_MODULE_ID`,
+      `CAPTION_ASSET_ID` and the `CAPTION_PROMPT` the backend would send.
+      Read the result against the video before the captions are marked
+      reviewed.
+
 ## Decisions
 
 - **Resume within the tab, not across a reload** - GCS keeps a session for
