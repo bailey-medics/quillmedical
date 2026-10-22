@@ -81,6 +81,26 @@ export const Loading: Story = {
 };
 
 /**
+ * Wrapped list items
+ *
+ * Long items written over two lines, the second indented, as Markdown
+ * allows. Each stays one bullet rather than ending the list.
+ */
+export const WrappedListItems: Story = {
+  args: {
+    source: [
+      "**The assessment** puts that into practice:",
+      "",
+      "- Press **Finish** to go back to the module page, where the assessment",
+      "  starts.",
+      "- Each question shows a polyp twice: once under white light and once",
+      "  under narrow band imaging.",
+      "- When you pass, your certificate is emailed to you.",
+    ].join("\n"),
+  },
+};
+
+/**
  * With images
  *
  * Images are off unless the caller gives an `imageBase`, as a guide does.
