@@ -426,7 +426,7 @@ class TestTheEmailIsBranded:
         assert sent["subject"] == "You passed"
         assert sent["from_name"] == "Quill Medical"
         assert sent["reply_to"] is None
-        assert "Quill Medical is a trading name" in sent["html_body"]
+        assert "Quill Medical is a trade name" in sent["html_body"]
         assert sent["text_body"].startswith("Well done")
 
     def test_a_partner_gets_the_strip_the_sender_line_and_replies(

@@ -84,6 +84,10 @@ from scripts.seed_ci import seed_teaching  # noqa: E402
 
 ORGANISATION = "Northfield Endoscopy Academy"
 SITE = "Northfield General Hospital"
+#: Where everybody's email address is, so a screenshot shows the kind
+#: of address somebody really types. The stack only pretends to send
+#: email, so nothing is ever sent to it.
+EMAIL_DOMAIN = "northfield.nhs.uk"
 
 OPERATOR = "guide_operator"
 TEACHING_ADMIN = "guide_admin"
@@ -133,6 +137,13 @@ DELEGATES: tuple[Delegate, ...] = (
 FIRST_ATTEMPT = datetime(2026, 9, 14, 9, 30, tzinfo=UTC)
 
 
+def email_for(full_name: str) -> str:
+    """The address a person is given: "Dr Ada Lee" is ada.lee@ the domain."""
+    words = full_name.removeprefix("Dr ").lower().replace("'", "").split()
+
+    return f"{'.'.join(words)}@{EMAIL_DOMAIN}"
+
+
 def _user(
     db: Session,
     username: str,
@@ -154,7 +165,7 @@ def _user(
     user = User(
         username=username,
         full_name=full_name,
-        email=f"{username}@northfield.example",
+        email=email_for(full_name),
         password_hash=hash_password(f"{username}123"),
         platform_role=platform_role,
         base_profession=base_profession,

@@ -13,9 +13,9 @@ test("add somebody to the passport", async ({ page }) => {
   await signIn(page, PEOPLE.passportAdmin);
 
   await page.goto("/admin/users/new");
-  await page.getByLabel("Full name").fill("Sam Sample");
-  await page.getByLabel("Email").fill("sam.sample@example.org");
-  await page.getByLabel("Username").fill("sam.sample");
+  await page.getByLabel("Full name").fill("Lucy Bennett");
+  await page.getByLabel("Email").fill("lucy.bennett@northfield.nhs.uk");
+  await page.getByLabel("Username").fill("lucy.bennett");
   await page.getByLabel("Initial password").fill("a-first-password");
   await page.getByRole("combobox", { name: "Base profession" }).click();
   await page

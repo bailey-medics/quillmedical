@@ -27,7 +27,7 @@ test("ask for a sign-off", async ({ page }) => {
   await page.getByRole("option").first().click();
   const assessor = page.getByLabel(/Who should assess this/);
   await expect(assessor).toBeVisible();
-  await assessor.fill("guide_assessor@northfield.example");
+  await assessor.fill("helen.marsh@northfield.nhs.uk");
   await expect(page.getByText(/already uses Quill/)).toBeVisible();
   await shot(page, "ask-for-a-sign-off/request");
 });

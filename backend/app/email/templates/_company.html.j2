@@ -2,7 +2,7 @@
   Who sends every email, in law. The one place these details are written
   for email: change them here and every footer follows.
 
-  Both brands are trading names of the same company, so nothing here
+  Both brands are trade names of the same company, so nothing here
   depends on the brand but the name it trades under, which comes from the
   theme. Import with context, so `t` is in scope:
 
@@ -24,5 +24,5 @@
   who sent it and where they can be written to.
 -#}
 {% macro trading_line(registered=false) -%}
-{{ t.sender_name }} is a trading name of {{ legal_name }}.{% if registered %} Company number {{ company_number }}. {{ registered_office }}.{% endif %}
+{{ t.sender_name }} is a trade name of {{ legal_name }}.{% if registered %} Company number {{ company_number }}. {{ registered_office }}.{% endif %}
 {%- endmacro %}

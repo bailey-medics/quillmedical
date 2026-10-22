@@ -1,3 +1,5 @@
+export { default as ChooseSiteForm } from "./ChooseSiteForm";
+export type { ChooseSiteFormProps } from "./ChooseSiteForm";
 export { default as ForgotPasswordForm } from "./ForgotPasswordForm";
 export type { ForgotPasswordFormProps } from "./ForgotPasswordForm";
 export { default as LegalNotice } from "./LegalNotice";

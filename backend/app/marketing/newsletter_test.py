@@ -335,7 +335,7 @@ class TestTheCampaign:
         [email] = outbox["sent"]
         assert email["from_name"] == "Let's Do Digital Team"
         assert email["subject"] == "A trial newsletter from Let's Do Digital"
-        assert "Let's Do Digital is a trading name" in email[
+        assert "Let's Do Digital is a trade name" in email[
             "html_body"
         ].replace("&#39;", "'")
 
