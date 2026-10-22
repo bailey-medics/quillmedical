@@ -207,7 +207,7 @@ its own pull request, in rising order of risk.
       menu to `europe-west2`. The address was not read from the console:
       a browser is not used from these sessions.
 
-- [ ] **Check both alert changes after the apply.** Write the Phase 2
+- [x] **Check both alert changes after the apply.** Write the Phase 2
       test entry again and confirm the alert reads "(null)" for the
       status; if `REGEXP_EXTRACT` will not read the numeric
       `httpRequest.status`, the label comes out empty on a real 500 as
@@ -219,6 +219,8 @@ its own pull request, in rising order of risk.
       went back to `EXTRACT(httpRequest.status)`, and the alert now
       reads "Answered: 0, where 0 means the entry had no request". Tick
       this once the test entry shows that line after the apply.
+      Done on 22 October 2026, after #2180 applied: the test entry
+      opened the alert with `status` 0 under the line explaining it.
 
 - [x] **Tick "Fix what the review found in the system"** in Phase 6 of
       the
