@@ -49,3 +49,7 @@ the **Send invite email** card.
 
 When they sign in they have an **Admin** entry in the side menu, and the
 guides written for admins under [**Guides**](/guides).
+
+## Another way
+
+You can also create a new teaching admin from the list of users and choose their organisation yourself. See [Create a teaching admin from the users list](/guides/create-a-teaching-admin-from-the-users-list).

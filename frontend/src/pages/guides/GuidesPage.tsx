@@ -80,7 +80,8 @@ function byFeature(guides: Guide[]): FeatureGroup[] {
 }
 
 export function Component() {
-  const guides = useVisibleGuides();
+  // An unlisted guide is reached only through a link from another guide.
+  const guides = useVisibleGuides().filter((guide) => guide.listed !== false);
   const useTwoColumns = useMediaQuery(
     `(min-width: ${layoutTokens.actionCardTwoColumnMinWidth})`,
   );

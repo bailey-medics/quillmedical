@@ -71,6 +71,7 @@ the stamp off with `just ur`.
 
 ## What is on the card
 
-Code and tests. Prose, pictures, lock files, generated files, merged
+Code and tests, and the in-app guides in `frontend/src/guides/content/`.
+Other prose, pictures, lock files, generated files, merged
 migrations and the frozen `api-compatibility/` decisions are left off:
 `scripts/audit-stamp.py` holds the list and the reasons.

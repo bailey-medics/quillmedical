@@ -67,3 +67,7 @@ Somebody who already had an account signs in as before.
 - **Has a Quill account that you may not add here.** Their account belongs somewhere you do not manage. Ask somebody who manages users to add them.
 - **Is already at** the site. They are on the site's staff list already. Press their row in the table and enrol them on the **Teaching** card.
 - **User not created**, on the **Review** step, with **Username already exists**. Choose a different username.
+
+## Another way
+
+You can also start from the list of users and fill in the site yourself. See [Add a delegate from the users list](/guides/add-a-delegate-from-the-users-list).

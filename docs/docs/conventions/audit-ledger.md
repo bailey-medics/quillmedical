@@ -117,7 +117,9 @@ tells git to merge the ledger by keeping both sides' lines.
 Code and tests. These are left off, because there is nothing in them
 to audit as code:
 
-- **Prose** - Markdown, and everything under `docs/`.
+- **Prose** - Markdown, and everything under `docs/`. The one exception
+  is the in-app guides in `frontend/src/guides/content/`: they are
+  shown to the people who use Quill, so they are stamped like code.
 - **Pictures, sounds and lock files.**
 - **Generated files** - anything a script writes, such as
   `frontend/src/generated/`.

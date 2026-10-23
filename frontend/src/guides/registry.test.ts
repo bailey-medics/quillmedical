@@ -4,12 +4,28 @@
 
 import { describe, expect, it } from "vitest";
 import { CONTENT_SLUGS, guideBody, guideHeading, guideImages } from "./content";
-import { findGuide, guideImageBase, GUIDES } from "./registry";
+import { findGuide, guideImageBase, GUIDES, type Guide } from "./registry";
+
+/** Every guide, read as a `Guide`, so the optional fields can be asked about. */
+const EVERY_GUIDE: readonly Guide[] = GUIDES;
 
 describe("the guide registry", () => {
   it("has a markdown file for every entry and an entry for every file", () => {
     expect(GUIDES.map((guide) => guide.slug).sort()).toEqual(CONTENT_SLUGS);
   });
+
+  it.each(EVERY_GUIDE.filter((guide) => guide.listed === false))(
+    "links to unlisted $slug from a listed guide, so it can be reached",
+    (unlisted) => {
+      const linkedFrom = EVERY_GUIDE.filter(
+        (guide) =>
+          guide.listed !== false &&
+          guideBody(guide.slug)?.includes(`(/guides/${unlisted.slug})`),
+      );
+
+      expect(linkedFrom).not.toEqual([]);
+    },
+  );
 
   it("gives no two guides the same slug", () => {
     const slugs = GUIDES.map((guide) => guide.slug);
