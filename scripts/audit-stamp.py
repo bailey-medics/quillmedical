@@ -63,7 +63,8 @@ LEDGER_PATH = "audit/ledger.tsv"
 FINGERPRINT = re.compile(r"[0-9a-f]{40}")
 
 # Files that are not audited as code: pictures and sounds, lock files, and
-# anything a script writes. Prose is left out too; the card is about code.
+# anything a script writes. Prose is left out too, the card being about
+# code, except for the guides in AUDITED_PROSE_FOLDERS.
 SKIPPED_SUFFIXES = (
     ".png",
     ".jpg",
@@ -82,6 +83,9 @@ SKIPPED_SUFFIXES = (
     ".snap",
 )
 SKIPPED_NAMES = ("yarn.lock", "poetry.lock", "package-lock.json")
+# Prose that is audited all the same: the guides are shown to the people
+# who use Quill, as much a part of the app as its code is.
+AUDITED_PROSE_FOLDERS = ("frontend/src/guides/content/",)
 SKIPPED_FOLDERS = (
     ".vscode/",
     "audit/",
@@ -333,6 +337,8 @@ def ledger_lock() -> Iterator[None]:
 
 def is_skipped(path: str) -> bool:
     """Whether a file is left off the card: not code, or not written."""
+    if path.endswith(".md") and path.startswith(AUDITED_PROSE_FOLDERS):
+        return False
     if path.endswith(SKIPPED_SUFFIXES):
         return True
     if path.rsplit("/", 1)[-1] in SKIPPED_NAMES:

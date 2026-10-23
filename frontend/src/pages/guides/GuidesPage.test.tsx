@@ -45,6 +45,18 @@ describe("GuidesPage", () => {
     ).toBeInTheDocument();
   });
 
+  it("leaves out a guide that is not listed", () => {
+    show([
+      guide("one", "everyone"),
+      { ...guide("two", "everyone"), listed: false },
+    ]);
+
+    renderWithRouter(<Page />);
+
+    expect(screen.getByText("Title of one")).toBeInTheDocument();
+    expect(screen.queryByText("Title of two")).not.toBeInTheDocument();
+  });
+
   it("shows each guide with its summary and a link to it", () => {
     show([guide("one", "everyone")]);
 

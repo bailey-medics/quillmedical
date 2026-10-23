@@ -295,6 +295,18 @@ ledger() {
     [[ "$output" == *"Nothing to stamp"* ]]
 }
 
+@test "the guides are on the card, though they are prose" {
+    mkdir -p "${MAIN}/frontend/src/guides/content"
+    printf '# Join a course\n' > "${MAIN}/frontend/src/guides/content/join.md"
+    git -C "$MAIN" add -A
+    git -C "$MAIN" -c user.name=t -c user.email=t@example.com \
+        commit -q -m "a guide"
+
+    run ledger "$MAIN" mark frontend/src/guides/content
+    [ "$status" -eq 0 ]
+    grep -q "frontend/src/guides/content/join.md" "$CARD"
+}
+
 @test "editor settings are left off the card" {
     mkdir "${MAIN}/.vscode"
     echo '{}' > "${MAIN}/.vscode/settings.json"

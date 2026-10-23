@@ -51,6 +51,12 @@ export interface Guide {
    * operator is shown the guide whatever they hold.
    */
   competency?: CompetencyId;
+  /**
+   * False to leave it out of the list of guides. It can still be read,
+   * by whoever it is written for, through a link from another guide:
+   * another way of doing what a listed guide shows. Listed when absent.
+   */
+  listed?: boolean;
 }
 
 /**
@@ -74,6 +80,17 @@ export const GUIDES = [
     audience: "admin",
     public: false,
     feature: "teaching",
+  },
+  {
+    slug: "add-a-delegate-from-the-users-list",
+    title: "Add a delegate from the users list",
+    summary:
+      "Another way to add a delegate: from the list of users, not their site.",
+    audience: "admin",
+    public: false,
+    feature: "teaching",
+    // Linked from the end of "Add a delegate by hand", the usual way.
+    listed: false,
   },
   {
     slug: "create-a-clinical-lead",
@@ -147,6 +164,17 @@ export const GUIDES = [
     audience: "superadmin",
     public: false,
     feature: "teaching",
+  },
+  {
+    slug: "create-a-teaching-admin-from-the-users-list",
+    title: "Create a teaching admin from the users list",
+    summary:
+      "Another way to make a teaching admin: from the list of users, not their organisation.",
+    audience: "superadmin",
+    public: false,
+    feature: "teaching",
+    // Linked from the end of "Assign a teaching admin", the usual way.
+    listed: false,
   },
   {
     slug: "find-your-way-round-a-safety-case",
