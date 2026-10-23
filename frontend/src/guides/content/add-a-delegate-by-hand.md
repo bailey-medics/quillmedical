@@ -6,26 +6,32 @@ Teaching delegates should normally join using the [registration pages](/guides/j
 
 Have these to hand:
 
-- the delegate's **full name** and **email address**
-- a **username** for them
-- a first **password** of at least 8 characters
+- the delegate's **email address**
 - the **site** they belong to
 
-## Open the new user form
+If they do not have a Quill account yet, you also need their **full name**, a **username** for them and a first **password** of at least 8 characters.
 
-1. In the side menu, choose [**Admin**](/admin) and then [**Users**](/admin/users).
-2. Press the **Add user** button. This can be found in the icon row above the user's table. It is a icon of a person with the plus symbol. Hint: hover over an icon to see it's action.
-   ![The list of users, with the Add user button above it](add-a-delegate-by-hand/users.png)
-3. The [**Create new user**](/admin/users/new) page opens.
+## Find them from their site
 
-## Fill in the six steps
+1. In the side menu, choose [**Admin**](/admin) and then [**Sites**](/admin/sites), and open the delegate's site.
+2. Press the **Add staff** button. It is the icon of a person with a plus symbol, above the **Site specific staff members** table. Hint: hover over an icon to see its action.
+   ![A site's page, with the Add staff button above its staff table](add-a-delegate-by-hand/site.png)
+3. Under **Username or email address**, type the delegate's email address and press **Find**.
 
-Press **Next** to move on from each step.
+What happens next depends on whether they already have a Quill account.
 
-1. **Basic details.** Enter the full name, email, username and initial password. For **Base profession**, choose **Teaching delegate**.
+## If they are new to Quill
+
+Quill says **Nobody on Quill uses** that address. Press **Create new user**.
+
+![The lookup finding nobody, with the Create new user button](add-a-delegate-by-hand/not-found.png)
+
+The **Create new user** form opens with their email address and the site already filled in. Press **Next** to move on from each step.
+
+1. **Basic details.** Enter the full name, username and initial password. For **Base profession**, choose **Teaching delegate**.
    ![The basic details step, filled in for a teaching delegate](add-a-delegate-by-hand/basic-details.png)
-2. **Organisation/site.** Under **Site**, choose the delegate's site. Important: there is no need to chose an organisation for a teaching delegate. The page calls this optional, but the account is not created unless you choose at least one site or organisation.
-   ![The organisation and site step](add-a-delegate-by-hand/organisation-site.png)
+2. **Organisation/site.** Check their site is already chosen under **Site**. There is no need to choose an organisation for a teaching delegate.
+   ![The organisation and site step, with the site already chosen](add-a-delegate-by-hand/organisation-site.png)
 3. **Competencies.** Leave both boxes empty. The base profession already gives a delegate what they need.
 4. **Practice.** Under the delegate's site, switch on **Take Teaching Modules** and **View Own Teaching Results**.
    ![The practice step, with both switches on for the delegate's site](add-a-delegate-by-hand/practice.png)
@@ -36,6 +42,17 @@ Press **Next** to move on from each step.
 
 You are taken back to the list of users, with the message **User created**.
 
+## If they already have a Quill account
+
+Quill says they **already have a Quill account**, and chooses them under **User**.
+
+1. Under **Role**, choose **Trainee**.
+   ![The lookup finding somebody, with Trainee chosen as their role](add-a-delegate-by-hand/found.png)
+2. Press **Add staff member**. You are taken back to the site's page.
+3. In the **Site specific staff members** table, press the delegate's row.
+4. On the **Teaching** card, tick each module they are to take, and press **Save enrolment**. Saving also gives them what they need to take the module at this site, so there is nothing to switch on above it.
+   ![The delegate's Teaching card, with a module ticked](add-a-delegate-by-hand/teaching.png)
+
 ## Tell the delegate how to sign in
 
 Quill does not email a new delegate by itself. Do one of these:
@@ -43,11 +60,10 @@ Quill does not email a new delegate by itself. Do one of these:
 - Give them the username and the initial password yourself.
 - Send an invite. In [**Users**](/admin/users), choose the delegate, then under **Actions** press **Send** on the **Send invite email** card. They are emailed a link to set up their own password. The link only lasts 30 mins however.
 
+Somebody who already had an account signs in as before.
+
 ## Problem solving
 
-The message **User not created** appears on the **Review** step, with the
-reason.
-
-- **Choose at least one organisation or site.** Press **Back** until you reach step 2, and choose the delegate's site.
-- **Username already exists.** Choose a different username.
-- **Email already exists.** They already have a Quill account. Add them to the site as staff instead: choose [**Admin**](/admin), then [**Sites**](/admin/sites), open the site and under **Site specific staff members** press the **Add staff** icon.
+- **Has a Quill account that you may not add here.** Their account belongs somewhere you do not manage. Ask somebody who manages users to add them.
+- **Is already at** the site. They are on the site's staff list already. Press their row in the table and enrol them on the **Teaching** card.
+- **User not created**, on the **Review** step, with **Username already exists**. Choose a different username.

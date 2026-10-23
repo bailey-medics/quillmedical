@@ -19,14 +19,17 @@ on for one site.
 
 ## Give a new person the role
 
-1. Choose [**Admin**](/admin), then [**Users**](/admin/users), and press the **Add user** button.
-2. On **Basic details**, enter their name, email, username and an initial password. For **Base profession**, choose **Teaching admin**.
+1. On the organisation's page, press the **Add staff** button. It is the icon of a person with a plus symbol, above the organisation's staff table.
+2. Under **Username or email address**, type their email address and press **Find**.
+3. Quill says **Nobody on Quill uses** that address. Press **Create new user**. If it says they already have a Quill account, go to the next section instead.
+   ![The organisation's Add staff page, offering to create a new user](assign-a-teaching-admin/not-found.png)
+4. The **Create new user** form opens with their email address and the organisation already filled in. On **Basic details**, enter their name, username and an initial password. For **Base profession**, choose **Teaching admin**.
    ![The basic details step, with Teaching admin chosen](assign-a-teaching-admin/basic-details.png)
-3. On **Organisation/site**, choose their organisation under **Organisation**. The page calls this optional, but a teaching admin can only act where they belong, so do not leave it empty.
-4. Press **Next** through **Competencies** and **Practice** without changing anything.
-5. On **Enrolment**, tick a module only if they are to take it themselves. A teaching admin does not need to be enrolled to add delegates or see results.
-6. On **Platform role**, leave **Standard** chosen.
-7. On **Review**, check the details and press **Create user**.
+5. On **Organisation/site**, check their organisation is chosen under **Organisation**. A teaching admin can only act where they belong.
+6. Press **Next** through **Competencies** and **Practice** without changing anything.
+7. On **Enrolment**, tick a module only if they are to take it themselves. A teaching admin does not need to be enrolled to add delegates or see results.
+8. On **Platform role**, leave **Standard** chosen.
+9. On **Review**, check the details and press **Create user**.
 
 ## Give somebody who already has an account the role
 

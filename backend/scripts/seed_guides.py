@@ -104,6 +104,9 @@ PASSPORT_ASSESSOR = "guide_assessor"
 PASSPORT_ADMIN = "guide_passport_admin"
 #: Takes a module in the specs, so starts with no attempts of their own.
 LEARNER = "guide_learner"
+#: Has an account and belongs nowhere, for the picture of adding somebody
+#: who already has one to a site.
+DELEGATE_WITH_NO_SITE = "oliver.grant"
 
 
 @dataclass(frozen=True)
@@ -622,6 +625,7 @@ def seed() -> None:
             for d in DELEGATES
         ]
         learner = _user(db, LEARNER, "Sam Sample", "teaching_delegate")
+        _user(db, DELEGATE_WITH_NO_SITE, "Oliver Grant", "teaching_delegate")
         for person in [*people, learner]:
             add_org_unit_member(db, organisation.id, person.id, "trainee")
             add_org_unit_member(db, site.id, person.id, "trainee")

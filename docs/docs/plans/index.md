@@ -119,3 +119,4 @@
 - [Secrets Inventory and Rotation](2026-10-19-secrets-inventory-and-rotation-plan.md)
 - [Legal Review Follow-ups](2026-10-20-legal-review-follow-ups-plan.md)
 - [Resumable Video Uploads](2026-10-20-resumable-video-uploads-plan.md)
+- [Guides Add People From Their Place](2026-10-22-guides-add-people-from-their-place-plan.md)
