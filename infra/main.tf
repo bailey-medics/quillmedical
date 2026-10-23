@@ -637,8 +637,8 @@ module "cloud_run_transcode_job" {
   vpc_subnetwork_id = module.networking.cloud_run_subnet_id
   vpc_egress        = "ALL_TRAFFIC"
 
-  # Sized for a 27-minute 4K lecture of about 3 GB, the largest an upload
-  # may be. The source is read from the mounted bucket below rather than
+  # Sized for a 27-minute 4K lecture of about 3 GB. An upload may be at
+  # most 2 GB, which the virus scan can read, so this is room to spare. The source is read from the mounted bucket below rather than
   # copied in, because a Cloud Run job has no disk: its temporary folder
   # is memory. The renditions are still written there, about 1.3 GB for
   # such a lecture, hence 8 GiB. Encoding is CPU-bound, and 8 vCPU
@@ -647,7 +647,8 @@ module "cloud_run_transcode_job" {
   memory = "8Gi"
 
   # A hung job burns its full timeout before failing. Ninety minutes is
-  # about twice what a 3 GB 4K lecture was estimated to take; past it,
+  # about twice what a 3 GB 4K lecture was estimated to take, and an
+  # upload is at most 2 GB; past it,
   # the job has gone wrong rather than gone slowly.
   timeout = "5400s"
 
@@ -763,7 +764,7 @@ module "cloud_run_caption_job" {
 # the mounted video source bucket rather than copied into memory, since a
 # Cloud Run job's temporary folder is memory; passport evidence, which is
 # small, is still downloaded. The thirty minute ceiling is for reading a
-# 3 GB lecture end to end, and a job past it has gone wrong.
+# 2 GB lecture end to end, and a job past it has gone wrong.
 module "cloud_run_scan_job" {
   source = "./modules/cloud-run-job"
 

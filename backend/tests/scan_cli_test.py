@@ -378,7 +378,7 @@ class TestReport:
 
 
 class TestLargeFiles:
-    """A lecture is up to 3 GB. ClamAV's defaults skip anything over
+    """A lecture is up to 2 GB. ClamAV's defaults skip anything over
     25 MB and call it clean, so the limits are set, and a file still too
     big to scan in full is a fault rather than clean or infected."""
 
@@ -391,8 +391,9 @@ class TestLargeFiles:
             scan_file(Path("upload"))
 
         args = run.call_args.args[0]
-        assert "--max-filesize=4000M" in args
-        assert "--max-scansize=4000M" in args
+        # The upload limit, just under the 2 GiB ClamAV can scan at all.
+        assert "--max-filesize=2047M" in args
+        assert "--max-scansize=2047M" in args
         assert "--alert-exceeds-max=yes" in args
         assert args[-1] == "upload"
 

@@ -65,7 +65,7 @@ if proj_root not in sys.path:
 
 Verdict = Literal["clean", "infected", "failed"]
 
-#: How long one scan may take. A lecture may be up to 3 GB, and ClamAV
+#: How long one scan may take. A lecture may be up to 2 GB, and ClamAV
 #: reads it end to end; past this something is wrong. Inside the job's
 #: own thirty minute timeout, so a scan that runs too long is reported
 #: as a fault rather than cut off with no report at all.
@@ -74,10 +74,11 @@ _SCAN_CEILING = 25 * 60
 #: How large a file ClamAV will scan, and how much it will read from
 #: one. Its defaults are 25 MB and 100 MB, and a file over them is
 #: skipped and reported as if it were clean, which is how every lecture
-#: would have passed without being looked at. Both are set just under
-#: ClamAV's own ceiling of 4 GB, which the 3 GB upload limit stays
-#: inside.
-_SIZE_LIMITS = ("--max-filesize=4000M", "--max-scansize=4000M")
+#: would have passed without being looked at. Both are set to the upload
+#: limit, 2047 MiB, just under the 2 GiB that ClamAV can scan at all: it
+#: refused a 2.84 GB file with these at 4000 MB, which is only the most
+#: the option accepts.
+_SIZE_LIMITS = ("--max-filesize=2047M", "--max-scansize=2047M")
 
 #: How long ClamAV may spend on one file, in milliseconds. Its default is
 #: two minutes, and a 2 GB lecture took longer than that on 20 October
@@ -344,7 +345,7 @@ def scan() -> int:
     mounted = _mounted_object(bucket_name, object_key)
 
     # A lecture is scanned in place on the mounted bucket. The job's
-    # filesystem is memory, and a 3 GB file copied into it would not
+    # filesystem is memory, and a 2 GB file copied into it would not
     # fit beside ClamAV's definitions.
     if mounted is not None:
         print(f"Scanning {object_key} on the mounted bucket...")
