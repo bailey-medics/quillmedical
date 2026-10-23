@@ -269,12 +269,20 @@ times that on Cloud Run's 4 vCPUs, against a 20-minute ceiling.
       size it is told, as its existing test pins: the limit is applied
       once, when the upload address is asked for.
 
-- [ ] In App production, upload all three lectures to the
+- [x] In App production, upload all three lectures to the
       `chest-xray-interpretation-test` module, one at a time, and follow
       each through scan, transcode and captions: all three should finish
       and play at 720p and 1080p. Record how long each stage took here,
       against the timeouts above, and lower or raise them if the real
       times are far off.
+      Done on 21 and 22 October, to `colonoscopy-optical-diagnosis`
+      rather than the test module, as the real lectures. Video 1 (2.1 GB,
+      4K) took 5 minutes to scan, 15 to transcode and, with the captions
+      still in Welsh, 41 to caption. The next lecture, on 22 October,
+      took 5, 16 and 5 minutes. Each is well inside its timeout (30, 90
+      and 60 minutes), so none was changed. Video 2 (2.84 GB) failed its
+      scan as too large: see Phase 9. It went up re-encoded at 1080p, at
+      130 MB.
 
 ## Phase 7: Captions in English, with the module's own words
 
@@ -380,6 +388,45 @@ with the module, beside its `captionVocabulary`.
       that English needs neither field set, that the word list should be
       in the same language as the videos, and what the caps on the list
       are and why.
+
+## Phase 9: An upload is no larger than ClamAV can scan
+
+Phase 6 set the upload limit at 3 GiB and ClamAV's size limits at
+4000 MB, on the strength of the `clamscan` manual's "maximum: under
+4 GB". That is the most the option accepts, not what ClamAV can scan. On
+22 October `eoeeta-video-2.mov`, 2.84 GB, failed its scan with
+`Heuristics.Limits.Exceeded.MaxFileSize` although the limit was set to
+4000 MB, while `eoeeta-video-1.mov`, 2.12 GB, passed. ClamAV cannot scan a
+file larger than 2 GiB at all: Cisco's own
+[ClamAV Large Archive Scanner](https://github.com/cisco-talos/clamav-large-archive-scanner)
+says so, and that splitting a file into pieces is no way round it. The
+scan failed safe, holding the file back, but the upload cap let through a
+file the scan can never pass, after a long upload. Video 2 was
+re-encoded to 1080p (130 MB) and uploaded instead.
+
+- [x] Lower the upload limit to 2047 MiB, just under 2 GiB, and set
+      ClamAV's limits to the same, so the limit an admin is told is one a
+      file can actually pass. `MAX_MEDIA_UPLOAD_BYTES` in
+      `backend/app/features/teaching/storage.py` and
+      `MAX_VIDEO_UPLOAD_BYTES` in
+      `frontend/src/features/teaching/use-module-media.ts` both become
+      2047 MiB, and `_SIZE_LIMITS` in `backend/scripts/scan_cli.py`
+      becomes `--max-filesize=2047M --max-scansize=2047M`. The message
+      names the limit as 2 GB. The comments that give 3 GB or 4 GB as the
+      limit, in those files and in `infra/main.tf`, are corrected; the
+      jobs' memory and timeouts are left as they are, since they are
+      already sized for more. Tests: the route refuses a file one byte
+      over 2047 MiB and accepts one at it, the page refuses one over
+      without a request, and the scan passes the new limits. The tests
+      that named 3 GB change with it. As built, a test in
+      `backend/tests/teaching_video_and_media_test.py` also pins the
+      upload limit and the scan's limits to the same number, below
+      2 GiB, so the two cannot drift apart again.
+
+- [x] Say in `docs/docs/teaching/index.md`, under Video, that a video
+      may be at most 2 GB, why, and that a 4K recording should be
+      exported at 1080p first: learners are only ever served 1080p and
+      720p, and a 27-minute lecture at 1080p is a few hundred megabytes.
 
 ## Decisions
 

@@ -67,6 +67,27 @@ path in both environments.
 See [Teaching video storage](../backend/files/index.md) for the buckets, object
 key contract, cookie mechanics and monitoring.
 
+#### Size limit
+
+A video may be at most 2 GB (2047 MiB). Every upload is scanned for
+malware before anything else opens it, and ClamAV, the scanner, cannot
+read a file larger than 2 GiB at all, so a larger video could never be
+used. The upload page refuses one at once, before it is sent.
+
+A 4K recording is usually over the limit. Export it at 1080p first:
+learners are only ever served 1080p and 720p, so nothing they would see
+is lost, and a 27-minute lecture at 1080p is a few hundred megabytes.
+For example, with FFmpeg:
+
+```bash
+ffmpeg -i lecture.mov -vf scale=-2:1080 -c:v libx264 -preset slow -crf 18 \
+  -c:a aac -b:a 160k -movflags +faststart lecture-1080p.mp4
+```
+
+Check a close-up against the original before uploading: where the
+detail in the picture matters, as it does for polyp surfaces, a lower
+`-crf` number keeps more of it.
+
 #### Captions
 
 Each video's captions are made by Whisper, a speech-to-text model, once

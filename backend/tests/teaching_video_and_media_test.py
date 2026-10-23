@@ -591,8 +591,28 @@ def test_a_video_over_the_size_limit_gets_no_upload_address(
     )
 
     assert resp.status_code == 413
-    assert "3 GB" in resp.json()["detail"]
+    assert "2 GB" in resp.json()["detail"]
     assert asked == []
+
+
+def test_the_size_limit_is_one_the_virus_scan_can_read() -> None:
+    """ClamAV cannot scan a file over 2 GiB, whatever it is told. The
+    upload limit and the scan's own limit are the same number, below
+    that, so no upload is accepted that the scan could never pass.
+
+    On 22 October 2026 a 2.84 GB lecture, allowed by a 3 GiB limit, was
+    uploaded and then failed its scan.
+    """
+    from app.features.teaching.storage import MAX_MEDIA_UPLOAD_BYTES
+    from scripts.scan_cli import _SIZE_LIMITS
+
+    mib = 1024 * 1024
+
+    assert MAX_MEDIA_UPLOAD_BYTES < 2 * 1024 * mib
+    assert _SIZE_LIMITS == (
+        f"--max-filesize={MAX_MEDIA_UPLOAD_BYTES // mib}M",
+        f"--max-scansize={MAX_MEDIA_UPLOAD_BYTES // mib}M",
+    )
 
 
 def test_a_video_at_the_size_limit_is_accepted(

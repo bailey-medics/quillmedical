@@ -739,13 +739,16 @@ ALLOWED_MEDIA_TYPES: dict[str, str] = {
 }
 
 
-#: The largest video an administrator may upload: 3 GiB.
+#: The largest video an administrator may upload: 2047 MiB, just under
+#: 2 GiB.
 #:
-#: Clears the largest real lecture so far, 27 minutes of 4K at 2.65 GiB,
-#: and stays inside the 4 GB that ClamAV can scan in full. The transcode
-#: and scan jobs are sized for files up to this, so a larger one is
-#: refused before it is uploaded rather than failing an hour later.
-MAX_MEDIA_UPLOAD_BYTES = 3 * 1024 * 1024 * 1024
+#: ClamAV cannot scan a file larger than 2 GiB, whatever its own limits
+#: are set to: a 2.84 GB lecture failed its scan on 22 October 2026 with
+#: the limit at 4000 MB. Every upload is scanned before it is used, so a
+#: larger file could never be used, and is refused before it is uploaded
+#: rather than failing after a long upload. A 4K recording exported at
+#: 1080p, the most a learner is served, comes well inside it.
+MAX_MEDIA_UPLOAD_BYTES = 2047 * 1024 * 1024
 
 
 def create_resumable_upload_url(

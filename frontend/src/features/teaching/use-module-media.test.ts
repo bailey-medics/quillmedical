@@ -283,7 +283,7 @@ describe("useModuleMedia", () => {
       "too large to upload",
     );
     expect(result.current.uploadErrors["lecture-01"]).toContain(
-      "The limit is 3.0 GB",
+      "The limit is 2.0 GB",
     );
     expect(result.current.uploading).toBe(false);
   });

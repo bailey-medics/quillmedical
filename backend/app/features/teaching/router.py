@@ -1822,12 +1822,13 @@ def create_media_upload_url(
         raise HTTPException(400, "The file is empty")
 
     # The size is what the page says the file is. Refused here, before
-    # anything is uploaded, because the jobs after the upload are sized
-    # for files up to this and a larger one would fail an hour later.
+    # anything is uploaded, because the scan after the upload cannot
+    # pass a larger file.
     if body.size_bytes > MAX_MEDIA_UPLOAD_BYTES:
-        limit_gb = MAX_MEDIA_UPLOAD_BYTES // (1024 * 1024 * 1024)
         raise HTTPException(
-            413, f"This video is larger than the {limit_gb} GB limit"
+            413,
+            "This video is larger than the 2 GB limit. Export it at "
+            "1080p, the most a learner is shown, and upload that.",
         )
 
     org_id = _media_org_unit_id(user, db, module_id, org_unit_id)

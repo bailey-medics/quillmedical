@@ -92,13 +92,14 @@ export interface ModuleMediaState {
 }
 
 /**
- * The largest video an administrator may upload: 3 GiB.
+ * The largest video an administrator may upload: 2047 MiB, just under
+ * 2 GiB, the most the virus scan can read.
  *
  * The same limit as `MAX_MEDIA_UPLOAD_BYTES` in the backend, which
  * refuses anything larger. Checked here as well so the admin hears it
  * at once, rather than after asking for somewhere to upload to.
  */
-export const MAX_VIDEO_UPLOAD_BYTES = 3 * 1024 * 1024 * 1024;
+export const MAX_VIDEO_UPLOAD_BYTES = 2047 * 1024 * 1024;
 
 /** Round a byte count to something a person reads at a glance. */
 function formatSize(bytes: number): string {
@@ -119,7 +120,7 @@ function formatSize(bytes: number): string {
  */
 function describeUploadFailure(status: number, file: File): string {
   if (status === 413) {
-    return `This file is too large to upload (${formatSize(file.size)}). The limit is ${formatSize(MAX_VIDEO_UPLOAD_BYTES)}: try a shorter recording or a more compressed export.`;
+    return `This file is too large to upload (${formatSize(file.size)}). The limit is ${formatSize(MAX_VIDEO_UPLOAD_BYTES)}: export it at 1080p, the most a learner is shown, and upload that.`;
   }
   if (status === 415 || status === 400) {
     return `This file type cannot be uploaded (${file.type || "unknown type"}). Videos must be MP4, WebM or QuickTime.`;
