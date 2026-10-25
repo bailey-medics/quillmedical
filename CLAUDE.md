@@ -828,9 +828,15 @@ SQLite and the frontend suite is vitest under jsdom, so no service is needed.
   needs the image rebuilt too (`just utr`, or `just se b`). Both compose
   files tag the same `quill-backend-dev` / `quill-frontend-dev` images, so
   one build serves every worktree.
-- **On a Linux host, pytest warns it cannot write `.pytest_cache`.** The
-  container runs as its own unprivileged user and the bind mount is owned by
-  you. Harmless; Docker Desktop on macOS maps ownership and does not show it.
+- **On a Linux host, the containers write as you.** Docker Desktop on macOS
+  maps file ownership across a bind mount; Linux keeps the real owner, so a
+  container writing as root or as the backend image's uid 10001 left files
+  you could not overwrite, and `just migrate` could not write its revision
+  at all. The Justfile exports `HOST_UID` and `HOST_GID` on Linux only: the
+  backend and migrate containers run as that user, and the frontend one,
+  which must stay root for its `node_modules` volumes, hands what it wrote
+  back through `scripts/hand-back-ownership.sh`. On a Mac both are empty and
+  nothing changes.
 - **Never run `pre-commit install`.** Git runs the tracked `.husky/pre-commit`
   through the relative `core.hooksPath` set by `just initialise-repo`, which
   resolves per worktree. pre-commit refuses to install alongside it anyway.
