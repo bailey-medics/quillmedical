@@ -33,6 +33,16 @@ stack_repo := 'cd "${STACK_REPO:-.}"'
 # directory to another repository can no longer find them by a relative one.
 stack_scripts := justfile_directory() / "scripts"
 
+# Who owns this checkout, for the containers that write into it. Docker
+# Desktop on a Mac maps file ownership across a bind mount, so a container
+# may write as any user there. A Linux host keeps the real numbers: a
+# container writing as root or as the backend image's uid 10001 leaves files
+# the host user cannot overwrite, or cannot write into the worktree at all.
+# compose.unit-tests.yml and compose.migrate.yml read these. Empty on a Mac,
+# so nothing changes there.
+export HOST_UID := if os() == "linux" { `id -u` } else { "" }
+export HOST_GID := if os() == "linux" { `id -g` } else { "" }
+
 
 # Refuse to run anywhere but the main checkout, which owns the dev stack:
 # its container names are fixed in compose.dev.yml, so there is only one.
@@ -159,6 +169,21 @@ _gcp_env_project env:
         app) echo "quill-medical-app" ;;
         *)   echo "ERROR: env must be app" >&2; exit 1 ;;
     esac
+
+
+# The address another device would open the dev app at, for `start-app`
+# and `start-ehr` to print. On a Mac, its Wi-Fi address. On Linux, its
+# Tailscale address where it has one, because a home server's firewall
+# keeps the dev stack off the home network, and otherwise its first.
+_host-address:
+    #!/usr/bin/env bash
+    if [[ "$OSTYPE" == darwin* ]]; then
+        ipconfig getifaddr en0
+    elif command -v tailscale >/dev/null && tailscale ip -4 >/dev/null 2>&1; then
+        tailscale ip -4
+    else
+        hostname -I | awk '{ print $1 }'
+    fi
 
 
 # Refuse to run when the `python3` on this machine is not CI's.
@@ -2389,7 +2414,7 @@ start-app build="":
 
     just _dev-stack-guard
     just _start-docker-daemon
-    echo "Access the frontend at: http://$(ipconfig getifaddr en0)"
+    echo "Access the frontend at: http://$(just _host-address)"
     echo "Clinical services (FHIR/EHRbase) disabled"
 
     build_args=""
@@ -2428,7 +2453,7 @@ start-ehr build="":
 
     just _dev-stack-guard
     just _start-docker-daemon
-    echo "Access the frontend at: http://$(ipconfig getifaddr en0)"
+    echo "Access the frontend at: http://$(just _host-address)"
 
     # Ctrl-C takes the stack down and removes the containers. The clinical
     # profile is named so those services are taken down too.
