@@ -48,6 +48,10 @@ services:
       SES_ACCESS_KEY_ID: ""
       SES_SECRET_ACCESS_KEY: ""
       TEACHING_STORAGE_BACKEND: local
+    # As the host user on Linux, where the Justfile sets HOST_UID, so the
+    # test cache and `just email-preview`'s renders can be written into the
+    # worktree. Otherwise the image's own appuser, as before.
+    user: "${HOST_UID:-10001}:${HOST_GID:-10001}"
     working_dir: /app
     volumes:
       - ./backend:/app
@@ -66,8 +70,15 @@ services:
       target: dev
     environment:
       NODE_ENV: test
+      HOST_UID: ${HOST_UID:-}
+      HOST_GID: ${HOST_GID:-}
+    # Stays root, as the image is, because the node_modules volumes are
+    # root's. What a run writes into the worktree is handed back to the host
+    # user afterwards instead: see scripts/hand-back-ownership.sh.
+    entrypoint: ["sh", "/usr/local/bin/hand-back-ownership.sh", "/app"]
     working_dir: /app
     volumes:
+      - ./scripts/hand-back-ownership.sh:/usr/local/bin/hand-back-ownership.sh:ro
       - ./frontend:/app
       # Named volumes are seeded from the image's own node_modules the first
       # time they are created, so a new worktree needs no install step. They

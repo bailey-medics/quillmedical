@@ -39,6 +39,10 @@ services:
       EMAIL_DRY_RUN: "true"
       # Required by push_send.py, imported unconditionally at start-up.
       VAPID_PRIVATE: migrate-placeholder-vapid-key-not-real
+    # As the host user on Linux, where the Justfile sets HOST_UID: the
+    # image's appuser, uid 10001, may not write a revision into a worktree
+    # the host user owns. Otherwise appuser, as before.
+    user: "${HOST_UID:-10001}:${HOST_GID:-10001}"
     working_dir: /app
     volumes:
       # The revision is written into alembic/versions of THIS worktree.
