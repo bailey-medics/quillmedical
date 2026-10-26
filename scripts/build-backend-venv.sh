@@ -16,6 +16,9 @@
 #
 # The environment goes in backend/.venv, inside the worktree, so each
 # worktree has its own. See `worktree-create` in the Justfile for why.
+# backend/poetry.toml asks for that on every Poetry command, but Poetry
+# honours it only when it makes a new environment: one already in its
+# shared cache for this worktree is used instead, so that is removed too.
 set -euo pipefail
 
 # Prints the first two parts of a version: 3.14 from 3.14.7.
@@ -59,6 +62,11 @@ main() {
     echo "Removing the old environment at backend/.venv"
     rm -rf .venv
   fi
+
+  # With the in-project flag on, `env remove` looks only at .venv and
+  # leaves the cache alone, so it is turned off for this one command.
+  echo "Removing any environment in Poetry's shared cache"
+  env -u VIRTUAL_ENV POETRY_VIRTUALENVS_IN_PROJECT=false poetry env remove --all
 
   echo "Building the backend environment on $("$python" --version)"
   # `env -u VIRTUAL_ENV` so an environment active in the calling shell is
