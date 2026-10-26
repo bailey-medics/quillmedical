@@ -12,7 +12,7 @@ import {
 } from "./messages.ts";
 
 const NOW = new Date("2026-10-26T09:14:03Z");
-const OPTIONS = { ownBotId: "B0000000001", environment: "app", now: NOW };
+const OPTIONS = { ownUserId: "U0000000001", environment: "app", now: NOW };
 
 function botPost(fields: Partial<SlackMessage>): SlackMessage {
   return { ts: "1761480000.123456", bot_id: "B0000000002", ...fields };
@@ -92,8 +92,14 @@ describe("classify", () => {
     assert.equal(classify(message, OPTIONS), undefined);
   });
 
-  it("ignores the watcher's own replies", () => {
-    assert.equal(classify(botPost({ bot_id: "B0000000001", text: DEPLOY_FAILED }), OPTIONS), undefined);
+  it("ignores the watcher's own posts, known by its bot user", () => {
+    assert.equal(classify(botPost({ user: "U0000000001", text: DEPLOY_FAILED }), OPTIONS), undefined);
+  });
+
+  it("reads a failed deploy posted through the watcher's own app", () => {
+    const alert = classify(botPost({ bot_id: "B0000000001", text: DEPLOY_FAILED }), OPTIONS);
+
+    assert.equal(alert?.kind, "deploy");
   });
 
   it("ignores a reply in a thread", () => {

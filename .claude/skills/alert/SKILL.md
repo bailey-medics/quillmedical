@@ -146,21 +146,34 @@ missed its slot. Then stop.
 
 ## When the cause is ours
 
-1. **Post the root cause to the thread as soon as you know it**, before
-   writing the fix, so a person reading Slack has it at once. Two or three
-   sentences: what broke, why, and the file it is in.
+A fault in the code gets three messages in the thread, and no others: the
+one in step 3 of "Before anything else", the cause in step 3 here, and
+the pull request in step 7. Every other ending (upstream, off limits,
+could not reproduce) is one message in place of the last two.
+
+1. **Some places are not yours to change.** Never touch `infra/`,
+   `.github/workflows/`, `backend/alembic/versions/` or `CLAUDE.md`. If the
+   fix belongs in one of them, post one message giving the cause and what
+   the change would be, as a suggestion for a person to make, open no pull
+   request, and stop.
 2. **Write a failing test that reproduces the fault**, in the place
    `CLAUDE.md` and `.claude/rules/backend.md` say a test belongs. It must
    fail on `main` for the reason the logs show. If you cannot make it fail,
    you have not reproduced the fault: go to "When it cannot be reproduced".
-3. **Fix it**, in the smallest change that makes that test pass, following
+3. **Post the cause once the test confirms it**, before writing the fix,
+   so a person reading Slack has it at once:
+
+   ```bash
+   scripts/slack-reply.sh "$ALERT_FILE" - <<'EOF'
+   *Found the cause:* <two or three sentences: what broke, why, and the file it is in>
+   Writing a fix now.
+   EOF
+   ```
+
+4. **Fix it**, in the smallest change that makes that test pass, following
    the repository's conventions as any other change would.
-4. **Run the targeted tests**: `just ub -k "<name>"` or
+5. **Run the targeted tests**: `just ub -k "<name>"` or
    `just uf <file>`. Never the full suite.
-5. **Some places are not yours to change.** Never touch `infra/`,
-   `.github/workflows/`, `backend/alembic/versions/` or `CLAUDE.md`. If the
-   fix belongs in one of them, write what the change would be in the thread
-   as a suggestion for a person to make, open no pull request, and stop.
 6. **Open the pull request** with `/crpd ready`, only when
    `QUILL_ALERT_WATCHER=true` (see "Before anything else"). The stack key is
    always `alert`, so the branch is `feature/alert-<what-it-fixes>` and the
@@ -168,8 +181,15 @@ missed its slot. Then stop.
    request is still open, since each alert is a stack of its own. The pull
    request opens ready for review, not as a draft, because a production fix
    may need merging at once. It is never merged here.
-7. **Post the summary to the thread**: the root cause in one sentence, the
-   fix in one, and the pull request link.
+7. **Post the pull request to the thread** once it is open and ready for
+   review:
+
+   ```bash
+   scripts/slack-reply.sh "$ALERT_FILE" - <<'EOF'
+   *Pull request ready for review:* <link>
+   <the fix in one sentence>
+   EOF
+   ```
 
 ## When it cannot be reproduced
 
@@ -198,7 +218,7 @@ standard input:
 
 ```bash
 scripts/slack-reply.sh "$ALERT_FILE" - <<'EOF'
-*Root cause:* ...
+*Found the cause:* ...
 EOF
 ```
 
