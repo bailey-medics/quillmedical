@@ -1815,12 +1815,15 @@ stack-rebase:
 
     # gh stack rebase exits 0 even when it skipped a branch, so the result is
     # verified rather than trusted: `view --json` reports needsRebase
-    # correctly for exactly the branch a silent skip leaves behind.
-    if python3 "{{stack_scripts}}"/stack-status.py --no-colour | grep -q "needs rebase"; then
+    # correctly for exactly the branch a silent skip leaves behind. A branch
+    # in the merge queue, and one sitting exactly on it, are left out: the
+    # rebase leaves a queued branch alone on purpose. See --left-behind.
+    if ! left_behind="$(python3 "{{stack_scripts}}"/stack-status.py --left-behind)"; then
         echo "" >&2
-        echo "✗ Branches still need a rebase after gh stack rebase." >&2
+        echo "✗ Branches still need a rebase after gh stack rebase:" >&2
+        printf '    %s\n' ${left_behind} >&2
         echo "  It reports success even when it skips a branch." >&2
-        echo "  Run 'just stack-log' to see which." >&2
+        echo "  Run 'just stack-log' to see where they sit." >&2
         echo "" >&2
         echo "  If it instead conflicted in files this branch never" >&2
         echo "  touched, the record's trunk.head is stale: run" >&2
