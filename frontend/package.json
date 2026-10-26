@@ -21,7 +21,7 @@
     "prettier": "prettier --check \"{src,e2e,scripts,.storybook,public,public_pages}/**/*.{js,jsx,ts,tsx,css,scss,md,json,mdx,html}\" \"*.{js,ts,json,md,html}\" --ignore-unknown",
     "prettier:fix": "prettier --write \"{src,e2e,scripts,.storybook,public,public_pages}/**/*.{js,jsx,ts,tsx,css,scss,md,json,mdx,html}\" \"*.{js,ts,json,md,html}\" --ignore-unknown",
     "stylelint": "stylelint \"{src,public,public_pages,.storybook}/**/*.{scss,css}\"",
-    "typecheck:all": "yarn generate:types && tsc --project tsconfig.check.json --noEmit && tsc --project tsconfig.node.json --noEmit && tsc --project public_pages/tsconfig.json --noEmit && tsc --project ../tools/review-marks/tsconfig.json",
+    "typecheck:all": "yarn generate:types && tsc --project tsconfig.check.json --noEmit && tsc --project tsconfig.node.json --noEmit && tsc --project public_pages/tsconfig.json --noEmit && tsc --project ../tools/review-marks/tsconfig.json && yarn --cwd ../scripts/alert-watcher install --immutable && tsc --project ../scripts/alert-watcher/tsconfig.json",
     "unit-test:run": "yarn generate:types && vitest --environment jsdom --run --watch=false"
   },
   "dependencies": {
