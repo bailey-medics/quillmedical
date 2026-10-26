@@ -49,6 +49,51 @@ appears straight away rather than waiting for the voice to finish.
 been idle for a while, which is after the finished notification has already
 told you, so it would only repeat it.
 
+## On the Linux dev box
+
+Claude also runs on a headless Linux box, reached from the Mac over VS Code
+Remote-SSH and Tailscale. The hooks fire there, but the box has no screen,
+so a banner posted on it would reach nobody.
+
+`notification.sh` therefore only works out *what* to say: the title, the
+summary, the group and the spoken name. Showing it is
+`scripts/notification-show.sh`, which holds everything Mac-specific above.
+On a Mac it is called directly. On Linux, when `QUILL_NOTIFY_SSH_HOST` names
+the Mac, the file is streamed over SSH and run there as `bash -s`, so the
+Mac needs no checkout of the repository and no copy of the script that
+could fall out of date. Unset, the box falls back to `notify-send`, which
+on a headless box shows nothing.
+
+`ssh` runs with `BatchMode` and is detached with `setsid -f`, so a Mac that
+is asleep, off the tailnet or refusing connections costs the turn nothing.
+
+What the Mac needs, once:
+
+1. **Remote Login on**, under System Settings, General, Sharing. Under its
+   (i), "Allow access for" must include the account the box logs in as. If
+   it does not, the Mac accepts the key and then closes the connection,
+   which looks like a key problem and is not.
+2. **The box's public key** in the Mac's `~/.ssh/authorized_keys`. Pasting
+   it in on the Mac is the dependable way; `ssh-copy-id` needs a password
+   login, and fails the same way while the account is not allowed.
+3. **One interactive `ssh` from the box to the Mac**, to accept its host
+   key. `BatchMode` will never accept an unknown key on its own.
+
+Then set the variable where Claude Code passes it to hooks, in the box's
+`~/.claude/settings.json`:
+
+```json
+"env": { "QUILL_NOTIFY_SSH_HOST": "markbailey@<the Mac's Tailscale name>" }
+```
+
+Two things are lost on the way:
+
+- **A click focuses nothing.** The focus script is not sent, and a Remote-SSH
+  window's title ends with `[SSH: devbox]`, so it would not find the window
+  anyway.
+- **The other `QUILL_NOTIFY_*` settings are the Mac's defaults**, not the
+  box's, because they are not forwarded.
+
 ## Where the banner text comes from
 
 The payload carries `last_assistant_message`, the full text of the final
@@ -165,6 +210,8 @@ All of these are read from the environment by `scripts/notification.sh`:
 - `QUILL_NOTIFY_CHIME=1` brings back the completion sound.
 - `QUILL_NOTIFY_APP` points at the notifier if it is not in the default
   place.
+- `QUILL_NOTIFY_SSH_HOST` names the Mac a Linux box forwards to, as
+  above.
 - `QUILL_NOTIFY_DEBUG=1` prints the title, body and group that would be
   used and stops, which is how the behaviour above is checked.
 

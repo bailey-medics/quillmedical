@@ -67,3 +67,61 @@ group_of() {
     [ "$status" -eq 0 ]
     [[ "$output" == *"title=quillmedical-4"* ]]
 }
+
+@test "on Linux, a banner is forwarded to the Mac named in QUILL_NOTIFY_SSH_HOST" {
+    [ "$(uname -s)" = "Linux" ] || skip "forwarding is from the Linux dev box"
+
+    QUILL_NOTIFY_SSH_HOST=mac run shown_for "$OTHER"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"forward=mac"* ]]
+}
+
+@test "without QUILL_NOTIFY_SSH_HOST nothing is forwarded" {
+    QUILL_NOTIFY_SSH_HOST="" run shown_for "$OTHER"
+    [ "$status" -eq 0 ]
+    [[ "$output" != *"forward="* ]]
+}
+
+# A stand-in for the Quill notifier that records its arguments, one a line,
+# so notification-show.sh can be run on any machine without posting a banner.
+stub_notifier() {
+    local bin="${BATS_TEST_TMPDIR}/notifier.app/Contents/MacOS"
+
+    mkdir -p "$bin"
+    cat >"${bin}/terminal-notifier" <<STUB
+#!/bin/bash
+printf '%s\n' "\$@" >"${BATS_TEST_TMPDIR}/notifier-args"
+STUB
+    chmod +x "${bin}/terminal-notifier"
+
+    export QUILL_NOTIFY_APP="${BATS_TEST_TMPDIR}/notifier.app"
+    export QUILL_NOTIFY_SPEAK=0
+}
+
+@test "the show script posts the title, body and group it is given" {
+    stub_notifier
+    SHOW="${BATS_TEST_DIRNAME}/../notification-show.sh"
+
+    run "$SHOW" "quillmedical-4" "Did the thing" "grp" "Quill Medicine 4" "$OTHER"
+    [ "$status" -eq 0 ]
+
+    args="$(cat "${BATS_TEST_TMPDIR}/notifier-args")"
+    [[ "$args" == *$'-title\nquillmedical-4'* ]]
+    [[ "$args" == *$'-message\nDid the thing'* ]]
+    [[ "$args" == *$'-group\ngrp'* ]]
+    [[ "$args" == *"-execute"* ]]
+}
+
+@test "streamed over stdin, as the Mac receives it, the show script still posts" {
+    stub_notifier
+    SHOW="${BATS_TEST_DIRNAME}/../notification-show.sh"
+
+    cd "$BATS_TEST_TMPDIR"
+    run bash -s -- "quillmedical-4" "Did the thing" "grp" "Quill Medicine 4" \
+        <"$SHOW"
+    [ "$status" -eq 0 ]
+
+    args="$(cat "${BATS_TEST_TMPDIR}/notifier-args")"
+    [[ "$args" == *$'-message\nDid the thing'* ]]
+    [[ "$args" != *"-execute"* ]]
+}
