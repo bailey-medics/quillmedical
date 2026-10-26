@@ -160,7 +160,7 @@ compose.ci.yml	3f0d8c4a52ed3c10110580f3bb3afb8d1ca2470d	2026-10-12	Cotswoldsmake
 compose.dev.yml	b9834fc728e8f5e89376a1f95b38e5a325eb1ae8	2026-10-12	Cotswoldsmaker	mark.allan.bailey@gmail.com
 compose.migrate.yml	d891e933f381712e478ebc4b1651b7effd9b6a57	2026-10-12	Cotswoldsmaker	mark.allan.bailey@gmail.com
 compose.unit-tests.yml	0e81074a645f55daa3228e957e90d0a13cc34896	2026-10-12	Cotswoldsmaker	mark.allan.bailey@gmail.com
-frontend/Dockerfile	35d6047104dffb5548162050eeed41e6b2b52338	2026-10-12	Cotswoldsmaker	mark.allan.bailey@gmail.com
+frontend/Dockerfile	29365c93e31676ea4a0dfa6a6262f4603432b50e	2026-10-22	Cotswoldsmaker	mark.allan.bailey@gmail.com
 frontend/eslint.config.ts	ef9cf50a4005a421debf71f2b34e88e7e264011e	2026-10-15	Cotswoldsmaker	mark.allan.bailey@gmail.com
 frontend/package.json	795fd1c543a05baaefcb20019b8f6cdbc74f9e61	2026-10-15	Cotswoldsmaker	mark.allan.bailey@gmail.com
 frontend/tsconfig.app.json	277f90ea2c4c58ccb62abe6a4ca4d25ed56bca78	2026-10-13	Cotswoldsmaker	mark.allan.bailey@gmail.com
@@ -168,4 +168,7 @@ frontend/tsconfig.check.json	8c54e18db0f214ac3b3f3ab69069695d7a309bce	2026-10-15
 frontend/tsconfig.json	511e9d2a878cf30ced49f3ce48ecf88039b92fa9	2026-10-13	Cotswoldsmaker	mark.allan.bailey@gmail.com
 frontend/tsconfig.node.json	a2691c6ca8a3b7ed887bc0f98f8835f6a2a12c35	2026-10-15	Cotswoldsmaker	mark.allan.bailey@gmail.com
 frontend/vite.config.ts	2cedb5fac3864533f321bd92026287b2ba80e3e9	2026-10-15	Cotswoldsmaker	mark.allan.bailey@gmail.com
+infra/aws/modules/ses-account/main.tf	b8f4577992887f1445338463266355a935a1b1b0	2026-10-20	Cotswoldsmaker	mark.allan.bailey@gmail.com
+infra/aws/modules/ses-account/outputs.tf	11a7b474ea034712adc3a968d83dbd3324a7a94b	2026-10-20	Cotswoldsmaker	mark.allan.bailey@gmail.com
+infra/aws/modules/ses-account/variables.tf	f920626aa10971d8faa43e062acba3b2b98273dd	2026-10-22	Cotswoldsmaker	mark.allan.bailey@gmail.com
 scripts/check-python-version.sh	e9ba5acc38524cdd3b8c10fdd371c2e9771ce114	2026-10-11	Cotswoldsmaker	mark.allan.bailey@gmail.com
