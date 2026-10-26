@@ -1,0 +1,5 @@
+# Every Poetry command run here, the editor's included, makes and uses
+# backend/.venv inside this worktree, never an environment in Poetry's
+# shared cache. See scripts/build-backend-venv.sh.
+[virtualenvs]
+in-project = true

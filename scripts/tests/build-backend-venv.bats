@@ -32,8 +32,18 @@ EOF
     run bash "$SCRIPT" "$REPO"
 
     [ "$status" -eq 0 ]
-    [ "$(sed -n 1p "${CALLS}/poetry.args")" = "env use ${STUBS}/python3.14" ]
-    [ "$(sed -n 2p "${CALLS}/poetry.args")" = "install" ]
+    [ "$(sed -n 2p "${CALLS}/poetry.args")" = "env use ${STUBS}/python3.14" ]
+    [ "$(sed -n 3p "${CALLS}/poetry.args")" = "install" ]
+}
+
+@test "removes any environment in Poetry's shared cache before building" {
+    run bash "$SCRIPT" "$REPO"
+
+    [ "$status" -eq 0 ]
+    [ "$(sed -n 1p "${CALLS}/poetry.args")" = "env remove --all" ]
+
+    # With the in-project flag on, Poetry would look only at .venv.
+    [ "$(sed -n 1p "${CALLS}/poetry.in-project")" = "false" ]
 }
 
 @test "builds inside the backend folder of the root it was given" {
@@ -45,7 +55,7 @@ EOF
 @test "makes the environment in the worktree, not in Poetry's shared cache" {
     run bash "$SCRIPT" "$REPO"
 
-    [ "$(sort -u "${CALLS}/poetry.in-project")" = "1" ]
+    [ "$(sed -n '2,$p' "${CALLS}/poetry.in-project" | sort -u)" = "1" ]
 }
 
 @test "does not build into an environment active in the calling shell" {
