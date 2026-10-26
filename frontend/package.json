@@ -97,7 +97,7 @@
     "prettier": "^3.9.10",
     "remark-gfm": "^4.0.1",
     "sass": "^1.105.1",
-    "storybook": "10.6.1",
+    "storybook": "10.6.2",
     "storybook-addon-pseudo-states": "10.6.1",
     "stylelint": "^17.16.0",
     "stylelint-config-prettier-scss": "^1.0.0",
