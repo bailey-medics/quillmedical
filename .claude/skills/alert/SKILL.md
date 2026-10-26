@@ -3,7 +3,7 @@ name: alert
 description: Investigate one App production alert from Slack, explain it in the thread, and open a pull request that fixes it
 argument-hint: "<path to the alert file>"
 allowed-tools: Bash(gcloud logging read:*), Bash(gh run view:*), Bash(gh run list:*), Bash(gh pr list:*), Bash(gh pr view:*), Bash(git log:*), Bash(git show:*), Bash(git status:*), Bash(git fetch:*), Bash(scripts/slack-reply.sh:*), Bash(just stack-fresh:*), Bash(just stack-log:*), Bash(just ub:*), Bash(just uf:*), WebFetch(domain:www.githubstatus.com), WebFetch(domain:status.cloud.google.com)
-disallowed-tools: Bash(gh pr merge:*), Bash(gh stack merge:*), Bash(git rebase:*), Bash(git reset:*), Bash(git push --force:*), Bash(gcloud auth:*), Bash(gcloud config:*), mcp__github__merge_pull_request, mcp__github__enable_pr_auto_merge
+disallowed-tools: Bash(gh pr merge:*), Bash(gh stack merge:*), Bash(git rebase:*), Bash(git reset:*), Bash(git push:*), Bash(gh pr create:*), Bash(gcloud auth:*), Bash(gcloud config:*), mcp__github__merge_pull_request, mcp__github__enable_pr_auto_merge
 ---
 
 # Investigate one App production alert
