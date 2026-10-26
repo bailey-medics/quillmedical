@@ -2807,6 +2807,19 @@ test-shell-scripts *ARGS:
     fi
 
 
+alias uaw := unit-tests-alert-watcher
+# Run the alert watcher's type check and tests (in a throwaway container)
+unit-tests-alert-watcher *ARGS:
+    #!/usr/bin/env bash
+    {{initialise}} "unit-tests-alert-watcher"
+
+    # The watcher in scripts/alert-watcher/ is its own Node package, run on
+    # the home box rather than deployed. Same throwaway container as `uf`,
+    # with that folder mounted instead of frontend/.
+    docker compose -p "$(just _test-project)" -f compose.unit-tests.yml \
+        run --rm alert-watcher sh -lc "yarn install --immutable && yarn typecheck && yarn test {{ARGS}}"
+
+
 alias ub := unit-tests-backend
 # Run the backend unit tests (in a throwaway container mounting this worktree)
 unit-tests-backend *ARGS:
