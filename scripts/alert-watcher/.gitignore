@@ -1,0 +1,2 @@
+# Yarn keeps its install state here; nothing in it is source.
+.yarn/

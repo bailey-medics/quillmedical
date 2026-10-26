@@ -406,6 +406,18 @@ jobs:
           bash .github/scripts/ci/run-shell-tests.sh .claude/hooks
           bash .github/scripts/ci/run-shell-tests.sh scripts/tests
 
+      # The alert watcher in scripts/alert-watcher/ is a Node package of its
+      # own, run on the home box rather than deployed. Checked here because
+      # this job already has Node 24, and the watcher is tooling like the
+      # scripts above. `just uaw` runs the same three commands locally.
+      - name: Alert watcher type check and tests
+        working-directory: scripts/alert-watcher
+        run: |
+          corepack enable
+          yarn install --immutable
+          yarn typecheck
+          yarn test
+
 
   # ---------- Version consistency ----------
   # ---------- Would a tooling change break published content? ----------
