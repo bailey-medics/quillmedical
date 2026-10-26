@@ -31,7 +31,8 @@ export interface Dependencies {
 
 export interface Options {
   channel: string;
-  ownBotId: string | undefined;
+  // The bot user the watcher posts as, from auth.test.
+  ownUserId: string | undefined;
   environment: string;
   dailyCap: number;
   stallMinutes: number;
@@ -42,7 +43,7 @@ export interface Options {
   startGraceSeconds: number;
 }
 
-export const DEFAULT_OPTIONS: Omit<Options, "channel" | "ownBotId"> = {
+export const DEFAULT_OPTIONS: Omit<Options, "channel" | "ownUserId"> = {
   environment: "app",
   dailyCap: 6,
   stallMinutes: 45,
@@ -96,13 +97,13 @@ export class Watcher {
     }
 
     const alert = classify(message, {
-      ownBotId: this.options.ownBotId,
+      ownUserId: this.options.ownUserId,
       environment: this.options.environment,
       now: this.deps.now(),
     });
 
     if (!alert) {
-      if (message.bot_id && message.bot_id !== this.options.ownBotId) {
+      if (message.bot_id && message.user !== this.options.ownUserId) {
         this.deps.log("unmatched", { hasAttachments: Boolean(message.attachments?.length), hasBlocks: Boolean(message.blocks?.length) });
       }
       return;
@@ -266,8 +267,9 @@ export class Watcher {
     };
     const alertFile = this.deps.session.writeAlertFile(next.alert, thread, date);
 
+    // Nothing is said in the thread here. The skill's first message says
+    // it has started, so the thread never claims a run that did not begin.
     this.ledger.record(next.alert.fingerprint, "run", date);
-    await this.deps.reply(this.options.channel, next.alert.ts, "Picked this up in worktree 5.");
     await this.deps.session.startRun(alertFile);
 
     this.current = { alert: next.alert, startedAt: now, sawBusy: false };

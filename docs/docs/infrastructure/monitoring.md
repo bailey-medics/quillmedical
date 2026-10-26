@@ -135,10 +135,10 @@ policy, and before trusting the watcher for the first time.
 
 1. **A planted fault.** Push a branch that raises on one request path,
    deploy it, and request that path until `Backend error logged (app)`
-   fires. Within a minute the thread should say "Picked this up in worktree
-   5". Within the hour it should hold the root cause and a pull request,
-   ready for review, whose new test fails on `main` and passes on its
-   branch. Close that pull request and revert the planted branch.
+   fires. Within a minute the thread should say "Looking into this now".
+   Within the hour it should say "Found the cause:", and then "Pull request
+   ready for review:" with a link to a pull request whose new test fails
+   on `main` and passes on its branch. Close that pull request and revert the planted branch.
 2. **The four-weekly alert route test.** Let `alert-route-test.yml` run, or
    start it by hand. Its posts in Slack must get no reply from the watcher:
    it is a test of the routes, not a fault.

@@ -68,16 +68,15 @@ describe("Watcher", () => {
   beforeEach(() => {
     fakes = new Fakes();
     const ledger = new Ledger(join(mkdtempSync(join(tmpdir(), "watcher-")), "ledger.json"));
-    watcher = new Watcher(fakes.deps(), ledger, { ...DEFAULT_OPTIONS, channel: CHANNEL, ownBotId: "B0000000001" });
+    watcher = new Watcher(fakes.deps(), ledger, { ...DEFAULT_OPTIONS, channel: CHANNEL, ownUserId: "U0000000001" });
   });
 
-  it("starts an investigation on the next tick, and says so in the thread", async () => {
+  it("starts an investigation on the next tick, leaving the first word in the thread to the skill", async () => {
     await watcher.onMessage(alertPost("Backend error logged", "100.000001"));
     await watcher.tick();
 
     assert.deepEqual(fakes.started, ["/state/alerts/100.000001.txt"]);
-    assert.equal(fakes.replies.at(-1)?.text, "Picked this up in worktree 5.");
-    assert.equal(fakes.replies.at(-1)?.threadTs, "100.000001");
+    assert.deepEqual(fakes.replies, []);
   });
 
   it("ignores a message in another channel", async () => {
