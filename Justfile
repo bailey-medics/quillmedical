@@ -494,8 +494,17 @@ aws-login which="emails":
     # email data outside the UK.
     aws configure set region eu-west-2 --profile "$profile"
 
-    # `y` answers "overwrite the session this profile already has?".
-    printf 'y\n' | aws login --profile "$profile"
+    # On a Linux machine with no screen, such as the home box over SSH,
+    # there is no browser to open, so `--remote` prints a link to open on
+    # another device and asks for the code it shows. That prompt reads the
+    # keyboard, so nothing is piped in: answer any overwrite question by
+    # hand. Elsewhere `y` answers "overwrite the session this profile
+    # already has?".
+    if [ "$(uname)" = "Linux" ] && [ -z "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]; then
+        aws login --profile "$profile" --remote
+    else
+        printf 'y\n' | aws login --profile "$profile"
+    fi
     got="$(aws sts get-caller-identity --profile "$profile" \
         --query Account --output text)"
 
@@ -762,8 +771,17 @@ gcp-login:
     # tools that read Application Default Credentials, Terraform among them.
     # Having one valid and the other expired is the confusing case - terraform
     # fails while gcloud works - so refresh both together.
-    gcloud auth login
-    gcloud auth application-default login
+    #
+    # On a Linux machine with no screen, such as the home box over SSH,
+    # there is no browser to open: `--no-launch-browser` prints a link to
+    # open on another device and asks for the code it shows.
+    no_browser=()
+    if [ "$(uname)" = "Linux" ] && [ -z "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]; then
+        no_browser=(--no-launch-browser)
+    fi
+
+    gcloud auth login "${no_browser[@]}"
+    gcloud auth application-default login "${no_browser[@]}"
 
 
 alias gsh := guide-screenshots
