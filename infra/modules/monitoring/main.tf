@@ -1282,3 +1282,88 @@ resource "google_monitoring_alert_policy" "alert_route_test" {
 
   notification_channels = [each.value]
 }
+
+# ---------- Google Cloud incidents affecting this project ----------
+#
+# On 20 October 2026 Google had an incident in europe-west2 that cut Cloud
+# Run off from Cloud SQL for a morning, and the only sign of it in Slack was
+# our own alerts firing hourly, each looking like a fault of ours. This
+# posts Google's own word on an incident beside them.
+#
+# Personalized Service Health writes an entry to the project's logs for
+# every incident that touches a product the project uses, and for every
+# update to it, and this policy matches those entries. The filter and the
+# label extractors are Google's own, from "Configure alerts in Terraform"
+# in the Service Health docs, for "all incidents, all updates".
+#
+# The alert watcher in scripts/alert-watcher/ reads the policy's name to
+# recognise the post, and the `State:` line to see the incident close, so
+# both are kept as they are here. While an incident is open it treats every
+# other alert as part of it rather than as a fault to investigate.
+resource "google_project_service" "service_health" {
+  project = var.project_id
+  service = "servicehealth.googleapis.com"
+
+  # Removing this policy should not switch the API off under anything else
+  # that has come to use it.
+  disable_on_destroy = false
+}
+
+resource "google_monitoring_alert_policy" "gcp_incident" {
+  project      = var.project_id
+  display_name = "Google Cloud incident (${var.environment})"
+  combiner     = "OR"
+
+  documentation {
+    mime_type = "text/markdown"
+    subject   = "Google Cloud reports an incident affecting this project"
+    content   = <<-EOT
+      ### $${log.extracted_label.title}
+
+      Google's own report of an incident in a product this project uses.
+      Alerts that fire while it is open are most likely caused by it: see
+      the details in the Service Health page of the Cloud console.
+
+      Impacted products: $${log.extracted_label.impactedProducts}
+
+      Impacted locations: $${log.extracted_label.impactedLocations}
+
+      Began: $${log.extracted_label.startTime}
+
+      State: $${log.extracted_label.state}
+    EOT
+  }
+
+  conditions {
+    display_name = "Personalized Service Health reported an incident"
+
+    condition_matched_log {
+      filter = join(" AND ", [
+        "resource.type = \"servicehealth.googleapis.com/Event\"",
+        "jsonPayload.category = \"INCIDENT\"",
+        "jsonPayload.@type = \"type.googleapis.com/google.cloud.servicehealth.logging.v1.EventLog\"",
+      ])
+
+      label_extractors = {
+        state             = "EXTRACT(jsonPayload.state)"
+        title             = "EXTRACT(jsonPayload.title)"
+        impactedProducts  = "EXTRACT(jsonPayload.impactedProducts)"
+        impactedLocations = "EXTRACT(jsonPayload.impactedLocations)"
+        startTime         = "EXTRACT(jsonPayload.startTime)"
+      }
+    }
+  }
+
+  alert_strategy {
+    # Required for a log-match condition. Google's example uses the same
+    # five minutes; an incident's updates come no faster than that.
+    notification_rate_limit {
+      period = "300s"
+    }
+    auto_close = "86400s"
+  }
+
+  notification_channels = local.notification_channels
+
+  depends_on = [google_project_service.service_health]
+}
