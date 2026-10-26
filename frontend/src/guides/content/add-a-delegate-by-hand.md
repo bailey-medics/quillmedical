@@ -9,9 +9,13 @@ Have these to hand:
 - the delegate's **email address**
 - the **site** they belong to
 
-If they do not have a Quill account yet, you also need their **full name**, a **username** for them and a first **password** of at least 8 characters.
+And if they are new to Quill:
 
-## Find them from their site
+- **Full name**
+- **Username**
+- **Password** of at least 8 characters.
+
+## Find and add an existing user
 
 1. In the side menu, choose [**Admin**](/admin) and then [**Sites**](/admin/sites), and open the delegate's site.
 2. Press the **Add staff** button. It is the icon of a person with a plus symbol, above the **Site specific staff members** table. Hint: hover over an icon to see its action.
