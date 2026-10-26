@@ -572,6 +572,12 @@ check-competency-seeding env:
         --wait
 
 
+alias c := claude-session
+# Go to this worktree's Claude session in tmux, starting it or Claude again if needed (home box)
+claude-session:
+    @bash scripts/claude-session.sh
+
+
 alias cs := create-superadmin
 # Create a superadmin on a remote environment via Cloud Run Job
 create-superadmin env:
