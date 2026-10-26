@@ -729,6 +729,30 @@ Everywhere else - a local terminal session above all - the "NEVER
 auto-commit/push" rule under **Critical Rules** stands unchanged: commit only
 when asked to.
 
+### The alert watcher may open a pull request, and nothing more
+
+The alert watcher on the home box types `/alert <file>` into worktree 5
+when App production raises an alert in Slack (the watcher phase of
+`docs/docs/plans/2026-10-19-remote-dev-machine-plan.md`). Its tmux session
+starts `claude` with `QUILL_ALERT_WATCHER=true`, and nothing else sets it.
+
+When `QUILL_ALERT_WATCHER=true`, and only while running the `/alert` skill:
+
+- **Run `just stack-fresh`, then `/crpd ready`** on a branch named
+  `feature/alert-*`, which commits the fix, pushes it and opens its pull
+  request ready for review rather than as a draft. This is standing
+  permission for that one act, and it overrides "NEVER auto-commit/push"
+  for it alone.
+- **Never merge, never enable auto-merge, and never mark any other pull
+  request ready.** The exception ends at a pull request; a person reviews
+  and merges, or closes it.
+- **Never touch `infra/`, `.github/workflows/`, `backend/alembic/versions/`
+  or this file** from an alert run. A fix that belongs there is written in
+  the Slack thread as a suggestion for a person to make.
+
+Anywhere else, including `/alert` run by hand on a pasted alert, the "NEVER
+auto-commit/push" rule under **Critical Rules** stands unchanged.
+
 ### A new branch off `origin/main` tracks `main`, not itself
 
 `git checkout -b feature/x origin/main` sets the new branch's upstream to
