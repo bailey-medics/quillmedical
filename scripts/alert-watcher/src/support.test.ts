@@ -24,10 +24,11 @@ const GOOD_ENV = {
 };
 
 describe("readConfig", () => {
-  it("defaults to worktree 5 and the hook's state folder", () => {
+  it("defaults to worktree 5, its q5 session and the hook's state folder", () => {
     const config = readConfig(GOOD_ENV);
 
     assert.equal(config.worktree, "/home/watcher/github/quillmedical-5");
+    assert.equal(config.tmuxTarget, "q5");
     assert.equal(config.stateDirectory, "/home/watcher/.local/state/quill-alert-watcher");
     assert.equal(config.recordEvents, false);
   });
@@ -138,7 +139,7 @@ describe("checkWorktree", () => {
 describe("Session", () => {
   it("reads the busy flag the hook writes, and clears it", () => {
     const state = temporaryDirectory();
-    const session = new Session({ stateDirectory: state, tmuxTarget: "quill-5" });
+    const session = new Session({ stateDirectory: state, tmuxTarget: "q5" });
 
     assert.equal(session.busySince(100), undefined);
 
@@ -153,11 +154,11 @@ describe("Session", () => {
     const state = temporaryDirectory();
     writeFileSync(join(state, "busy"), "garbled");
 
-    assert.equal(new Session({ stateDirectory: state, tmuxTarget: "quill-5" }).busySince(100), 100);
+    assert.equal(new Session({ stateDirectory: state, tmuxTarget: "q5" }).busySince(100), 100);
   });
 
   it("writes the header above the alert text, so text from Slack cannot pose as it", () => {
-    const session = new Session({ stateDirectory: temporaryDirectory(), tmuxTarget: "quill-5" });
+    const session = new Session({ stateDirectory: temporaryDirectory(), tmuxTarget: "q5" });
     const alert = {
       kind: "monitoring" as const,
       fingerprint: "monitoring|x|2026-10-26",
@@ -184,13 +185,13 @@ describe("Session", () => {
       return "";
     };
 
-    await new Session({ stateDirectory: temporaryDirectory(), tmuxTarget: "quill-5", run, pauseMs: 0 }).startRun("/s/a.txt");
+    await new Session({ stateDirectory: temporaryDirectory(), tmuxTarget: "q5", run, pauseMs: 0 }).startRun("/s/a.txt");
 
     assert.deepEqual(calls, [
-      "tmux send-keys -t quill-5 -l /clear",
-      "tmux send-keys -t quill-5 Enter",
-      "tmux send-keys -t quill-5 -l /alert /s/a.txt",
-      "tmux send-keys -t quill-5 Enter",
+      "tmux send-keys -t q5 -l /clear",
+      "tmux send-keys -t q5 Enter",
+      "tmux send-keys -t q5 -l /alert /s/a.txt",
+      "tmux send-keys -t q5 Enter",
     ]);
   });
 });

@@ -30,7 +30,7 @@ Read from the environment, which the systemd unit loads from `~/.config/quill-al
 - **`SLACK_BOT_TOKEN`** - the bot token, `xoxb-`, with `channels:history` and `chat:write`.
 - **`ALERT_WATCHER_CHANNEL`** - the channel's id, such as `C0123456789`, not its name.
 - **`ALERT_WATCHER_WORKTREE`** - defaults to `~/github/quillmedical-5`.
-- **`ALERT_WATCHER_TMUX_TARGET`** - defaults to `quill-5`.
+- **`ALERT_WATCHER_TMUX_TARGET`** - defaults to `q5`.
 - **`QUILL_ALERT_WATCHER_STATE`** - defaults to `~/.local/state/quill-alert-watcher`, the folder `.claude/hooks/alert-watcher-busy.sh` keeps the busy flag in.
 - **`ALERT_WATCHER_RECORD_EVENTS=1`** - saves every channel event to `events/` in the state folder, for checking the message shapes against `src/messages.ts`. Off otherwise: the journal never holds alert text.
 

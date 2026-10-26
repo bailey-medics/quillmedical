@@ -155,6 +155,7 @@
     "cloudresourcemanager",
     "cloudrun",
     "cloudscheduler",
+    "cloudsdk",
     "cloudsql",
     "Clouvider",
     "CNOM",
