@@ -139,9 +139,17 @@ function utcDate(now: Date): string {
 // What the message is, or undefined when it is not an alert to act on.
 export function classify(
   message: SlackMessage,
-  options: { ownBotId: string | undefined; environment: string; now: Date },
+  options: { ownUserId: string | undefined; environment: string; now: Date },
 ): Alert | undefined {
-  if (!message.bot_id || message.bot_id === options.ownBotId) {
+  if (!message.bot_id) {
+    return undefined;
+  }
+
+  // The watcher's own posts are known by its bot user, not its app: the app
+  // may be the one deploy.yml's webhook posts through as well, and those
+  // posts share its bot_id but carry no user. Its replies are in threads
+  // too, which the next check skips whoever wrote them.
+  if (options.ownUserId && message.user === options.ownUserId) {
     return undefined;
   }
 

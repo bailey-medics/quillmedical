@@ -67,7 +67,7 @@ async function main(): Promise<void> {
       log,
     },
     ledger,
-    { ...DEFAULT_OPTIONS, channel: config.channel, ownBotId: identity.bot_id },
+    { ...DEFAULT_OPTIONS, channel: config.channel, ownUserId: identity.user_id },
   );
 
   socket.on("message", async ({ event, ack }: { event: unknown; ack: () => Promise<void> }) => {
