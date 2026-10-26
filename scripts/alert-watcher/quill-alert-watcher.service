@@ -1,0 +1,36 @@
+# The alert watcher, as a systemd user service on the home box.
+#
+# Installed by `just alert-watcher-install` from worktree 5, which links
+# this file into ~/.config/systemd/user/. Read its log with
+# `journalctl --user -u quill-alert-watcher`. It logs fingerprints and
+# outcomes, never the alert text.
+#
+# A user service, so it runs as the watcher's own user and reads only that
+# user's files: the env file below is ~/.config/quill-alert-watcher/env,
+# mode 0600, holding SLACK_APP_TOKEN, SLACK_BOT_TOKEN and
+# ALERT_WATCHER_CHANNEL. `loginctl enable-linger` lets it start at boot
+# with nobody logged in.
+#
+# The plan named `After=docker.service` too. A user service cannot be
+# ordered against a system one, which its manager does not see, and the
+# daemon needs no Docker of its own: only the tests the /alert skill runs
+# do, and they start when an alert arrives, long after boot.
+
+[Unit]
+Description=Quill alert watcher: types App production alerts into worktree 5
+Wants=network-online.target
+After=network-online.target
+ConditionPathExists=%h/.config/quill-alert-watcher/env
+
+[Service]
+Type=simple
+EnvironmentFile=%h/.config/quill-alert-watcher/env
+WorkingDirectory=%h/github/quillmedical-5/scripts/alert-watcher
+ExecStartPre=%h/github/quillmedical-5/scripts/alert-watcher/start-session.sh
+ExecStart=/usr/bin/env node src/main.ts
+Restart=always
+RestartSec=30
+NoNewPrivileges=true
+
+[Install]
+WantedBy=default.target

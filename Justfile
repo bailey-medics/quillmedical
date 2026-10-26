@@ -407,6 +407,52 @@ add-role-remote env:
         --wait
 
 
+alias awi := alert-watcher-install
+# Install the alert watcher as a systemd user service (the home box's worktree 5 only)
+alert-watcher-install:
+    #!/usr/bin/env bash
+    {{initialise}} "alert-watcher-install"
+    set -euo pipefail
+
+    worktree="${HOME}/github/quillmedical-5"
+    env_file="${HOME}/.config/quill-alert-watcher/env"
+    unit="${worktree}/scripts/alert-watcher/quill-alert-watcher.service"
+
+    # The unit names worktree 5 by path, so installing it from any other
+    # checkout would run code that is not this checkout's.
+    if [ "$(uname -s)" != "Linux" ] || [ "$(git rev-parse --show-toplevel)" != "${worktree}" ]; then
+        echo "✗ Run this on the home box, from ${worktree}." >&2
+        exit 1
+    fi
+
+    # The tokens are the one thing the repository cannot supply: see the
+    # watcher phase of docs/docs/plans/2026-10-19-remote-dev-machine-plan.md.
+    if [ ! -f "${env_file}" ]; then
+        echo "✗ No ${env_file} yet. It holds SLACK_APP_TOKEN, SLACK_BOT_TOKEN and ALERT_WATCHER_CHANNEL." >&2
+        exit 1
+    fi
+
+    if [ "$(stat -c %a "${env_file}")" != "600" ]; then
+        echo "✗ ${env_file} must be mode 0600: chmod 0600 ${env_file}" >&2
+        exit 1
+    fi
+
+    (cd "${worktree}/scripts/alert-watcher" && yarn install --immutable)
+
+    # `link` rather than a copy, so a merged change to the unit file takes
+    # effect at the next daemon-reload without installing again.
+    systemctl --user link "${unit}"
+    systemctl --user daemon-reload
+    systemctl --user enable --now quill-alert-watcher.service
+
+    if ! loginctl show-user "${USER}" --property=Linger | grep -q "=yes"; then
+        echo "! Lingering is off, so the watcher stops when you log out. To start it at boot:"
+        echo "    sudo loginctl enable-linger ${USER}"
+    fi
+
+    systemctl --user --no-pager status quill-alert-watcher.service
+
+
 alias al := aws-login
 # Sign in to an AWS account from the command line (which: emails, the default, or management)
 aws-login which="emails":

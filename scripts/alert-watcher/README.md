@@ -12,6 +12,16 @@ Watches `#quill-medical-cicd` for App production alerts and types `/alert <file>
 
 The skill posts the root cause and the summary to the thread itself, through `scripts/slack-reply.sh`. The daemon only says it has picked an alert up, queued it or parked it.
 
+## Installing it
+
+From worktree 5 on the home box, once the env file below exists:
+
+```bash
+just alert-watcher-install
+```
+
+That installs the packages and links `quill-alert-watcher.service` into systemd as a user service, which starts the tmux session through `start-session.sh` and then the daemon. Its log is `journalctl --user -u quill-alert-watcher`.
+
 ## Settings
 
 Read from the environment, which the systemd unit loads from `~/.config/quill-alert-watcher/env`:
