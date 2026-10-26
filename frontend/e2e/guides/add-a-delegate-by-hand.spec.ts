@@ -47,7 +47,14 @@ test("add a delegate by hand", async ({ page }) => {
   await page.getByText(SEEDED.site).first().click();
   const addStaff = page.getByRole("button", { name: "Add staff" });
   await expect(addStaff).toBeVisible();
-  await addStaff.scrollIntoViewIfNeeded();
+  // The staff table's heading near the top, clear of the ribbon, so the
+  // table fills most of the picture.
+  await page
+    .getByRole("heading", { name: "Site specific staff members" })
+    .evaluate((heading) => {
+      heading.scrollIntoView({ block: "start" });
+      window.scrollBy(0, -160);
+    });
   await shot(page, "add-a-delegate-by-hand/site");
 
   // Somebody new: the lookup finds nobody and offers to create them.
