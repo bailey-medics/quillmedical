@@ -2977,7 +2977,8 @@ worktree-create branch="":
         fi
     done
 
-    # Each worktree gets its own venv. The env var is what forces it:
+    # Each worktree gets its own venv. backend/poetry.toml and the env
+    # var in build-backend-venv.sh are what force it:
     # Poetry keys cached environments on the project name, which is
     # "backend" in every worktree, so without this they all silently
     # share one - and installing a dependency on one branch changes the
