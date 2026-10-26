@@ -36,7 +36,8 @@ export function readConfig(env: NodeJS.ProcessEnv): Config {
     botToken: required(env, "SLACK_BOT_TOKEN", /^xoxb-/, "the bot token, starting xoxb-"),
     channel: required(env, "ALERT_WATCHER_CHANNEL", /^C[A-Z0-9]{8,}$/, "the channel's id, such as C0123456789, not its name"),
     worktree: env["ALERT_WATCHER_WORKTREE"] || join(home, "github", "quillmedical-5"),
-    tmuxTarget: env["ALERT_WATCHER_TMUX_TARGET"] || "quill-5",
+    // The name ~/.local/bin/quill-sessions gives worktree 5's session.
+    tmuxTarget: env["ALERT_WATCHER_TMUX_TARGET"] || "q5",
     // The same folder .claude/hooks/alert-watcher-busy.sh writes the flag in.
     stateDirectory: env["QUILL_ALERT_WATCHER_STATE"] || join(stateHome, "quill-alert-watcher"),
     recordEvents: env["ALERT_WATCHER_RECORD_EVENTS"] === "1",
