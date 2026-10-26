@@ -67,6 +67,8 @@ The `infra/github/` Terraform is applied by a person, never by CI. Merging `.tf`
     just terraform-github
     ```
 
+    The GitHub sign-in it uses needs the `admin:org` scope, to read the two organisation rulesets. Without it GitHub answers 404, Terraform takes the rulesets to be deleted and plans to create them again, so the recipe checks first and stops with the command to add it: `gh auth refresh -h github.com -s admin:org`.
+
     The GCP infrastructure Terraform (`infra/`) is applied automatically via the Terraform CI workflow.
 
 ### Ruleset 1 - Protected branches (quillmedical)

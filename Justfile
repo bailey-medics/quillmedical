@@ -2650,6 +2650,19 @@ terraform-github:
     export GITHUB_TOKEN=$(gh auth token)
     set -x
 
+    # The organisation rulesets in teaching_rulesets.tf are read with this
+    # token, and without the admin:org scope GitHub answers 404, which the
+    # provider takes to mean they were deleted: the plan then offers to
+    # create both again. So the token is tried on the same call first. Seen
+    # on 26 October 2026, on a box whose `gh auth login` had not asked for it.
+    owner="$(sed -n 's/^github_owner *= *"\(.*\)"/\1/p' terraform.tfvars)"
+    if ! gh api "orgs/${owner}/rulesets" --silent 2>/dev/null; then
+        echo "✗ This GitHub sign-in cannot read ${owner}'s organisation rulesets,"
+        echo "  so the plan would offer to create them again. Add the scope, then re-run:"
+        echo "    gh auth refresh -h github.com -s admin:org"
+        exit 1
+    fi
+
     # -reconfigure: an old checkout may still record a local backend; the
     # state is in the bucket. -upgrade: the lock file is not committed, so
     # an older provider could not read state a newer one wrote.
