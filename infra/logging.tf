@@ -67,5 +67,12 @@ resource "google_logging_project_sink" "default" {
     # Removing this resource would delete Google's default route, and
     # every log entry after that would be dropped.
     prevent_destroy = true
+
+    # The API takes unique_writer_identity only when a sink is created and
+    # never reports it back, so the state keeps the provider's default of
+    # true and every plan offered "true -> false", a no-op applied on each
+    # merge. Found on 27 October 2026. The sink still has no writer identity,
+    # which is what false means, so the setting above stays as the record.
+    ignore_changes = [unique_writer_identity]
   }
 }
