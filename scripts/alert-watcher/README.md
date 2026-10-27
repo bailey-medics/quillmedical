@@ -9,6 +9,7 @@ Watches `#quill-medical-cicd` for App production alerts and types `/alert <file>
 - **Waits its turn.** One investigation at a time. It queues while the session is busy, with an alert or with a person, and parks while worktree 5 has uncommitted work or is on a branch of somebody's own.
 - **Treats an open Google Cloud incident as the cause** of every other alert for the next twelve hours, or until the incident closes.
 - **Stops a run that goes past 45 minutes** with Escape, and says so in the thread. A person's turn is never interrupted.
+- **Warns before its certificate runs out.** The box reads the logs by showing Google a client certificate that lasts a year. From 30 days before it runs out, the watcher posts a reminder in the channel with the renewal command, once a week until it is renewed. Its expiry date is written to the journal at start-up.
 
 The skill posts the root cause and the summary to the thread itself, through `scripts/slack-reply.sh`. The daemon only says it has picked an alert up, queued it or parked it.
 
@@ -32,6 +33,7 @@ Read from the environment, which the systemd unit loads from `~/.config/quill-al
 - **`ALERT_WATCHER_WORKTREE`** - defaults to `~/github/quillmedical-5`.
 - **`ALERT_WATCHER_TMUX_TARGET`** - defaults to `q5`.
 - **`QUILL_ALERT_WATCHER_STATE`** - defaults to `~/.local/state/quill-alert-watcher`, the folder `.claude/hooks/alert-watcher-busy.sh` keeps the busy flag in.
+- **`ALERT_WATCHER_CERTIFICATE`** - defaults to `~/.config/quill-alert-watcher/pki/watcher.crt`, the client certificate whose expiry it watches.
 - **`ALERT_WATCHER_RECORD_EVENTS=1`** - saves every channel event to `events/` in the state folder, for checking the message shapes against `src/messages.ts`. Off otherwise: the journal never holds alert text.
 
 ## Tests
