@@ -40,9 +40,9 @@ Two more hooks in `.claude/settings.json` run the same script with
 
 The title and the voice are the same as for a finished turn, the worktree
 name; the banner's text is what tells them apart, showing the question
-rather than a summary. The banner uses its own group,
-`quill-claude-input-<worktree>`, so the finished banner that follows your
-reply does not replace it. Both hooks run with `async`, so the question
+rather than a summary. It shares the worktree's group with a finished
+turn, so the finished banner that follows your reply replaces it, and each
+worktree only ever shows its latest banner. Both hooks run with `async`, so the question
 appears straight away rather than waiting for the voice to finish.
 
 `idle_prompt` is deliberately left out. It fires after the input box has
@@ -193,7 +193,7 @@ setting with two values: **Banners**, which fade after about five seconds,
 and **Alerts**, which stay until dismissed. Change it under System
 Settings, Notifications, Quill.
 
-Each banner uses `-group quill-claude-stop-<worktree>`, and macOS keeps one
+Each banner uses `-group quill-claude-<worktree>`, and macOS keeps one
 banner per group. So a worktree's new banner replaces that worktree's last
 one, and never another worktree's: if two finish while you are reading,
 both are there when you look up. With **Alerts** chosen above, that is at

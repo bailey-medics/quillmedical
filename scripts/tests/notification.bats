@@ -34,7 +34,7 @@ group_of() {
 @test "a finished banner is grouped by its worktree" {
     run shown_for "$OTHER"
     [ "$status" -eq 0 ]
-    [ "$(group_of "$output")" = "quill-claude-stop-quillmedical-4" ]
+    [ "$(group_of "$output")" = "quill-claude-quillmedical-4" ]
 }
 
 @test "two worktrees do not share a group, so neither banner replaces the other" {
@@ -53,13 +53,16 @@ group_of() {
 
     run shown_for "${OTHER}/frontend"
     [ "$status" -eq 0 ]
-    [ "$(group_of "$output")" = "quill-claude-stop-quillmedical-4" ]
+    [ "$(group_of "$output")" = "quill-claude-quillmedical-4" ]
 }
 
-@test "a question is grouped apart from a finished turn in the same worktree" {
+@test "a question shares its worktree's group, so it replaces a finished banner" {
+    run shown_for "$OTHER"
+    finished_group="$(group_of "$output")"
+
     run shown_for "$OTHER" needs-input
     [ "$status" -eq 0 ]
-    [ "$(group_of "$output")" = "quill-claude-input-quillmedical-4" ]
+    [ "$(group_of "$output")" = "$finished_group" ]
 }
 
 @test "the banner is titled with the worktree" {
