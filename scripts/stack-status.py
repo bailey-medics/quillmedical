@@ -362,7 +362,10 @@ HEAVY_CHECKS = frozenset(
 # A heavy job that fans out over a matrix reports once per leg, as
 # "Storybook interaction tests (2/3)". Matched by prefix so that changing
 # the number of legs in ci.yml does not move them into the fast tier.
-HEAVY_CHECK_PREFIXES = ("Storybook interaction tests (",)
+HEAVY_CHECK_PREFIXES = (
+    "Storybook interaction tests (",
+    "E2E (Playwright) (",
+)
 
 
 def is_heavy(name: str) -> bool:
