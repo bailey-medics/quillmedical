@@ -125,3 +125,90 @@ STUB
     [[ "$args" == *$'-message\nDid the thing'* ]]
     [[ "$args" != *"-execute"* ]]
 }
+
+@test "on Linux, the forward names the box as VS Code knows it, devbox unless set" {
+    [ "$(uname -s)" = "Linux" ] || skip "forwarding is from the Linux dev box"
+
+    QUILL_NOTIFY_SSH_HOST=mac run shown_for "$OTHER"
+    [[ "$output" == *"remote=devbox"* ]]
+
+    QUILL_NOTIFY_SSH_HOST=mac QUILL_NOTIFY_REMOTE_NAME=box2 run shown_for "$OTHER"
+    [[ "$output" == *"remote=box2"* ]]
+}
+
+# Stand-ins for ssh and setsid, first on PATH. The ssh runs the remote
+# command here, with the stream as its stdin, which is what the Mac does;
+# setsid runs it in the foreground so the test can wait for it.
+stub_ssh() {
+    local bin="${BATS_TEST_TMPDIR}/bin"
+
+    mkdir -p "$bin"
+    cat >"${bin}/ssh" <<'STUB'
+#!/bin/bash
+for last; do :; done
+eval "$last"
+STUB
+    cat >"${bin}/setsid" <<'STUB'
+#!/bin/bash
+[ "$1" = "-f" ] && shift
+exec "$@"
+STUB
+    chmod +x "${bin}/ssh" "${bin}/setsid"
+
+    export PATH="${bin}:${PATH}"
+}
+
+@test "a banner forwarded from the box opens the box's window when clicked" {
+    [ "$(uname -s)" = "Linux" ] || skip "forwarding is from the Linux dev box"
+    stub_notifier
+    stub_ssh
+    export HOME="${BATS_TEST_TMPDIR}/home"
+    focus="${HOME}/Library/Caches/quill-notifier/notification-focus.sh"
+
+    printf '{"cwd": "%s"}' "$OTHER" | QUILL_NOTIFY_SSH_HOST=mac "$SCRIPT"
+
+    args="$(cat "${BATS_TEST_TMPDIR}/notifier-args")"
+    [[ "$args" == *$'-execute\n'"'${focus}' '${OTHER}' 'devbox'"* ]]
+    cmp "$focus" "${BATS_TEST_DIRNAME}/../notification-focus.sh"
+    [ -x "$focus" ]
+}
+
+# A stand-in for osascript that records the window title it was asked to
+# find, and finds it only if told to.
+stub_focus_tools() {
+    local bin="${BATS_TEST_TMPDIR}/bin"
+
+    mkdir -p "$bin"
+    cat >"${bin}/osascript" <<STUB
+#!/bin/bash
+printf '%s\n' "\$2" >"${BATS_TEST_TMPDIR}/osascript-name"
+exit "\${OSASCRIPT_STATUS:-1}"
+STUB
+    cat >"${bin}/code" <<STUB
+#!/bin/bash
+printf '%s\n' "\$@" >"${BATS_TEST_TMPDIR}/code-args"
+STUB
+    chmod +x "${bin}/osascript" "${bin}/code"
+
+    export PATH="${bin}:${PATH}"
+    export QUILL_NOTIFY_CODE="${bin}/code"
+}
+
+@test "for the box, the click looks for the window titled with [SSH: devbox]" {
+    stub_focus_tools
+    FOCUS="${BATS_TEST_DIRNAME}/../notification-focus.sh"
+
+    OSASCRIPT_STATUS=0 run "$FOCUS" /home/mark/github/quillmedical-5 devbox
+    [ "$status" -eq 0 ]
+    [ "$(cat "${BATS_TEST_TMPDIR}/osascript-name")" = "quillmedical-5 [SSH: devbox]" ]
+    [ ! -e "${BATS_TEST_TMPDIR}/code-args" ]
+}
+
+@test "for the box, with no window in view, the click opens the folder over SSH" {
+    stub_focus_tools
+    FOCUS="${BATS_TEST_DIRNAME}/../notification-focus.sh"
+
+    run "$FOCUS" /home/mark/github/quillmedical-5 devbox
+    [ "$status" -eq 0 ]
+    [ "$(cat "${BATS_TEST_TMPDIR}/code-args")" = $'--folder-uri\nvscode-remote://ssh-remote+devbox/home/mark/github/quillmedical-5' ]
+}
