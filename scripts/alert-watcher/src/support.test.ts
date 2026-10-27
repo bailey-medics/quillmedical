@@ -30,6 +30,7 @@ describe("readConfig", () => {
     assert.equal(config.worktree, "/home/watcher/github/quillmedical-5");
     assert.equal(config.tmuxTarget, "q5");
     assert.equal(config.stateDirectory, "/home/watcher/.local/state/quill-alert-watcher");
+    assert.equal(config.certificatePath, "/home/watcher/.config/quill-alert-watcher/pki/watcher.crt");
     assert.equal(config.recordEvents, false);
   });
 
