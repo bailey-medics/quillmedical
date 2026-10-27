@@ -6,6 +6,12 @@
 # windows are usually spread across Spaces, so this is what turns "something
 # finished" into "take me there".
 #
+# For a worktree on the dev box, $2 is the name VS Code knows the box by
+# over Remote-SSH, such as "devbox", and $1 is the path on the box. Its
+# window is titled "<file> - quillmedical-5 [SSH: devbox]", and the folder
+# is opened by its vscode-remote address instead of by `open -a`, since the
+# path does not exist on the Mac.
+#
 # Two ways, fastest first:
 #
 #   1. AXRaise through System Events, about 330ms. VS Code titles a window
@@ -36,9 +42,11 @@
 set -u
 
 target="${1:-}"
+remote="${2:-}"
 [ -n "$target" ] || exit 0
 
 name="$(basename "$target")"
+[ -n "$remote" ] && name="$name [SSH: $remote]"
 
 # 1. Raise an existing window by title.
 if osascript - "$name" >/dev/null 2>&1 <<'OSA'
@@ -57,6 +65,25 @@ on run argv
 end run
 OSA
 then
+    exit 0
+fi
+
+# 2, on the box. `code --folder-uri` brings forward the window already
+# holding that remote folder, or opens one. The `code` inside the app bundle,
+# because a banner's command runs with almost no PATH. Without it, the
+# vscode:// link does the same through whatever VS Code is installed. The
+# worktree paths hold no spaces, so neither address needs encoding.
+if [ -n "$remote" ]; then
+    code="${QUILL_NOTIFY_CODE:-/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code}"
+
+    if [ -x "$code" ]; then
+        "$code" --folder-uri "vscode-remote://ssh-remote+${remote}${target}" \
+            >/dev/null 2>&1
+    else
+        open "vscode://vscode-remote/ssh-remote+${remote}${target}" \
+            >/dev/null 2>&1
+    fi
+
     exit 0
 fi
 

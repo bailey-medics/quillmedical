@@ -3,13 +3,17 @@
 # Show one notification on a Mac: a banner, the worktree spoken aloud, and
 # optionally a chime.
 #
-#   notification-show.sh <title> <body> <group> <spoken> [<worktree path>]
+#   notification-show.sh <title> <body> <group> <spoken> [<worktree path>
+#       [<remote name>]]
 #
 # notification.sh works out what to say and calls this to say it. On a Mac
 # it runs it directly. On the Linux dev box it streams this file over SSH to
 # the Mac, as `bash -s`, because the box has no screen of its own: there the
 # file has no path, so SCRIPT_DIR is wherever the shell started and the
-# click-to-focus script is not found, and the banner is posted without it.
+# click-to-focus script is not beside it. The box sends that script too, as
+# QUILL_NOTIFY_FOCUS_SOURCE, and this saves it under ~/Library/Caches. The
+# remote name is what VS Code calls the box, "devbox" in a window titled
+# "quillmedical-5 [SSH: devbox]".
 #
 # The Mac's bash is 3.2, so nothing newer than that is used here.
 #
@@ -22,6 +26,7 @@ body="${2:-}"
 group="${3:-}"
 spoken="${4:-}"
 cwd="${5:-}"
+remote="${6:-}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-.}")" && pwd)"
 AUDIO_FILE="$SCRIPT_DIR/level-completed.mp3"
@@ -84,12 +89,30 @@ if [ "$BANNER" = "1" ]; then
         # Notification Centre carries its stored command, so a
         # click on a stale one fires that, which is easy to misread
         # as a new banner firing on delivery rather than on click.
+        FOCUS_SCRIPT="$SCRIPT_DIR/notification-focus.sh"
+
+        # Streamed from the box, so there is no file beside this one.
+        # Save the copy the box sent, through a temporary file so that a
+        # click arriving mid-write never runs half a script.
+        if [ ! -x "$FOCUS_SCRIPT" ] \
+            && [ -n "${QUILL_NOTIFY_FOCUS_SOURCE:-}" ]; then
+            cache="$HOME/Library/Caches/quill-notifier"
+            FOCUS_SCRIPT="$cache/notification-focus.sh"
+            tmp="$FOCUS_SCRIPT.$$"
+
+            mkdir -p "$cache" 2>/dev/null \
+                && printf '%s\n' "$QUILL_NOTIFY_FOCUS_SOURCE" >"$tmp" \
+                && chmod +x "$tmp" && mv -f "$tmp" "$FOCUS_SCRIPT"
+            rm -f "$tmp" 2>/dev/null
+        fi
+
         set -- -title "$title" -message "$body" -group "$group"
         if [ "${QUILL_NOTIFY_ACTIVATE-1}" != "" ] && [ -n "$cwd" ] \
-            && [ -x "$SCRIPT_DIR/notification-focus.sh" ]; then
+            && [ -x "$FOCUS_SCRIPT" ]; then
             q() { printf "%s" "$1" | sed "s/'/'\\\\''/g"; }
-            set -- "$@" -execute \
-                "'$(q "$SCRIPT_DIR/notification-focus.sh")' '$(q "$cwd")'"
+            command="'$(q "$FOCUS_SCRIPT")' '$(q "$cwd")'"
+            [ -n "$remote" ] && command="$command '$(q "$remote")'"
+            set -- "$@" -execute "$command"
         fi
         "$NOTIFIER_BIN" "$@" >/dev/null 2>&1 || true
     elif command -v osascript >/dev/null 2>&1; then
