@@ -1,5 +1,6 @@
 // The alert watcher: holds one Socket Mode connection to Slack, hands each
 // channel message to the Watcher, and moves the queue on every 30 seconds.
+// Once an hour it also checks whether the client certificate needs renewing.
 //
 // Run by quill-alert-watcher.service on the home box. Reconnecting after a
 // dropped connection is @slack/socket-mode's job, not this file's.
@@ -10,6 +11,7 @@ import { join } from "node:path";
 import { SocketModeClient } from "@slack/socket-mode";
 import { WebClient } from "@slack/web-api";
 
+import { CertificateReminder, readExpiry } from "./certificate.ts";
 import { ConfigError, readConfig } from "./config.ts";
 import { Ledger } from "./ledger.ts";
 import type { SlackMessage } from "./messages.ts";
@@ -18,6 +20,7 @@ import { DEFAULT_OPTIONS, Watcher } from "./watcher.ts";
 import { checkWorktree } from "./worktree.ts";
 
 const TICK_MS = 30_000;
+const CERTIFICATE_CHECK_MS = 60 * 60_000;
 
 function log(event: string, fields: Record<string, string | number | boolean> = {}): void {
   const parts = Object.entries(fields).map(([key, value]) => `${key}=${JSON.stringify(value)}`);
@@ -47,6 +50,7 @@ async function main(): Promise<void> {
   const identity = await web.auth.test();
   const session = new Session({ stateDirectory: config.stateDirectory, tmuxTarget: config.tmuxTarget });
   const ledger = new Ledger(join(config.stateDirectory, "ledger.json"));
+  const reminder = new CertificateReminder(config.certificatePath, join(config.stateDirectory, "certificate-reminder.json"));
 
   const watcher = new Watcher(
     {
@@ -94,8 +98,34 @@ async function main(): Promise<void> {
     });
   }, TICK_MS);
 
+  const remindAboutCertificate = async (): Promise<void> => {
+    const now = new Date();
+    const text = reminder.due(now);
+
+    if (text === undefined) {
+      return;
+    }
+
+    await web.chat.postMessage({ channel: config.channel, text, unfurl_links: false });
+    reminder.sent(now);
+    log("certificate-reminder-posted");
+  };
+
+  setInterval(() => {
+    remindAboutCertificate().catch((error: unknown) => {
+      log("certificate-check-failed", { error: error instanceof Error ? error.message : "unknown" });
+    });
+  }, CERTIFICATE_CHECK_MS);
+
   await socket.start();
   log("connected", { channel: config.channel, worktree: config.worktree });
+
+  const expiry = readExpiry(config.certificatePath);
+  log("certificate", expiry.readable ? { expires: expiry.expires.toISOString() } : { readable: false });
+
+  await remindAboutCertificate().catch((error: unknown) => {
+    log("certificate-check-failed", { error: error instanceof Error ? error.message : "unknown" });
+  });
 }
 
 main().catch((error: unknown) => {
