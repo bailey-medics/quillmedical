@@ -52,6 +52,23 @@ resource "google_service_account" "alert_watcher_logs" {
 # days), so renewing it is a yearly openssl command, with no change here.
 #
 # Only in an environment whose folder holds the authority's certificate.
+#
+# The pool and its provider were made by hand, as Mark, on 27 October 2026,
+# and are imported below. CI's account holds roles/editor, which may read
+# identity pools and providers but not create or change them: the first
+# apply failed with "Permission 'iam.workloadIdentityPools.create' denied",
+# and stopped every apply after it. Granting CI
+# roles/iam.workloadIdentityPoolAdmin was rejected, because that role lets
+# its holder create new ways to sign in to the project. So a change to
+# either, the trust anchor above all, is made by hand with
+# `gcloud iam workload-identity-pools` and then written here to match, or
+# the next apply fails the same way. Renewing the client certificate
+# touches neither.
+#
+# Google refused the first authority, which had no key usage extensions,
+# with "Certificate is not in PEM format". It wants keyUsage=keyCertSign
+# and extendedKeyUsage=clientAuth on the authority, and digitalSignature on
+# the client certificate; the plan step has the openssl configuration.
 locals {
   alert_watcher_ca_path = "${path.module}/environments/${var.environment}/alert-watcher-ca.pem"
   alert_watcher_subject = "quill-alert-watcher"
@@ -85,7 +102,10 @@ resource "google_iam_workload_identity_pool_provider" "alert_watcher_x509" {
   x509 {
     trust_store {
       trust_anchors {
-        pem_certificate = file(local.alert_watcher_ca_path)
+        # Trimmed, because the provider was made from the certificate
+        # without its final newline, and any difference here is an update
+        # CI may not make.
+        pem_certificate = trimspace(file(local.alert_watcher_ca_path))
       }
     }
   }
@@ -100,4 +120,18 @@ resource "google_service_account_iam_member" "alert_watcher_certificate_acts_as_
   service_account_id = google_service_account.alert_watcher_logs.name
   role               = "roles/iam.workloadIdentityUser"
   member             = "principal://iam.googleapis.com/projects/${data.google_project.project.number}/locations/global/workloadIdentityPools/${google_iam_workload_identity_pool.alert_watcher[0].workload_identity_pool_id}/subject/${local.alert_watcher_subject}"
+}
+
+import {
+  for_each = fileexists(local.alert_watcher_ca_path) ? toset(["alert-watcher"]) : toset([])
+
+  to = google_iam_workload_identity_pool.alert_watcher[0]
+  id = "projects/${var.project_id}/locations/global/workloadIdentityPools/${each.key}"
+}
+
+import {
+  for_each = fileexists(local.alert_watcher_ca_path) ? toset(["alert-watcher"]) : toset([])
+
+  to = google_iam_workload_identity_pool_provider.alert_watcher_x509[0]
+  id = "projects/${var.project_id}/locations/global/workloadIdentityPools/${each.key}/providers/home-box-certificate"
 }
