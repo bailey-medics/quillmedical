@@ -97,7 +97,8 @@ if [ "${QUILL_NOTIFY_DEBUG:-0}" = "1" ]; then
     printf 'title=%s\nbody=%s\ngroup=%s\n' "$title" "$body" "$group"
     if [ -n "${QUILL_NOTIFY_SSH_HOST:-}" ] \
         && [ "$(uname -s 2>/dev/null)" = "Linux" ]; then
-        printf 'forward=%s\n' "$QUILL_NOTIFY_SSH_HOST"
+        printf 'forward=%s\nremote=%s\n' "$QUILL_NOTIFY_SSH_HOST" \
+            "${QUILL_NOTIFY_REMOTE_NAME:-devbox}"
     fi
     exit 0
 fi
@@ -112,11 +113,17 @@ case "$worktree" in
 esac
 
 SHOW_SCRIPT="$SCRIPT_DIR/notification-show.sh"
+FOCUS_SCRIPT="$SCRIPT_DIR/notification-focus.sh"
 
 # The Mac to forward to from the Linux dev box, as anything `ssh` accepts:
 # an alias from ~/.ssh/config, or user@host. Unset, the box shows nothing
 # beyond what notify-send can, which on a headless box is nothing.
 SSH_HOST="${QUILL_NOTIFY_SSH_HOST:-}"
+
+# What the Mac calls the box, the name VS Code shows in a window title as
+# "quillmedical-5 [SSH: devbox]". A click on the banner looks for that title,
+# and opens the folder over SSH by that name if no window holds it.
+REMOTE_NAME="${QUILL_NOTIFY_REMOTE_NAME:-devbox}"
 
 case "$(uname -s 2>/dev/null || echo unknown)" in
     Darwin)
@@ -130,14 +137,23 @@ case "$(uname -s 2>/dev/null || echo unknown)" in
         # rather than calling a checkout on the Mac, which may be on
         # another branch or not exist at all.
         #
+        # notification-focus.sh, which a click on the banner runs, travels
+        # in the same stream as a variable set ahead of the show script.
+        # The show script saves it on the Mac, because the click comes
+        # after this connection has closed.
+        #
         # BatchMode stops ssh ever waiting on a password, and setsid -f
         # detaches it, so a Mac that is asleep or refusing connections
         # costs the hook nothing: the turn ends at once either way.
         if [ -n "$SSH_HOST" ] && command -v ssh >/dev/null 2>&1; then
             remote="$(printf '%q ' bash -s -- \
-                "$title" "$body" "$group" "$spoken")"
+                "$title" "$body" "$group" "$spoken" "$cwd" "$REMOTE_NAME")"
+
+            stream="$(printf 'QUILL_NOTIFY_FOCUS_SOURCE=%q\n' \
+                "$(cat "$FOCUS_SCRIPT" 2>/dev/null)"; cat "$SHOW_SCRIPT")"
+
             setsid -f ssh -o BatchMode=yes -o ConnectTimeout=5 \
-                "$SSH_HOST" "$remote" <"$SHOW_SCRIPT" >/dev/null 2>&1 \
+                "$SSH_HOST" "$remote" <<<"$stream" >/dev/null 2>&1 \
                 || true
             exit 0
         fi
