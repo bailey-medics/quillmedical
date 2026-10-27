@@ -22,9 +22,7 @@ resource "google_service_account" "alert_watcher_logs" {
   description  = "Read by the alert watcher on the home box to find out why an alert fired. May read logs and nothing else; see infra/alert-watcher.tf."
 }
 
-# Its two grants are made by hand, not here. The Terraform account holds
-# roles/editor, which cannot change an IAM policy, so a grant written here
-# would fail at apply and hold up every apply after it. They are:
+# Its two grants were made by hand, as Mark, not here. They are:
 #
 #   - roles/logging.viewer on the project, for the audit trail, which stays
 #     in Google's `_Required` bucket (see logging.tf). That role reads
@@ -54,10 +52,14 @@ resource "google_service_account" "alert_watcher_logs" {
 # Only in an environment whose folder holds the authority's certificate.
 #
 # The pool and its provider were made by hand, as Mark, on 27 October 2026,
-# and are imported below. CI's account holds roles/editor, which may read
-# identity pools and providers but not create or change them: the first
-# apply failed with "Permission 'iam.workloadIdentityPools.create' denied",
-# and stopped every apply after it. Granting CI
+# and are imported below. CI's apply account, github-actions, may not
+# create or change them: the first apply failed with "Permission
+# 'iam.workloadIdentityPools.create' denied", and stopped every apply after
+# it. It could not read them either, so importing failed too, until Mark
+# granted it roles/iam.workloadIdentityPoolViewer, which reads pools and
+# providers and changes nothing. (The pull request plan runs as github-plan,
+# whose roles/iam.securityReviewer already read them, which is why that plan
+# was clean and the apply was not.) Granting CI
 # roles/iam.workloadIdentityPoolAdmin was rejected, because that role lets
 # its holder create new ways to sign in to the project. So a change to
 # either, the trust anchor above all, is made by hand with
@@ -112,8 +114,8 @@ resource "google_iam_workload_identity_pool_provider" "alert_watcher_x509" {
 }
 
 # The certificate's identity may act as the log reader. This is a grant on
-# the service account, not on the project, which the Terraform account's
-# roles/editor may set; the two project and bucket grants above stay by hand.
+# the service account, not on the project, and github-actions sets grants
+# like it on other accounts already.
 resource "google_service_account_iam_member" "alert_watcher_certificate_acts_as_log_reader" {
   count = length(google_iam_workload_identity_pool.alert_watcher)
 
