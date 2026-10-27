@@ -290,3 +290,55 @@ PY
     [ "$status" -eq 0 ]
     [ "$output" = "False" ]
 }
+
+# Prints the branches stack-rebase should still have moved, or "none".
+left_behind_of() {
+    python3 - "$SCRIPT" "$1" <<'PY'
+import importlib.util, json, sys
+
+spec = importlib.util.spec_from_file_location("stack_status", sys.argv[1])
+module = importlib.util.module_from_spec(spec)
+sys.modules["stack_status"] = module
+spec.loader.exec_module(module)
+
+found = module.left_behind_branches(json.loads(sys.argv[2]))
+print(" ".join(found) if found else "none")
+PY
+}
+
+@test "a queued branch, and one sitting exactly on it, need no rebase" {
+    # 26 October 2026: #2203 was queued, and stack-submit refused to push
+    # the branch above it.
+    run left_behind_of '{"branches": [
+        {"name": "a", "head": "1", "isMerged": true},
+        {"name": "b", "head": "2", "base": "1", "isQueued": true, "needsRebase": true},
+        {"name": "c", "head": "3", "base": "2", "needsRebase": true}
+    ]}'
+    [ "$status" -eq 0 ]
+    [ "$output" = "none" ]
+}
+
+@test "a branch the rebase skipped, with nothing queued, is reported" {
+    run left_behind_of '{"branches": [
+        {"name": "a", "head": "1", "base": "0"},
+        {"name": "b", "head": "2", "base": "9", "needsRebase": true}
+    ]}'
+    [ "$output" = "b" ]
+}
+
+@test "a branch above a queued one but off its tip is still reported" {
+    run left_behind_of '{"branches": [
+        {"name": "a", "head": "1", "base": "0", "isQueued": true, "needsRebase": true},
+        {"name": "b", "head": "2", "base": "8", "needsRebase": true}
+    ]}'
+    [ "$output" = "b" ]
+}
+
+@test "merged branches and a missing stack report nothing" {
+    run left_behind_of '{"branches": [
+        {"name": "a", "head": "1", "isMerged": true, "needsRebase": true}
+    ]}'
+    [ "$output" = "none" ]
+    run left_behind_of 'null'
+    [ "$output" = "none" ]
+}

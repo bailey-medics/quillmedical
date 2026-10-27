@@ -185,6 +185,50 @@ def spent_branches(stack: dict[str, object] | None) -> list[str] | None:
     return [str(entry.get("name", "")) for entry in entries]
 
 
+def left_behind_branches(stack: dict[str, object] | None) -> list[str]:
+    """The open branches `gh stack rebase` should have rebased and did not.
+
+    `needsRebase` alone over-reports while a pull request is in the merge
+    queue. `gh stack rebase` leaves a queued branch where it is, since
+    rebasing it would take it out of the queue, and so it stays behind
+    trunk; every branch above it then reads `needsRebase` too, because
+    the line it sits on is behind. Neither is a branch the rebase skipped
+    by mistake. Seen on 26 October 2026, when `stack-submit` refused to
+    push a branch sitting exactly on a queued #2203.
+
+    So a queued branch is excused, and so is a branch above one whose
+    `base` is the tip of the open branch below it: it is where the rebase
+    put it. Anything else flagged is a real skip.
+    """
+    if stack is None:
+        return []
+
+    found: list[str] = []
+    below: dict[str, object] | None = None
+    above_queued = False
+
+    for entry in stack_entries(stack):
+        if entry.get("isMerged"):
+            continue
+
+        name = str(entry.get("name", ""))
+
+        if entry.get("isQueued"):
+            above_queued = True
+        elif entry.get("needsRebase"):
+            on_its_parent = (
+                above_queued
+                and below is not None
+                and entry.get("base") == below.get("head")
+            )
+            if not on_its_parent:
+                found.append(name)
+
+        below = entry
+
+    return found
+
+
 def read_worktrees() -> dict[str, str]:
     """Map branch name to the worktree checking it out, excluding this one.
 
@@ -852,6 +896,15 @@ def main() -> int:
         ),
     )
     parser.add_argument(
+        "--left-behind",
+        action="store_true",
+        help=(
+            "print the open branches a rebase should have moved and did "
+            "not, one per line, and exit 1 if there are any, for `just "
+            "stack-rebase` to check its own result"
+        ),
+    )
+    parser.add_argument(
         "--numbered",
         action="store_true",
         help="number the open branches, 1 at the bottom, for --branch-at",
@@ -892,6 +945,14 @@ def main() -> int:
             if name:
                 print(name)
         return 0
+
+    if args.left_behind:
+        # Asked before the "no stack" message, like --spent: a recipe is
+        # asking, not a person reading.
+        left_behind = left_behind_branches(stack)
+        for name in left_behind:
+            print(name)
+        return 1 if left_behind else 0
 
     if stack is None:
         draw_no_stack(palette)
