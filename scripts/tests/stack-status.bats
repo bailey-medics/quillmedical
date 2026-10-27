@@ -162,6 +162,18 @@ PY
     [ "$output" = "heavy" ]
 }
 
+@test "a leg of the sharded E2E job counts as heavy" {
+    run tier_of "E2E (Playwright) (3/3)"
+    [ "$status" -eq 0 ]
+    [ "$output" = "heavy" ]
+}
+
+@test "the E2E gate job still counts as heavy" {
+    run tier_of "E2E (Playwright)"
+    [ "$status" -eq 0 ]
+    [ "$output" = "heavy" ]
+}
+
 @test "the Storybook build, in the fast tier, is not caught by the prefix" {
     run tier_of "typescript_checks (storybook:build)"
     [ "$status" -eq 0 ]

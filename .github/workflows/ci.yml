@@ -789,16 +789,23 @@ jobs:
           cache-from: type=gha,scope=ci-public
 
   # ---------- E2E (Playwright) ----------
-  heavy_e2e:
+  # Split three ways, because the tests are about 13 of the job's 15
+  # minutes. Each leg is its own runner with its own stack and database,
+  # seeded the same way, and runs a third of the tests. Change the count in
+  # three places together: the matrix, the shard handed to Playwright and
+  # the job name. See docs/docs/plans/2026-10-27-e2e-shards-plan.md.
+  heavy_e2e_shards:
     if: (github.event_name == 'pull_request' && github.event.pull_request.draft == false) || github.event_name == 'merge_group'
     runs-on: ubuntu-24.04
-    name: E2E (Playwright)
+    name: E2E (Playwright) (${{ matrix.shard }}/3)
     timeout-minutes: 20
     needs: [heavy_e2e_images]
-    outputs:
-      # The public images the job had to use because the mirror did not
-      # hold them. Empty when every image came from the mirror.
-      mirror_fell_back: ${{ steps.mirror.outputs.fell_back }}
+    strategy:
+      # One leg failing must not cancel the others: a cancelled leg hides
+      # whichever failures it had not reached yet.
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
     env:
       CI_IMAGE_BACKEND: ghcr.io/${{ github.repository_owner }}/quillmedical-ci_backend:${{ github.sha }}
       CI_IMAGE_FRONTEND: ghcr.io/${{ github.repository_owner }}/quillmedical-ci_frontend:${{ github.sha }}
@@ -851,6 +858,23 @@ jobs:
         id: mirror
         run: bash .github/scripts/ci/use-mirrored-images.sh "${{ github.repository_owner }}" compose.ci.yml CI_POSTGRES_IMAGE CI_CADDY_IMAGE
 
+      # A matrix job's output is whichever leg wrote it last, so a fallback
+      # one leg saw could vanish behind a leg that saw none. Each leg that
+      # fell back hands its list to the gate job as a file instead.
+      - name: Record the public images this leg fell back to
+        if: steps.mirror.outputs.fell_back != ''
+        env:
+          FELL_BACK: ${{ steps.mirror.outputs.fell_back }}
+        run: printf '%s\n' "$FELL_BACK" > "${RUNNER_TEMP}/fell-back.txt"
+
+      - name: Upload the public images this leg fell back to
+        if: steps.mirror.outputs.fell_back != ''
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: e2e-mirror-fell-back-${{ matrix.shard }}
+          path: ${{ runner.temp }}/fell-back.txt
+          retention-days: 1
+
       - name: Start CI stack
         run: docker compose -f compose.ci.yml up --wait --wait-timeout 120
 
@@ -901,19 +925,59 @@ jobs:
           -v "$PWD:/work" -w /work
           -v "$PWD/../.e2e-teaching:/.e2e-teaching"
           "mcr.microsoft.com/playwright:v${{ steps.playwright_version.outputs.version }}-noble"
-          npx playwright test
+          npx playwright test --shard=${{ matrix.shard }}/3
 
+      # Named by leg, because a run refuses two artifacts of one name. Kept
+      # as three reports rather than merged into one: a failure is read
+      # from the leg that failed.
       - name: Upload test results
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v7.0.1
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.shard }}
           path: frontend/playwright-report/
           retention-days: 7
 
       - name: Dump container logs on failure
         if: failure()
         run: docker compose -f compose.ci.yml logs --tail=100
+
+  # Carries the required check's name for the three legs above. The name is
+  # required in infra/github/branch_rules.tf and read by
+  # scripts/stack-status.py, and a matrix reports as "... (1/3)" instead. It
+  # keeps the job id heavy_e2e too, so the jobs that read its result and
+  # its output need no change.
+  #
+  # `always()` is what makes this safe. Without it a failed leg leaves this
+  # job skipped, and a required check that is skipped counts as passed. The
+  # rest of the condition is the legs' own, so a draft still skips it.
+  heavy_e2e:
+    if: always() && ((github.event_name == 'pull_request' && github.event.pull_request.draft == false) || github.event_name == 'merge_group')
+    needs: [heavy_e2e_shards]
+    runs-on: ubuntu-24.04
+    name: E2E (Playwright)
+    timeout-minutes: 5
+    outputs:
+      # The public images any leg had to use because the mirror did not
+      # hold them. Empty when every image came from the mirror.
+      mirror_fell_back: ${{ steps.mirror.outputs.fell_back }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      # Before the check below, so the list is handed on when a leg failed
+      # too: a refused public pull is the failure it most needs to explain.
+      - name: Download the public images the legs fell back to
+        uses: actions/download-artifact@v8.0.1
+        with:
+          pattern: e2e-mirror-fell-back-*
+          path: ${{ runner.temp }}/fell-back
+
+      - name: Collect the public images the legs fell back to
+        id: mirror
+        run: bash .github/scripts/ci/collect-mirror-fell-back.sh "${{ runner.temp }}/fell-back"
+
+      - name: Require every leg to have passed
+        run: bash .github/scripts/ci/require-matrix-success.sh "E2E (Playwright)" "${{ needs.heavy_e2e_shards.result }}"
 
   # The end-to-end job, and the image builds before it, carry on with the
   # public image when the mirror does not hold one, which is safe but is
