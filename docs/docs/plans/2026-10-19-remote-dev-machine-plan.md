@@ -213,9 +213,9 @@ Three changes were agreed with Mark the same day, after the stack above was buil
 
 ## Phase 5: Review after the first month
 
-- [ ] Decide whether it is working: the felt speed, the typing latency over Remote-SSH from outside the house, whether a job started on the box and directed from the phone finished as expected, and whether any outage or power cut stranded one.
+- [x] Tidy the code that exists only for the old Intel and Apple Silicon laptops, as a separate change needing `implement`. The Rosetta JIT workaround on the `fhir` service in `compose.dev.yml` (`-XX:TieredStopAtLevel=1`) is gone: it was only needed under Rosetta on Apple Silicon, and on the box it only slowed HAPI by turning off its optimising compiler. The `--platform linux/amd64` on the image build in `build-admin` stays, which this step got wrong: it is not a laptop workaround but what makes the admin image runnable on Cloud Run, which takes amd64 images only. It does nothing on the box, but it is what stops a build from an Apple Silicon Mac pushing an arm64 image the job cannot start.
 
-- [ ] Tidy the two bits of code that exist only for the old Intel and Apple Silicon laptops, as a separate change needing `implement`: the Rosetta JIT workaround on the `fhir` service in `compose.dev.yml` (lines 141 to 143, `-XX:TieredStopAtLevel=1`) is only needed under Rosetta on Apple Silicon, and the `--platform linux/amd64` on the image build at `Justfile:457` is a no-op on an x86 box. Both are harmless until then.
+- [ ] Decide whether it is working: the felt speed, the typing latency over Remote-SSH from outside the house, whether a job started on the box and directed from the phone finished as expected, and whether any outage or power cut stranded one.
 
 ## Decisions
 
