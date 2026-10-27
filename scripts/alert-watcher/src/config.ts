@@ -12,6 +12,7 @@ export interface Config {
   worktree: string;
   tmuxTarget: string;
   stateDirectory: string;
+  certificatePath: string;
   recordEvents: boolean;
 }
 
@@ -40,6 +41,8 @@ export function readConfig(env: NodeJS.ProcessEnv): Config {
     tmuxTarget: env["ALERT_WATCHER_TMUX_TARGET"] || "q5",
     // The same folder .claude/hooks/alert-watcher-busy.sh writes the flag in.
     stateDirectory: env["QUILL_ALERT_WATCHER_STATE"] || join(stateHome, "quill-alert-watcher"),
+    // The client certificate the box signs in to Google with.
+    certificatePath: env["ALERT_WATCHER_CERTIFICATE"] || join(home, ".config", "quill-alert-watcher", "pki", "watcher.crt"),
     recordEvents: env["ALERT_WATCHER_RECORD_EVENTS"] === "1",
   };
 }
