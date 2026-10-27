@@ -83,13 +83,12 @@ else
 fi
 
 # macOS keeps one banner per group, a new one replacing the last. The
-# worktree is part of the group so that each worktree keeps its own: two
-# finishing while nobody is looking leave two banners, not just the later
-# one. A question has a group apart from a finished turn, so its banner is
-# not replaced by the finished banner that follows the reply, or the other
-# way round.
-group="quill-claude-stop-$worktree"
-[ "$MODE" = "needs-input" ] && group="quill-claude-input-$worktree"
+# worktree is the group, so each worktree keeps one banner, its latest: two
+# worktrees finishing while nobody is looking leave two banners, and one
+# worktree finishing twice leaves one. A question shares the group with a
+# finished turn. Mark asked for that on 27 October 2026, after the two kinds
+# had been kept apart and piled up for the same worktree.
+group="quill-claude-$worktree"
 
 # Set QUILL_NOTIFY_DEBUG=1 to print what would be shown and stop; used by
 # the tests, and handy when a banner is not saying what you expected.
