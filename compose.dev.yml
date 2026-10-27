@@ -138,9 +138,6 @@ services:
     container_name: quill_fhir
     env_file: backend/.env
     environment:
-      # Disable C2 JIT compiler - avoids MachOper::hash() crash when running
-      # amd64 JVM under Rosetta 2 emulation on Apple Silicon
-      - JAVA_TOOL_OPTIONS=-XX:TieredStopAtLevel=1
       - spring.datasource.url=jdbc:postgresql://postgres-fhir:5432/hapi
       - spring.datasource.username=hapi_user
       - spring.datasource.password=hapi_secure_password_123
