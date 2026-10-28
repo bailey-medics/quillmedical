@@ -19,6 +19,10 @@
 # names a public image outright is not found by this, and so is not
 # copied: check-mirrored-images.sh is what refuses one.
 #
+# The image a Dockerfile's `# syntax=` line names is copied as well. It is
+# the parser BuildKit fetches before reading anything else, and CI hands
+# the build the copy as the BUILDKIT_SYNTAX build argument.
+#
 # `skopeo copy --all` moves the image for every platform as it is, so the
 # copy's digest is the source's digest, and an image pinned to a digest can
 # be pulled from the copy by that same digest. Copying one that is already
@@ -52,6 +56,14 @@ base_images() {
   local dockerfile="$1"
 
   sed -n -E 's/^ARG[[:space:]]+[A-Z0-9_]+_IMAGE=([^[:space:]]+).*$/\1/p' "$dockerfile"
+}
+
+# Prints the image a Dockerfile's `# syntax=` line names, or nothing. Only
+# the first line: further down it is an ordinary comment to BuildKit.
+syntax_image() {
+  local dockerfile="$1"
+
+  sed -n -E '1s/^#[[:space:]]*syntax=([^[:space:]]+).*$/\1/p' "$dockerfile"
 }
 
 # Whether the mirror already holds this exact image. Only an image pinned
@@ -101,6 +113,7 @@ main() {
       exit 1
     fi
 
+    found="$(printf '%s\n%s\n' "$found" "$(syntax_image "$dockerfile")")"
     images="$(printf '%s\n%s\n' "$images" "$found" | grep '/' | sort -u)"
   done
 

@@ -139,6 +139,38 @@ build_args() {
   [ "$(build_args)" = "PYTHON_IMAGE=ghcr.io/bailey-medics/mirror/python@sha256:abc123" ]
 }
 
+@test "hands the build the syntax image's copy as BUILDKIT_SYNTAX" {
+  # The syntax line is read before any ARG, so only this argument changes it.
+  sed -i '1i # syntax=mirror.gcr.io/docker/dockerfile:1.27@sha256:fed789' "$BACKEND"
+  echo "ghcr.io/bailey-medics/mirror/dockerfile@sha256:fed789" > "$HELD"
+
+  run bash "$SCRIPT" bailey-medics "$BACKEND"
+
+  [ "$status" -eq 0 ]
+  [ "$(build_args)" = "BUILDKIT_SYNTAX=ghcr.io/bailey-medics/mirror/dockerfile@sha256:fed789" ]
+}
+
+@test "leaves the syntax image on its public name when the mirror lacks it, and says so" {
+  sed -i '1i # syntax=mirror.gcr.io/docker/dockerfile:1.27@sha256:fed789' "$BACKEND"
+  echo "ghcr.io/bailey-medics/mirror/python@sha256:abc123" > "$HELD"
+
+  run bash "$SCRIPT" bailey-medics "$BACKEND"
+
+  [ "$status" -eq 0 ]
+  [ "$(build_args)" = "PYTHON_IMAGE=ghcr.io/bailey-medics/mirror/python@sha256:abc123" ]
+  grep -qx "fell_back=mirror.gcr.io/docker/dockerfile:1.27@sha256:fed789" "$GITHUB_OUTPUT"
+}
+
+@test "a syntax line below the first is a comment, and gives no argument" {
+  sed -i '1a # syntax=mirror.gcr.io/docker/dockerfile:1.27@sha256:fed789' "$BACKEND"
+  echo "ghcr.io/bailey-medics/mirror/dockerfile@sha256:fed789" > "$HELD"
+
+  run bash "$SCRIPT" bailey-medics "$BACKEND"
+
+  [ "$status" -eq 0 ]
+  [[ "$(build_args)" != *"BUILDKIT_SYNTAX"* ]]
+}
+
 @test "fails for a Dockerfile that names no base image in an ARG" {
   echo "FROM public.ecr.aws/docker/library/python:3.14-slim" > "$BACKEND"
 
@@ -181,6 +213,7 @@ build_args() {
   [[ "$output" == *"PYTHON_IMAGE"* ]]
   [[ "$output" == *"NODE_IMAGE"* ]]
   [[ "$output" == *"CADDY_IMAGE"* ]]
+  [[ "$output" == *"BUILDKIT_SYNTAX"* ]]
 }
 
 @test "every workflow that builds an image asks for the mirrored base images first" {
