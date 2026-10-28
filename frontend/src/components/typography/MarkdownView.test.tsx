@@ -6,9 +6,10 @@
  */
 
 import { describe, it, expect, vi } from "vitest";
-import { screen } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithMantine } from "@/test/test-utils";
+import { IconUserPlus } from "@/components/icons/appIcons";
 import MarkdownView from "./MarkdownView";
 
 describe("MarkdownView", () => {
@@ -578,6 +579,78 @@ Another paragraph.`;
 
       expect(container.querySelector("img")).toBeNull();
       expect(screen.getByText("The form")).toBeInTheDocument();
+    });
+  });
+
+  describe("Icons", () => {
+    const icons = { "user-plus": <IconUserPlus /> };
+
+    it("leaves the name as text unless the caller allows icons", () => {
+      const { container } = renderWithMantine(
+        <MarkdownView source="Press :icon-user-plus: to add." />,
+      );
+
+      expect(container.querySelector("svg")).toBeNull();
+      expect(
+        screen.getByText("Press :icon-user-plus: to add."),
+      ).toBeInTheDocument();
+    });
+
+    it("shows a named icon in the line of text", async () => {
+      const { container } = renderWithMantine(
+        <MarkdownView
+          source="Press **Add** :icon-user-plus:, then save."
+          icons={icons}
+        />,
+      );
+
+      const slot = container.querySelector("p > span[data-icon='user-plus']");
+
+      expect(slot).not.toBeNull();
+      await waitFor(() => expect(slot?.querySelector("svg")).not.toBeNull());
+      expect(slot).toHaveAttribute("aria-hidden", "true");
+      expect(container.querySelector("p")?.textContent).toBe(
+        "Press Add , then save.",
+      );
+    });
+
+    it("shows an icon in a numbered step", async () => {
+      const { container } = renderWithMantine(
+        <MarkdownView
+          source={"1. Press :icon-user-plus:.\n2. Save."}
+          icons={icons}
+        />,
+      );
+
+      await waitFor(() =>
+        expect(
+          container.querySelector("ol > li:first-child svg"),
+        ).not.toBeNull(),
+      );
+      expect(container.querySelectorAll("ol > li")).toHaveLength(2);
+    });
+
+    it("leaves out an icon the caller did not give", () => {
+      const { container } = renderWithMantine(
+        <MarkdownView source="Press :icon-trash: to delete." icons={icons} />,
+      );
+
+      expect(container.querySelector("span[data-icon]")).toBeNull();
+      expect(container.querySelector("p")?.textContent).toBe(
+        "Press  to delete.",
+      );
+    });
+
+    it("lets no other span or attribute through when icons are on", () => {
+      const { container } = renderWithMantine(
+        <MarkdownView
+          source={'<span data-icon="user-plus" onclick="alert(1)">x</span>'}
+          icons={icons}
+        />,
+      );
+
+      expect(container.querySelector("span[data-icon]")).toBeNull();
+      expect(container.querySelector("[onclick]")).toBeNull();
     });
   });
 });

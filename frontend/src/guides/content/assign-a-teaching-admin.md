@@ -19,7 +19,7 @@ on for one site.
 
 ## Give a new person the role
 
-1. On the organisation's page, press the **Add staff** button. It is the icon of a person with a plus symbol, above the organisation's staff table.
+1. On the organisation's page, press the **Add staff** button :icon-user-plus:, above the organisation's staff table.
 2. Under **Username or email address**, type their email address and press **Find**.
 3. Quill says **Nobody on Quill uses** that address. Press **Create new user**. If it says they already have a Quill account, go to the next section instead.
    ![The organisation's Add staff page, offering to create a new user](assign-a-teaching-admin/not-found.png)

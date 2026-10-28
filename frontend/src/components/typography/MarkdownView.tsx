@@ -7,10 +7,12 @@
  * system via CSS module. Used for clinical letters and messages.
  */
 
-import type { ReactNode } from "react";
-import { useEffect, useMemo, useRef } from "react";
+import type { ReactElement, ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import DOMPurify from "dompurify";
 import { Skeleton, Stack } from "@mantine/core";
+import Icon from "@/components/icons/Icon";
 import classes from "./MarkdownView.module.css";
 
 /**
@@ -44,6 +46,15 @@ type Props = {
    * numbered step can carry its screenshot without ending the list.
    */
   imageBase?: string;
+  /**
+   * Icons the source may show in its text, by name. Off unless given, as
+   * images are.
+   *
+   * With `{ "user-plus": <IconUserPlus /> }`, `:icon-user-plus:` shows
+   * that icon in the line, at the size of the text around it, so a step
+   * can show the button it means. A name not given here is left out.
+   */
+  icons?: Readonly<Record<string, ReactElement>>;
 };
 
 /**
@@ -71,6 +82,13 @@ const ALLOWED_ATTR = ["href", "rel", "target"];
 // Added to the lists above only when the caller gives an `imageBase`.
 const IMAGE_TAGS = ["img"];
 const IMAGE_ATTR = ["src", "alt", "loading"];
+// Added only when the caller gives `icons`. The span is an empty slot the
+// icon is drawn into once the markup is on the page.
+const ICON_TAGS = ["span"];
+const ICON_ATTR = ["data-icon", "aria-hidden"];
+
+/** An icon named in the text: `:icon-user-plus:`. */
+const ICON_NAME = /:icon-([a-z0-9]+(?:-[a-z0-9]+)*):/g;
 
 /** An image address a guide may use: beneath the base, and nowhere else. */
 const IMAGE_PATH = /^[a-z0-9-]+(\/[a-z0-9-]+)*\.(png|jpe?g|webp)$/;
@@ -153,9 +171,23 @@ function escapeAttr(str: string) {
     .replace(/>/g, "&gt;");
 }
 
-function inlineFormat(raw: string, imageBase?: string) {
+function inlineFormat(
+  raw: string,
+  imageBase?: string,
+  icons?: Readonly<Record<string, ReactElement>>,
+) {
   // operate on escaped input
   let s = escapeHtml(raw);
+
+  // icons: `:icon-user-plus:` becomes an empty slot, which the component
+  // draws the icon into. One the caller did not give is left out.
+  if (icons) {
+    s = s.replace(ICON_NAME, (_m, name: string) =>
+      Object.hasOwn(icons, name)
+        ? `<span data-icon="${name}" aria-hidden="true"></span>`
+        : "",
+    );
+  }
 
   // images: ![alt](path). Taken out first, since an image is a link with
   // a mark in front of it, and put back last, so the bold and italic
@@ -196,7 +228,11 @@ function inlineFormat(raw: string, imageBase?: string) {
   return s;
 }
 
-function mdToHtml(src: string, imageBase?: string) {
+function mdToHtml(
+  src: string,
+  imageBase?: string,
+  icons?: Readonly<Record<string, ReactElement>>,
+) {
   // The lines of one list, each item with any image indented beneath it.
   const isImageUnderItem = (line: string | undefined) =>
     imageBase !== undefined &&
@@ -251,7 +287,7 @@ function mdToHtml(src: string, imageBase?: string) {
         items.push(item);
       }
       const lis = items
-        .map((it) => `<li>${inlineFormat(it, imageBase)}</li>`)
+        .map((it) => `<li>${inlineFormat(it, imageBase, icons)}</li>`)
         .join("");
       out.push(`<ul>${lis}</ul>`);
       continue;
@@ -270,7 +306,7 @@ function mdToHtml(src: string, imageBase?: string) {
         items.push(item);
       }
       const lis = items
-        .map((it) => `<li>${inlineFormat(it, imageBase)}</li>`)
+        .map((it) => `<li>${inlineFormat(it, imageBase, icons)}</li>`)
         .join("");
       out.push(`<ol>${lis}</ol>`);
       continue;
@@ -283,7 +319,7 @@ function mdToHtml(src: string, imageBase?: string) {
       para += " " + lines[i].trim();
       i++;
     }
-    out.push(`<p>${inlineFormat(para, imageBase)}</p>`);
+    out.push(`<p>${inlineFormat(para, imageBase, icons)}</p>`);
   }
 
   return out.join("\n");
@@ -314,12 +350,13 @@ export default function MarkdownView({
   children,
   isLoading = false,
   imageBase,
+  icons,
 }: Props) {
   // 1) Render markdown to HTML
   const rawHtml = useMemo(() => {
     if (asPlainText) return toPlainText(source);
-    return mdToHtml(source, imageBase);
-  }, [source, asPlainText, imageBase]);
+    return mdToHtml(source, imageBase, icons);
+  }, [source, asPlainText, imageBase, icons]);
 
   // 2) Sanitize final HTML before any injection
   const sanitizedHtml = useMemo(() => {
@@ -329,15 +366,20 @@ export default function MarkdownView({
       return rawHtml.replace(/<[^>]+>/g, "");
     }
     const withImages = imageBase !== undefined;
+    const withIcons = icons !== undefined;
     return DOMPurify.sanitize(rawHtml, {
-      ALLOWED_TAGS: withImages
-        ? [...ALLOWED_TAGS, ...IMAGE_TAGS]
-        : ALLOWED_TAGS,
-      ALLOWED_ATTR: withImages
-        ? [...ALLOWED_ATTR, ...IMAGE_ATTR]
-        : ALLOWED_ATTR,
+      ALLOWED_TAGS: [
+        ...ALLOWED_TAGS,
+        ...(withImages ? IMAGE_TAGS : []),
+        ...(withIcons ? ICON_TAGS : []),
+      ],
+      ALLOWED_ATTR: [
+        ...ALLOWED_ATTR,
+        ...(withImages ? IMAGE_ATTR : []),
+        ...(withIcons ? ICON_ATTR : []),
+      ],
     });
-  }, [rawHtml, asPlainText, imageBase]);
+  }, [rawHtml, asPlainText, imageBase, icons]);
 
   // An image that will not load is swapped for its alt text in a plain
   // box. A guide's screenshots are retaken and uploaded apart from the
@@ -373,6 +415,20 @@ export default function MarkdownView({
     });
     return () => root.removeEventListener("error", onError, true);
   }, [sanitizedHtml, imageBase]);
+
+  // The slots an icon is drawn into. The markup is injected, so React
+  // only learns of them once it is on the page, and draws each icon into
+  // its slot through a portal, with the app's own Icon component.
+  const [iconSlots, setIconSlots] = useState<HTMLElement[]>([]);
+  useEffect(() => {
+    const root = rootRef.current;
+    const slots =
+      root && icons
+        ? [...root.querySelectorAll<HTMLElement>("span[data-icon]")]
+        : [];
+
+    setIconSlots(slots);
+  }, [sanitizedHtml, icons]);
 
   // Show loading skeleton (after hooks to follow rules of hooks)
   if (isLoading) {
@@ -416,16 +472,25 @@ export default function MarkdownView({
   }
 
   return (
-    // Delegated handler for the links inside the rendered markdown. The
-    // links are real anchors, so Enter on one fires this click too; the
-    // div itself is not interactive.
-    // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
-    <div
-      ref={rootRef}
-      className={combinedClassName}
-      onClick={handleClick}
-      // eslint-disable-next-line react/no-danger -- Sanitised via DOMPurify with strict ALLOWED_TAGS/ATTR above.
-      dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
-    />
+    <>
+      {/* Delegated handler for the links inside the rendered markdown. The
+          links are real anchors, so Enter on one fires this click too; the
+          div itself is not interactive. */}
+      {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
+      <div
+        ref={rootRef}
+        className={combinedClassName}
+        onClick={handleClick}
+        // eslint-disable-next-line react/no-danger -- Sanitised via DOMPurify with strict ALLOWED_TAGS/ATTR above.
+        dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
+      />
+      {iconSlots.map((slot, index) => {
+        const icon = icons?.[slot.dataset.icon ?? ""];
+
+        return icon
+          ? createPortal(<Icon icon={icon} size="sm" />, slot, String(index))
+          : null;
+      })}
+    </>
   );
 }

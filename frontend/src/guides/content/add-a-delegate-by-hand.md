@@ -17,8 +17,8 @@ And if they are new to Quill:
 
 ## Find and add an existing user
 
-1. In the side menu, choose [**Admin**](/admin) and then [**Sites**](/admin/sites), and open the delegate's site.
-2. Press the **Add staff** button. It is the icon of a person with a plus symbol, above the **Site specific staff members** table. Hint: hover over an icon to see its action.
+1. In the side menu, choose [**Admin**](/admin) and then [**Sites**](/admin/sites), and open the delegate's to be site.
+2. Press the **Add staff** button :icon-user-plus: , above the **Site specific staff members** table.
    ![A site's page, with the Add staff button above its staff table](add-a-delegate-by-hand/site.png)
 3. Under **Username or email address**, type the delegate's email address and press **Find**.
 
