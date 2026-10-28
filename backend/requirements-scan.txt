@@ -9,4 +9,4 @@
 # behind this and no Renovate coverage, so an unpinned range here would
 # make the image non-reproducible. Kept at the version poetry.lock holds,
 # so the two never disagree about the storage client.
-google-cloud-storage==3.17.0
+google-cloud-storage==3.17.1
