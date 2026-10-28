@@ -123,6 +123,17 @@ export function PageMessageProvider({ children }: PageMessageProviderProps) {
   const navigate = useNavigate();
   const prevPathnameRef = useRef(location.pathname);
 
+  // Ids only need to be unique within this provider, so a counter will do.
+  // Not crypto.randomUUID(): browsers offer it only over HTTPS or on
+  // localhost, and a dev app opened at a network address over plain HTTP
+  // crashed on the first message.
+  const lastIdRef = useRef(0);
+  const nextId = useCallback(() => {
+    lastIdRef.current += 1;
+
+    return `page-message-${lastIdRef.current}`;
+  }, []);
+
   // Clear all messages on pathname change
   useEffect(() => {
     if (location.pathname !== prevPathnameRef.current) {
@@ -144,7 +155,7 @@ export function PageMessageProvider({ children }: PageMessageProviderProps) {
 
     if (flash) {
       const msg: PageMessage = {
-        id: crypto.randomUUID(),
+        id: nextId(),
         variant: flash.variant ?? "success",
         title: flash.title,
         description: flash.description,
@@ -159,12 +170,15 @@ export function PageMessageProvider({ children }: PageMessageProviderProps) {
         state: {},
       });
     }
-  }, [location.state, navigate, location.pathname, location.search]);
+  }, [location.state, navigate, location.pathname, location.search, nextId]);
 
-  const showMessage = useCallback((msg: Omit<PageMessage, "id">) => {
-    const newMsg: PageMessage = { ...msg, id: crypto.randomUUID() };
-    setMessages((prev) => [...prev, newMsg]);
-  }, []);
+  const showMessage = useCallback(
+    (msg: Omit<PageMessage, "id">) => {
+      const newMsg: PageMessage = { ...msg, id: nextId() };
+      setMessages((prev) => [...prev, newMsg]);
+    },
+    [nextId],
+  );
 
   const dismiss = useCallback((id: string) => {
     setMessages((prev) => prev.filter((m) => m.id !== id));

@@ -18,19 +18,37 @@ term_handler() {
 }
 trap 'term_handler' TERM INT
 
-# Start SPA (root) on 5173
+# This container runs as root, and on a Linux host what it writes into the
+# mounted worktree stays root's, so the host's next `yarn generate:types`
+# stops at EACCES. Run each step that writes there through the hand-back
+# script, which gives it back to HOST_UID. Without the script mounted, or
+# on a Mac, the step simply runs.
+hand_back_script=/usr/local/bin/hand-back-ownership.sh
+
+hand_back() {
+  if [ -f "$hand_back_script" ]; then
+    sh "$hand_back_script" /app "$@"
+  else
+    "$@"
+  fi
+}
+
+# Generate everything up front, so the servers below write nothing.
+echo "Generating types and pages once..."
+hand_back yarn generate:types
+(cd /app/public_pages && hand_back yarn pages:gen) || true
+
+# Start SPA (root) on 5173. Plain vite, as `yarn dev` would generate again.
 (
   cd /app
   echo "Starting SPA (root) on 5173..."
-  exec yarn dev --host 0.0.0.0 --port 5173
+  exec yarn vite --host 0.0.0.0 --port 5173
 ) &
 spa_pid=$!
 
 # Start public pages on 5174
 (
   cd /app/public_pages
-  echo "Generating pages once..."
-  yarn pages:gen || true
   echo "Starting public pages dev server on 5174..."
   exec yarn vite --host 0.0.0.0 --port 5174
 ) &

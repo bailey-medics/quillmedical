@@ -2496,6 +2496,10 @@ start-app build="":
     echo "Access the frontend at: http://$(just _host-address)"
     echo "Clinical services (FHIR/EHRbase) disabled"
 
+    # The backend bind-mounts teaching-repos/. Left for Docker to make, it
+    # comes out owned by root on a Linux host.
+    mkdir -p teaching-repos
+
     build_args=""
 
     if [ "{{build}}" = "b" ]; then
@@ -2539,6 +2543,10 @@ start-ehr build="":
     trap 'echo; echo "Stopping the stack..."; \
         COMPOSE_PROFILES=clinical \
         docker compose -f compose.dev.yml down' INT TERM
+
+    # The backend bind-mounts teaching-repos/. Left for Docker to make, it
+    # comes out owned by root on a Linux host.
+    mkdir -p teaching-repos
 
     build_args=""
 
