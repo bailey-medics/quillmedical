@@ -136,13 +136,18 @@ Run both of these after any change to the daemon, the skill or an alert
 policy, and before trusting the watcher for the first time.
 
 1. **A planted fault.** Merge a route with a fault only an operator can
-   reach, such as `/api/operator/rehearsal/average` called with no numbers,
-   and call it once it is deployed, so "Backend error:" fires. It must be
-   on `main`, not only on a deployed branch, because the skill writes a
-   test that has to fail on `main`. Within a minute the thread should say "Looking into this now".
-   Within the hour it should say "Found the cause:", and then "Pull request
-   ready for review:" with a link to a pull request whose new test fails
-   on `main` and passes on its branch. Close that pull request and revert the planted branch.
+   reach, behind `DEP_REQUIRE_OPERATOR`, and call it once it is deployed, so
+   "Backend error:" fires. It must be on `main`, not only on a deployed
+   branch, because the skill writes a test that has to fail on `main`. Open
+   the app first, so the 15-minute login cookie is fresh, or the call is
+   refused with a 401 and nothing fires. Within a minute the thread should
+   say "Looking into this now". Within the hour it should say "Found the
+   cause:", and then "Pull request ready for review:" with a link to a pull
+   request whose new test fails on `main` and passes on its branch. Then
+   remove the route; that is a removed API path, so it needs a decision file
+   in `api-compatibility/` and the breaking-change approval. The first
+   rehearsal, on 28 October 2026, used `/api/operator/rehearsal/average`,
+   which divided by the count of the numbers it was given.
 2. **The four-weekly alert route test.** Let `alert-route-test.yml` run, or
    start it by hand. Its posts in Slack must get no reply from the watcher,
    and the journal an `ignored` line: it is a test of the routes, not a
