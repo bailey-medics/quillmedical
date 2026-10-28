@@ -1,0 +1,4 @@
+generation: 1
+forces_reload: false
+change: "api-path-removed-without-deprecation GET /api/operator/rehearsal/average api path removed without deprecation"
+reason: "The alert watcher's rehearsal route is removed now the rehearsal is done. Only an operator could reach it and nothing in the frontend calls it, so no open tab can be broken."
