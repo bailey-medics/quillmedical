@@ -38,7 +38,7 @@ channel: C0123456789
 thread_ts: 1761480000.123456
 thread_url: https://quill-medical.slack.com/archives/C0123456789/p1761480000123456
 kind: monitoring
-fingerprint: monitoring|Backend error logged (app)|2026-10-26
+fingerprint: monitoring|Backend error: app.auth web [500 POST login]|2026-10-26
 received_at: 2026-10-26T09:14:03Z
 ---
 <the alert text>
