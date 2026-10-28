@@ -6,6 +6,8 @@
 # what it was asked to inspect, and finds in the mirror only what HELD
 # lists.
 
+bats_require_minimum_version 1.5.0
+
 setup() {
   SCRIPT="${BATS_TEST_DIRNAME}/copy-images.sh"
   BIN="${BATS_TEST_TMPDIR}/bin"
@@ -144,6 +146,30 @@ dockerfile_with() {
   [ "$(wc -l < "$COPIES" | tr -d ' ')" -eq 1 ]
 }
 
+@test "copies the syntax image a Dockerfile's first line names" {
+  stub_images "public.ecr.aws/docker/library/postgres:18-alpine"
+  dockerfile="$(dockerfile_with Dockerfile "public.ecr.aws/docker/library/node:24-slim")"
+  sed -i '1i # syntax=mirror.gcr.io/docker/dockerfile:1.27@sha256:abc' "$dockerfile"
+
+  run bash "$SCRIPT" bailey-medics compose.ci.yml "$dockerfile"
+
+  [ "$status" -eq 0 ]
+  grep -q "docker://mirror.gcr.io/docker/dockerfile@sha256:abc docker://ghcr.io/bailey-medics/mirror/dockerfile:1.27" "$COPIES"
+  [ "$(wc -l < "$COPIES" | tr -d ' ')" -eq 3 ]
+}
+
+@test "a syntax line below the first is not copied" {
+  # BuildKit reads a parser directive only at the top of the file.
+  stub_images "public.ecr.aws/docker/library/postgres:18-alpine"
+  dockerfile="$(dockerfile_with Dockerfile "public.ecr.aws/docker/library/node:24-slim")"
+  sed -i '1a # syntax=mirror.gcr.io/docker/dockerfile:1.27@sha256:abc' "$dockerfile"
+
+  run bash "$SCRIPT" bailey-medics compose.ci.yml "$dockerfile"
+
+  [ "$status" -eq 0 ]
+  run ! grep -q "dockerfile" "$COPIES"
+}
+
 @test "fails for a Dockerfile that names no base image in an ARG" {
   # Copying nothing for it would look like success.
   stub_images "public.ecr.aws/docker/library/postgres:18-alpine"
@@ -182,6 +208,7 @@ dockerfile_with() {
   grep -q "mirror/python:" "$COPIES"
   grep -q "mirror/node:" "$COPIES"
   grep -q "mirror/caddy:" "$COPIES"
+  grep -q "mirror/dockerfile:" "$COPIES"
 }
 
 @test "fails when the compose file names no public image" {
