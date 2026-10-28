@@ -143,6 +143,32 @@ DOCKERFILE
   [[ "$output" == *"backend/Dockerfile: base image public.ecr.aws/docker/library/python:3.14-slim is named by tag alone"* ]]
 }
 
+@test "fails for a syntax image named by tag alone" {
+  sed -i '1i # syntax=mirror.gcr.io/docker/dockerfile:1.27' "${REPO}/backend/Dockerfile"
+
+  run run_check
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"backend/Dockerfile: syntax image mirror.gcr.io/docker/dockerfile:1.27 is named by tag alone"* ]]
+}
+
+@test "passes for a syntax image pinned to a digest" {
+  sed -i '1i # syntax=mirror.gcr.io/docker/dockerfile:1.27@sha256:abc' "${REPO}/backend/Dockerfile"
+
+  run run_check
+
+  [ "$status" -eq 0 ]
+}
+
+@test "a syntax line below the first is a comment, and is not checked" {
+  # BuildKit reads a parser directive only at the top of the file.
+  sed -i '1a # syntax=mirror.gcr.io/docker/dockerfile:1.27' "${REPO}/backend/Dockerfile"
+
+  run run_check
+
+  [ "$status" -eq 0 ]
+}
+
 @test "the mirror runs on no timer, which is what the pins are for" {
   run grep -E '^[[:space:]]*schedule:' "${ROOT}/.github/workflows/mirror-images.yml"
 
