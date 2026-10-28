@@ -83,7 +83,7 @@ jobs:
   # and nothing more.
   api_schema_diff:
     if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     name: API breaking-change check
     timeout-minutes: 15
     outputs:
@@ -266,7 +266,7 @@ jobs:
     name: API breaking-change earlier approval
     needs: api_schema_diff
     if: ${{ !cancelled() && needs.api_schema_diff.result != 'skipped' && needs.api_schema_diff.outputs.breaking == 'true' }}
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     outputs:
       approved: ${{ steps.find.outputs.approved }}
@@ -330,7 +330,7 @@ jobs:
     # Anything short of an explicit 'true' - including that job failing -
     # leaves the gate asking.
     if: ${{ !cancelled() && needs.api_schema_diff.result != 'skipped' && needs.api_schema_diff.outputs.breaking == 'true' && needs.api_breaking_change_prior_approval.outputs.approved != 'true' }}
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     environment: api-breaking-change-review
     timeout-minutes: 30
     # A newer commit supersedes an older pending approval rather than adding to
@@ -360,7 +360,7 @@ jobs:
     # record too - so result != 'skipped' is the only thing stopping it
     # posting an all-clear when detection never ran.
     if: ${{ !cancelled() && needs.api_schema_diff.result != 'skipped' }}
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     # Generous, because this job now waits for every ancestor commit's decide
     # job before posting (see the wait step below).
     timeout-minutes: 15
@@ -436,7 +436,7 @@ jobs:
   # ---------- Destructive DB migration check ----------
   db_destructive_migration_check:
     if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     name: DB destructive migration check
     timeout-minutes: 10
     outputs:
@@ -513,7 +513,7 @@ jobs:
     name: DB destructive migration earlier approval
     needs: db_destructive_migration_check
     if: needs.db_destructive_migration_check.outputs.destructive == 'true'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     outputs:
       approved: ${{ steps.find.outputs.approved }}
@@ -561,7 +561,7 @@ jobs:
     # of an explicit 'true' from the prior-approval job, including it failing,
     # leaves the gate asking.
     if: ${{ !cancelled() && needs.db_destructive_migration_check.outputs.destructive == 'true' && needs.db_destructive_migration_prior_approval.outputs.approved != 'true' }}
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     environment: db-destructive-migration-review
     timeout-minutes: 30
     # See api_breaking_change_gate: a newer commit supersedes an older pending
@@ -586,7 +586,7 @@ jobs:
   db_destructive_migration_comment:
     name: Destructive-migration PR comment
     needs: db_destructive_migration_check
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     # See api_breaking_change_comment.
     timeout-minutes: 15
     # What this gate says on the PR.

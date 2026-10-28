@@ -37,7 +37,7 @@ concurrency:
 jobs:
   check:
     name: Check whether the hold can be lifted
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     outputs:
       liftable: ${{ steps.check.outputs.liftable }}
@@ -60,7 +60,7 @@ jobs:
     name: Raise an issue
     needs: check
     if: ${{ needs.check.outputs.liftable != '' }}
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
 
     steps:
