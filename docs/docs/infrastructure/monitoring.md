@@ -102,8 +102,9 @@ only sign in Slack of an incident in europe-west2 was our own alerts firing
 hourly, each looking like a fault of ours.
 
 The post carries the incident's title, products, locations, start time and
-a `State:` line. The alert watcher below reads the policy's name and that
-line, so keep both as they are in `infra/modules/monitoring/main.tf`.
+a `State:` line. The alert watcher below reads the policy's documentation subject, which is
+what Google's Slack post shows as its title, and that line, so keep both as
+they are in `infra/modules/monitoring/main.tf`.
 
 ## The alert watcher
 
@@ -116,12 +117,13 @@ the watcher phase of the
 [remote dev machine plan](../plans/2026-10-19-remote-dev-machine-plan.md),
 and the program is in `scripts/alert-watcher/`.
 
-- **Which posts it acts on**: one of the alert policies listed in
-  `scripts/alert-watcher/src/messages.ts`, a `*❌ Deploy failed*` post from
-  `deploy.yml`, and the Google Cloud incident policy above. A policy added to
-  `main.tf` fails the watcher's tests until it is listed there, as one to
-  investigate or one to ignore. The four-weekly alert route test and the
-  retention decision are ignored.
+- **Which posts it acts on**: every post by an app that is not on its ignore
+  list: success posts opening with ✅, the four-weekly alert route test, the
+  retention decision, and the closing post of a known alert. A Cloud
+  Monitoring post never names its policy; its bold title is the policy's
+  documentation `subject`, so that is what
+  `scripts/alert-watcher/src/messages.ts` lists, and a policy added to
+  `main.tf` fails the watcher's tests until its subject is listed there.
 - **Its log**: `journalctl --user -u quill-alert-watcher` on the box. It
   records fingerprints and outcomes, never alert text.
 - **Its state**: `~/.local/state/quill-alert-watcher/`, holding the busy flag,
@@ -134,14 +136,14 @@ Run both of these after any change to the daemon, the skill or an alert
 policy, and before trusting the watcher for the first time.
 
 1. **A planted fault.** Push a branch that raises on one request path,
-   deploy it, and request that path until `Backend error logged (app)`
-   fires. Within a minute the thread should say "Looking into this now".
+   deploy it, and request that path until "Backend error:" fires. Within a minute the thread should say "Looking into this now".
    Within the hour it should say "Found the cause:", and then "Pull request
    ready for review:" with a link to a pull request whose new test fails
    on `main` and passes on its branch. Close that pull request and revert the planted branch.
 2. **The four-weekly alert route test.** Let `alert-route-test.yml` run, or
-   start it by hand. Its posts in Slack must get no reply from the watcher:
-   it is a test of the routes, not a fault.
+   start it by hand. Its posts in Slack must get no reply from the watcher,
+   and the journal an `ignored` line: it is a test of the routes, not a
+   fault.
 
 If either goes wrong because a post was read wrongly, set
 `ALERT_WATCHER_RECORD_EVENTS=1` in `~/.config/quill-alert-watcher/env`,
