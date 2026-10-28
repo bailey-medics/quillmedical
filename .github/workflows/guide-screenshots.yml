@@ -45,7 +45,7 @@ concurrency:
 jobs:
   take:
     name: Take screenshots
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 30
     steps:
       - name: Checkout
@@ -162,7 +162,7 @@ jobs:
 
   publish:
     name: Publish to app
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     needs: take
     # The environment that holds the GCP_APP_* secrets read below, as
     # public-site.yml's deploy job uses. It deploys from main only.

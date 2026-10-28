@@ -37,7 +37,7 @@ jobs:
     # Merged, not merely closed, and with a base other than main. One
     # merged straight into main needs no looking up.
     if: ${{ github.event.pull_request.merged == true && github.event.pull_request.base.ref != 'main' }}
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 5
     outputs:
       reached: ${{ steps.reached.outputs.reached }}
