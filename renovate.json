@@ -210,6 +210,21 @@
       "dependencyDashboardApproval": true
     },
     {
+      "description": "Hold each new Python minor behind Dependency Dashboard approval until every compiled backend dependency publishes a wheel for it. Python 3.15 was the first: pygit2 had no cp315 wheel and does not build in the slim image without libgit2. Patch releases are not held, so security fixes keep arriving. The minor bump gets its own group, because an update awaiting approval holds its whole branch, and in the Docker base images group it would hold every digest update with it. Nobody has to remember to come back: .github/workflows/python-hold-check.yml checks monthly and opens an issue once the next minor is ready. Tick the box then, and move every pin in one PR.",
+      "matchManagers": ["pyenv", "dockerfile"],
+      "matchDepNames": ["/(^|/)python$/"],
+      "matchUpdateTypes": ["minor", "major"],
+      "groupName": "Python minor version",
+      "groupSlug": "python-minor",
+      "dependencyDashboardApproval": true
+    },
+    {
+      "description": "Never move the python constraint in a pyproject. It follows .python-version, which the rule above holds, and moved on its own it breaks poetry install in CI, as it did to the weekly npm and pip group.",
+      "matchManagers": ["poetry"],
+      "matchDepNames": ["python"],
+      "enabled": false
+    },
+    {
       "description": "ClamAV stays on its 1.4 long-term support line: fewer upgrades to make, and a scanner is the place for the steady one. Moving to the next LTS line is a decision, made by changing this.",
       "matchPackageNames": ["Cisco-Talos/clamav"],
       "allowedVersions": "<1.5.0",
