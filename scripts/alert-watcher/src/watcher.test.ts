@@ -177,26 +177,35 @@ describe("Watcher", () => {
     assert.equal(fakes.started.length, 1);
   });
 
-  it("starts no more than six investigations in a day", async () => {
-    const subjects = [
-      "Uptime failing: app.quill-medical.com",
-      "Cloud Run container failed to start",
-      "A scheduled action failed",
-      "5xx errors on quill-backend-app",
-      "Backend error: app.auth",
-      "Browser errors above threshold",
-      "Cloud SQL disk high: quill-medical-app:quill-app",
-    ];
+  // Starts one alert and lets its run finish, so the next can start.
+  async function runOne(subject: string, ts: string): Promise<void> {
+    await watcher.onMessage(alertPost(subject, ts));
+    await watcher.tick();
+    fakes.advance(200);
+    await watcher.tick();
+  }
 
-    for (const [index, subject] of subjects.entries()) {
-      await watcher.onMessage(alertPost(subject, `100.00000${index}`));
-      await watcher.tick();
-      fakes.advance(200);
-      await watcher.tick();
+  it("starts no more than twenty investigations in a day, and says to look by hand", async () => {
+    for (let index = 0; index <= 20; index += 1) {
+      await runOne(`Backend error: area-${index}`, `100.${String(index).padStart(6, "0")}`);
     }
 
-    assert.equal(fakes.started.length, 6);
+    assert.equal(fakes.started.length, 20);
     assert.match(fakes.replies.at(-1)?.text ?? "", /daily limit/);
+    assert.match(fakes.replies.at(-1)?.text ?? "", /look at this one by hand/);
+  });
+
+  it("always investigates a failed deploy, even past the daily limit", async () => {
+    for (let index = 0; index < 20; index += 1) {
+      await runOne(`Backend error: area-${index}`, `100.${String(index).padStart(6, "0")}`);
+    }
+
+    const deployFailed = "*:x: Deploy failed*\n*Commit:* <https://github.com/o/r/commit/3d186d5cb84e|3d186d5cb84e>";
+    await watcher.onMessage({ channel: CHANNEL, ts: "200.000001", bot_id: "B0000000002", text: deployFailed });
+    await watcher.tick();
+
+    assert.equal(fakes.started.length, 21);
+    assert.equal(fakes.started.at(-1), "/state/alerts/200.000001.txt");
   });
 
   it("treats alerts during an open Google Cloud incident as part of it", async () => {

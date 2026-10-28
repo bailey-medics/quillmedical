@@ -4,9 +4,10 @@
 //
 // One alert is investigated at a time. The rest wait in a queue while the
 // session is busy, with an alert or with a person, and while worktree 5 is
-// in use. Each fingerprint is handled once, at most six investigations
-// start in a UTC day, and while a Google Cloud incident is open every other
-// alert is treated as part of it.
+// in use. Each fingerprint is handled once, at most twenty investigations
+// start in a UTC day, though a failed deploy is always investigated, and
+// while a Google Cloud incident is open every other alert is treated as
+// part of it.
 
 import type { Ledger } from "./ledger.ts";
 import { classify, type Alert, type SlackMessage } from "./messages.ts";
@@ -43,7 +44,7 @@ export interface Options {
 }
 
 export const DEFAULT_OPTIONS: Omit<Options, "channel" | "ownUserId"> = {
-  dailyCap: 6,
+  dailyCap: 20,
   stallMinutes: 45,
   abandonedHours: 3,
   incidentHours: 12,
@@ -248,11 +249,14 @@ export class Watcher {
     this.queue.shift();
     const date = this.deps.now();
 
-    if (this.ledger.runsOn(date) >= this.options.dailyCap) {
+    // The cap guards the Claude plan against a storm of different alerts.
+    // A failed deploy is rare and matters most, so it is never held back:
+    // on 28 October 2026 a real one was capped behind a day of rehearsals.
+    if (next.alert.kind !== "deploy" && this.ledger.runsOn(date) >= this.options.dailyCap) {
       await this.deps.reply(
         this.options.channel,
         next.alert.ts,
-        `Not investigated: ${this.options.dailyCap} investigations have already started today, which is the daily limit.`,
+        `Not investigated: ${this.options.dailyCap} investigations have already started today, which is the daily limit. Please look at this one by hand; the limit resets at midnight UTC.`,
       );
       this.ledger.record(next.alert.fingerprint, "capped", date);
       this.deps.log("capped", { fingerprint: next.alert.fingerprint });
