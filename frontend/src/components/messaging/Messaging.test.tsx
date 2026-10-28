@@ -165,8 +165,13 @@ describe("Messaging", () => {
         "Hi John, I'd be happy to help. What's your question?",
       );
       expect(sentMessage).toBeInTheDocument();
+      // Read the inline style rather than toHaveStyle: jsdom does not
+      // compute a background shorthand whose value is a var().
       const sentBubble = sentMessage.closest('[style*="background"]');
-      expect(sentBubble).toHaveStyle({ background: "var(--bubble-mine-bg)" });
+      expect(sentBubble).toHaveAttribute(
+        "style",
+        expect.stringContaining("background: var(--bubble-mine-bg)"),
+      );
 
       // Received messages have different background
       const receivedMessage = screen.getByText(
@@ -174,9 +179,10 @@ describe("Messaging", () => {
       );
       expect(receivedMessage).toBeInTheDocument();
       const receivedBubble = receivedMessage.closest('[style*="background"]');
-      expect(receivedBubble).toHaveStyle({
-        background: "var(--bubble-theirs-bg)",
-      });
+      expect(receivedBubble).toHaveAttribute(
+        "style",
+        expect.stringContaining("background: var(--bubble-theirs-bg)"),
+      );
     });
   });
 
