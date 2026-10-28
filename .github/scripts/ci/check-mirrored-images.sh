@@ -17,7 +17,7 @@
 # ghcr.io/<owner>/mirror/ by mirror-images.yml and pulled from there.
 #
 # That only holds while every image is named in a way the mirror can
-# stand in for. This refuses the four ways one can slip past it:
+# stand in for. This refuses the five ways one can slip past it:
 #
 #   - a Dockerfile whose FROM names an image outright. It has to read an
 #     ARG ending _IMAGE, as backend/Dockerfile does, so that
@@ -34,6 +34,8 @@
 #     does not follow it: mirror-images.yml runs when a name changes, on no
 #     timer. Pinned, the image changes only in a pull request, and that
 #     pull request makes the copy.
+#   - a Dockerfile `# syntax=` line named by tag alone, for the same
+#     reason. CI hands the build the copy as BUILDKIT_SYNTAX.
 #
 # Exits 1 and names each offender.
 set -euo pipefail
@@ -42,8 +44,10 @@ set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/../shared/logging.sh" "check-mirrored-images"
 
 # Registries a workflow may name outright. GitHub's own is pulled with the
-# job's login. Google's mirror of Docker Hub has no limit for a caller with
-# no login, and holds BuildKit's own image and the Dockerfile syntax image.
+# job's login. Google's mirror of Docker Hub holds BuildKit's own image. It
+# is not unlimited: it refused the Dockerfile syntax image with 429 Too Many
+# Requests on 28 October 2026, which is why that image now comes from the
+# mirror here in CI.
 ALLOWED_REGISTRIES=("ghcr.io/" "mirror.gcr.io/")
 
 fail=0
@@ -74,6 +78,12 @@ check_dockerfile() {
       offender "${dockerfile}: base image ${image} is named by tag alone. Pin it, as ${image}@sha256:<digest>, so the mirror's copy cannot fall behind it"
     fi
   done < <(sed -n -E 's/^ARG[[:space:]]+[A-Z0-9_]+_IMAGE=([^[:space:]]+).*$/\1/p' "$dockerfile")
+
+  # So is the syntax image, from the first line only.
+  image="$(sed -n -E '1s/^#[[:space:]]*syntax=([^[:space:]]+).*$/\1/p' "$dockerfile")"
+  if [ -n "$image" ] && [[ "$image" != *@sha256:* ]]; then
+    offender "${dockerfile}: syntax image ${image} is named by tag alone. Pin it, as ${image}@sha256:<digest>, so the mirror's copy cannot fall behind it"
+  fi
 
   while IFS= read -r line; do
     # FROM [--platform=...] <image> [AS <stage>]

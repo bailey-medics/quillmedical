@@ -1,7 +1,14 @@
-# syntax=mirror.gcr.io/docker/dockerfile:1.27
+# syntax=mirror.gcr.io/docker/dockerfile:1.27@sha256:4edf897a3ffa55b89f906fc8cc78afdb3f1834cc9c7083565e611a8a7d5fe99e
 # The Dockerfile syntax image, which BuildKit downloads before it reads
 # anything below. From Google's mirror of Docker Hub and not Docker Hub
 # itself, which rate limits and at times cannot be reached at all.
+#
+# CI builds with this repository's own copy instead, handed over as the
+# BUILDKIT_SYNTAX build argument, because Google's mirror refused it with
+# 429 Too Many Requests on 28 October 2026. This line is read before any
+# ARG, so that argument is the only way to change it. Pinned by digest so
+# the copy cannot fall behind it. See
+# .github/scripts/ci/use-mirrored-base-images.sh.
 
 # Build context: repository root (required so prod stage can access caddy/prod/)
 # CI: context: .        dockerfile: ./frontend/Dockerfile

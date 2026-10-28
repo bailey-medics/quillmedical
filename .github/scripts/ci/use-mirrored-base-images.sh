@@ -33,6 +33,12 @@
 #
 # A copy is exact and is asked for by the same digest, so the build is on
 # the very image the Dockerfile pins, whichever registry hands it over.
+#
+# A Dockerfile's `# syntax=` line is treated the same way, under the name
+# BUILDKIT_SYNTAX: the build argument BuildKit reads in place of that line,
+# which it reads before any ARG. Google's mirror of Docker Hub refused the
+# syntax image with 429 Too Many Requests on 28 October 2026 and failed the
+# guide screenshots with no screen changed.
 set -euo pipefail
 
 # shellcheck source=../shared/logging.sh
@@ -46,6 +52,14 @@ base_image_args() {
   local dockerfile="$1"
 
   sed -n -E 's/^ARG[[:space:]]+([A-Z0-9_]+_IMAGE)=([^[:space:]]+).*$/\1 \2/p' "$dockerfile"
+}
+
+# Prints a Dockerfile's `# syntax=` image as "BUILDKIT_SYNTAX <image>", or
+# nothing. Only the first line: further down it is an ordinary comment.
+syntax_image_arg() {
+  local dockerfile="$1"
+
+  sed -n -E '1s/^#[[:space:]]*syntax=([^[:space:]]+).*$/BUILDKIT_SYNTAX \1/p' "$dockerfile"
 }
 
 # Says whether the registry holds an image.
@@ -87,6 +101,7 @@ main() {
       exit 1
     fi
 
+    found="$(printf '%s\n%s\n' "$found" "$(syntax_image_arg "$dockerfile")")"
     args="$(printf '%s\n%s\n' "$args" "$found" | grep . | sort -u)"
   done
 
