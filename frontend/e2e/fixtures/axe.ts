@@ -30,6 +30,21 @@ export interface AxeFingerprint {
 }
 
 /**
+ * Video.js draws the player's time toggle itself: it shows "0:21" and
+ * names it "21 seconds remaining", which axe 4.14 refuses under
+ * label-content-name-mismatch. That markup is not ours to change, so
+ * that one rule on that one element is let off, as it is in the
+ * player's stories (see storyA11y.ts). AxeBuilder cannot scope a rule
+ * to a selector, so the finding is dropped after the scan instead.
+ */
+function isVideoJsTimeToggle(fingerprint: AxeFingerprint): boolean {
+  return (
+    fingerprint.ruleId === "label-content-name-mismatch" &&
+    fingerprint.selector.includes(".media-time-toggle")
+  );
+}
+
+/**
  * Run axe, once the page has stopped navigating. The app can reload
  * itself just after it loads (a new build's service worker taking over),
  * which destroys the page axe is reading; that is retried, twice.
@@ -88,12 +103,14 @@ async function scanOnce(
     }
   }
 
-  return results.violations.flatMap((violation) =>
-    violation.nodes.map((node) => ({
-      ruleId: violation.id,
-      selector: node.target.join(" "),
-    })),
-  );
+  return results.violations
+    .flatMap((violation) =>
+      violation.nodes.map((node) => ({
+        ruleId: violation.id,
+        selector: node.target.join(" "),
+      })),
+    )
+    .filter((fingerprint) => !isVideoJsTimeToggle(fingerprint));
 }
 
 /**
