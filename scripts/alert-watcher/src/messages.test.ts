@@ -8,6 +8,7 @@ import {
   GCP_INCIDENT_POLICY,
   IGNORED_POLICIES,
   INVESTIGATED_POLICIES,
+  title,
   type SlackMessage,
 } from "./messages.ts";
 
@@ -69,12 +70,46 @@ describe("classify", () => {
     assert.equal(alert?.closing, true);
   });
 
-  it("ignores another environment's policy", () => {
-    assert.equal(classify(botPost({ text: "Backend error logged (staging)" }), OPTIONS), undefined);
+  it("reads another environment's policy as other, not as ours", () => {
+    const alert = classify(botPost({ text: "Backend error logged (staging)" }), OPTIONS);
+
+    assert.equal(alert?.kind, "other");
   });
 
   it("ignores the four-weekly alert route test", () => {
     assert.equal(classify(botPost({ text: "Four-weekly alert test: Slack (app)" }), OPTIONS), undefined);
+  });
+
+  it("ignores the retention decision", () => {
+    assert.equal(classify(botPost({ text: "Records awaiting a deletion decision (app)" }), OPTIONS), undefined);
+  });
+
+  it("ignores a success post from any workflow", () => {
+    assert.equal(classify(botPost({ text: "*✅ Weekly ZAP scan completed*" }), OPTIONS), undefined);
+    assert.equal(classify(botPost({ text: "✅ Deployed to teaching" }), OPTIONS), undefined);
+  });
+
+  it("reads any other bot post as other, fingerprinted by its first bold line and the day", () => {
+    const text = "*❌ Terraform apply failed*\n\n*Action:* re-run it";
+    const alert = classify(botPost({ text }), OPTIONS);
+
+    assert.equal(alert?.kind, "other");
+    assert.equal(alert?.source, "❌ Terraform apply failed");
+    assert.equal(alert?.fingerprint, "other|❌ Terraform apply failed|2026-10-26");
+    assert.equal(alert?.text, text);
+  });
+
+  it("reads a post from an app it has never seen as other", () => {
+    const alert = classify(botPost({ bot_id: "B0000000099", attachments: [{ title: "Something new happened" }] }), OPTIONS);
+
+    assert.equal(alert?.kind, "other");
+    assert.equal(alert?.source, "Something new happened");
+  });
+
+  it("does not treat an unrecognised post saying resolved as closing", () => {
+    const alert = classify(botPost({ text: "*⚠️ Dependency could not be resolved*" }), OPTIONS);
+
+    assert.equal(alert?.closing, false);
   });
 
   it("reads the Google Cloud incident policy as an incident, and its resolution as closing", () => {
@@ -107,6 +142,21 @@ describe("classify", () => {
   });
 });
 
+describe("title", () => {
+  it("takes the first bold line", () => {
+    assert.equal(title("Run 42\n*❌ Public site deploy failed*\n*Commit:* abc"), "❌ Public site deploy failed");
+  });
+
+  it("falls back to the first line with text in it, on one line", () => {
+    assert.equal(title("\n  Something   new\nsecond"), "Something new");
+  });
+
+  it("is cut to 80 characters, and never empty", () => {
+    assert.equal(title(`*${"x".repeat(200)}*`).length, 80);
+    assert.equal(title(""), "untitled");
+  });
+});
+
 describe("flatten", () => {
   it("collects text from blocks as well as attachments", () => {
     const message = botPost({
@@ -121,8 +171,9 @@ describe("flatten", () => {
 
 // Every alert policy in Terraform must be listed in messages.ts, as one to
 // investigate, one to ignore, or the incident policy. A policy added there
-// and not here would never be investigated, and nothing else would say so.
-describe("the policy whitelist", () => {
+// and not here would still be investigated, as `other`, but under a
+// fingerprint that loses its exact name.
+describe("the policy list", () => {
   it("names every alert policy in infra/modules/monitoring/main.tf", () => {
     const terraform = readFileSync(new URL("../../../infra/modules/monitoring/main.tf", import.meta.url), "utf8");
     const known = [GCP_INCIDENT_POLICY, ...IGNORED_POLICIES, ...INVESTIGATED_POLICIES];
