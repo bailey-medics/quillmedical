@@ -89,6 +89,22 @@
   border-radius: var(--mantine-radius-md);
 }
 
+/* An icon shown in a line of text, sitting on the line as a word does.
+   With the icon a block inside it, the slot's baseline is its bottom
+   edge, so the icon's box rests on the line the letters stand on. A
+   Tabler icon is drawn on a grid of 24 and leaves 2 of them empty at the
+   foot, so it is moved down by that much, its own height being the
+   measure, for the drawing itself to meet the foot of the letters. */
+.markdown span[data-icon] {
+  display: inline-block;
+  vertical-align: baseline;
+}
+
+.markdown span[data-icon] svg {
+  display: block;
+  transform: translateY(8.33%);
+}
+
 /* What an image that will not load is swapped for: its alt text. */
 .missingImage {
   display: block;

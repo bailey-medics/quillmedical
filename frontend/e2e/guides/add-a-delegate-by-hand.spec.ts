@@ -135,7 +135,7 @@ test("add a delegate by hand", async ({ page }) => {
   // Somebody with an account already: the lookup finds and chooses them.
   await openAddStaff(page);
   await find(page, OLIVER.email);
-  await expect(page.getByText(/already has a Quill account/)).toBeVisible();
+  await expect(page.getByText(/oliver\.grant \(Oliver Grant\)/)).toBeVisible();
   await page.getByRole("combobox", { name: "Role" }).click();
   await page.getByRole("option", { name: "Trainee", exact: true }).click();
   await shot(page, "add-a-delegate-by-hand/found");
