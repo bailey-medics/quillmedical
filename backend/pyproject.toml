@@ -15,11 +15,11 @@ authors = ["Cotswoldsmaker <mark@bailey-medics.com>"]
 package-mode = false
 
 [tool.poetry.dependencies]
-python = "~3.14"
-fastapi = "0.143.0"
+python = "~3.15.0"
+fastapi = "0.162.0"
 uvicorn = { extras = ["standard"], version = "0.54.0" }
-pydantic = "2.14.0"
-sqlalchemy = "2.1.4"
+pydantic = "2.14.1"
+sqlalchemy = "2.1.6"
 psycopg = { extras = ["binary"], version = ">=3.2,<4.0" }
 python-dotenv = "1.2.4"
 httpx = "0.28.1"
@@ -51,7 +51,7 @@ google-cloud-storage = ">=3.17.0,<3.18.0"
 # backend is the trigger rather than Eventarc, so this is what fires the
 # job - see the trigger decision in the video auth gate plan.
 google-cloud-run = ">=0.16.1,<0.17.0"
-reportlab = ">=5.0.1,<5.1.0"
+reportlab = ">=5.1.0,<5.2.0"
 # Passport evidence images are decoded and written out again at upload
 # (backend/app/features/passport/evidence.py), so nothing hidden in the
 # file is stored and the EXIF block, which carries a phone photo's GPS
