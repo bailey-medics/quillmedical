@@ -21,7 +21,8 @@ ARG CADDY_IMAGE=public.ecr.aws/docker/library/caddy:2-alpine@sha256:6aeddd44c307
 
 FROM ${NODE_IMAGE} AS deps
 
-RUN corepack enable
+# Node 25 stopped shipping corepack, so it comes from npm, pinned.
+RUN npm install -g corepack@0.36.0 && corepack enable
 
 WORKDIR /app
 
