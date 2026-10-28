@@ -33,7 +33,6 @@ export interface Options {
   channel: string;
   // The bot user the watcher posts as, from auth.test.
   ownUserId: string | undefined;
-  environment: string;
   dailyCap: number;
   stallMinutes: number;
   abandonedHours: number;
@@ -44,7 +43,6 @@ export interface Options {
 }
 
 export const DEFAULT_OPTIONS: Omit<Options, "channel" | "ownUserId"> = {
-  environment: "app",
   dailyCap: 6,
   stallMinutes: 45,
   abandonedHours: 3,
@@ -98,7 +96,6 @@ export class Watcher {
 
     const alert = classify(message, {
       ownUserId: this.options.ownUserId,
-      environment: this.options.environment,
       now: this.deps.now(),
     });
 

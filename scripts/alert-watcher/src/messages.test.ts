@@ -5,18 +5,35 @@ import { describe, it } from "node:test";
 import {
   classify,
   flatten,
-  GCP_INCIDENT_POLICY,
-  IGNORED_POLICIES,
-  INVESTIGATED_POLICIES,
+  GCP_INCIDENT_SUBJECT,
+  IGNORED_SUBJECTS,
+  INVESTIGATED_SUBJECTS,
   title,
   type SlackMessage,
 } from "./messages.ts";
 
 const NOW = new Date("2026-10-26T09:14:03Z");
-const OPTIONS = { ownUserId: "U0000000001", environment: "app", now: NOW };
+const OPTIONS = { ownUserId: "U0000000001", now: NOW };
 
 function botPost(fields: Partial<SlackMessage>): SlackMessage {
   return { ts: "1761480000.123456", bot_id: "B0000000002", ...fields };
+}
+
+// The shape of a Cloud Monitoring post, from the route test's real one on
+// 28 October 2026: the subject is a bold link, and the policy's name
+// appears nowhere.
+function googlePost(subject: string, status = "Alert open", documentation = "Some documentation."): SlackMessage {
+  const link = "https://console.cloud.google.com/monitoring/alerting/alerts/0.oecl1s8f20wr?channelType=slack&amp;project=quill-medical-app";
+  const heading = `*<${link}|${subject}>*`;
+
+  return botPost({
+    text: `${heading} Log match condition fired. Alert status ${status} No severity *Documentation* ${documentation}`,
+    blocks: [
+      { type: "section", text: { type: "mrkdwn", text: heading } },
+      { type: "context", elements: [{ type: "plain_text", text: status }] },
+      { type: "section", text: { type: "mrkdwn", text: documentation } },
+    ],
+  });
 }
 
 const DEPLOY_FAILED = [
@@ -38,83 +55,41 @@ describe("classify", () => {
     assert.equal(classify(botPost({ text: "*✅ Deployed to app*" }), OPTIONS), undefined);
   });
 
-  it("reads a Cloud Monitoring alert from its attachments, fingerprinted by policy and day", () => {
-    const message = botPost({
-      text: "",
-      attachments: [{ title: "Incident #0.abc is open", fields: [{ title: "Policy", value: "Backend error logged (app)" }] }],
-    });
-
-    const alert = classify(message, OPTIONS);
+  it("reads a Cloud Monitoring alert by its subject, fingerprinted by subject and day", () => {
+    const alert = classify(googlePost("Backend error: app.auth web [500 POST login]"), OPTIONS);
 
     assert.equal(alert?.kind, "monitoring");
-    assert.equal(alert?.source, "Backend error logged (app)");
-    assert.equal(alert?.fingerprint, "monitoring|Backend error logged (app)|2026-10-26");
+    assert.equal(alert?.source, "Backend error: app.auth web [500 POST login]");
+    assert.equal(alert?.fingerprint, "monitoring|Backend error: app.auth web [500 POST login]|2026-10-26");
     assert.equal(alert?.closing, false);
   });
 
-  it("keeps the detail after a colon in a policy name", () => {
-    const alert = classify(botPost({ text: "Scheduled action has not run: backup (app) is open" }), OPTIONS);
+  it("keeps what Terraform filled in after a subject's fixed start", () => {
+    const alert = classify(googlePost("A scheduled action has not run for 26 hours"), OPTIONS);
 
-    assert.equal(alert?.source, "Scheduled action has not run: backup (app)");
-  });
-
-  it("reads the longer of two policy names that share a start", () => {
-    const alert = classify(botPost({ text: "Uptime failure - sustained (app)" }), OPTIONS);
-
-    assert.equal(alert?.source, "Uptime failure - sustained (app)");
+    assert.equal(alert?.kind, "monitoring");
+    assert.equal(alert?.source, "A scheduled action has not run for 26 hours");
   });
 
   it("marks a closing post as closing", () => {
-    const alert = classify(botPost({ text: "Incident is now closed for Server errors - 5xx (app)" }), OPTIONS);
+    const alert = classify(googlePost("5xx errors on quill-backend-app", "Incident is now closed"), OPTIONS);
 
     assert.equal(alert?.closing, true);
   });
 
-  it("reads another environment's policy as other, not as ours", () => {
-    const alert = classify(botPost({ text: "Backend error logged (staging)" }), OPTIONS);
+  it("ignores the four-weekly alert route test, as Google really posted it", () => {
+    const documentation = "This is the four-weekly test of every alert route, not an outage.";
 
-    assert.equal(alert?.kind, "other");
-  });
-
-  it("ignores the four-weekly alert route test", () => {
-    assert.equal(classify(botPost({ text: "Four-weekly alert test: Slack (app)" }), OPTIONS), undefined);
+    assert.equal(classify(googlePost("Scheduled alert test, no action needed", "Alert open", documentation), OPTIONS), undefined);
   });
 
   it("ignores the retention decision", () => {
-    assert.equal(classify(botPost({ text: "Records awaiting a deletion decision (app)" }), OPTIONS), undefined);
-  });
-
-  it("ignores a success post from any workflow", () => {
-    assert.equal(classify(botPost({ text: "*✅ Weekly ZAP scan completed*" }), OPTIONS), undefined);
-    assert.equal(classify(botPost({ text: "✅ Deployed to teaching" }), OPTIONS), undefined);
-  });
-
-  it("reads any other bot post as other, fingerprinted by its first bold line and the day", () => {
-    const text = "*❌ Terraform apply failed*\n\n*Action:* re-run it";
-    const alert = classify(botPost({ text }), OPTIONS);
-
-    assert.equal(alert?.kind, "other");
-    assert.equal(alert?.source, "❌ Terraform apply failed");
-    assert.equal(alert?.fingerprint, "other|❌ Terraform apply failed|2026-10-26");
-    assert.equal(alert?.text, text);
-  });
-
-  it("reads a post from an app it has never seen as other", () => {
-    const alert = classify(botPost({ bot_id: "B0000000099", attachments: [{ title: "Something new happened" }] }), OPTIONS);
-
-    assert.equal(alert?.kind, "other");
-    assert.equal(alert?.source, "Something new happened");
-  });
-
-  it("does not treat an unrecognised post saying resolved as closing", () => {
-    const alert = classify(botPost({ text: "*⚠️ Dependency could not be resolved*" }), OPTIONS);
-
-    assert.equal(alert?.closing, false);
+    assert.equal(classify(googlePost("Training records are awaiting a decision"), OPTIONS), undefined);
   });
 
   it("reads the Google Cloud incident policy as an incident, and its resolution as closing", () => {
-    const opened = classify(botPost({ text: "Google Cloud incident (app)\nState: ACTIVE" }), OPTIONS);
-    const closed = classify(botPost({ text: "Google Cloud incident (app)\nState: RESOLVED" }), OPTIONS);
+    const opened = classify(googlePost(GCP_INCIDENT_SUBJECT, "Alert open", "State: ACTIVE"), OPTIONS);
+    const closed = classify(googlePost(GCP_INCIDENT_SUBJECT, "Alert open", "State: RESOLVED"), OPTIONS);
 
     assert.equal(opened?.kind, "gcp-incident");
     assert.equal(opened?.closing, false);
@@ -122,7 +97,7 @@ describe("classify", () => {
   });
 
   it("ignores anything a person writes, even naming a policy", () => {
-    const message: SlackMessage = { ts: "1.000001", user: "U123", text: "Backend error logged (app) again?" };
+    const message: SlackMessage = { ts: "1.000001", user: "U123", text: "*Backend error: again?*" };
 
     assert.equal(classify(message, OPTIONS), undefined);
   });
@@ -151,6 +126,10 @@ describe("title", () => {
     assert.equal(title("\n  Something   new\nsecond"), "Something new");
   });
 
+  it("reads a Slack link as its words, and undoes Slack's escaping", () => {
+    assert.equal(title("*<https://example.com/a?b=1&amp;c=2|Disk &amp; memory &lt;high&gt;>* more"), "Disk & memory <high>");
+  });
+
   it("is cut to 80 characters, and never empty", () => {
     assert.equal(title(`*${"x".repeat(200)}*`).length, 80);
     assert.equal(title(""), "untitled");
@@ -169,26 +148,23 @@ describe("flatten", () => {
   });
 });
 
-// Every alert policy in Terraform must be listed in messages.ts, as one to
-// investigate, one to ignore, or the incident policy. A policy added there
-// and not here would still be investigated, as `other`, but under a
-// fingerprint that loses its exact name.
-describe("the policy list", () => {
-  it("names every alert policy in infra/modules/monitoring/main.tf", () => {
+// Every alert policy's subject in Terraform must be listed in messages.ts,
+// as one to investigate, one to ignore, or the incident policy. A policy
+// added there and not here would still be investigated, as `other`, but the
+// ignore list and the incident rule would not know it.
+describe("the subject list", () => {
+  it("names every alert policy's subject in infra/modules/monitoring/main.tf", () => {
     const terraform = readFileSync(new URL("../../../infra/modules/monitoring/main.tf", import.meta.url), "utf8");
-    const known = [GCP_INCIDENT_POLICY, ...IGNORED_POLICIES, ...INVESTIGATED_POLICIES];
-    const policies = [...terraform.matchAll(/resource "google_monitoring_alert_policy"[^{]*\{[^}]*?display_name\s*=\s*"([^"$]+)/g)];
+    const known = [GCP_INCIDENT_SUBJECT, ...IGNORED_SUBJECTS, ...INVESTIGATED_SUBJECTS];
+    const subjects = [...terraform.matchAll(/^\s*subject\s*=\s*"([^"]*)"/gm)];
 
-    assert.ok(policies.length > 5, "no alert policies were found in main.tf");
+    assert.ok(subjects.length > 5, "no alert policy subjects were found in main.tf");
 
-    for (const [, name] of policies) {
-      // "Uptime failure (${var.environment})" is read up to the "$", so the
-      // " (" or ": " before it is trimmed off.
-      const prefix = name?.replace(/[\s(:]+$/, "") ?? "";
-      assert.ok(
-        known.some((entry) => prefix === entry || prefix.startsWith(`${entry} `)),
-        `"${prefix}" is an alert policy in main.tf but not listed in messages.ts`,
-      );
+    for (const [, subject] of subjects) {
+      // "Uptime failing: $${resource.label.host}" is read up to the first
+      // placeholder, which Terraform or Google fills in.
+      const fixed = subject?.split("$")[0]?.trim() ?? "";
+      assert.ok(known.includes(fixed), `"${fixed}" is an alert policy subject in main.tf but not listed in messages.ts`);
     }
   });
 });
