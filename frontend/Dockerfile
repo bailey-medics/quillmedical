@@ -11,12 +11,12 @@
 # Stage: deps - install node_modules (shared by dev + build)
 # ============================================================
 # Pin by digest for reproducible builds. To update, run:
-#   docker pull node:24.13.0-bookworm-slim && docker inspect --format='{{index .RepoDigests 0}}' node:24.13.0-bookworm-slim
+#   docker pull node:26.12.1-bookworm-slim && docker inspect --format='{{index .RepoDigests 0}}' node:26.12.1-bookworm-slim
 #
 # Both base images are named in ARGs, here before the first FROM so that
 # every stage can read them, and not in the FROM lines, so that CI can
 # build on its own copies. See the same lines in backend/Dockerfile.
-ARG NODE_IMAGE=public.ecr.aws/docker/library/node:24.21.0-bookworm-slim@sha256:0e0ff40c39bc087845bfb27465a0df4ea419520094bc35842ff83dd8cbe6f9b6
+ARG NODE_IMAGE=public.ecr.aws/docker/library/node:26.12.1-bookworm-slim@sha256:88e480776c6149ff1d098cd304f44bf18057fb5d284a3329b78162d29821e28c
 ARG CADDY_IMAGE=public.ecr.aws/docker/library/caddy:2-alpine@sha256:6aeddd44c3078b0f9a35206472a11420648a79c184603ef95957d0a20044cb2b
 
 FROM ${NODE_IMAGE} AS deps
