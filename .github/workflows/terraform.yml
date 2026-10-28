@@ -65,7 +65,7 @@ jobs:
   # ---------- Terraform plan (PRs only) ----------
   plan:
     name: Plan (${{ matrix.environment }})
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     if: github.event_name == 'pull_request'
     strategy:
       # One environment's plan failing should not hide the other's.
@@ -137,7 +137,7 @@ jobs:
   # ---------- Terraform apply (main branch) ----------
   apply:
     name: Apply (${{ matrix.environment }})
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     if: >-
       (github.event_name == 'push' && github.ref == 'refs/heads/main')
       || github.event_name == 'workflow_dispatch'

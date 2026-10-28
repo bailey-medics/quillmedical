@@ -45,7 +45,7 @@ jobs:
   # ---------- Work out which commit to build ----------
   prepare:
     name: Prepare
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     outputs:
       sha: ${{ steps.resolve.outputs.sha }}
       backend_changed: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.backend }}
@@ -87,7 +87,7 @@ jobs:
   # ---------- Build and push Docker images ----------
   build:
     name: Build ${{ matrix.service }}
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     needs: prepare
     if: ${{ needs.prepare.outputs.services != '[]' }}
     environment: app
@@ -236,7 +236,7 @@ jobs:
   # ---------- Deploy to teaching ----------
   deploy:
     name: Deploy to ${{ matrix.environment }}
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     # A healthy run finishes in a few minutes. The ceiling stops a stalled
     # Cloud Run operation from holding the serialised deploy queue for an
     # hour, as one did on 2026-09-10 (run 34497127303).

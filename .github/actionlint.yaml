@@ -1,0 +1,7 @@
+# actionlint checks every `runs-on:` against the GitHub-hosted runner
+# labels it was built with, and no release yet knows ubuntu-26.04, which
+# GitHub does host. Naming it here is actionlint's own way to accept a
+# label it does not know. Remove it once a release lists the label.
+self-hosted-runner:
+  labels:
+    - ubuntu-26.04

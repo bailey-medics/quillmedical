@@ -27,7 +27,7 @@ jobs:
   # -------------------------------------------------------------------
   auto-pr:
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/feature/')
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 5
     permissions:
       contents: read
@@ -61,7 +61,7 @@ jobs:
   # -------------------------------------------------------------------
   validate:
     if: github.event_name == 'pull_request' || (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/feature/'))
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     # Fifteen rather than ten since the malware scan was added: fetching
     # ClamAV and its definitions from the mirror, and scanning, add a
     # minute or two.
@@ -200,7 +200,7 @@ jobs:
   # -------------------------------------------------------------------
   check-protection:
     if: github.event_name == 'pull_request' || (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/feature/'))
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 5
     permissions:
       contents: read
@@ -228,7 +228,7 @@ jobs:
   # passed on - a second run could find nothing new.
   deploy:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 15
     permissions:
       contents: read

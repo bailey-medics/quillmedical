@@ -38,7 +38,7 @@ jobs:
   # ---------- Format and validate (pull requests) ----------
   validate:
     name: Validate
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v7.0.1
