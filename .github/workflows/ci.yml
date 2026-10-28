@@ -67,7 +67,7 @@ jobs:
   # ---------- Python ----------
   python_checks:
     if: github.event_name == 'push' || github.event_name == 'merge_group'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     name: Python ${{ matrix.task }}
     timeout-minutes: 20
     strategy:
@@ -136,7 +136,7 @@ jobs:
   # job rather than joining the DB-less `unit` matrix task above.
   alembic_drift_check:
     if: github.event_name == 'push' || github.event_name == 'merge_group'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     name: Alembic autogenerate drift check
     timeout-minutes: 10
     outputs:
@@ -214,7 +214,7 @@ jobs:
   # ---------- JS: run multiple tools in parallel via matrix ----------
   typescript_checks:
     if: github.event_name == 'push' || github.event_name == 'merge_group'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 15
     strategy:
       fail-fast: true
@@ -263,7 +263,7 @@ jobs:
   # See docs/docs/plans/2026-09-30-ci-job-times-plan.md.
   frontend_unit_shards:
     if: github.event_name == 'push' || github.event_name == 'merge_group'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     name: Frontend unit tests (${{ matrix.shard }}/3)
     timeout-minutes: 15
     strategy:
@@ -292,7 +292,7 @@ jobs:
   frontend_unit_tests:
     if: always() && (github.event_name == 'push' || github.event_name == 'merge_group')
     needs: [frontend_unit_shards]
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     name: typescript_checks (unit-test:run)
     timeout-minutes: 5
     steps:
@@ -310,7 +310,7 @@ jobs:
   # scans nothing. This scans the commits the branch adds.
   secret_scan:
     if: github.event_name == 'push' || github.event_name == 'merge_group'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     name: Secret scan
     timeout-minutes: 5
     steps:
@@ -333,7 +333,7 @@ jobs:
   # with a name, a date and a fingerprint. See audit/README.md.
   audit_ledger:
     if: github.event_name == 'push' || github.event_name == 'merge_group'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     name: Audit ledger
     timeout-minutes: 5
     steps:
@@ -357,7 +357,7 @@ jobs:
   # ---------- Shell scripts ----------
   shell_checks:
     if: github.event_name == 'push'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     name: Shell and workflow lint
     timeout-minutes: 5
     steps:
@@ -398,7 +398,7 @@ jobs:
       # skip.
       - uses: actions/setup-node@v7.0.0
         with:
-          node-version: '24'
+          node-version: '26'
 
       - name: Run shell script tests
         run: |
@@ -440,7 +440,7 @@ jobs:
   # The hash is also what a decision file will be recorded against.
   changed_teaching_tooling:
     if: github.event_name == 'pull_request'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     name: Detect teaching tooling changes
     timeout-minutes: 5
     permissions:
@@ -466,7 +466,7 @@ jobs:
     if: >-
       github.event_name == 'pull_request'
       && needs.changed_teaching_tooling.outputs.changed == 'true'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     name: Published teaching content still validates
     timeout-minutes: 10
     continue-on-error: true
@@ -530,7 +530,7 @@ jobs:
 
   version_consistency:
     if: github.event_name == 'push'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     name: Version consistency
     timeout-minutes: 5
     steps:
@@ -569,7 +569,7 @@ jobs:
   # name. See docs/docs/plans/2026-09-30-ci-job-times-plan.md.
   heavy_storybook_shards:
     if: (github.event_name == 'pull_request' && github.event.pull_request.draft == false) || github.event_name == 'merge_group'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     name: Storybook interaction tests (${{ matrix.shard }}/3)
     timeout-minutes: 15
     strategy:
@@ -626,7 +626,7 @@ jobs:
   heavy_storybook_tests:
     if: always() && ((github.event_name == 'pull_request' && github.event.pull_request.draft == false) || github.event_name == 'merge_group')
     needs: [heavy_storybook_shards]
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     name: Storybook interaction tests
     timeout-minutes: 5
     steps:
@@ -642,7 +642,7 @@ jobs:
   # the frontend alone.
   heavy_semgrep:
     if: (github.event_name == 'pull_request' && github.event.pull_request.draft == false) || github.event_name == 'merge_group'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     name: SAST
     timeout-minutes: 10
     steps:
@@ -706,7 +706,7 @@ jobs:
   # build arguments must match that workflow.
   heavy_e2e_images:
     if: (github.event_name == 'pull_request' && github.event.pull_request.draft == false) || github.event_name == 'merge_group'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     name: E2E image build
     timeout-minutes: 20
     outputs:
@@ -796,7 +796,7 @@ jobs:
   # the job name. See docs/docs/plans/2026-10-27-e2e-shards-plan.md.
   heavy_e2e_shards:
     if: (github.event_name == 'pull_request' && github.event.pull_request.draft == false) || github.event_name == 'merge_group'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     name: E2E (Playwright) (${{ matrix.shard }}/3)
     timeout-minutes: 20
     needs: [heavy_e2e_images]
@@ -954,7 +954,7 @@ jobs:
   heavy_e2e:
     if: always() && ((github.event_name == 'pull_request' && github.event.pull_request.draft == false) || github.event_name == 'merge_group')
     needs: [heavy_e2e_shards]
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     name: E2E (Playwright)
     timeout-minutes: 5
     outputs:
@@ -1024,7 +1024,7 @@ jobs:
   # it just fails, so it stays out of gate-breaking.yml.
   fast_competency_catalogue_check:
     if: (github.event_name == 'pull_request' && github.event.pull_request.draft == false) || github.event_name == 'merge_group'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     name: Competency catalogue check
     timeout-minutes: 5
     steps:
@@ -1051,7 +1051,7 @@ jobs:
   # just fails, and a cancelled run is simply re-checked by the next one.
   heavy_db_migration_immutability_check:
     if: (github.event_name == 'pull_request' && github.event.pull_request.draft == false) || github.event_name == 'merge_group'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     name: DB migration immutability check
     timeout-minutes: 10
     steps:
@@ -1115,7 +1115,7 @@ jobs:
       - fast_competency_catalogue_check
       - heavy_db_migration_immutability_check
     if: ${{ always() && github.event_name == 'merge_group' && contains(needs.*.result, 'failure') }}
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 5
     permissions:
       contents: read
