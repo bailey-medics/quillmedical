@@ -42,3 +42,12 @@ def test_average_refuses_anything_but_numbers(
     )
 
     assert response.status_code == 422
+
+
+def test_average_refuses_no_numbers(
+    authenticated_superadmin_client: TestClient,
+) -> None:
+    """No numbers has no mean, so it is refused rather than failing."""
+    response = authenticated_superadmin_client.get(URL, params={"values": ""})
+
+    assert response.status_code == 422

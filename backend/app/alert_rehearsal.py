@@ -11,7 +11,7 @@ Example:
     GET /api/operator/rehearsal/average?values=1,2,3
 """
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, HTTPException, Query
 
 from app.deps import DEP_REQUIRE_OPERATOR
 from app.models import User
@@ -38,7 +38,12 @@ def average(
     Raises:
         HTTPException: 401 if not authenticated.
         HTTPException: 403 if the caller is not a platform operator.
+        HTTPException: 422 if no numbers were given.
     """
     numbers = [float(part) for part in values.split(",") if part.strip()]
+    if not numbers:
+        raise HTTPException(
+            status_code=422, detail="Give at least one number."
+        )
 
     return AverageOut(count=len(numbers), mean=sum(numbers) / len(numbers))
