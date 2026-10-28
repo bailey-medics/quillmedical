@@ -238,7 +238,7 @@ export class Watcher {
         await this.deps.reply(
           this.options.channel,
           next.alert.ts,
-          `Worktree 5 is in use (${worktree.reason}), so this is parked until it is clean again.`,
+          `Worktree 5 is in use (${worktree.reason}), so this is parked until it is free again.`,
         );
         this.deps.log("parked", { fingerprint: next.alert.fingerprint });
       }

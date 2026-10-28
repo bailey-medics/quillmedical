@@ -94,35 +94,41 @@ function fakeGit(answers: Record<string, string>): Run {
   };
 }
 
-const ON_MAIN = {
+// A clean, detached checkout whose commit main already contains: where
+// `just stack-fresh` leaves worktree 5, whether or not main has moved since.
+const DETACHED_ON_MAIN = {
   "status --porcelain": "",
-  "fetch origin main --quiet": "",
-  "rev-parse HEAD": "abc",
-  "rev-parse origin/main": "abc",
   "rev-parse --abbrev-ref HEAD": "HEAD",
+  "fetch origin main --quiet": "",
+  "merge-base --is-ancestor HEAD origin/main": "",
 };
 
 describe("checkWorktree", () => {
-  it("is free when clean and at origin/main", async () => {
-    assert.deepEqual(await checkWorktree("/w", fakeGit(ON_MAIN)), { free: true });
+  it("is free when clean and detached on a commit main contains, even behind main", async () => {
+    assert.deepEqual(await checkWorktree("/w", fakeGit(DETACHED_ON_MAIN)), { free: true });
   });
 
-  it("is free on a branch an earlier alert left behind", async () => {
-    const git = fakeGit({ ...ON_MAIN, "rev-parse HEAD": "def", "rev-parse --abbrev-ref HEAD": "feature/alert-fix-x" });
+  it("is free on any branch, since moving the checkout leaves the branch as it is", async () => {
+    for (const branch of ["feature/alert-fix-x", "feature/watcher-x"]) {
+      const git = fakeGit({ "status --porcelain": "", "rev-parse --abbrev-ref HEAD": branch });
 
-    assert.deepEqual(await checkWorktree("/w", git), { free: true });
+      assert.deepEqual(await checkWorktree("/w", git), { free: true });
+    }
   });
 
   it("is in use with uncommitted changes", async () => {
-    const state = await checkWorktree("/w", fakeGit({ ...ON_MAIN, "status --porcelain": " M a.ts" }));
+    const state = await checkWorktree("/w", fakeGit({ ...DETACHED_ON_MAIN, "status --porcelain": " M a.ts" }));
 
     assert.deepEqual(state, { free: false, reason: "it has uncommitted changes" });
   });
 
-  it("is in use on somebody's own branch", async () => {
-    const git = fakeGit({ ...ON_MAIN, "rev-parse HEAD": "def", "rev-parse --abbrev-ref HEAD": "feature/watcher-x" });
+  it("is in use on a detached commit main does not contain, which moving would lose", async () => {
+    const { "merge-base --is-ancestor HEAD origin/main": _contained, ...notOnMain } = DETACHED_ON_MAIN;
 
-    assert.deepEqual(await checkWorktree("/w", git), { free: false, reason: "it is on feature/watcher-x" });
+    assert.deepEqual(await checkWorktree("/w", fakeGit(notOnMain)), {
+      free: false,
+      reason: "it is on a detached commit that main does not contain",
+    });
   });
 
   it("still answers when the fetch fails", async () => {
@@ -130,7 +136,7 @@ describe("checkWorktree", () => {
       if (args.includes("fetch")) {
         throw new Error("offline");
       }
-      return fakeGit(ON_MAIN)(command, args);
+      return fakeGit(DETACHED_ON_MAIN)(command, args);
     };
 
     assert.deepEqual(await checkWorktree("/w", run), { free: true });
