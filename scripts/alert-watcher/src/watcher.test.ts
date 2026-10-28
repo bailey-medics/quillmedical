@@ -57,9 +57,12 @@ class Fakes {
   }
 }
 
-function alertPost(policy: string, ts: string): SlackMessage {
-  return { channel: CHANNEL, ts, bot_id: "B0000000002", text: `Incident is open for ${policy} (app)` };
+// A Cloud Monitoring post opens with the policy's subject, in bold.
+function alertPost(subject: string, ts: string): SlackMessage {
+  return { channel: CHANNEL, ts, bot_id: "B0000000002", text: `*${subject}*\nAlert open` };
 }
+
+const INCIDENT = "*Google Cloud reports an incident affecting this project*";
 
 describe("Watcher", () => {
   let fakes: Fakes;
@@ -72,7 +75,7 @@ describe("Watcher", () => {
   });
 
   it("starts an investigation on the next tick, leaving the first word in the thread to the skill", async () => {
-    await watcher.onMessage(alertPost("Backend error logged", "100.000001"));
+    await watcher.onMessage(alertPost("Backend error: app.auth", "100.000001"));
     await watcher.tick();
 
     assert.deepEqual(fakes.started, ["/state/alerts/100.000001.txt"]);
@@ -80,16 +83,16 @@ describe("Watcher", () => {
   });
 
   it("ignores a message in another channel", async () => {
-    await watcher.onMessage({ ...alertPost("Backend error logged", "100.000001"), channel: "C9999999999" });
+    await watcher.onMessage({ ...alertPost("Backend error: app.auth", "100.000001"), channel: "C9999999999" });
     await watcher.tick();
 
     assert.deepEqual(fakes.started, []);
   });
 
   it("handles each fingerprint once, so the hourly repeats start nothing", async () => {
-    await watcher.onMessage(alertPost("Backend error logged", "100.000001"));
+    await watcher.onMessage(alertPost("Backend error: app.auth", "100.000001"));
     await watcher.tick();
-    await watcher.onMessage(alertPost("Backend error logged", "200.000001"));
+    await watcher.onMessage(alertPost("Backend error: app.auth", "200.000001"));
 
     assert.equal(watcher.queued(), 0);
     assert.ok(fakes.events.includes("duplicate"));
@@ -98,7 +101,7 @@ describe("Watcher", () => {
   it("waits while a person's turn is running, and says the alert is queued", async () => {
     fakes.busy = fakes.nowSeconds();
 
-    await watcher.onMessage(alertPost("Backend error logged", "100.000001"));
+    await watcher.onMessage(alertPost("Backend error: app.auth", "100.000001"));
     await watcher.tick();
 
     assert.deepEqual(fakes.started, []);
@@ -113,7 +116,7 @@ describe("Watcher", () => {
   it("parks an alert while worktree 5 is in use, saying so once", async () => {
     fakes.worktree = { free: false, reason: "it has uncommitted changes" };
 
-    await watcher.onMessage(alertPost("Backend error logged", "100.000001"));
+    await watcher.onMessage(alertPost("Backend error: app.auth", "100.000001"));
     await watcher.tick();
     await watcher.tick();
 
@@ -127,8 +130,8 @@ describe("Watcher", () => {
   });
 
   it("runs one alert at a time, starting the next only when the first finishes", async () => {
-    await watcher.onMessage(alertPost("Backend error logged", "100.000001"));
-    await watcher.onMessage(alertPost("Server errors - 5xx", "100.000002"));
+    await watcher.onMessage(alertPost("Backend error: app.auth", "100.000001"));
+    await watcher.onMessage(alertPost("5xx errors on quill-backend-app", "100.000002"));
     await watcher.tick();
 
     fakes.busy = fakes.nowSeconds();
@@ -143,7 +146,7 @@ describe("Watcher", () => {
   });
 
   it("stops a run that stalls past 45 minutes and says so in its thread", async () => {
-    await watcher.onMessage(alertPost("Backend error logged", "100.000001"));
+    await watcher.onMessage(alertPost("Backend error: app.auth", "100.000001"));
     await watcher.tick();
 
     fakes.busy = fakes.nowSeconds();
@@ -167,7 +170,7 @@ describe("Watcher", () => {
   it("clears a flag left far older than any real turn", async () => {
     fakes.busy = fakes.nowSeconds();
     fakes.advance(4 * 3600);
-    await watcher.onMessage(alertPost("Backend error logged", "100.000001"));
+    await watcher.onMessage(alertPost("Backend error: app.auth", "100.000001"));
     await watcher.tick();
 
     assert.equal(fakes.interrupts, 0);
@@ -175,18 +178,18 @@ describe("Watcher", () => {
   });
 
   it("starts no more than six investigations in a day", async () => {
-    const policies = [
-      "Uptime failure",
-      "Cloud Run startup failure",
-      "Scheduled action failed",
-      "Server errors - 5xx",
-      "Backend error logged",
-      "Browser errors",
-      "Cloud SQL disk filling",
+    const subjects = [
+      "Uptime failing: app.quill-medical.com",
+      "Cloud Run container failed to start",
+      "A scheduled action failed",
+      "5xx errors on quill-backend-app",
+      "Backend error: app.auth",
+      "Browser errors above threshold",
+      "Cloud SQL disk high: quill-medical-app:quill-app",
     ];
 
-    for (const [index, policy] of policies.entries()) {
-      await watcher.onMessage(alertPost(policy, `100.00000${index}`));
+    for (const [index, subject] of subjects.entries()) {
+      await watcher.onMessage(alertPost(subject, `100.00000${index}`));
       await watcher.tick();
       fakes.advance(200);
       await watcher.tick();
@@ -197,8 +200,8 @@ describe("Watcher", () => {
   });
 
   it("treats alerts during an open Google Cloud incident as part of it", async () => {
-    await watcher.onMessage({ channel: CHANNEL, ts: "100.000001", bot_id: "B0000000002", text: "Google Cloud incident (app)\nState: ACTIVE" });
-    await watcher.onMessage(alertPost("Backend error logged", "100.000002"));
+    await watcher.onMessage({ channel: CHANNEL, ts: "100.000001", bot_id: "B0000000002", text: `${INCIDENT}\nState: ACTIVE` });
+    await watcher.onMessage(alertPost("Backend error: app.auth", "100.000002"));
 
     assert.equal(watcher.queued(), 1);
     assert.match(fakes.replies.at(-1)?.text ?? "", /Google Cloud has an incident open/);
@@ -206,9 +209,9 @@ describe("Watcher", () => {
   });
 
   it("investigates again once the incident has closed", async () => {
-    await watcher.onMessage({ channel: CHANNEL, ts: "100.000001", bot_id: "B0000000002", text: "Google Cloud incident (app)\nState: ACTIVE" });
-    await watcher.onMessage({ channel: CHANNEL, ts: "100.000003", bot_id: "B0000000002", text: "Google Cloud incident (app)\nState: RESOLVED" });
-    await watcher.onMessage(alertPost("Backend error logged", "100.000002"));
+    await watcher.onMessage({ channel: CHANNEL, ts: "100.000001", bot_id: "B0000000002", text: `${INCIDENT}\nState: ACTIVE` });
+    await watcher.onMessage({ channel: CHANNEL, ts: "100.000003", bot_id: "B0000000002", text: `${INCIDENT}\nState: RESOLVED` });
+    await watcher.onMessage(alertPost("Backend error: app.auth", "100.000002"));
 
     assert.equal(watcher.queued(), 2);
   });

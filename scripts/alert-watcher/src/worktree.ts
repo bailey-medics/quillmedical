@@ -1,9 +1,11 @@
 // Whether worktree 5 is free for an alert run.
 //
 // A person may be working there, so the watcher never resets or cleans it.
-// It is free only when the tree is clean and sits on origin/main, or on a
-// branch an earlier alert run left behind. Anything else means somebody is
-// using it, and the alert waits.
+// Each run starts by moving the checkout to the latest main, so the only
+// question is whether that move would lose somebody's work. It would with
+// uncommitted changes, or with commits on a detached checkout that no
+// branch holds and main does not contain. A clean checkout on any branch,
+// or behind main, is free: the branch stays where it is.
 
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
@@ -35,21 +37,27 @@ export async function checkWorktree(directory: string, run: Run = runCommand): P
     return { free: false, reason: "it has uncommitted changes" };
   }
 
-  // A failed fetch leaves the last known origin/main, which is still a fair
-  // test of whether the checkout has moved on to other work.
+  const branch = await git("rev-parse", "--abbrev-ref", "HEAD");
+
+  if (branch !== "HEAD") {
+    return { free: true };
+  }
+
+  // A failed fetch leaves the last known origin/main, which can only make a
+  // detached commit look newer than main, so the answer errs towards in use.
   try {
     await git("fetch", "origin", "main", "--quiet");
   } catch {
     // Carried on deliberately: see above.
   }
 
-  const head = await git("rev-parse", "HEAD");
-  const main = await git("rev-parse", "origin/main");
-  const branch = await git("rev-parse", "--abbrev-ref", "HEAD");
-
-  if (head === main || branch.startsWith("feature/alert-")) {
-    return { free: true };
+  // Exits 0 when main already contains the commit, and 1 when it does not,
+  // which the runner reports as an error.
+  try {
+    await git("merge-base", "--is-ancestor", "HEAD", "origin/main");
+  } catch {
+    return { free: false, reason: "it is on a detached commit that main does not contain" };
   }
 
-  return { free: false, reason: `it is on ${branch === "HEAD" ? "a detached commit" : branch}` };
+  return { free: true };
 }

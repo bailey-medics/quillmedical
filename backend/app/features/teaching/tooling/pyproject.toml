@@ -26,5 +26,5 @@ requires-poetry = ">=2.5,<3"
 # this package is never published (package-mode = false).
 [tool.poetry.dependencies]
 python = "~3.14"
-pydantic = "2.14.0"
+pydantic = "2.14.1"
 pyyaml = ">=6.0,<7.0"

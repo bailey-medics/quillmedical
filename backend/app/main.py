@@ -41,6 +41,7 @@ from slowapi.errors import RateLimitExceeded
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.alert_rehearsal import router as alert_rehearsal_router
 from app.analytics.router import router as analytics_router
 from app.api_compatibility import REQUIRED_CLIENT_GENERATION
 from app.body_limit import BodyLimitMiddleware
@@ -189,6 +190,7 @@ def _verification_email(
 
 router = APIRouter(prefix=settings.API_PREFIX)
 
+router.include_router(alert_rehearsal_router)
 router.include_router(analytics_router)
 router.include_router(feedback_router)
 router.include_router(guides_router)

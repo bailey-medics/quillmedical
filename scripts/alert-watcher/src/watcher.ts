@@ -33,7 +33,6 @@ export interface Options {
   channel: string;
   // The bot user the watcher posts as, from auth.test.
   ownUserId: string | undefined;
-  environment: string;
   dailyCap: number;
   stallMinutes: number;
   abandonedHours: number;
@@ -44,7 +43,6 @@ export interface Options {
 }
 
 export const DEFAULT_OPTIONS: Omit<Options, "channel" | "ownUserId"> = {
-  environment: "app",
   dailyCap: 6,
   stallMinutes: 45,
   abandonedHours: 3,
@@ -98,7 +96,6 @@ export class Watcher {
 
     const alert = classify(message, {
       ownUserId: this.options.ownUserId,
-      environment: this.options.environment,
       now: this.deps.now(),
     });
 
@@ -241,7 +238,7 @@ export class Watcher {
         await this.deps.reply(
           this.options.channel,
           next.alert.ts,
-          `Worktree 5 is in use (${worktree.reason}), so this is parked until it is clean again.`,
+          `Worktree 5 is in use (${worktree.reason}), so this is parked until it is free again.`,
         );
         this.deps.log("parked", { fingerprint: next.alert.fingerprint });
       }
