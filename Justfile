@@ -6,16 +6,22 @@ default:
 
 
 initialise:= 'set -euxo pipefail
-    initialise() {
-        # Clear the terminal window title on exit
+    _clear_title() {
         echo -ne "\033]0; \007"
     }
-    trap initialise EXIT
-    just _terminal-description'
 
+    # The outermost recipe names the terminal tab and clears it on exit; a
+    # recipe it runs in turn leaves the tab alone
+    _set_title() {
+        if [ -n "${QUILL_TAB_TITLE:-}" ]; then
+            return 0
+        fi
 
-_terminal-description message=" ":
-    echo -ne "\033]0;{{message}}\007"
+        export QUILL_TAB_TITLE="${1:- }"
+        echo -ne "\033]0;${QUILL_TAB_TITLE}\007"
+        trap _clear_title EXIT
+    }
+    _set_title'
 
 
 # Which repository the stack recipes act on. Unset, it is this one.
