@@ -2,7 +2,7 @@
  * PageMessage Component Tests
  */
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithMantine } from "@/test/test-utils";
@@ -143,6 +143,44 @@ describe("PageMessage", () => {
       await user.click(screen.getByText("Clear all"));
 
       expect(screen.queryByTestId("form-status")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("Without crypto.randomUUID", () => {
+    // Browsers offer it only over HTTPS or on localhost, so a dev app
+    // opened at a network address over plain HTTP has none.
+    beforeEach(() => {
+      vi.stubGlobal("crypto", {});
+    });
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    it("shows and dismisses messages", async () => {
+      const user = userEvent.setup();
+      renderWithProvider();
+
+      await user.click(screen.getByText("Show success"));
+      await user.click(screen.getByText("Show error"));
+
+      expect(screen.getAllByTestId("form-status")).toHaveLength(2);
+
+      await user.click(screen.getAllByLabelText("Dismiss")[0]);
+
+      expect(screen.getAllByTestId("form-status")).toHaveLength(1);
+      expect(screen.getByText("Test error")).toBeInTheDocument();
+    });
+
+    it("ingests a flash from location state", () => {
+      mockLocation = {
+        pathname: "/test",
+        search: "",
+        state: { flash: { title: "Organisation created" } },
+      };
+      renderWithProvider();
+
+      expect(screen.getByText("Organisation created")).toBeInTheDocument();
     });
   });
 
