@@ -28,6 +28,31 @@ find_code() {
   fi
 }
 
+# Succeeds when `zip`, which packs the extension, is installed. Otherwise
+# says how to install it, picking the line for this machine's package
+# manager where it can tell, and fails.
+require_zip() {
+  if command -v zip >/dev/null 2>&1; then
+    return 0
+  fi
+
+  local apt_line="  Ubuntu or Debian:  sudo apt install zip"
+  local dnf_line="  Fedora:            sudo dnf install zip"
+  local brew_line="  macOS:             brew install zip   (macOS normally has it already)"
+
+  echo "The 'zip' command was not found. It packs the extension. Install it, then run this again:" >&2
+
+  if command -v apt >/dev/null 2>&1; then
+    echo "$apt_line" >&2
+  elif command -v dnf >/dev/null 2>&1; then
+    echo "$dnf_line" >&2
+  else
+    printf '%s\n' "$apt_line" "$dnf_line" "$brew_line" >&2
+  fi
+
+  return 1
+}
+
 # Writes `extension.js` into the given folder: `extension.ts` less its
 # types. Fails, saying so, on a Node too old to strip them.
 compile_extension() {
@@ -81,6 +106,8 @@ main() {
     echo "VS Code's 'code' command was not found. In VS Code, run 'Shell Command: Install code command in PATH', then run this again." >&2
     exit 1
   fi
+
+  require_zip || exit 1
 
   local version=""
   version="$(node -p "require('${here}/package.json').version")"

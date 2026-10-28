@@ -156,7 +156,7 @@ backend/app/email/templates/previews/newsletter_sample.html.j2	03f175d4bd81a9be2
 backend/app/email/templates/teaching_certificate.html.j2	9055f66f56fbebf32c93824839da4c5fe2d38369	2026-10-09	Cotswoldsmaker	mark.allan.bailey@gmail.com
 backend/pyproject.toml	d982f9a53e0cd978067ed8881f8c4162deb649fc	2026-10-13	Cotswoldsmaker	mark.allan.bailey@gmail.com
 backend/tests/every_route_is_guarded_test.py	3e4b3f6dd5db42faf11edb2e94171e685181abda	2026-10-20	Cotswoldsmaker	mark.allan.bailey@gmail.com
-compose.ci.yml	3f0d8c4a52ed3c10110580f3bb3afb8d1ca2470d	2026-10-12	Cotswoldsmaker	mark.allan.bailey@gmail.com
+compose.ci.yml	5f17964cceaca51313f99eb036b2aff339054328	2026-10-28	Cotswoldsmaker	mark.allan.bailey@gmail.com
 compose.dev.yml	b9834fc728e8f5e89376a1f95b38e5a325eb1ae8	2026-10-12	Cotswoldsmaker	mark.allan.bailey@gmail.com
 compose.migrate.yml	d891e933f381712e478ebc4b1651b7effd9b6a57	2026-10-12	Cotswoldsmaker	mark.allan.bailey@gmail.com
 compose.unit-tests.yml	0e81074a645f55daa3228e957e90d0a13cc34896	2026-10-12	Cotswoldsmaker	mark.allan.bailey@gmail.com
