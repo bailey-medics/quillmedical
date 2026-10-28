@@ -112,9 +112,12 @@ RUN --mount=type=cache,target=/root/.cache/pypoetry \
 # it, so creating it as appuser is what makes the volume writable. The
 # container runs as uid 10001 and a bare named volume would arrive owned
 # by root, which is how a passport create came to fail with
-# `Permission denied: '/data'`. Dev stage only - production sets
-# PASSPORT_GCS_BUCKET and never touches this path.
-RUN mkdir -p /data/passports && chown -R appuser:appuser /data
+# `Permission denied: '/data'`. On a Linux host compose.dev.yml runs the
+# container as the host user instead, so the folders are writable by
+# anyone as well. Dev stage only - production sets PASSPORT_GCS_BUCKET
+# and never touches this path.
+RUN mkdir -p /data/passports && chown -R appuser:appuser /data \
+ && chmod 0777 /data /data/passports
 USER appuser
 # Copy the scripts directory into the dev image and set ownership to the unprivileged user.
 COPY --chown=appuser:appuser backend/scripts ./scripts
