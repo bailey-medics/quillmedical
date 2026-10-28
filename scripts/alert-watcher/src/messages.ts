@@ -6,12 +6,11 @@
 // person writes, any reply in a thread and the watcher's own posts are
 // never alerts.
 //
-// Three shapes are known and get exact fingerprints: a Cloud Monitoring
-// post naming one of the alert policies in infra/modules/monitoring/main.tf,
-// a `*❌ Deploy failed*` post from deploy.yml, and the Google Cloud incident
-// policy. Every other bot post is `other`, fingerprinted by its first bold
-// line. messages.test.ts fails when a policy in Terraform is not listed
-// here, so our own alerts keep their exact names.
+// Three shapes are known: a Cloud Monitoring post for one of the alert
+// policies in infra/modules/monitoring/main.tf, a `*❌ Deploy failed*` post
+// from deploy.yml, and the Google Cloud incident policy. Every other bot
+// post is `other`. messages.test.ts fails when a policy's subject in
+// Terraform is not listed here, so the two cannot drift apart quietly.
 
 export type AlertKind = "monitoring" | "deploy" | "gcp-incident" | "other";
 
@@ -30,8 +29,8 @@ export interface SlackMessage {
 export interface Alert {
   kind: AlertKind;
   fingerprint: string;
-  // The policy name for a Cloud Monitoring post, "deploy.yml", or the first
-  // bold line of any other post.
+  // "deploy.yml", or the post's first bold line: for a Cloud Monitoring
+  // post, the policy's subject.
   source: string;
   // True for a post saying an incident has closed or recovered.
   closing: boolean;
@@ -39,36 +38,36 @@ export interface Alert {
   text: string;
 }
 
-// Each alert policy's display name, without its ` (<environment>)` suffix.
-// Longest first where one is the start of another, so "Uptime failure -
-// sustained" is not read as "Uptime failure".
-export const INVESTIGATED_POLICIES: readonly string[] = [
-  "Uptime failure - sustained",
-  "Uptime failure",
-  "Cloud Run startup failure",
-  "Scheduled action has not run",
-  "Scheduled action failed",
-  "Server errors - 5xx",
-  "Backend error logged",
-  "Browser errors",
-  "Video files not found",
-  "Cloud SQL disk filling",
-  "Major outage - call the on-call",
+// Google's Slack post never names the alert policy. Its bold first line is
+// the policy's documentation subject, so policies are known by the start of
+// their subject, the part before anything Terraform or Google fills in.
+export const INVESTIGATED_SUBJECTS: readonly string[] = [
+  "Uptime failing:",
+  "Still down after 15 minutes:",
+  "Cloud Run container failed to start",
+  "A scheduled action failed",
+  "A scheduled action has not run for",
+  "5xx errors on",
+  "Backend error:",
+  "Browser errors above threshold",
+  "Learners are requesting video files that do not exist",
+  "Cloud SQL disk high:",
+  "Major outage:",
 ];
 
 // Policies that post to the channel but are not faults to fix. The alert
 // route test proves each route still reaches a person, and the retention
 // policy asks a person for a decision.
-export const IGNORED_POLICIES: readonly string[] = [
-  "Four-weekly alert test",
-  "Records awaiting a deletion decision",
+export const IGNORED_SUBJECTS: readonly string[] = [
+  "Scheduled alert test, no action needed",
+  "Training records are awaiting a decision",
 ];
 
-export const GCP_INCIDENT_POLICY = "Google Cloud incident";
+export const GCP_INCIDENT_SUBJECT = "Google Cloud reports an incident affecting this project";
 
-// The closing words are narrow on purpose: a bare "closed" appears in the
-// retention policy's own documentation, which is posted with the alert.
-// The rehearsal confirms them against a real closing post.
+// Google's closing post is confirmed against a real one in the rehearsal.
+// A bare "closed" is not enough: it appears in the retention policy's own
+// documentation, which is posted with the alert.
 const CLOSING = /\bis (?:now )?closed\b|\[RESOLVED\]|\bresolved\b|\brecovered\b/i;
 const GCP_CLOSED = /State:\s*(RESOLVED|CLOSED)\b/i;
 const DEPLOY_FAILED = /❌\s*Deploy failed/;
@@ -117,37 +116,23 @@ export function flatten(message: SlackMessage): string {
   return [...new Set(parts)].join("\n");
 }
 
-function escapeForRegExp(text: string): string {
-  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-// The full policy name in the text, such as "Backend error logged (app)" or
-// "Scheduled action has not run: backup (app)", or undefined.
-export function findPolicy(
-  text: string,
-  prefixes: readonly string[],
-  environment: string,
-): { prefix: string; name: string } | undefined {
-  const suffix = escapeForRegExp(` (${environment})`);
-
-  for (const prefix of prefixes) {
-    const pattern = new RegExp(`${escapeForRegExp(prefix)}(?::[^\\n()]*)?${suffix}`);
-    const found = pattern.exec(text);
-    if (found) {
-      return { prefix, name: found[0] };
-    }
-  }
-
-  return undefined;
-}
-
-// What an unrecognised post is about, for its fingerprint: its first bold
-// line, which is how the workflows' posts open, or else its first line.
+// What a post is about: its first bold line, which is how Google's posts
+// and the workflows' posts both open, or else its first line. A Slack link,
+// `<url|words>`, is read as its words.
 export function title(text: string): string {
   const line = BOLD.exec(text)?.[1] ?? text.split("\n").find((part) => part.trim()) ?? "";
-  const tidy = line.replace(/\s+/g, " ").trim().slice(0, TITLE_LENGTH);
+  const words = line
+    .replace(/<[^|>]*\|([^>]*)>/g, "$1")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&amp;/g, "&");
+  const tidy = words.replace(/\s+/g, " ").trim().slice(0, TITLE_LENGTH);
 
   return tidy || "untitled";
+}
+
+function startsWithAny(subject: string, prefixes: readonly string[]): boolean {
+  return prefixes.some((prefix) => subject.startsWith(prefix));
 }
 
 function utcDate(now: Date): string {
@@ -157,7 +142,7 @@ function utcDate(now: Date): string {
 // What the message is, or undefined when it is not an alert to act on.
 export function classify(
   message: SlackMessage,
-  options: { ownUserId: string | undefined; environment: string; now: Date },
+  options: { ownUserId: string | undefined; now: Date },
 ): Alert | undefined {
   if (!message.bot_id) {
     return undefined;
@@ -195,44 +180,41 @@ export function classify(
     };
   }
 
-  const all = [GCP_INCIDENT_POLICY, ...IGNORED_POLICIES, ...INVESTIGATED_POLICIES];
-  const policy = findPolicy(text, all, options.environment);
+  const subject = title(text);
 
-  if (policy && IGNORED_POLICIES.includes(policy.prefix)) {
+  if (startsWithAny(subject, IGNORED_SUBJECTS)) {
     return undefined;
   }
 
-  // Not a known shape. Its closing words are not read: in a post nobody
-  // has described, "resolved" is as likely to be part of the fault.
-  if (!policy) {
-    const source = title(text);
-
-    return {
-      kind: "other",
-      fingerprint: `other|${source}|${date}`,
-      source,
-      closing: false,
-      ts: message.ts,
-      text,
-    };
-  }
-
-  if (policy.prefix === GCP_INCIDENT_POLICY) {
+  if (subject.startsWith(GCP_INCIDENT_SUBJECT)) {
     return {
       kind: "gcp-incident",
-      fingerprint: `gcp-incident|${policy.name}|${date}`,
-      source: policy.name,
+      fingerprint: `gcp-incident|${subject}|${date}`,
+      source: subject,
       closing: GCP_CLOSED.test(text),
       ts: message.ts,
       text,
     };
   }
 
+  if (startsWithAny(subject, INVESTIGATED_SUBJECTS)) {
+    return {
+      kind: "monitoring",
+      fingerprint: `monitoring|${subject}|${date}`,
+      source: subject,
+      closing: CLOSING.test(text),
+      ts: message.ts,
+      text,
+    };
+  }
+
+  // Not a known shape. Its closing words are not read: in a post nobody
+  // has described, "resolved" is as likely to be part of the fault.
   return {
-    kind: "monitoring",
-    fingerprint: `monitoring|${policy.name}|${date}`,
-    source: policy.name,
-    closing: CLOSING.test(text),
+    kind: "other",
+    fingerprint: `other|${subject}|${date}`,
+    source: subject,
+    closing: false,
     ts: message.ts,
     text,
   };
