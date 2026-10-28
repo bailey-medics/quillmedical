@@ -59,7 +59,7 @@ jobs:
     # packages, so the push would only fail there.
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     name: Fetch ClamAV and today's definitions
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 15
     permissions:
       contents: read
@@ -94,7 +94,7 @@ jobs:
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     name: Redeploy the scan job on today's definitions
     needs: mirror
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 20
     environment: app
     # Waits behind a deploy rather than racing it for the same job.
