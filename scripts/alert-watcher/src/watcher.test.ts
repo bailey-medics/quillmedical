@@ -213,9 +213,26 @@ describe("Watcher", () => {
     assert.equal(watcher.queued(), 2);
   });
 
-  it("logs a bot message it does not recognise, without its text", async () => {
-    await watcher.onMessage({ channel: CHANNEL, ts: "100.000001", bot_id: "B0000000003", text: "something else" });
+  it("investigates a bot message it does not recognise", async () => {
+    await watcher.onMessage({ channel: CHANNEL, ts: "100.000001", bot_id: "B0000000003", text: "*❌ Terraform apply failed*" });
+    await watcher.tick();
 
-    assert.deepEqual(fakes.events, ["unmatched"]);
+    assert.deepEqual(fakes.started, ["/state/alerts/100.000001.txt"]);
+    assert.deepEqual(fakes.events, ["queued", "started"]);
+  });
+
+  it("investigates an unrecognised message once a day, however often it repeats", async () => {
+    await watcher.onMessage({ channel: CHANNEL, ts: "100.000001", bot_id: "B0000000003", text: "*❌ ClamAV refresh failed*\nrun 1" });
+    await watcher.onMessage({ channel: CHANNEL, ts: "100.000002", bot_id: "B0000000003", text: "*❌ ClamAV refresh failed*\nrun 2" });
+
+    assert.equal(watcher.queued(), 1);
+    assert.deepEqual(fakes.events, ["queued", "duplicate"]);
+  });
+
+  it("logs a bot message on the ignore list, without its text", async () => {
+    await watcher.onMessage({ channel: CHANNEL, ts: "100.000001", bot_id: "B0000000003", text: "*✅ Deployed to app*" });
+
+    assert.equal(watcher.queued(), 0);
+    assert.deepEqual(fakes.events, ["ignored"]);
   });
 });

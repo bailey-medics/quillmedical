@@ -45,8 +45,10 @@ received_at: 2026-10-26T09:14:03Z
 ```
 
 `kind` is `monitoring` for a Cloud Monitoring alert, `deploy` for a
-`*❌ Deploy failed*` post from `deploy.yml`, or `gcp-incident` for a
-Personalized Service Health post. If the file is missing, empty, or has no
+`*❌ Deploy failed*` post from `deploy.yml`, `gcp-incident` for a
+Personalized Service Health post, or `other` for any other post by an app
+in the channel. The watcher passes on every app's post that is not on its
+ignore list, so an `other` alert may not be a fault at all. If the file is missing, empty, or has no
 `channel` and `thread_ts`, stop and say so in the session: with no thread
 there is nowhere to report.
 
@@ -68,6 +70,32 @@ there is nowhere to report.
    scripts/slack-reply.sh "$ALERT_FILE" "Looking into this now."
    ```
 
+## An `other` alert: first decide whether it is a fault
+
+The watcher would rather start a run that is not needed than miss one, so
+an `other` alert is any app's post it does not know: a failed workflow, a
+scan's report, a reminder, or an app nobody has told it about. Read the
+post and decide first whether something is broken that a change could
+fix.
+
+- **It is a fault**, such as a workflow that failed: investigate it below
+  like any other. The workflow's run link is usually in the post.
+- **It is not**, such as a report, a reminder for a person, or a notice
+  that something worked: post one message and stop, opening no pull
+  request. Say what the post is, and suggest adding it to the watcher's
+  ignore list in `scripts/alert-watcher/src/messages.ts`, naming the words
+  that would match it:
+
+  ```bash
+  scripts/slack-reply.sh "$ALERT_FILE" - <<'EOF'
+  *Not a fault:* <one sentence on what this post is>
+  Suggest adding it to the watcher's ignore list, matching "<words>".
+  EOF
+  ```
+
+  Those replies are how the ignore list is narrowed, so make the
+  suggestion even when you are unsure; a person decides.
+
 ## The investigation, in this order
 
 Each place is cheap and each can end the investigation early, which is why
@@ -84,8 +112,8 @@ window as from 30 minutes before `received_at` to now.
    for an incident still open, or one that began in the window, naming
    europe-west2 and any of Cloud Run, Cloud SQL, VPC, Cloud Scheduler or
    Secret Manager. A `gcp-incident` alert is this already.
-3. **The workflow run itself**, for a `deploy` alert: the run link is in the
-   alert text. `gh run view <id> --log-failed` shows which step failed and
+3. **The workflow run itself**, for a `deploy` alert or an `other` one from
+   a workflow: the run link is in the alert text. `gh run view <id> --log-failed` shows which step failed and
    what it printed.
 4. **What changed just before.** `gh run list --workflow deploy.yml
    --limit 5` and `gh run list --workflow terraform.yml --limit 5`, the
@@ -149,7 +177,7 @@ missed its slot. Then stop.
 A fault in the code gets three messages in the thread, and no others: the
 one in step 3 of "Before anything else", the cause in step 3 here, and
 the pull request in step 7. Every other ending (upstream, off limits,
-could not reproduce) is one message in place of the last two.
+could not reproduce, not a fault) is one message in place of the last two.
 
 1. **Some places are not yours to change.** Never touch `infra/`,
    `.github/workflows/`, `backend/alembic/versions/` or `CLAUDE.md`. If the

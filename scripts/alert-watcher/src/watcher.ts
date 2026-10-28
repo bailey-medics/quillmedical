@@ -102,9 +102,11 @@ export class Watcher {
       now: this.deps.now(),
     });
 
+    // Every bot post that is not an alert is on the ignore list, so this
+    // line is how a post wrongly ignored would be found.
     if (!alert) {
       if (message.bot_id && message.user !== this.options.ownUserId) {
-        this.deps.log("unmatched", { hasAttachments: Boolean(message.attachments?.length), hasBlocks: Boolean(message.blocks?.length) });
+        this.deps.log("ignored", { hasAttachments: Boolean(message.attachments?.length), hasBlocks: Boolean(message.blocks?.length) });
       }
       return;
     }

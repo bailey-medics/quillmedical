@@ -4,8 +4,9 @@ Watches `#quill-medical-cicd` for App production alerts and types `/alert <file>
 
 ## What it does
 
-- **Matches three shapes of message.** A Cloud Monitoring post naming one of the alert policies listed in `src/messages.ts`, a `*❌ Deploy failed*` post from `deploy.yml`, and the Google Cloud incident policy. Everything a person writes is ignored, and so are the four-weekly alert route test and the retention decision.
-- **Runs each alert once.** Each is fingerprinted (policy and UTC day, or workflow and commit), and no more than six investigations start in a day.
+- **Acts on every app's post, unless it is on the ignore list.** It would rather start a run that turns out not to be needed than miss a fault, since a person reviews every pull request anyway. The ignore list is success posts opening with ✅, the four-weekly alert route test, the retention decision, and the closing post of an alert already handled. Everything a person writes, replies in threads and its own posts are never alerts. The skill answers a post that is not a fault with "Not a fault" and a suggested addition to the list, and the list is narrowed from those.
+- **Knows three shapes by name.** A Cloud Monitoring post naming one of the alert policies listed in `src/messages.ts`, a `*❌ Deploy failed*` post from `deploy.yml`, and the Google Cloud incident policy. Any other post is `other`.
+- **Runs each alert once.** Each is fingerprinted (policy and UTC day, workflow and commit, or for `other` the post's first bold line and UTC day), and no more than six investigations start in a day.
 - **Waits its turn.** One investigation at a time. It queues while the session is busy, with an alert or with a person, and parks while worktree 5 has uncommitted work or is on a branch of somebody's own.
 - **Treats an open Google Cloud incident as the cause** of every other alert for the next twelve hours, or until the incident closes.
 - **Stops a run that goes past 45 minutes** with Escape, and says so in the thread. A person's turn is never interrupted.
