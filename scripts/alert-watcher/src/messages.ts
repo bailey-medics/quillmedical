@@ -65,14 +65,18 @@ export const IGNORED_SUBJECTS: readonly string[] = [
 
 export const GCP_INCIDENT_SUBJECT = "Google Cloud reports an incident affecting this project";
 
-// Google's closing post is confirmed against a real one in the rehearsal.
-// A bare "closed" is not enough: it appears in the retention policy's own
+// Unconfirmed: no closing post reached the channel in the 28 October 2026
+// rehearsal, so Google may not post closings at all. A bare "closed" is not
+// enough: it appears in the retention policy's own
 // documentation, which is posted with the alert.
 const CLOSING = /\bis (?:now )?closed\b|\[RESOLVED\]|\bresolved\b|\brecovered\b/i;
 const GCP_CLOSED = /State:\s*(RESOLVED|CLOSED)\b/i;
-const DEPLOY_FAILED = /❌\s*Deploy failed/;
+// Slack hands a workflow's emoji to the watcher as its text code, `:x:` for
+// ❌ and `:white_check_mark:` for ✅, as the failed deploy of 28 October
+// 2026 showed, so each pattern takes both forms.
+const DEPLOY_FAILED = /(?:❌|:x:)\s*Deploy failed/;
 // A success post, such as `*✅ Deployed to app*`, opens with the tick.
-const SUCCESS = /^[\s*_]*✅/;
+const SUCCESS = /^[\s*_]*(?:✅|:white_check_mark:)/;
 const BOLD = /\*([^*\n]+)\*/;
 const TITLE_LENGTH = 80;
 const COMMIT = /\/commit\/([0-9a-f]{7,40})/;

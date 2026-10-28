@@ -51,8 +51,26 @@ describe("classify", () => {
     assert.equal(alert?.fingerprint, "deploy|deploy.yml|5d48c48c1234");
   });
 
+  it("reads a failed deploy as Slack really sends it, with the emoji as :x:", () => {
+    const text = [
+      "*:x: Deploy failed*",
+      "",
+      "*Commit:* <https://github.com/bailey-medics/quillmedical/commit/6c2427461d0e|6c2427461d0e>",
+      "*Author:* someone",
+    ].join("\n");
+
+    const alert = classify(botPost({ text }), OPTIONS);
+
+    assert.equal(alert?.kind, "deploy");
+    assert.equal(alert?.fingerprint, "deploy|deploy.yml|6c2427461d0e");
+  });
+
   it("ignores a successful deploy", () => {
     assert.equal(classify(botPost({ text: "*✅ Deployed to app*" }), OPTIONS), undefined);
+  });
+
+  it("ignores a success post with the tick sent as :white_check_mark:", () => {
+    assert.equal(classify(botPost({ text: "*:white_check_mark: Deployed to teaching*" }), OPTIONS), undefined);
   });
 
   it("reads a Cloud Monitoring alert by its subject, fingerprinted by subject and day", () => {
