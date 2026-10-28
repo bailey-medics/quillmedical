@@ -135,8 +135,11 @@ and the program is in `scripts/alert-watcher/`.
 Run both of these after any change to the daemon, the skill or an alert
 policy, and before trusting the watcher for the first time.
 
-1. **A planted fault.** Push a branch that raises on one request path,
-   deploy it, and request that path until "Backend error:" fires. Within a minute the thread should say "Looking into this now".
+1. **A planted fault.** Merge a route with a fault only an operator can
+   reach, such as `/api/operator/rehearsal/average` called with no numbers,
+   and call it once it is deployed, so "Backend error:" fires. It must be
+   on `main`, not only on a deployed branch, because the skill writes a
+   test that has to fail on `main`. Within a minute the thread should say "Looking into this now".
    Within the hour it should say "Found the cause:", and then "Pull request
    ready for review:" with a link to a pull request whose new test fails
    on `main` and passes on its branch. Close that pull request and revert the planted branch.
