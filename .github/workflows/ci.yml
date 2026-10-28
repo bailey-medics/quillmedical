@@ -392,7 +392,7 @@ jobs:
         with:
           install-backend-deps: "false"
 
-      # Node 24 for scripts/tests/review-marks.bats, which strips the types
+      # Node 26 for scripts/tests/review-marks.bats, which strips the types
       # from the review-marks extension as install.sh does: the Node the
       # runner ships is too old to, and the tests would fail rather than
       # skip.
@@ -408,7 +408,7 @@ jobs:
 
       # The alert watcher in scripts/alert-watcher/ is a Node package of its
       # own, run on the home box rather than deployed. Checked here because
-      # this job already has Node 24, and the watcher is tooling like the
+      # this job already has Node 26, and the watcher is tooling like the
       # scripts above. `just uaw` runs the same three commands locally.
       - name: Alert watcher type check and tests
         working-directory: scripts/alert-watcher
