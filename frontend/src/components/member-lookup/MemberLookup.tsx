@@ -33,6 +33,11 @@ export interface MemberLookupProps {
   /** Somebody who may be added was found */
   onFound: (user: NonNullable<Result["user"]>) => void;
   /**
+   * A new lookup has begun, so whoever was found before no longer
+   * stands. Called before every answer, found or not.
+   */
+  onForget?: () => void;
+  /**
    * Nobody has that username or address: create them. Given what was
    * typed; `newUserSearch` turns it into the new user form's address.
    * Omit to leave the offer out.
@@ -50,6 +55,7 @@ export default function MemberLookup({
   placeName,
   onLookUp,
   onFound,
+  onForget,
   onCreate,
 }: MemberLookupProps) {
   const [typed, setTyped] = useState("");
@@ -64,6 +70,8 @@ export default function MemberLookup({
   async function lookUp() {
     const asked = typed.trim();
     if (busy) return;
+
+    onForget?.();
     // Anything with an @ is an address and must be a whole one. Anything
     // else is a username, which holds no spaces: a name is not looked up.
     const problem = asked.includes("@")
@@ -107,7 +115,7 @@ export default function MemberLookup({
     <Stack gap="md">
       <TextField
         label="Username or email address"
-        description="Their whole username or address. Somebody who already has a Quill account is found; anybody else can be created."
+        description="You can find someone already on Quill or add a completely new user here."
         placeholder="a.patel or name@example.org"
         // Somebody else's, not the admin's own
         autoComplete="off"
@@ -131,7 +139,7 @@ export default function MemberLookup({
           <BodyText>
             <strong>{found.username}</strong>
             {found.full_name ? ` (${found.full_name})` : ""} already has a Quill
-            account. They are chosen below, ready to add to {placeName}.
+            account, ready to add to {placeName}.
           </BodyText>
         )}
 

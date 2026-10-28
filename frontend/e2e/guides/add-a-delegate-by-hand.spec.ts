@@ -57,8 +57,12 @@ test("add a delegate by hand", async ({ page }) => {
     });
   await shot(page, "add-a-delegate-by-hand/site");
 
-  // Somebody new: the lookup finds nobody and offers to create them.
+  // The Add staff page as it opens, before anybody is looked up.
   await openAddStaff(page);
+  await expect(page.getByLabel("Username or email address")).toHaveValue("");
+  await shot(page, "add-a-delegate-by-hand/add-staff");
+
+  // Somebody new: the lookup finds nobody and offers to create them.
   await find(page, "lucy.bennett@northfield.nhs.uk");
   await expect(page.getByText(/Nobody on Quill uses/)).toBeVisible();
   await shot(page, "add-a-delegate-by-hand/not-found");

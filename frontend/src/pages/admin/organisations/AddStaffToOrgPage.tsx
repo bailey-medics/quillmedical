@@ -1,327 +1,62 @@
 /**
  * Add Staff to Organisation Page
  *
- * Form for adding an existing user as a staff member of an organisation.
+ * Adds somebody to an organisation as staff. The card is
+ * `AddStaffForm`: it finds them by username or email and then shows
+ * what adding them needs, or offers to create them with this
+ * organisation already chosen.
  *
- * The list used to be filtered by `?permission_level=staff`, which hid
- * everybody the old column did not call staff. That filter went with the
- * column, and no replacement was right: every candidate hid the patient
- * becoming a healthcare assistant, which is the case this page most
- * needs to support.
- *
- * The picker lists the people the admin can already see who are not
- * yet here. Somebody with an account elsewhere is not among them, so
- * the page opens with a lookup by username or email, which finds them, or offers to
- * create them with this organisation already chosen.
- *
- * So the list shows everyone, and the judgement moved here. Selecting
- * somebody who holds nothing a member of staff would opens a
- * confirmation - are you sure? - and offers to grant them a profession
- * and competencies in the same act as the membership. The grant is
- * additive on the backend, so somebody moving from patient to
- * healthcare assistant keeps access to their own record.
+ * An organisation offers no role: everybody added here is staff.
+ * Somebody who holds nothing a member of staff would is offered a
+ * profession and competencies, and asked about before they are added,
+ * which is the case of a patient becoming a healthcare assistant.
  */
 
-import { useEffect, useState } from "react";
-import { flushSync } from "react-dom";
 import { useNavigate, useParams } from "react-router-dom";
 import { Stack } from "@mantine/core";
-import { Controller } from "react-hook-form";
-import BaseCard from "@/components/base-card/BaseCard";
-import SelectField from "@/components/form/SelectField";
-import MultiSelectField from "@/components/form/MultiSelectField";
-import PageHeader from "@/components/page-header";
-import { BodyText, Heading } from "@/components/typography";
-import {
-  Form,
-  FormStatus,
-  SubmitButton,
-  useFormContext,
-} from "@/components/form/Form";
-import type {
-  FormConfirmConfig,
-  FormSubmitResult,
-} from "@/components/form/Form";
-import { api } from "@/lib/api";
-import { orgUnits, type MemberLookupUser } from "@/domains/orgUnit";
-import { MemberLookup, newUserSearch } from "@/components/member-lookup";
 import { useAuth } from "@/auth/AuthContext";
-import ErrorState from "@/components/error-state/ErrorState";
-import { holdsStaffLikeCompetency } from "@/lib/cbac/staffLike";
-import { ACTIVE_COMPETENCIES } from "@/types/cbac";
-import { useGrantScope } from "@/lib/cbac/hooks";
-import baseProfessionsData from "@/generated/base-professions.json";
-
-interface ApiUser {
-  id: number;
-  username: string;
-  /** Absent for somebody found by lookup, whose address is not sent back */
-  email?: string;
-  full_name: string;
-  competencies: string[];
-  /** Absent for somebody found by lookup, who is never an operator */
-  platform_role?: string;
-}
-
-interface AddStaffFormValues {
-  userId: string | null;
-  baseProfession: string | null;
-  additionalCompetencies: string[];
-}
-
-function AddStaffFields({
-  orgId,
-  users,
-  usersLoading,
-  onUserChange,
-  onFound,
-  showGrantFields,
-}: {
-  orgId: string;
-  users: ApiUser[];
-  usersLoading: boolean;
-  onUserChange: (userId: string | null) => void;
-  /** Somebody the lookup found: offer them in the picker */
-  onFound: (user: MemberLookupUser) => void;
-  showGrantFields: boolean;
-}) {
-  const navigate = useNavigate();
-  const { methods } = useFormContext();
-
-  // Only what the viewer may give. A teaching admin is offered the
-  // teaching professions and competencies; the API refuses anything else.
-  const { mayGrant, mayAssignProfession } = useGrantScope();
-
-  const professionOptions = baseProfessionsData.base_professions
-    .filter((p) => mayAssignProfession(p.id))
-    .map((p) => ({
-      value: p.id,
-      label: p.display_name,
-    }));
-
-  const competencyOptions = ACTIVE_COMPETENCIES.filter((c) =>
-    mayGrant(c.id),
-  ).map((c) => ({
-    value: c.id,
-    label: c.display_name,
-  }));
-
-  return (
-    <Stack gap="md">
-      <FormStatus />
-      <BaseCard>
-        <Stack gap="md">
-          <Heading>Find somebody by username or email</Heading>
-          <MemberLookup
-            placeName="this organisation"
-            onLookUp={(term) => orgUnits.lookUpMember(Number(orgId), term)}
-            onFound={(found) => {
-              onFound(found);
-              // Chosen for them: the lookup was the choosing.
-              methods.setValue("userId", String(found.id), {
-                shouldDirty: true,
-                shouldValidate: true,
-              });
-              onUserChange(String(found.id));
-            }}
-            // The new user form opens with the address and this
-            // organisation already filled in.
-            onCreate={(term) => {
-              // Leaving is the point of the button, so whatever was
-              // chosen below is let go first: left dirty, the form asks
-              // "are you sure you want to leave?". Flushed, so the form
-              // is clean before the navigation is judged, not after.
-              flushSync(() => methods.reset());
-              navigate(`/admin/users/new?${newUserSearch(term, orgId)}`);
-            }}
-          />
-        </Stack>
-      </BaseCard>
-      <BaseCard>
-        <Stack gap="md">
-          <Heading>Add to this organisation</Heading>
-          {users.length === 0 && !usersLoading && (
-            <BodyText>
-              Nobody you can see is waiting to be added. Find them by username
-              or email above.
-            </BodyText>
-          )}
-          <Controller
-            name="userId"
-            control={methods.control}
-            rules={{ required: "Please select a user" }}
-            render={({ field, fieldState }) => (
-              <SelectField
-                label="User"
-                placeholder="Search for a user"
-                data={users.map((u) => ({
-                  value: String(u.id),
-                  label: u.email ? `${u.username} (${u.email})` : u.username,
-                }))}
-                value={field.value as string | null}
-                onChange={(value) => {
-                  field.onChange(value);
-                  onUserChange(value);
-                }}
-                error={fieldState.error?.message}
-                searchable
-                disabled={usersLoading}
-                withAsterisk
-              />
-            )}
-          />
-
-          {/*
-            Shown only where the selected person holds nothing staff-like.
-            Somebody already staff elsewhere needs no grant, and asking
-            would be noise on the common path.
-          */}
-          {showGrantFields && (
-            <>
-              <BodyText>
-                This person holds nothing a member of staff would. Grant them
-                what they need for the job, or leave both blank to add them
-                without any.
-              </BodyText>
-
-              <Controller
-                name="baseProfession"
-                control={methods.control}
-                render={({ field }) => (
-                  <SelectField
-                    label="Base profession"
-                    description="Grants that profession's competencies. What they already hold is kept."
-                    placeholder="Optional - select base profession"
-                    data={professionOptions}
-                    value={field.value as string | null}
-                    onChange={field.onChange}
-                    searchable
-                  />
-                )}
-              />
-
-              <Controller
-                name="additionalCompetencies"
-                control={methods.control}
-                render={({ field }) => (
-                  <MultiSelectField
-                    label="Additional competencies"
-                    description="Anything beyond the profession's defaults"
-                    placeholder="Optional - select competencies"
-                    data={competencyOptions}
-                    value={field.value as string[]}
-                    onChange={field.onChange}
-                    searchable
-                  />
-                )}
-              />
-            </>
-          )}
-
-          <SubmitButton
-            onCancel={() => navigate(`/admin/organisations/${orgId}`)}
-            disabled={usersLoading}
-          />
-        </Stack>
-      </BaseCard>
-    </Stack>
-  );
-}
+import { AddStaffForm } from "@/components/add-staff-form";
+import type { AddStaffValues } from "@/components/add-staff-form";
+import type { FormSubmitResult } from "@/components/form/Form";
+import { newUserSearch } from "@/components/member-lookup";
+import PageHeader from "@/components/page-header";
+import { orgUnits } from "@/domains/orgUnit";
 
 export default function AddStaffToOrgPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { reload, state } = useAuth();
-  const viewerIsOperator =
-    state.status === "authenticated" &&
-    state.user.platform_role === "superadmin";
-  const [users, setUsers] = useState<ApiUser[]>([]);
-  const [usersLoading, setUsersLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  // Lifted out of the form because `confirm` is a prop on `Form`, which
-  // sits above the field that sets it.
-  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
-
-  useEffect(() => {
-    async function fetchUsers() {
-      try {
-        const response = await api.get<{ users: ApiUser[] }>(
-          // An org_unit id, which is what this route's `id` is: the
-          // membership added below names one too. The older
-          // `exclude_org` parameter read the same number as an
-          // organisation id, so it excluded the members of a different
-          // organisation once the two id sequences diverged. It has
-          // since gone with the organisations table.
-          `/users?exclude_org_unit=${id}`,
-        );
-        // Not an operator unless the viewer is one: the list names
-        // operators now, and adding one is refused for anybody else,
-        // as the lookup above says too.
-        setUsers(
-          response.users.filter(
-            (u) => viewerIsOperator || u.platform_role !== "superadmin",
-          ),
-        );
-      } catch (err) {
-        setLoadError(
-          err instanceof Error ? err.message : "Failed to load users",
-        );
-      } finally {
-        setUsersLoading(false);
-      }
-    }
-
-    void fetchUsers();
-  }, [id, viewerIsOperator]);
-
-  const selectedUser = users.find((u) => String(u.id) === selectedUserId);
-  // `competencies` is absent on a stale cached response; treat that as
-  // holding nothing rather than crashing, which prompts needlessly at
-  // worst and never skips the question when it matters.
-  const needsConfirmation =
-    selectedUser !== undefined &&
-    !holdsStaffLikeCompetency(selectedUser.competencies ?? []);
-
-  // Undefined submits straight through - `Form` only gates when this is
-  // set, so the question is asked for exactly the people it is about.
-  const confirm: FormConfirmConfig | undefined = needsConfirmation
-    ? {
-        title: "Add as a staff member?",
-        acceptLabel: "Add as staff",
-        submittingLabel: "Adding…",
-        children: `${selectedUser.username} holds nothing a member of staff would - only access to patient records as a patient or advocate. Adding them here makes them staff of this organisation.`,
-      }
-    : undefined;
+  const { reload } = useAuth();
 
   async function handleSubmit(
-    data: AddStaffFormValues,
+    values: AddStaffValues,
   ): Promise<FormSubmitResult> {
     try {
       await orgUnits.addMember(Number(id), {
-        user_id: Number(data.userId),
-        // The old route assumed this; the new one asks, because an org_unit
-        // takes trainees and external assessors too.
+        user_id: values.user.id,
+        // An org_unit takes trainees and external assessors too, so the
+        // request says which; here it is always staff.
         capacity: "staff",
         // Omitted rather than sent as null, so the request says nothing
         // about a grant where none was asked for.
-        ...(data.baseProfession
-          ? { base_profession: data.baseProfession }
+        ...(values.baseProfession
+          ? { base_profession: values.baseProfession }
           : {}),
-        ...(data.additionalCompetencies.length > 0
-          ? { additional_competencies: data.additionalCompetencies }
+        ...(values.additionalCompetencies.length > 0
+          ? { additional_competencies: values.additionalCompetencies }
           : {}),
       });
       await reload();
-      const addedUser = users.find((u) => String(u.id) === data.userId);
+
       navigate(`/admin/organisations/${id}`, {
         state: {
           flash: {
             variant: "success",
             title: "Staff member added",
-            description: `${addedUser?.username ?? "The staff member"} has been added to this organisation`,
+            description: `${values.user.username} has been added to this organisation`,
           },
         },
       });
+
       return {
         state: "success",
         message: { title: "Staff member added" },
@@ -342,36 +77,18 @@ export default function AddStaffToOrgPage() {
     <Stack gap="lg">
       <PageHeader title="Add staff member" />
 
-      {loadError && (
-        <ErrorState title="Error loading users" message={loadError} />
-      )}
-
-      <Form<AddStaffFormValues>
-        defaultValues={{
-          userId: null,
-          baseProfession: null,
-          additionalCompetencies: [],
-        }}
+      <AddStaffForm
+        placeName="this organisation"
+        placeKind="organisation"
+        onLookUp={(term) => orgUnits.lookUpMember(Number(id), term)}
+        // The new user form opens with the address and this organisation
+        // already filled in.
+        onCreate={(term) =>
+          navigate(`/admin/users/new?${newUserSearch(term, id!)}`)
+        }
         onSubmit={handleSubmit}
-        confirm={confirm}
-        submitLabel="Add staff member"
-        submittingLabel="Adding…"
-      >
-        <AddStaffFields
-          orgId={id!}
-          users={users}
-          usersLoading={usersLoading}
-          onUserChange={setSelectedUserId}
-          onFound={(found) =>
-            setUsers((current) =>
-              current.some((u) => u.id === found.id)
-                ? current
-                : [...current, found],
-            )
-          }
-          showGrantFields={needsConfirmation}
-        />
-      </Form>
+        onCancel={() => navigate(`/admin/organisations/${id}`)}
+      />
     </Stack>
   );
 }
