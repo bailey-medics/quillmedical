@@ -1,15 +1,19 @@
 // Which Slack messages are alerts, and what each one is.
 //
-// Three shapes are alerts: a Cloud Monitoring post naming one of the alert
-// policies in infra/modules/monitoring/main.tf, a `*❌ Deploy failed*` post
-// from deploy.yml, and a Cloud Monitoring post for the Google Cloud incident
-// policy. Everything else is ignored, above all anything a person writes.
+// Every top-level bot post is an alert unless it is on the ignore list: the
+// watcher would rather start a run that turns out not to be needed than
+// drop a post it does not recognise without telling anyone. Anything a
+// person writes, any reply in a thread and the watcher's own posts are
+// never alerts.
 //
-// The policies are a whitelist, not a pattern. A policy added in Terraform
-// and missing here is not investigated, and messages.test.ts fails until it
-// is listed, so the two cannot drift apart quietly.
+// Three shapes are known and get exact fingerprints: a Cloud Monitoring
+// post naming one of the alert policies in infra/modules/monitoring/main.tf,
+// a `*❌ Deploy failed*` post from deploy.yml, and the Google Cloud incident
+// policy. Every other bot post is `other`, fingerprinted by its first bold
+// line. messages.test.ts fails when a policy in Terraform is not listed
+// here, so our own alerts keep their exact names.
 
-export type AlertKind = "monitoring" | "deploy" | "gcp-incident";
+export type AlertKind = "monitoring" | "deploy" | "gcp-incident" | "other";
 
 export interface SlackMessage {
   channel?: string;
@@ -26,7 +30,8 @@ export interface SlackMessage {
 export interface Alert {
   kind: AlertKind;
   fingerprint: string;
-  // The policy name for a Cloud Monitoring post, or "deploy.yml".
+  // The policy name for a Cloud Monitoring post, "deploy.yml", or the first
+  // bold line of any other post.
   source: string;
   // True for a post saying an incident has closed or recovered.
   closing: boolean;
@@ -67,6 +72,10 @@ export const GCP_INCIDENT_POLICY = "Google Cloud incident";
 const CLOSING = /\bis (?:now )?closed\b|\[RESOLVED\]|\bresolved\b|\brecovered\b/i;
 const GCP_CLOSED = /State:\s*(RESOLVED|CLOSED)\b/i;
 const DEPLOY_FAILED = /❌\s*Deploy failed/;
+// A success post, such as `*✅ Deployed to app*`, opens with the tick.
+const SUCCESS = /^[\s*_]*✅/;
+const BOLD = /\*([^*\n]+)\*/;
+const TITLE_LENGTH = 80;
 const COMMIT = /\/commit\/([0-9a-f]{7,40})/;
 const MAX_DEPTH = 8;
 
@@ -132,6 +141,15 @@ export function findPolicy(
   return undefined;
 }
 
+// What an unrecognised post is about, for its fingerprint: its first bold
+// line, which is how the workflows' posts open, or else its first line.
+export function title(text: string): string {
+  const line = BOLD.exec(text)?.[1] ?? text.split("\n").find((part) => part.trim()) ?? "";
+  const tidy = line.replace(/\s+/g, " ").trim().slice(0, TITLE_LENGTH);
+
+  return tidy || "untitled";
+}
+
 function utcDate(now: Date): string {
   return now.toISOString().slice(0, 10);
 }
@@ -160,6 +178,10 @@ export function classify(
   const text = flatten(message);
   const date = utcDate(options.now);
 
+  if (SUCCESS.test(text)) {
+    return undefined;
+  }
+
   if (DEPLOY_FAILED.test(text)) {
     const commit = COMMIT.exec(text)?.[1] ?? date;
 
@@ -176,8 +198,23 @@ export function classify(
   const all = [GCP_INCIDENT_POLICY, ...IGNORED_POLICIES, ...INVESTIGATED_POLICIES];
   const policy = findPolicy(text, all, options.environment);
 
-  if (!policy || IGNORED_POLICIES.includes(policy.prefix)) {
+  if (policy && IGNORED_POLICIES.includes(policy.prefix)) {
     return undefined;
+  }
+
+  // Not a known shape. Its closing words are not read: in a post nobody
+  // has described, "resolved" is as likely to be part of the fault.
+  if (!policy) {
+    const source = title(text);
+
+    return {
+      kind: "other",
+      fingerprint: `other|${source}|${date}`,
+      source,
+      closing: false,
+      ts: message.ts,
+      text,
+    };
   }
 
   if (policy.prefix === GCP_INCIDENT_POLICY) {
