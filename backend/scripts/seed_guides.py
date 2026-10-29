@@ -89,21 +89,21 @@ SITE = "Northfield General Hospital"
 #: email, so nothing is ever sent to it.
 EMAIL_DOMAIN = "northfield.nhs.uk"
 
-OPERATOR = "guide_operator"
-TEACHING_ADMIN = "guide_admin"
-CLINICAL_LEAD = "guide_lead"
+OPERATOR = "morgan.reid"
+TEACHING_ADMIN = "sarah.mitchell"
+CLINICAL_LEAD = "thomas.whitfield"
 #: Uses the safety cases. Those are a mock-up whose cases live in the
 #: browser, so this account is all the safety guides need seeded.
-SAFETY_OFFICER = "guide_safety"
+SAFETY_OFFICER = "jo.fletcher"
 #: Holds a passport with something in each of its parts.
-PASSPORT_HOLDER = "guide_holder"
+PASSPORT_HOLDER = "maya.collins"
 #: Has no passport yet, for the picture of starting one.
-PASSPORT_STARTER = "guide_starter"
+PASSPORT_STARTER = "owen.price"
 #: Named on the holder's sign-off requests: one signed, one still waiting.
-PASSPORT_ASSESSOR = "guide_assessor"
-PASSPORT_ADMIN = "guide_passport_admin"
+PASSPORT_ASSESSOR = "helen.marsh"
+PASSPORT_ADMIN = "alex.turner"
 #: Takes a module in the specs, so starts with no attempts of their own.
-LEARNER = "guide_learner"
+LEARNER = "sam.harding"
 #: Has an account and belongs nowhere, for the picture of adding somebody
 #: who already has one to a site.
 DELEGATE_WITH_NO_SITE = "oliver.grant"
@@ -127,12 +127,12 @@ class Delegate:
 # fail, and an attempt left unfinished. The last has an account and has
 # opened nothing, so the page does not list them at all.
 DELEGATES: tuple[Delegate, ...] = (
-    Delegate("guide_delegate_1", "Aisha Rahman", (4,)),
-    Delegate("guide_delegate_2", "Ben Carter", (3,)),
-    Delegate("guide_delegate_3", "Chloe Evans", (2, 4)),
-    Delegate("guide_delegate_4", "Daniel Osborne", (2,)),
-    Delegate("guide_delegate_5", "Emma Hughes", (None,)),
-    Delegate("guide_delegate_6", "Frank Haddad", ()),
+    Delegate("amy.richardson", "Amy Richardson", (4,)),
+    Delegate("ben.carter", "Ben Carter", (3,)),
+    Delegate("chloe.evans", "Chloe Evans", (2, 4)),
+    Delegate("daniel.osborne", "Daniel Osborne", (2,)),
+    Delegate("emma.hughes", "Emma Hughes", (None,)),
+    Delegate("frank.holloway", "Frank Holloway", ()),
 )
 
 # A fixed moment, so "Date" on the page reads the same from run to run
@@ -586,14 +586,14 @@ def seed() -> None:
 
         # The teaching admin belongs to the organisation itself, which is
         # what the All delegates page asks of whoever opens it.
-        admin = _user(db, TEACHING_ADMIN, "Priya Shah", "teaching_admin")
+        admin = _user(db, TEACHING_ADMIN, "Sarah Mitchell", "teaching_admin")
         add_org_unit_member(db, organisation.id, admin.id, "staff")
         give_place(db, admin, organisation.id)
 
         # A post is held where somebody belongs, so the lead joins the
         # site before being appointed to it, as the route requires.
         lead = _user(
-            db, CLINICAL_LEAD, "Dr Thomas Kowalski", "teaching_clinical_lead"
+            db, CLINICAL_LEAD, "Dr Thomas Whitfield", "teaching_clinical_lead"
         )
         add_org_unit_member(db, site.id, lead.id, "staff")
         set_clinical_lead(db, site, lead, appointed_by=operator)
@@ -624,7 +624,7 @@ def seed() -> None:
             _user(db, d.username, d.full_name, "teaching_delegate")
             for d in DELEGATES
         ]
-        learner = _user(db, LEARNER, "Sam Sample", "teaching_delegate")
+        learner = _user(db, LEARNER, "Sam Harding", "teaching_delegate")
         _user(db, DELEGATE_WITH_NO_SITE, "Oliver Grant", "teaching_delegate")
         for person in [*people, learner]:
             add_org_unit_member(db, organisation.id, person.id, "trainee")

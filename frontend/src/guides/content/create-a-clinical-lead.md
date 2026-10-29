@@ -7,7 +7,7 @@ Every site should have a clinical lead. Quill emails them a certificate when a d
 Have these to hand:
 
 - the clinical lead's **email address** or **username**
-- the **site** they are to lead
+- the **site** they are to lead, if it has been added already. If not, have your **organisation** to hand instead.
 
 And if they are new to Quill:
 
@@ -19,7 +19,7 @@ And if they are new to Quill:
 
 There is no need to create a new account, or to change their base profession. Whoever holds the post at a site is sent its certificates.
 
-**If they are already at the site**, open it from [**Sites**](/admin/sites), press the **Edit site** icon, and choose them under **Clinical lead**. Whoever held the post before is stood down.
+**If they are already at the site**, open it from [**Sites**](/admin/sites), press the **Edit site** button :icon-pencil:, and choose them under **Clinical lead**. Whoever held the post before is stood down.
 
 **If they are not at the site yet:**
 
@@ -29,7 +29,7 @@ There is no need to create a new account, or to change their base profession. Wh
 
 If the site already has a clinical lead, Quill asks whether to replace them. Press **Replace lead** to make the new person lead. The old lead stays at the site, but is no longer its lead.
 
-To leave a site without a clinical lead, open it from [**Sites**](/admin/sites), press the **Edit site** icon, and choose **No clinical lead**. The old lead stays at the site, but is no longer its lead. Until the site has a new one, nobody can join it by registering, and nobody is sent a certificate when a delegate there passes.
+To leave a site without a clinical lead, open it from [**Sites**](/admin/sites), press the **Edit site** button :icon-pencil:, and choose **No clinical lead**. The old lead stays at the site, but is no longer its lead. Until the site has a new one, nobody can join it by registering, and nobody is sent a certificate when a delegate there passes.
 
 ## If they are new to Quill
 
@@ -45,7 +45,7 @@ Press **Next** to move on from each step.
 
 1. **Basic details.** Enter the full name, email, username and initial password. For **Base profession**, choose **Teaching clinical lead**.
    ![The basic details step, filled in for a clinical lead](create-a-clinical-lead/basic-details.png)
-2. **Organisation/site.** If their site has been added already, choose it under **Site**. If it has not been created, choose your organisation under **Organisation** instead. You can only create a new user account if you choose one.
+2. **Organisation/site.** Choose their site under **Site**. If the site has not been added yet, choose their organisation under **Organisation** instead, and add the site afterwards. You must choose one or the other to create the account.
    ![The organisation and site step, with the organisation chosen](create-a-clinical-lead/organisation-site.png)
 3. **Competencies.** Leave both boxes empty.
 4. **Practice.** Leave the switches as they are. A clinical lead does not need them to be sent certificates.
@@ -53,11 +53,11 @@ Press **Next** to move on from each step.
 6. **Review.** Check the details, then press **Create user**.
    ![The review step, with the Create user button](create-a-clinical-lead/review.png)
 
-You are taken back to the list of users, with the message **User created**.
+You should be taken back to the list of users, with the message **User created**.
 
 ### Name them as the site's clinical lead
 
 - **If the site has not been added yet**, [add the site](/guides/add-a-site) and choose them under **Clinical lead**.
-- **If the site already exists**, open it from [**Sites**](/admin/sites), press the **Edit site** icon, and choose them under **Clinical lead**.
+- **If the site already exists**, open it from [**Sites**](/admin/sites), press the **Edit site** button :icon-pencil:, and choose them under **Clinical lead**.
 
 Either way, they are added to the site as staff at the same time, if they are not there already.

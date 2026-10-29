@@ -34,8 +34,8 @@ Each row of the table is one delegate:
 
 ## Finding a teaching delegate
 
-- Click on the magnifying glass icon to open the search field. In the search field, find a delegate by typing their name, email or site.
-- Press funnel icon (right of the magnifying glass) to narrow the list to a site, a clinical lead, or to **1st time passers only**. Somebody at more than one site is found at any of them.
+- Press the **Search** button :icon-search: to open the search field. In the search field, find a delegate by typing their name, email or site.
+- Press the **Filter** button :icon-filter2:, to the right of **Search**, to narrow the list to a site, a clinical lead, or to **1st time passers only**. Somebody at more than one site is found at any of them.
   ![The filter, open over the list of delegates](see-delegates-results/filter.png)
 
 When you search or filter, the three figures at the top of the page

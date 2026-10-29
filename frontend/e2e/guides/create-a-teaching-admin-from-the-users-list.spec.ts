@@ -42,8 +42,8 @@ test("create a teaching admin from the users list", async ({ page }) => {
   // An operator sees everybody, which is more than one page of the list,
   // so find the person as a reader would.
   await page.getByRole("button", { name: "Search" }).click();
-  await page.getByPlaceholder(/Search/).fill("Priya");
-  await page.getByRole("row", { name: /Priya Shah/ }).click();
+  await page.getByPlaceholder(/Search/).fill("Sarah");
+  await page.getByRole("row", { name: /Sarah Mitchell/ }).click();
   await expect(page.getByText("Send invite email")).toBeVisible();
   await shot(page, "create-a-teaching-admin-from-the-users-list/user");
 });

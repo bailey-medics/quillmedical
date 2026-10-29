@@ -12,30 +12,30 @@ import { expect, type Page } from "@playwright/test";
 /** The seeded accounts. Each password is the username followed by `123`. */
 export const PEOPLE = {
   /** Operates Quill: `superadmin`, with `superadmin_profession`. */
-  operator: "guide_operator",
+  operator: "morgan.reid",
   /** A teaching admin at the organisation. */
-  teachingAdmin: "guide_admin",
+  teachingAdmin: "sarah.mitchell",
   /** A delegate with no attempts, for specs that take a module. */
-  learner: "guide_learner",
+  learner: "sam.harding",
   /** Holds a passport with something in each of its parts. */
-  passportHolder: "guide_holder",
+  passportHolder: "maya.collins",
   /** May keep a passport and has not started one. */
-  passportStarter: "guide_starter",
+  passportStarter: "owen.price",
   /** Named on the holder's sign-off requests, one of them still waiting. */
-  passportAssessor: "guide_assessor",
+  passportAssessor: "helen.marsh",
   /** Runs the passport at the organisation. */
-  passportAdmin: "guide_passport_admin",
+  passportAdmin: "alex.turner",
   /** A safety officer, where the safety mock-up is switched on. */
-  safetyOfficer: "guide_safety",
+  safetyOfficer: "jo.fletcher",
   /** A delegate who has passed, for the result and its certificate. */
-  passedDelegate: "guide_delegate_1",
+  passedDelegate: "amy.richardson",
 } as const;
 
 /** What the seed calls its places, and the clinical lead's address. */
 export const SEEDED = {
   organisation: "Northfield Endoscopy Academy",
   site: "Northfield General Hospital",
-  clinicalLeadEmail: "thomas.kowalski@northfield.nhs.uk",
+  clinicalLeadEmail: "thomas.whitfield@northfield.nhs.uk",
 } as const;
 
 export async function signIn(
