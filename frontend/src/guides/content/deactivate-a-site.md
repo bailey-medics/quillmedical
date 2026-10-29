@@ -1,6 +1,6 @@
 # Deactivate a site
 
-You can do this for example if a site no longer wishes to provide services as part of your organisation. Use this rather than deleting the site: its results are kept, and you can make it active again later.
+You can do this for example if a site no longer wishes to provide services as part of your organisation.
 
 ## What deactivating does
 
@@ -15,7 +15,7 @@ Before you confirm, Quill tells you how many accounts will be deactivated.
 
 1. In the side menu, choose [**Admin**](/admin), then [**Sites**](/admin/sites).
    ![The list of sites](deactivate-a-site/sites.png)
-2. Choose the site and on the individual site page press **Edit** (the pencil button).
+2. Choose the site, and on its page press the **Edit site** button :button-pencil: .
    ![The site's page, with the Edit site button](deactivate-a-site/site.png)
 3. Below the site's details, find the **Deactivate site** card and press the red **Deactivate site** button.
    ![The site's edit page, with the Deactivate site card](deactivate-a-site/edit.png)

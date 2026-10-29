@@ -229,6 +229,18 @@ export default defineConfig(
         }),
       },
     },
+    // A guide's `:button-pencil:` draws a picture of an icon-only button
+    // with ActionIcon, so it matches the real one. It is a span hidden
+    // from screen readers that cannot be pressed or reached with Tab, so
+    // there is no control to name
+    {
+      files: ["src/components/typography/MarkdownView.tsx"],
+      rules: {
+        "no-restricted-imports": restrictImports({
+          paths: [MANTINE_PROVIDER, LOADER],
+        }),
+      },
+    },
     // The two buttons that show a small spinner while they work, and the
     // story that shows one. The button itself says what is happening, so
     // the spinner is hidden from assistive technology; every other wait is

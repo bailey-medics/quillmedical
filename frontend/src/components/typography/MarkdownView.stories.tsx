@@ -8,7 +8,7 @@
  * - Safe HTML rendering (XSS protection via DOMPurify)
  */
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { IconUserPlus } from "@/components/icons/appIcons";
+import { IconPencil, IconUserPlus } from "@/components/icons/appIcons";
 import MarkdownView from "./MarkdownView";
 
 const meta: Meta<typeof MarkdownView> = {
@@ -135,6 +135,22 @@ export const WithIcons: Story = {
       "",
       "1. Press the **Add user** button :icon-user-plus:, above the list.",
       "2. Fill in their details and press **Save**.",
+    ].join("\n"),
+  },
+};
+
+/**
+ * `:button-pencil:` draws the icon in the filled square an icon-only
+ * button has on the page, for a step whose button looks like that.
+ */
+export const WithButtonIcons: Story = {
+  args: {
+    icons: { pencil: <IconPencil /> },
+    source: [
+      "## Edit a site",
+      "",
+      "1. Open the site from **Sites**.",
+      "2. Press the **Edit site** button :button-pencil:, beside its name.",
     ].join("\n"),
   },
 };

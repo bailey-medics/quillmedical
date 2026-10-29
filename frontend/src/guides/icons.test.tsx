@@ -36,6 +36,13 @@ describe("iconNamesIn", () => {
     ]);
   });
 
+  it("finds icons drawn as buttons too", () => {
+    expect(iconNamesIn("Press :button-pencil:, then :icon-check:.")).toEqual([
+      "pencil",
+      "check",
+    ]);
+  });
+
   it("finds none in a source that names none", () => {
     expect(iconNamesIn("Press **Save**.")).toEqual([]);
   });
