@@ -29,9 +29,9 @@ If you get a message whilst using the above method saying **Nobody on Quill uses
 
 ![The lookup finding nobody, with the Create new user button](add-a-delegate-by-hand/not-found.png)
 
-The **Create new user** form opens with their email address and the site already filled in. Press **Next** to move on from each step.
+The **Create new user** form opens with their email address and the site already filled in.
 
-1. **Basic details.** Enter the full name, username and initial password. For **Base profession**, choose **Teaching delegate**.
+1. **Basic details.** Enter the full name, username and initial password. For **Base profession**, choose **Teaching delegate**. Press **Next**.
    ![The basic details step, filled in for a teaching delegate](add-a-delegate-by-hand/basic-details.png)
 2. **Organisation/site.** Their site should already be chosen at this point. There is no need to choose an organisation for a teaching delegate.
    ![The organisation and site step, with the site already chosen](add-a-delegate-by-hand/organisation-site.png)
@@ -47,7 +47,7 @@ You are taken back to the list of users, along with the message **User created**
 
 ## If a user already has a Quill account
 
-Quill says they **already have a Quill account**. You can then use the Add
+If found to have an account already, the fields for adding them to this site appear.
 
 1. Under **Role**, choose **Trainee**.
    ![The lookup finding somebody, with Trainee chosen as their role](add-a-delegate-by-hand/found.png)
@@ -67,7 +67,7 @@ Somebody who already had an account signs in as before.
 
 ## Problem solving
 
-- **Has a Quill account that you may not add here.** Their account belongs somewhere you do not manage. Ask somebody who manages users to add them.
+- **Has a Quill account that you may not add here.** Their account has been deactivated, or it belongs to somebody who runs Quill itself. Ask somebody who manages users to reactivate the account, or ask the Quill team to add them.
 - **Is already at** the site. They are on the site's staff list already. Press their row in the table and enrol them on the **Teaching** card.
 - **User not created**, on the **Review** step, with **Username already exists**. Choose a different username.
 
