@@ -12,7 +12,7 @@ Have these to hand:
 ## Add the site
 
 1. In the side menu, choose [**Admin**](/admin), then [**Sites**](/admin/sites).
-2. Press the **Add site** button, above the list. It is the house icon with a plus symbol.
+2. Press the **Add site** button :icon-home-plus:, above the list.
    ![The list of sites, with the Add site button above it](add-a-site/sites.png)
 3. The [**Add site**](/admin/sites/new) page opens. Fill it in:
    - **Organisation**: your organisation.
@@ -23,7 +23,7 @@ Have these to hand:
      ![The Add site form, filled in](add-a-site/form.png)
 4. Press **Create site**.
 
-The site's page opens. You can now [add delegates to it by hand](/guides/add-a-delegate-by-hand). Delegates who [join a course](/guides/join-a-course) themselves via the normal registration process reach a site by giving its clinical lead's email address, so they can join this one once it has a clinical lead.
+The site's page opens. Delegates who [join a course](/guides/join-a-course) themselves via the normal registration process reach a site by giving its clinical lead's email address, so they can join this one once it has a clinical lead.
 
 ## Name the clinical lead later
 

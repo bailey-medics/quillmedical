@@ -13,7 +13,7 @@ clinical safety officer can see at a glance where a system stands.
 1. In the side menu, choose [**Safety**](/safety).
    ![The Safety page, listing every safety case](find-your-way-round-a-safety-case/cases.png)
 2. Each row is one case. **Standard** says whether it is assessed against DCB0129 or DCB0160, **Open hazards** counts the hazards still open, and **Status** is **Draft**, **In review** or **Signed off**.
-3. Press a column's heading to sort by it, or the **Search** icon above the list to find a case by its name, system or officer.
+3. Press a column's heading to sort by it, or the **Search** button :icon-search: above the list to find a case by its name, system or officer.
 
 ## Open a case
 
