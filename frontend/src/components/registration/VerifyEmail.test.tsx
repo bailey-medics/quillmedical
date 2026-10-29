@@ -17,14 +17,18 @@ describe("VerifyEmail", () => {
   it("shows only the waiting message while loading", () => {
     renderWithRouter(<VerifyEmail status="loading" />);
 
-    expect(screen.getByText("Verifying your email…")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Verifying your email…" }),
+    ).toBeInTheDocument();
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
   });
 
   it("shows the result and a link to login on success", () => {
     renderWithRouter(<VerifyEmail status="success" />);
 
-    expect(screen.getByText("Email verified")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Email verified" }),
+    ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Go to login" })).toHaveAttribute(
       "href",
       "/login",
@@ -38,7 +42,9 @@ describe("VerifyEmail", () => {
   it("shows the failure and sends them to sign in for a new link", () => {
     renderWithRouter(<VerifyEmail status="error" />);
 
-    expect(screen.getByText("Verification failed")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Verification failed" }),
+    ).toBeInTheDocument();
     expect(
       screen.getByText(/Sign in with your username and password/),
     ).toBeInTheDocument();

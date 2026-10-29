@@ -2,7 +2,6 @@
 
 You first need to create an account. It takes a few minutes, and you need three things:
 
-- your name as it should appear on your certificate
 - an email address you have access to
 - the email address of your clinical lead, who must already be on Quill
 
@@ -25,8 +24,7 @@ are you joining?** Choose yours and press **Continue**.
 ## Create your account
 
 The form names the site you are joining, under **Create an account**. If
-it is the wrong site, or you chose the wrong module, press **Back**. What
-you have typed into this form is not kept.
+it is the wrong site, or you chose the wrong module, press **Back**.
 
 1. Enter your **Full name**, as it should appear on certificates.
 2. Choose a **Username**
@@ -38,16 +36,15 @@ you have typed into this form is not kept.
 
 ## Confirm your email address
 
-1. Open the email called **Verify your Quill email address** and press **Verify your email**. The link lasts 60 minutes. Look in your spam folder if it has not arrived.
+1. After completing the registration form you should receive an email with the subject **Verify your Quill email address**. Open the email and press **Verify your email**. The link lasts 60 minutes. Look in your spam folder if it has not arrived.
    ![The email Quill sends, with the Verify your email button](join-a-course/verification-email.png)
-2. When you see **Email verified**, choose **Go to login**.
+2. Pressing the button opens Quill in your web browser, on a page headed **Email verified**. Next, press **Go to login**.
+   ![The Email verified page, with the Go to login link](join-a-course/email-verified.png)
 
-If the link has run out, you see **Verification failed**. Choose **Sign
-in for a new link** and sign in with your username and password. Quill
-emails you a fresh link.
+If the link has run out, you will see a **Verification failed** message. Choose **Sign in for a new link** and sign in with your username and password. The Quill app will then email you a fresh link.
 
 ## Sign in
 
 1. Enter your **Username** and **Password**, and press **Sign in**.
    ![The sign-in page](join-a-course/sign-in.png)
-2. You arrive at [**Teaching modules**](/teaching). Press **View module** to begin.
+2. You should then arrive at [**Teaching modules**](/teaching). Press **View module** to begin.
