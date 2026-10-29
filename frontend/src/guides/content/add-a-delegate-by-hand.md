@@ -20,13 +20,14 @@ And if they are new to Quill:
 1. In the side menu, choose [**Admin**](/admin) and then [**Sites**](/admin/sites), and open the delegate's to be site.
 2. Press the **Add staff** button :icon-user-plus: , above the **Site specific staff members** table.
    ![A site's page, with the Add staff button above its staff table](add-a-delegate-by-hand/site.png)
-3. Under **Username or email address**, type the delegate's email address and press **Find**.
+3. Under **Find somebody by username or email**, type the delegate's email address and press **Find**.
+   ![The Add staff page, with the Find somebody by username or email box empty](add-a-delegate-by-hand/add-staff.png)
 
-What happens next depends on whether they already have a Quill account.
+If you do not find the user using the above method, then carry on with the steps below.
 
 ## If they are new to Quill
 
-Quill says **Nobody on Quill uses** that address. Press **Create new user**.
+If you get a message whilst using the above method saying **Nobody on Quill uses** that address, press **Create new user**.
 
 ![The lookup finding nobody, with the Create new user button](add-a-delegate-by-hand/not-found.png)
 
@@ -34,21 +35,21 @@ The **Create new user** form opens with their email address and the site already
 
 1. **Basic details.** Enter the full name, username and initial password. For **Base profession**, choose **Teaching delegate**.
    ![The basic details step, filled in for a teaching delegate](add-a-delegate-by-hand/basic-details.png)
-2. **Organisation/site.** Check their site is already chosen under **Site**. There is no need to choose an organisation for a teaching delegate.
+2. **Organisation/site.** Their site should already be chosen at this point. There is no need to choose an organisation for a teaching delegate.
    ![The organisation and site step, with the site already chosen](add-a-delegate-by-hand/organisation-site.png)
-3. **Competencies.** Leave both boxes empty. The base profession already gives a delegate what they need.
+3. **Competencies.** Leave both boxes empty. The _Teaching delegate_ base profession already gives a delegate what they need.
 4. **Practice.** Under the delegate's site, switch on **Take Teaching Modules** and **View Own Teaching Results**.
    ![The practice step, with both switches on for the delegate's site](add-a-delegate-by-hand/practice.png)
-5. **Enrolment.** Tick each module the delegate is to take. An end date is optional: leave it empty and the enrolment has no end.
+5. **Enrolment.** Tick each module the delegate is to take. An end date is optional: if left empty then no end date is set.
    ![The enrolment step, with a module ticked](add-a-delegate-by-hand/enrolment.png)
-6. **Review.** Check the details, including the modules under **Enrolment**, then press **Create user**.
+6. **Review.** Check the details and then press **Create user**.
    ![The review step, with the Create user button](add-a-delegate-by-hand/review.png)
 
-You are taken back to the list of users, with the message **User created**.
+You are taken back to the list of users, along with the message **User created**.
 
-## If they already have a Quill account
+## If a user already has a Quill account
 
-Quill says they **already have a Quill account**, and chooses them under **User**.
+Quill says they **already have a Quill account**. You can then use the Add
 
 1. Under **Role**, choose **Trainee**.
    ![The lookup finding somebody, with Trainee chosen as their role](add-a-delegate-by-hand/found.png)

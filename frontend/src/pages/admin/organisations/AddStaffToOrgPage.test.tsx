@@ -1,18 +1,15 @@
 /**
  * AddStaffToOrgPage Component Tests
  *
- * The listing is no longer filtered to staff - `?permission_level=staff`
- * went with the column, and no replacement filter was right, because
- * every candidate hid the patient becoming a healthcare assistant.
- *
- * So the mocks here carry `competencies`, and the page's behaviour
- * divides on them: somebody already staff is added as before, and
- * somebody holding nothing staff-like is asked about first and can be
- * granted a profession in the same act.
+ * The card itself, what each lookup answer brings up and the question
+ * asked about somebody holding nothing staff-like, is tested in
+ * `AddStaffForm.test.tsx`. These are about what the page does with it:
+ * the organisation it asks about, the request it sends, and where it
+ * goes afterwards.
  */
 
-import { afterEach, describe, it, expect, vi, beforeEach } from "vitest";
-import { screen, waitFor, within } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithRouter } from "@/test/test-utils";
 import AddStaffToOrgPage from "./AddStaffToOrgPage";
@@ -20,17 +17,14 @@ import * as apiLib from "@/lib/api";
 
 const mockNavigate = vi.fn();
 const mockReload = vi.fn().mockResolvedValue(undefined);
-// The viewer's grant scope comes from here too. Null lists mean no limit,
-// as for a holder of `manage_users`; a test signing in a teaching admin
-// sets them before rendering.
-const viewer = vi.hoisted(() => ({
-  may_grant: null as string[] | null,
-  may_assign_professions: null as string[] | null,
-}));
+
 vi.mock("@/auth/AuthContext", () => ({
   useAuth: () => ({
     reload: mockReload,
-    state: { status: "authenticated", user: viewer },
+    state: {
+      status: "authenticated",
+      user: { may_grant: null, may_assign_professions: null },
+    },
   }),
 }));
 
@@ -42,23 +36,30 @@ vi.mock("react-router-dom", async () => {
   };
 });
 
-/** Already staff somewhere: no grant needed, no question asked. */
+/** Already staff somewhere, so nothing is asked before adding them. */
 const A_NURSE = {
-  id: 1,
-  username: "drsmith",
-  email: "dr@test.com",
-  full_name: "Dr Smith",
+  id: 9,
+  username: "a.patel",
+  full_name: "Anita Patel",
   competencies: ["access_patient_records"],
 };
 
-/** Holds only their own record - the case the page now asks about. */
-const A_PATIENT = {
-  id: 2,
-  username: "janesmith",
-  email: "jane@test.com",
-  full_name: "Jane Smith",
-  competencies: ["access_own_patient_records"],
-};
+/**
+ * Answer the lookup with `answer`, and any other post with what `other`
+ * returns. A function, so a rejection is made only when the add is sent:
+ * made up front, nothing would be awaiting it yet and Vitest would fail
+ * the run on an unhandled rejection.
+ */
+function mockPost(
+  answer: object,
+  other: () => Promise<unknown> = () => Promise.resolve({ status: "added" }),
+) {
+  return vi
+    .spyOn(apiLib.api, "post")
+    .mockImplementation((path: string) =>
+      path.endsWith("/member-lookup") ? Promise.resolve(answer) : other(),
+    );
+}
 
 function renderPage() {
   return renderWithRouter(<AddStaffToOrgPage />, {
@@ -67,14 +68,12 @@ function renderPage() {
   });
 }
 
-async function selectUser(
-  user: ReturnType<typeof userEvent.setup>,
-  label: string,
-) {
-  const selectInput = await screen.findByPlaceholderText("Search for a user");
-  await user.click(selectInput);
-  const option = await screen.findByRole("option", { name: label });
-  await user.click(option);
+async function find(user: ReturnType<typeof userEvent.setup>, term: string) {
+  await user.type(
+    await screen.findByLabelText(/username or email address/i),
+    term,
+  );
+  await user.click(screen.getByRole("button", { name: "Find" }));
 }
 
 describe("AddStaffToOrgPage", () => {
@@ -84,9 +83,7 @@ describe("AddStaffToOrgPage", () => {
     mockReload.mockClear();
   });
 
-  it("renders page title", async () => {
-    vi.spyOn(apiLib.api, "get").mockResolvedValue({ users: [] });
-
+  it("renders the page title", () => {
     renderPage();
 
     expect(
@@ -94,333 +91,73 @@ describe("AddStaffToOrgPage", () => {
     ).toBeInTheDocument();
   });
 
-  it("loads users excluding current org members", async () => {
-    vi.spyOn(apiLib.api, "get").mockResolvedValue({
-      users: [A_NURSE, A_PATIENT],
-    });
-
-    renderPage();
-
-    await waitFor(() => {
-      expect(apiLib.api.get).toHaveBeenCalledWith("/users?exclude_org_unit=1");
-    });
-  });
-
-  it("disables submit button when no user selected", async () => {
-    vi.spyOn(apiLib.api, "get").mockResolvedValue({ users: [] });
-
-    renderPage();
-
-    await waitFor(() => {
-      expect(screen.getByTestId("submit-button")).toHaveAttribute(
-        "aria-disabled",
-        "true",
-      );
-    });
-  });
-
-  it("navigates back on cancel", async () => {
-    const user = userEvent.setup();
-    vi.spyOn(apiLib.api, "get").mockResolvedValue({ users: [] });
-
-    renderPage();
-
-    const cancelButton = screen.getByRole("button", { name: "Cancel" });
-    await user.click(cancelButton);
-
-    expect(mockNavigate).toHaveBeenCalledWith("/admin/organisations/1");
-  });
-
-  it("shows error on API failure", async () => {
-    vi.spyOn(apiLib.api, "get").mockResolvedValue({ users: [A_NURSE] });
-    vi.spyOn(apiLib.api, "post").mockRejectedValue(
-      new Error("User is already a staff member of this organisation"),
-    );
+  it("offers no role: everybody added here is staff", async () => {
+    mockPost({ status: "found", user: A_NURSE });
 
     const user = userEvent.setup();
     renderPage();
+    await find(user, "a.patel@example.org");
 
-    await waitFor(() => {
-      expect(apiLib.api.get).toHaveBeenCalled();
-    });
-
-    await selectUser(user, "drsmith (dr@test.com)");
-    await user.click(screen.getByTestId("submit-button"));
-
-    await waitFor(() => {
-      expect(
-        screen.getByText("User is already a staff member of this organisation"),
-      ).toBeInTheDocument();
-    });
+    expect(await screen.findByTestId("submit-button")).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText("Select a role")).toBeNull();
   });
 
-  it("navigates to organisation on successful submission", async () => {
-    vi.spyOn(apiLib.api, "get").mockResolvedValue({ users: [A_NURSE] });
-    vi.spyOn(apiLib.api, "post").mockResolvedValue({
-      organisation_id: 1,
-      user_id: 1,
-      username: "drsmith",
-    });
+  it("adds somebody found as staff, and goes back to the organisation", async () => {
+    const post = mockPost({ status: "found", user: A_NURSE });
 
     const user = userEvent.setup();
     renderPage();
+    await find(user, "a.patel@example.org");
+    await user.click(await screen.findByTestId("submit-button"));
 
     await waitFor(() => {
-      expect(apiLib.api.get).toHaveBeenCalled();
+      expect(post).toHaveBeenCalledWith("/org-units/1/members", {
+        user_id: 9,
+        capacity: "staff",
+      });
     });
-
-    await selectUser(user, "drsmith (dr@test.com)");
-    await user.click(screen.getByTestId("submit-button"));
-
-    await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith("/admin/organisations/1", {
-        state: {
-          flash: {
-            variant: "success",
-            title: "Staff member added",
-            description: "drsmith has been added to this organisation",
-          },
+    expect(post).toHaveBeenCalledWith("/org-units/1/member-lookup", {
+      term: "a.patel@example.org",
+    });
+    // Their own access may have changed with the membership.
+    await waitFor(() => expect(mockReload).toHaveBeenCalled());
+    expect(mockNavigate).toHaveBeenCalledWith("/admin/organisations/1", {
+      state: {
+        flash: {
+          variant: "success",
+          title: "Staff member added",
+          description: "a.patel has been added to this organisation",
         },
-      });
+      },
     });
-
-    expect(mockReload).toHaveBeenCalledOnce();
   });
 
-  it("shows error when user loading fails", async () => {
-    vi.spyOn(apiLib.api, "get").mockRejectedValue(
-      new Error("Failed to load users"),
+  it("says so when adding fails, and stays on the page", async () => {
+    mockPost({ status: "found", user: A_NURSE }, () =>
+      Promise.reject(new Error("Server error")),
     );
 
+    const user = userEvent.setup();
     renderPage();
+    await find(user, "a.patel@example.org");
+    await user.click(await screen.findByTestId("submit-button"));
 
-    await waitFor(() => {
-      expect(screen.getByText("Failed to load users")).toBeInTheDocument();
-    });
+    expect(await screen.findByText("Server error")).toBeInTheDocument();
+    expect(mockNavigate).not.toHaveBeenCalled();
   });
 
-  describe("Somebody already staff", () => {
-    it("is added without being asked about", async () => {
-      vi.spyOn(apiLib.api, "get").mockResolvedValue({ users: [A_NURSE] });
-      const post = vi
-        .spyOn(apiLib.api, "post")
-        .mockResolvedValue({ organisation_id: 1, user_id: 1 });
+  it("opens the new user form, filled in, when nobody has the address", async () => {
+    mockPost({ status: "not_found", user: null });
 
-      const user = userEvent.setup();
-      renderPage();
+    const user = userEvent.setup();
+    renderPage();
+    await find(user, "new.person@example.org");
+    await user.click(
+      await screen.findByRole("button", { name: "Create new user" }),
+    );
 
-      await waitFor(() => expect(apiLib.api.get).toHaveBeenCalled());
-      await selectUser(user, "drsmith (dr@test.com)");
-
-      // No question, and nothing to grant.
-      expect(
-        screen.queryByText(/holds nothing a member of staff would/),
-      ).not.toBeInTheDocument();
-
-      await user.click(screen.getByTestId("submit-button"));
-
-      await waitFor(() => {
-        expect(post).toHaveBeenCalledWith("/org-units/1/members", {
-          user_id: 1,
-          // The old address assumed this; the new one asks, because a
-          // org_unit takes trainees and external assessors too.
-          capacity: "staff",
-        });
-      });
-    });
-  });
-
-  describe("Somebody holding nothing staff-like", () => {
-    it("brings up the grant fields on selection", async () => {
-      vi.spyOn(apiLib.api, "get").mockResolvedValue({ users: [A_PATIENT] });
-
-      const user = userEvent.setup();
-      renderPage();
-
-      await waitFor(() => expect(apiLib.api.get).toHaveBeenCalled());
-      await selectUser(user, "janesmith (jane@test.com)");
-
-      expect(
-        await screen.findByText(/holds nothing a member of staff would/),
-      ).toBeInTheDocument();
-      expect(
-        screen.getByRole("combobox", { name: /Base profession/ }),
-      ).toBeInTheDocument();
-    });
-
-    it("asks for confirmation before submitting", async () => {
-      vi.spyOn(apiLib.api, "get").mockResolvedValue({ users: [A_PATIENT] });
-      const post = vi.spyOn(apiLib.api, "post").mockResolvedValue({});
-
-      const user = userEvent.setup();
-      renderPage();
-
-      await waitFor(() => expect(apiLib.api.get).toHaveBeenCalled());
-      await selectUser(user, "janesmith (jane@test.com)");
-      await user.click(screen.getByTestId("submit-button"));
-
-      expect(
-        await screen.findByText("Add as a staff member?"),
-      ).toBeInTheDocument();
-      // Nothing is sent until the question is answered.
-      expect(post).not.toHaveBeenCalled();
-    });
-
-    it("sends nothing if the confirmation is cancelled", async () => {
-      vi.spyOn(apiLib.api, "get").mockResolvedValue({ users: [A_PATIENT] });
-      const post = vi.spyOn(apiLib.api, "post").mockResolvedValue({});
-
-      const user = userEvent.setup();
-      renderPage();
-
-      await waitFor(() => expect(apiLib.api.get).toHaveBeenCalled());
-      await selectUser(user, "janesmith (jane@test.com)");
-      await user.click(screen.getByTestId("submit-button"));
-
-      await screen.findByText("Add as a staff member?");
-      const modal = screen.getByRole("dialog");
-      await user.click(
-        within(modal).getByRole("button", { name: /Cancel|Back/ }),
-      );
-
-      expect(post).not.toHaveBeenCalled();
-    });
-
-    it("grants the chosen profession in the same request", async () => {
-      vi.spyOn(apiLib.api, "get").mockResolvedValue({ users: [A_PATIENT] });
-      const post = vi
-        .spyOn(apiLib.api, "post")
-        .mockResolvedValue({ organisation_id: 1, user_id: 2 });
-
-      const user = userEvent.setup();
-      renderPage();
-
-      await waitFor(() => expect(apiLib.api.get).toHaveBeenCalled());
-      await selectUser(user, "janesmith (jane@test.com)");
-
-      const professionSelect = await screen.findByRole("combobox", {
-        name: /Base profession/,
-      });
-      await user.click(professionSelect);
-      await user.click(
-        await screen.findByRole("option", {
-          name: "Healthcare Assistant (HCA)",
-        }),
-      );
-
-      await user.click(screen.getByTestId("submit-button"));
-      await screen.findByText("Add as a staff member?");
-      const modal = screen.getByRole("dialog");
-      await user.click(
-        within(modal).getByRole("button", { name: "Add as staff" }),
-      );
-
-      await waitFor(() => {
-        expect(post).toHaveBeenCalledWith("/org-units/1/members", {
-          user_id: 2,
-          capacity: "staff",
-          base_profession: "healthcare_assistant",
-        });
-      });
-    });
-  });
-
-  describe("A teaching admin", () => {
-    afterEach(() => {
-      viewer.may_grant = null;
-      viewer.may_assign_professions = null;
-    });
-
-    it("is offered only the teaching professions", async () => {
-      viewer.may_grant = ["take_teaching_modules"];
-      viewer.may_assign_professions = ["teaching_delegate", "teaching_admin"];
-      vi.spyOn(apiLib.api, "get").mockResolvedValue({ users: [A_PATIENT] });
-
-      const user = userEvent.setup();
-      renderPage();
-
-      await waitFor(() => expect(apiLib.api.get).toHaveBeenCalled());
-      await selectUser(user, "janesmith (jane@test.com)");
-      await user.click(
-        await screen.findByRole("combobox", { name: /Base profession/ }),
-      );
-
-      expect(
-        await screen.findByRole("option", { name: "Teaching delegate" }),
-      ).toBeInTheDocument();
-      expect(
-        screen.queryByRole("option", { name: "Healthcare Assistant (HCA)" }),
-      ).not.toBeInTheDocument();
-    });
-  });
-
-  describe("Somebody the admin cannot see", () => {
-    it("adds somebody the lookup finds", async () => {
-      vi.spyOn(apiLib.api, "get").mockResolvedValue({ users: [] });
-      const post = vi
-        .spyOn(apiLib.api, "post")
-        .mockImplementation((path: string) =>
-          Promise.resolve(
-            path.endsWith("/member-lookup")
-              ? {
-                  status: "found",
-                  user: {
-                    id: 9,
-                    username: "a.patel",
-                    full_name: "Anita Patel",
-                    competencies: ["access_patient_records"],
-                  },
-                }
-              : { status: "added" },
-          ),
-        );
-
-      const user = userEvent.setup();
-      renderPage();
-      await user.type(
-        await screen.findByLabelText(/username or email address/i),
-        "a.patel@example.org",
-      );
-      await user.click(screen.getByRole("button", { name: "Find" }));
-
-      await waitFor(() =>
-        expect(screen.getByPlaceholderText("Search for a user")).toHaveValue(
-          "a.patel",
-        ),
-      );
-      await user.click(screen.getByTestId("submit-button"));
-
-      await waitFor(() => {
-        expect(post).toHaveBeenCalledWith(
-          expect.stringMatching(/^\/org-units\/\d+\/members$/),
-          expect.objectContaining({ user_id: 9, capacity: "staff" }),
-        );
-      });
-    });
-
-    it("opens the new user form, filled in, when nobody has the address", async () => {
-      vi.spyOn(apiLib.api, "get").mockResolvedValue({ users: [] });
-      vi.spyOn(apiLib.api, "post").mockResolvedValue({
-        status: "not_found",
-        user: null,
-      });
-
-      const user = userEvent.setup();
-      renderPage();
-      await user.type(
-        await screen.findByLabelText(/username or email address/i),
-        "new.person@example.org",
-      );
-      await user.click(screen.getByRole("button", { name: "Find" }));
-      await user.click(
-        await screen.findByRole("button", { name: "Create new user" }),
-      );
-
-      expect(mockNavigate).toHaveBeenCalledWith(
-        expect.stringMatching(
-          /^\/admin\/users\/new\?email=new\.person%40example\.org&org_unit=\d+$/,
-        ),
-      );
-    });
+    expect(mockNavigate).toHaveBeenCalledWith(
+      "/admin/users/new?email=new.person%40example.org&org_unit=1",
+    );
   });
 });

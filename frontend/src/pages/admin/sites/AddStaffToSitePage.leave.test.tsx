@@ -29,17 +29,22 @@ describe("AddStaffToSitePage, leaving to create a user", () => {
   });
 
   it("does not ask about unsaved changes", async () => {
-    vi.spyOn(apiLib.api, "get").mockImplementation((path: string) =>
-      Promise.resolve(
-        path === "/users"
-          ? { users: [] }
-          : { name: "Oncology", members: [], clinical_lead_id: null },
-      ),
-    );
-    vi.spyOn(apiLib.api, "post").mockResolvedValue({
-      status: "not_found",
-      user: null,
+    vi.spyOn(apiLib.api, "get").mockResolvedValue({
+      name: "Oncology",
+      members: [],
+      clinical_lead_id: null,
     });
+    vi.spyOn(apiLib.api, "post")
+      .mockResolvedValueOnce({
+        status: "found",
+        user: {
+          id: 9,
+          username: "a.patel",
+          full_name: "Anita Patel",
+          competencies: ["access_patient_records"],
+        },
+      })
+      .mockResolvedValueOnce({ status: "not_found", user: null });
 
     const user = userEvent.setup();
     renderWithRouter(<AddStaffToSitePage />, {
@@ -47,14 +52,16 @@ describe("AddStaffToSitePage, leaving to create a user", () => {
       initialRoute: "/admin/sites/1/add-staff",
     });
 
-    // A choice made below, so the form has something unsaved.
+    // Somebody found and a role chosen, so the form has something
+    // unsaved; then somebody else looked up, whom nobody is.
+    const box = screen.getByLabelText(/username or email address/i);
+    await user.type(box, "a.patel@example.org");
+    await user.click(screen.getByRole("button", { name: "Find" }));
     await user.click(await screen.findByPlaceholderText("Select a role"));
     await user.click(await screen.findByRole("option", { name: "Trainee" }));
 
-    await user.type(
-      screen.getByLabelText(/username or email address/i),
-      "new.person@example.org",
-    );
+    await user.clear(box);
+    await user.type(box, "new.person@example.org");
     await user.click(screen.getByRole("button", { name: "Find" }));
     await user.click(
       await screen.findByRole("button", { name: "Create new user" }),
