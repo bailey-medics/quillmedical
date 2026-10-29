@@ -7,7 +7,7 @@ who has no account yet, or who needs the passport and nothing else.
 ## Add a new person
 
 1. In the side menu, choose [**Admin**](/admin), then [**Users**](/admin/users).
-2. Press the **Add user** button, beside the search box above the list. It is an icon with no words.
+2. Press the **Add user** button :icon-user-plus:, beside the search box above the list.
 3. On **Basic details**, enter their name, email, username and an initial password. For **Base profession**, choose **Passport delegate**.
    ![The basic details step, with Passport delegate chosen](add-somebody-to-the-passport/basic-details.png)
 4. On **Organisation/site**, choose where they work.

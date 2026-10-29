@@ -16,7 +16,7 @@ Have these to hand:
 ## Open the new user form
 
 1. In the side menu, choose [**Admin**](/admin) and then [**Users**](/admin/users).
-2. Press the **Add user** button. This can be found in the icon row above the user's table. It is a icon of a person with the plus symbol. Hint: hover over an icon to see it's action.
+2. Press the **Add user** button :icon-user-plus:, in the row of icons above the users table. Hint: hover over an icon to see its action.
    ![The list of users, with the Add user button above it](add-a-delegate-from-the-users-list/users.png)
 3. The [**Create new user**](/admin/users/new) page opens.
 
@@ -52,4 +52,4 @@ reason.
 
 - **Choose at least one organisation or site.** Press **Back** until you reach step 2, and choose the delegate's site.
 - **Username already exists.** Choose a different username.
-- **Email already exists.** They already have a Quill account. Add them to the site as staff instead: choose [**Admin**](/admin), then [**Sites**](/admin/sites), open the site and under **Site specific staff members** press the **Add staff** icon.
+- **Email already exists.** They already have a Quill account. Add them to the site as staff instead: choose [**Admin**](/admin), then [**Sites**](/admin/sites), open the site and under **Site specific staff members** press the **Add staff** button :icon-user-plus:.

@@ -13,7 +13,7 @@ Have these to hand:
 ## Open the new user form
 
 1. In the side menu, choose [**Admin**](/admin), then [**Users**](/admin/users).
-2. Press the **Add user** button, above the list of users. It is an icon of a person with a plus sign.
+2. Press the **Add user** button :icon-user-plus:, above the list of users.
 3. The [**Create new user**](/admin/users/new) page opens.
 
 ## Fill in the six steps

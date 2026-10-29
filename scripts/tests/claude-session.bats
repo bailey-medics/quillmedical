@@ -11,7 +11,7 @@ setup() {
     SCRIPT="${BATS_TEST_DIRNAME}/../claude-session.sh"
     CALLS="${BATS_TEST_TMPDIR}/calls"
     WORKTREE="${BATS_TEST_TMPDIR}/quillmedical-3"
-    unset TMUX TMUX_PANE SESSION_EXISTS CLAUDE_RUNNING WATCHER_ENABLED CURRENT_SESSION
+    unset TMUX TMUX_PANE TERM_PROGRAM SESSION_EXISTS CLAUDE_RUNNING WATCHER_ENABLED CURRENT_SESSION
 
     git init -q "${WORKTREE}"
     mkdir -p "${BATS_TEST_TMPDIR}/bin"
@@ -66,7 +66,7 @@ run_in() {
 @test "a missing session is started with Claude in it, then attached to" {
     run_in "$WORKTREE"
     [ "$status" -eq 0 ]
-    grep -q "^tmux new-session -d -s q3 -c .*quillmedical-3 bash -lc 'claude --continue --remote-control quillmedical-3 || claude --remote-control quillmedical-3; exec bash'$" "$CALLS"
+    grep -q "^tmux new-session -d -s q3 -c .*quillmedical-3 bash -lc 'claude --continue --ide --remote-control quillmedical-3 || claude --ide --remote-control quillmedical-3; exec bash'$" "$CALLS"
     grep -qx "tmux attach -t =q3" "$CALLS"
 }
 
@@ -92,7 +92,7 @@ run_in() {
 @test "from outside tmux, an exited Claude is typed back in, then attached to" {
     SESSION_EXISTS=1 run_in "$WORKTREE"
     [ "$status" -eq 0 ]
-    grep -qx "tmux send-keys -t %7 claude --continue --remote-control quillmedical-3 || claude --remote-control quillmedical-3 Enter" "$CALLS"
+    grep -qx "tmux send-keys -t %7 claude --continue --ide --remote-control quillmedical-3 || claude --ide --remote-control quillmedical-3 Enter" "$CALLS"
     grep -qx "tmux attach -t =q3" "$CALLS"
 }
 
@@ -109,7 +109,7 @@ run_in() {
 
     SESSION_EXISTS=1 run_in "${WORKTREE}"
     [ "$status" -eq 0 ]
-    grep -qx "claude --continue --remote-control quillmedical-3 in $(cd -P "$WORKTREE" && pwd)" "$CALLS"
+    grep -qx "claude --continue --ide --remote-control quillmedical-3 in $(cd -P "$WORKTREE" && pwd)" "$CALLS"
     [ "$(grep -c -e send-keys -e switch-client -e attach "$CALLS")" -eq 0 ]
 }
 
@@ -141,7 +141,7 @@ run_in() {
 
     SESSION_EXISTS=1 run_in "${BATS_TEST_TMPDIR}/quillmedical-5"
     [ "$status" -eq 0 ]
-    grep -q "^tmux send-keys -t %7 claude --continue --remote-control quillmedical-5 " "$CALLS"
+    grep -q "^tmux send-keys -t %7 claude --continue --ide --remote-control quillmedical-5 " "$CALLS"
 }
 
 @test "the watcher's q5 is attached to while its Claude runs" {
@@ -167,4 +167,27 @@ run_in() {
     WATCHER_ENABLED=1 run_in "${BATS_TEST_TMPDIR}/quillmedical-5"
     [ "$status" -eq 1 ]
     [ "$(grep -c new-session "$CALLS")" -eq 0 ]
+}
+
+@test "from VS Code's terminal, a running Claude is attached to with a note to type /ide" {
+    export TERM_PROGRAM=vscode
+
+    SESSION_EXISTS=1 CLAUDE_RUNNING=1 run_in "$WORKTREE"
+    [ "$status" -eq 0 ]
+    grep -qx "tmux attach -t =q3 ; display-message -d 5000 Type /ide to link this VS Code window" "$CALLS"
+    [ "$(grep -c send-keys "$CALLS")" -eq 0 ]
+}
+
+@test "from another terminal, a running Claude is attached to with no note" {
+    export TERM_PROGRAM=iTerm.app
+
+    SESSION_EXISTS=1 CLAUDE_RUNNING=1 run_in "$WORKTREE"
+    grep -qx "tmux attach -t =q3" "$CALLS"
+}
+
+@test "from VS Code's terminal, a Claude started here gets no note, as --ide links it" {
+    export TERM_PROGRAM=vscode
+
+    SESSION_EXISTS=1 run_in "$WORKTREE"
+    grep -qx "tmux attach -t =q3" "$CALLS"
 }

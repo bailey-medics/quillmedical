@@ -13,6 +13,13 @@
 # Run from the session's own shell after Claude has exited, it starts
 # Claude right there, in the foreground, since the shell is the pane.
 #
+# Claude starts with --ide, which links it to the VS Code window open on
+# the devbox when there is exactly one, so it sees the file and lines
+# highlighted there. A Claude already running cannot be linked from
+# outside, so attaching to one from VS Code's terminal shows a note to
+# type /ide instead. Nothing is typed into it: keys sent to a busy
+# session land in whatever is half written there.
+#
 # Whether Claude is running is read from the processes in the pane's
 # session, not from tmux's pane_current_command: a pane started with
 # `bash -lc 'claude ...'` reports bash while Claude runs as its child.
@@ -45,9 +52,10 @@ case "${worktree}" in
         ;;
 esac
 
-start_claude="claude --continue --remote-control ${worktree} || claude --remote-control ${worktree}"
+start_claude="claude --continue --ide --remote-control ${worktree} || claude --ide --remote-control ${worktree}"
 
 watcher_owns_it=false
+claude_was_running=false
 
 if [ "${name}" = "q5" ] && systemctl --user is-enabled --quiet quill-alert-watcher.service 2> /dev/null; then
     watcher_owns_it=true
@@ -82,6 +90,8 @@ else
 
         tmux send-keys -t "${pane_id}" "${start_claude}" Enter
         echo "Started Claude again in ${name}"
+    else
+        claude_was_running=true
     fi
 fi
 
@@ -91,6 +101,14 @@ if [ -n "${TMUX:-}" ]; then
     fi
 
     exec tmux switch-client -t "=${name}"
+fi
+
+# Inside tmux, TERM_PROGRAM names tmux rather than the terminal, so VS
+# Code's terminal is only recognised from outside, which is where the
+# note is wanted.
+if [ "${claude_was_running}" = true ] && [ "${TERM_PROGRAM:-}" = "vscode" ]; then
+    exec tmux attach -t "=${name}" ";" \
+        display-message -d 5000 "Type /ide to link this VS Code window"
 fi
 
 exec tmux attach -t "=${name}"

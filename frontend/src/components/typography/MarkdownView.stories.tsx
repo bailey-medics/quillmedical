@@ -8,6 +8,7 @@
  * - Safe HTML rendering (XSS protection via DOMPurify)
  */
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { IconUserPlus } from "@/components/icons/appIcons";
 import MarkdownView from "./MarkdownView";
 
 const meta: Meta<typeof MarkdownView> = {
@@ -118,6 +119,22 @@ export const WithImages: Story = {
       "2. Look for a picture that is not there.",
       "   ![A screenshot that has not been taken yet](missing/shot.png)",
       "3. Carry on.",
+    ].join("\n"),
+  },
+};
+
+/**
+ * Icons are off unless the caller gives them, as a guide does. A step
+ * names one as `:icon-user-plus:`, and it is shown in the line.
+ */
+export const WithIcons: Story = {
+  args: {
+    icons: { "user-plus": <IconUserPlus /> },
+    source: [
+      "## Add somebody",
+      "",
+      "1. Press the **Add user** button :icon-user-plus:, above the list.",
+      "2. Fill in their details and press **Save**.",
     ].join("\n"),
   },
 };
