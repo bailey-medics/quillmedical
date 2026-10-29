@@ -1,22 +1,43 @@
 # Create a clinical lead
 
-Every site has should have a clinical lead. Quill emails them a certificate when a delegate at their site passes, and delegates who [join a course](/guides/join-a-course) find their site by typing its clinical lead's email address. Give the clinical lead an account first, then name them as the lead of their site.
+Every site should have a clinical lead. Quill emails them a certificate when a delegate at their site passes, and delegates who [join a course](/guides/join-a-course) find their site by typing in its clinical lead's email address. Somebody who already has a Quill account can be named as lead straight away. Somebody new is given an account first.
 
 ## Before you start
 
 Have these to hand:
 
-- the clinical lead's **full name** and **email address**.
+- the clinical lead's **email address** or **username**
+- the **site** they are to lead
+
+And if they are new to Quill:
+
+- their **full name**
 - a **username** for them
 - a first **password** of at least 8 characters
 
-## Open the new user form
+## If they already have a Quill account
+
+There is no need to create a new account, or to change their base profession. Whoever holds the post at a site is sent its certificates.
+
+**If they are already at the site**, open it from [**Sites**](/admin/sites), press the **Edit site** icon, and choose them under **Clinical lead**. Whoever held the post before is stood down.
+
+**If they are not at the site yet:**
+
+1. Open the site from [**Sites**](/admin/sites) and press the **Add staff** button :icon-user-plus:.
+2. Under **Find somebody by username or email**, type their username or email address and press **Find**.
+3. Under **Role**, choose **Clinical lead**, then press **Add staff member**. They are added to the site as staff and named as its clinical lead.
+
+**Clinical lead** is greyed out if the site already has one. Add them as **Staff** instead, then choose them under **Clinical lead** in **Edit site**, which stands the current lead down.
+
+## If they are new to Quill
+
+### Open the new user form
 
 1. In the side menu, choose [**Admin**](/admin), then [**Users**](/admin/users).
 2. Press the **Add user** button :icon-user-plus:, above the list of users.
 3. The [**Create new user**](/admin/users/new) page opens.
 
-## Fill in the six steps
+### Fill in the six steps
 
 Press **Next** to move on from each step.
 
@@ -32,7 +53,7 @@ Press **Next** to move on from each step.
 
 You are taken back to the list of users, with the message **User created**.
 
-## Name them as the site's clinical lead
+### Name them as the site's clinical lead
 
 - **If the site has not been added yet**, [add the site](/guides/add-a-site) and choose them under **Clinical lead**.
 - **If the site already exists**, open it from [**Sites**](/admin/sites), press the **Edit site** icon, and choose them under **Clinical lead**.
