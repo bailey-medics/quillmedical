@@ -105,6 +105,31 @@
   transform: translateY(8.33%);
 }
 
+/*
+ * A button drawn in the text, for one that is an icon alone on the page.
+ * Its bottom edge sits on the baseline, level with the bottom of the
+ * letters. Left inline, the square would sit in a line of its own inside
+ * the slot, which keeps room beneath it for letter tails, and hang about
+ * that far below. Hidden overflow makes the slot's bottom edge its
+ * baseline, and a block square leaves no room beneath it.
+ */
+.markdown span[data-button] {
+  overflow: hidden;
+}
+
+/* Above Mantine's own `display: inline-flex`, whatever the load order. */
+.markdown span[data-button] .button {
+  display: flex;
+}
+
+.markdown span[data-button] svg {
+  transform: none;
+}
+
+.button {
+  cursor: default;
+}
+
 /* What an image that will not load is swapped for: its alt text. */
 .missingImage {
   display: block;
