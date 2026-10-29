@@ -81,7 +81,7 @@ describe("DataTableControlled", () => {
     expect(screen.getByText("No items found")).toBeInTheDocument();
   });
 
-  it("renders search and filter buttons", () => {
+  it("shows search, and no filter when there is nothing to filter by", () => {
     renderWithRouter(
       <DataTableControlled
         data={items}
@@ -93,7 +93,36 @@ describe("DataTableControlled", () => {
     );
 
     expect(screen.getByLabelText("Open search")).toBeInTheDocument();
-    expect(screen.getByLabelText("Filter")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Filter")).not.toBeInTheDocument();
+  });
+
+  it("shows no filter for an empty list of options", () => {
+    renderWithRouter(
+      <DataTableControlled
+        data={items}
+        columns={columns}
+        getRowKey={(r) => r.id}
+        filterData={[]}
+        searchFields={(r) => [r.name, r.category]}
+        filterPredicate={() => () => true}
+      />,
+    );
+
+    expect(screen.queryByLabelText("Filter")).not.toBeInTheDocument();
+  });
+
+  it("shows no filter for options with no way to apply them", () => {
+    renderWithRouter(
+      <DataTableControlled
+        data={items}
+        columns={columns}
+        getRowKey={(r) => r.id}
+        filterData={["a"]}
+        searchFields={(r) => [r.name, r.category]}
+      />,
+    );
+
+    expect(screen.queryByLabelText("Filter")).not.toBeInTheDocument();
   });
 
   it("shows an action in the same row as search and filter", () => {
@@ -111,7 +140,7 @@ describe("DataTableControlled", () => {
     const action = screen.getByRole("button", { name: "Add item" });
     const search = screen.getByLabelText("Open search");
     expect(action.parentElement).toBe(search.parentElement);
-    // Before the search, so the row reads action, search, filter.
+    // Before the search, so the row reads action, search, then any filter.
     expect(
       action.compareDocumentPosition(search) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
