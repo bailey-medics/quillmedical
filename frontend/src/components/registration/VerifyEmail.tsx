@@ -5,15 +5,16 @@
  * email. It has three states: the token is being checked, it was
  * accepted, or it was refused. The page owns the request and passes
  * the state in, so each state can be shown on its own.
+ *
+ * Each state is a subheading and a sentence rather than a message
+ * card: the card is narrow, and a coloured banner inside it crowds it.
  */
 
 import { Group, Stack } from "@mantine/core";
 import PageHeader from "@/components/page-header";
 import BaseCard from "@components/base-card/BaseCard";
-import { IconAlertCircle, IconClock } from "@components/icons/appIcons";
 import { QuillLogo } from "@components/images";
-import { ResultMessage, StateMessage } from "@components/message-cards";
-import { BodyText, TextLink } from "@components/typography";
+import { BodyText, Heading, TextLink } from "@components/typography";
 
 export type VerifyEmailStatus = "loading" | "success" | "error";
 
@@ -33,16 +34,16 @@ export default function VerifyEmail({ status }: VerifyEmailProps) {
         <Stack>
           <PageHeader title="Verify your email" />
           {status === "loading" && (
-            <StateMessage
-              icon={<IconClock />}
-              title="Verifying your email…"
-              description="Please wait while we verify your email address."
-              colour="info"
-            />
+            <>
+              <Heading>Verifying your email…</Heading>
+              <BodyText>
+                Please wait while we verify your email address.
+              </BodyText>
+            </>
           )}
           {status === "success" && (
             <>
-              <ResultMessage variant="success" title="Email verified" />
+              <Heading>Email verified</Heading>
               <BodyText>
                 Your email has been verified. You can now log in.
               </BodyText>
@@ -55,12 +56,11 @@ export default function VerifyEmail({ status }: VerifyEmailProps) {
           )}
           {status === "error" && (
             <>
-              <StateMessage
-                icon={<IconAlertCircle />}
-                title="Verification failed"
-                description="This link is invalid or has expired. Sign in with your username and password and we will email you a new one."
-                colour="alert"
-              />
+              <Heading>Verification failed</Heading>
+              <BodyText>
+                This link is invalid or has expired. Sign in with your username
+                and password and we will email you a new one.
+              </BodyText>
               {/* To the login form, not to the page that offers to resend:
                   that page draws its button only when it knows the
                   address, and arriving from here it does not. Signing in

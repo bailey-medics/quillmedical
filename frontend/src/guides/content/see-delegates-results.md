@@ -1,8 +1,8 @@
 # See delegates' results
 
 The [**All delegates**](/admin/teaching/all-delegates) page shows who has attempted a module, how far they
-have got and whether they passed. It lists the delegates in your own
-organisations.
+had gotten and whether they passed. This page lists the delegates in your own
+organisations only.
 
 ## Open the page
 
@@ -35,7 +35,7 @@ Each row of the table is one delegate:
 ## Finding a teaching delegate
 
 - Press the **Search** button :icon-search: to open the search field. In the search field, find a delegate by typing their name, email or site.
-- Press the **Filter** button :icon-filter2:, to the right of **Search**, to narrow the list to a site, a clinical lead, or to **1st time passers only**. Somebody at more than one site is found at any of them.
+- Press the **Filter** button :icon-filter2: to narrow the list to a site, a clinical lead, or to **1st time passers only**. Somebody at more than one site is found at any of them.
   ![The filter, open over the list of delegates](see-delegates-results/filter.png)
 
 When you search or filter, the three figures at the top of the page
