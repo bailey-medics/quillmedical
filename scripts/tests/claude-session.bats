@@ -169,25 +169,29 @@ run_in() {
     [ "$(grep -c new-session "$CALLS")" -eq 0 ]
 }
 
-@test "from VS Code's terminal, a running Claude is attached to with a note to type /ide" {
+@test "from VS Code's terminal, a running Claude is asked to link again before attaching" {
     export TERM_PROGRAM=vscode
 
     SESSION_EXISTS=1 CLAUDE_RUNNING=1 run_in "$WORKTREE"
     [ "$status" -eq 0 ]
-    grep -qx "tmux attach -t =q3 ; display-message -d 5000 Type /ide to link this VS Code window" "$CALLS"
-    [ "$(grep -c send-keys "$CALLS")" -eq 0 ]
+    grep -qx "tmux send-keys -t %7 /ide Enter" "$CALLS"
+    grep -qx "tmux attach -t =q3" "$CALLS"
+    # Asked before attaching, so the picker is waiting on arrival.
+    [ "$(grep -n send-keys "$CALLS" | cut -d: -f1)" -lt "$(grep -n attach "$CALLS" | cut -d: -f1)" ]
 }
 
-@test "from another terminal, a running Claude is attached to with no note" {
+@test "from another terminal, a running Claude is attached to and not asked to link" {
     export TERM_PROGRAM=iTerm.app
 
     SESSION_EXISTS=1 CLAUDE_RUNNING=1 run_in "$WORKTREE"
     grep -qx "tmux attach -t =q3" "$CALLS"
+    [ "$(grep -c send-keys "$CALLS")" -eq 0 ]
 }
 
-@test "from VS Code's terminal, a Claude started here gets no note, as --ide links it" {
+@test "from VS Code's terminal, a Claude started here is not asked to link, as --ide links it" {
     export TERM_PROGRAM=vscode
 
     SESSION_EXISTS=1 run_in "$WORKTREE"
     grep -qx "tmux attach -t =q3" "$CALLS"
+    [ "$(grep -c "send-keys -t %7 /ide" "$CALLS")" -eq 0 ]
 }

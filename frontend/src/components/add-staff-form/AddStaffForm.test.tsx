@@ -41,10 +41,24 @@ const A_PATIENT = {
 };
 
 const ROLES = [
-  { value: "clinical_lead", label: "Clinical lead", disabled: true },
+  { value: "clinical_lead", label: "Clinical lead" },
   { value: "staff", label: "Staff" },
   { value: "trainee", label: "Trainee" },
 ];
+
+/** As a site page offers them while somebody else holds the post. */
+const ROLES_WITH_LEAD = ROLES.map((role) =>
+  role.value === "clinical_lead"
+    ? {
+        ...role,
+        confirm: (user: { username: string }) => ({
+          title: "Replace the clinical lead?",
+          acceptLabel: "Replace lead",
+          children: `Make ${user.username} the clinical lead instead?`,
+        }),
+      }
+    : role,
+);
 
 function renderForm(
   answers: Result[],
@@ -164,16 +178,48 @@ describe("AddStaffForm", () => {
       );
     });
 
-    it("is not offered a post that is already filled", async () => {
-      renderForm([{ status: "found", user: A_NURSE }]);
+    it("is asked the role's own question before being added", async () => {
+      const { onSubmit } = renderForm([{ status: "found", user: A_NURSE }], {
+        roleOptions: ROLES_WITH_LEAD,
+      });
       const user = userEvent.setup();
 
       await find(user, "drsmith");
-      await user.click(await screen.findByPlaceholderText("Select a role"));
+      await chooseRole(user, "Clinical lead");
+      await user.click(screen.getByTestId("submit-button"));
 
-      expect(
-        await screen.findByRole("option", { name: "Clinical lead" }),
-      ).toHaveAttribute("data-combobox-disabled", "true");
+      const dialog = await screen.findByRole("dialog");
+      expect(dialog).toHaveTextContent(
+        "Make drsmith the clinical lead instead?",
+      );
+      expect(onSubmit).not.toHaveBeenCalled();
+
+      await user.click(
+        within(dialog).getByRole("button", { name: "Replace lead" }),
+      );
+      await waitFor(() =>
+        expect(onSubmit).toHaveBeenCalledWith(
+          expect.objectContaining({ role: "clinical_lead" }),
+        ),
+      );
+    });
+
+    it("is not asked the role's question for another role", async () => {
+      const { onSubmit } = renderForm([{ status: "found", user: A_NURSE }], {
+        roleOptions: ROLES_WITH_LEAD,
+      });
+      const user = userEvent.setup();
+
+      await find(user, "drsmith");
+      await chooseRole(user, "Staff");
+      await user.click(screen.getByTestId("submit-button"));
+
+      await waitFor(() =>
+        expect(onSubmit).toHaveBeenCalledWith(
+          expect.objectContaining({ role: "staff" }),
+        ),
+      );
+      expect(screen.queryByRole("dialog")).toBeNull();
     });
   });
 
@@ -236,6 +282,23 @@ describe("AddStaffForm", () => {
           baseProfession: "healthcare_assistant",
           additionalCompetencies: [],
         }),
+      );
+    });
+
+    it("is asked both questions in one, the role's first", async () => {
+      renderForm([{ status: "found", user: A_PATIENT }], {
+        roleOptions: ROLES_WITH_LEAD,
+      });
+      const user = userEvent.setup();
+
+      await find(user, "janesmith");
+      await chooseRole(user, "Clinical lead");
+      await user.click(screen.getByTestId("submit-button"));
+
+      const modals = await screen.findAllByRole("dialog");
+      expect(modals).toHaveLength(1);
+      expect(modals[0]).toHaveTextContent(
+        /^.*Replace the clinical lead\?.*Make janesmith the clinical lead instead\? janesmith holds nothing a member of staff would/,
       );
     });
 
