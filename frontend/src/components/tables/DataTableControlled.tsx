@@ -5,6 +5,10 @@
  * controls. Provides SearchProvider context, SearchField, and optional
  * FilterSelect as built-in controls so pages don't need to wire state manually.
  *
+ * The filter button shows only when the page gives options to filter by
+ * and a predicate to apply them. A button that opens onto nothing reads
+ * as broken, so a table with nothing to filter has search alone.
+ *
  * @example
  * ```tsx
  * <DataTableControlled
@@ -117,17 +121,24 @@ function DataTableControlledInner<T>({
     onFilteredData?.(filteredData);
   }, [filteredData, onFilteredData]);
 
+  const hasFilters =
+    filterData !== undefined &&
+    filterData.length > 0 &&
+    filterPredicate !== undefined;
+
   const controls = (
     <>
       {action}
       <SearchField value={query} onChange={setQuery} variant="light" />
-      <FilterSelect
-        data={filterData ?? []}
-        value={filters}
-        onChange={setFilters}
-        label={filterLabel}
-        aria-label={filterAriaLabel}
-      />
+      {hasFilters && (
+        <FilterSelect
+          data={filterData}
+          value={filters}
+          onChange={setFilters}
+          label={filterLabel}
+          aria-label={filterAriaLabel}
+        />
+      )}
     </>
   );
 

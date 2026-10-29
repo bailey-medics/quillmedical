@@ -167,6 +167,7 @@ frontend/src/guides/content/add-a-delegate-by-hand.md	f6fc2c3e1b8ada8bda5305aa53
 frontend/src/guides/content/add-a-site.md	641e06fcd243c41d56846df7ab2bd2195566cd75	2026-10-29	Cotswoldsmaker	mark.allan.bailey@gmail.com
 frontend/src/guides/content/create-a-clinical-lead.md	7ed0befb2d8c6f92d11255e7e5b69f9937236ecd	2026-10-29	Cotswoldsmaker	mark.allan.bailey@gmail.com
 frontend/src/guides/content/deactivate-a-site.md	270a3dda423c9d93e4b866f872e7930bb5a8204c	2026-10-29	Cotswoldsmaker	mark.allan.bailey@gmail.com
+frontend/src/guides/content/deactivate-a-user.md	247000db0090c09577b006659d9b486b034c4837	2026-10-29	Cotswoldsmaker	mark.allan.bailey@gmail.com
 frontend/tsconfig.app.json	277f90ea2c4c58ccb62abe6a4ca4d25ed56bca78	2026-10-13	Cotswoldsmaker	mark.allan.bailey@gmail.com
 frontend/tsconfig.check.json	8c54e18db0f214ac3b3f3ab69069695d7a309bce	2026-10-15	Cotswoldsmaker	mark.allan.bailey@gmail.com
 frontend/tsconfig.json	511e9d2a878cf30ced49f3ce48ecf88039b92fa9	2026-10-13	Cotswoldsmaker	mark.allan.bailey@gmail.com
