@@ -44,7 +44,9 @@ test("see delegates' results", async ({ page }) => {
     page.getByRole("heading", { level: 1, name: "All delegates" }),
   ).toBeVisible();
   await expect(page.getByText("Total delegates")).toBeVisible();
-  await expect(page.getByRole("cell", { name: "Aisha Rahman" })).toBeVisible();
+  await expect(
+    page.getByRole("cell", { name: "Amy Richardson" }),
+  ).toBeVisible();
   await shot(page, "see-delegates-results/all-delegates");
 
   // Left closed: open, its list covers the three figures below it.

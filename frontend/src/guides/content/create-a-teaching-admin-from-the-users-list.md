@@ -12,7 +12,7 @@ teaching switched on.
 1. In the side menu, choose [**Admin**](/admin), then [**Organisations**](/admin/organisations), and open the organisation.
 2. Look at the **Enabled features** card. If **Teaching** is listed, go to the next section.
    ![An organisation's page, with its Enabled features card](create-a-teaching-admin-from-the-users-list/organisation.png)
-3. If it is not, press the **Edit features** button on that card. It is an icon with no words.
+3. If it is not, press the **Edit features** button :icon-pencil: on that card.
 4. Switch on **Teaching**, press **Save changes**, then press **Confirm**.
    ![The Features page, with Teaching switched on](create-a-teaching-admin-from-the-users-list/features.png)
 
