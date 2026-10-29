@@ -630,6 +630,55 @@ Another paragraph.`;
       expect(container.querySelectorAll("ol > li")).toHaveLength(2);
     });
 
+    it("draws a named button as the icon in a filled square", async () => {
+      const { container } = renderWithMantine(
+        <MarkdownView
+          source="Press **Edit** :button-user-plus:, then save."
+          icons={icons}
+        />,
+      );
+
+      const slot = container.querySelector(
+        "p > span[data-icon='user-plus'][data-button='true']",
+      );
+
+      expect(slot).not.toBeNull();
+      await waitFor(() =>
+        expect(
+          slot?.querySelector(".mantine-ActionIcon-root svg"),
+        ).not.toBeNull(),
+      );
+      expect(slot).toHaveAttribute("aria-hidden", "true");
+    });
+
+    it("draws the button as a picture, not a control", async () => {
+      const { container } = renderWithMantine(
+        <MarkdownView source="Press :button-user-plus:." icons={icons} />,
+      );
+
+      await waitFor(() =>
+        expect(
+          container.querySelector(".mantine-ActionIcon-root"),
+        ).not.toBeNull(),
+      );
+      expect(container.querySelector(".mantine-ActionIcon-root")?.tagName).toBe(
+        "SPAN",
+      );
+      expect(screen.queryByRole("button")).toBeNull();
+    });
+
+    it("draws a plain icon with no square", async () => {
+      const { container } = renderWithMantine(
+        <MarkdownView source="Press :icon-user-plus:." icons={icons} />,
+      );
+
+      await waitFor(() =>
+        expect(container.querySelector("svg")).not.toBeNull(),
+      );
+      expect(container.querySelector(".mantine-ActionIcon-root")).toBeNull();
+      expect(container.querySelector("span[data-button]")).toBeNull();
+    });
+
     it("leaves out an icon the caller did not give", () => {
       const { container } = renderWithMantine(
         <MarkdownView source="Press :icon-trash: to delete." icons={icons} />,

@@ -2,9 +2,11 @@
  * The icons a guide may show in its text, by the name it writes them.
  *
  * A guide writes `:icon-user-plus:` where a step means the button with
- * that icon on it, and the guide page shows the icon there. Every icon
- * registered in `appIcons` may be named, as its catalogue name in kebab
- * case: `UserPlus` is `user-plus`, `EPassport` is `e-passport`.
+ * that icon on it, and the guide page shows the icon there.
+ * `:button-user-plus:` shows it inside the filled square an icon-only
+ * button is drawn as. Every icon registered in `appIcons` may be named,
+ * as its catalogue name in kebab case: `UserPlus` is `user-plus`,
+ * `EPassport` is `e-passport`.
  *
  * Imported only by the guide page, so the icons travel in the guides'
  * lazy chunk, as the guides' words do.
@@ -32,7 +34,7 @@ export const GUIDE_ICONS: Readonly<Record<string, ReactElement>> =
 
 /** The icon names a guide's markdown uses, in the order it uses them. */
 export function iconNamesIn(source: string): string[] {
-  return [...source.matchAll(/:icon-([a-z0-9-]+):/g)].map(
+  return [...source.matchAll(/:(?:icon|button)-([a-z0-9-]+):/g)].map(
     (match) => match[1] ?? "",
   );
 }

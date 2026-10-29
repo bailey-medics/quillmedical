@@ -11,7 +11,7 @@ import type { ReactElement, ReactNode } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import DOMPurify from "dompurify";
-import { Skeleton, Stack } from "@mantine/core";
+import { ActionIcon, Skeleton, Stack } from "@mantine/core";
 import Icon from "@/components/icons/Icon";
 import classes from "./MarkdownView.module.css";
 
@@ -52,7 +52,9 @@ type Props = {
    *
    * With `{ "user-plus": <IconUserPlus /> }`, `:icon-user-plus:` shows
    * that icon in the line, at the size of the text around it, so a step
-   * can show the button it means. A name not given here is left out.
+   * can show the button it means. `:button-user-plus:` shows it inside
+   * a filled square, as the app draws an icon-only button, for a button
+   * that looks like that on the page. A name not given here is left out.
    */
   icons?: Readonly<Record<string, ReactElement>>;
 };
@@ -85,10 +87,13 @@ const IMAGE_ATTR = ["src", "alt", "loading"];
 // Added only when the caller gives `icons`. The span is an empty slot the
 // icon is drawn into once the markup is on the page.
 const ICON_TAGS = ["span"];
-const ICON_ATTR = ["data-icon", "aria-hidden"];
+const ICON_ATTR = ["data-icon", "data-button", "aria-hidden"];
 
-/** An icon named in the text: `:icon-user-plus:`. */
-const ICON_NAME = /:icon-([a-z0-9]+(?:-[a-z0-9]+)*):/g;
+/**
+ * An icon named in the text: `:icon-user-plus:` on its own, or
+ * `:button-user-plus:` drawn as the button it sits on.
+ */
+const ICON_NAME = /:(icon|button)-([a-z0-9]+(?:-[a-z0-9]+)*):/g;
 
 /** An image address a guide may use: beneath the base, and nowhere else. */
 const IMAGE_PATH = /^[a-z0-9-]+(\/[a-z0-9-]+)*\.(png|jpe?g|webp)$/;
@@ -182,11 +187,13 @@ function inlineFormat(
   // icons: `:icon-user-plus:` becomes an empty slot, which the component
   // draws the icon into. One the caller did not give is left out.
   if (icons) {
-    s = s.replace(ICON_NAME, (_m, name: string) =>
-      Object.hasOwn(icons, name)
-        ? `<span data-icon="${name}" aria-hidden="true"></span>`
-        : "",
-    );
+    s = s.replace(ICON_NAME, (_m, look: string, name: string) => {
+      if (!Object.hasOwn(icons, name)) return "";
+
+      const button = look === "button" ? ' data-button="true"' : "";
+
+      return `<span data-icon="${name}"${button} aria-hidden="true"></span>`;
+    });
   }
 
   // images: ![alt](path). Taken out first, since an image is a link with
@@ -487,9 +494,21 @@ export default function MarkdownView({
       {iconSlots.map((slot, index) => {
         const icon = icons?.[slot.dataset.icon ?? ""];
 
-        return icon
-          ? createPortal(<Icon icon={icon} size="sm" />, slot, String(index))
-          : null;
+        if (!icon) return null;
+
+        // A picture of the button, not a button: a span, so it cannot be
+        // clicked or reached with Tab, and hidden from screen readers
+        // with its slot.
+        const drawn =
+          slot.dataset.button === "true" ? (
+            <ActionIcon component="span" size="md" className={classes.button}>
+              <Icon icon={icon} size="sm" />
+            </ActionIcon>
+          ) : (
+            <Icon icon={icon} size="sm" />
+          );
+
+        return createPortal(drawn, slot, String(index));
       })}
     </>
   );
