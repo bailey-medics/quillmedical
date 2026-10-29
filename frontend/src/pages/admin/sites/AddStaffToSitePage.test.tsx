@@ -9,7 +9,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithRouter } from "@/test/test-utils";
 import AddStaffToSitePage from "./AddStaffToSitePage";
@@ -174,22 +174,102 @@ describe("AddStaffToSitePage", () => {
     );
   });
 
-  it("does not offer the clinical lead post while it is filled", async () => {
-    mockSite({ ...SITE, clinical_lead_id: 4 });
-    mockPost({ status: "found", user: A_NURSE });
+  describe("While somebody else is clinical lead", () => {
+    /** Dr Ada Lead holds the post. */
+    const LED = {
+      ...SITE,
+      members: [{ id: 4, username: "dr.lead", full_name: "Dr Ada Lead" }],
+      clinical_lead_id: 4,
+    };
 
-    const user = userEvent.setup();
-    renderPage();
-    await user.type(
-      await screen.findByLabelText(/username or email address/i),
-      "a.patel@example.org",
-    );
-    await user.click(screen.getByRole("button", { name: "Find" }));
-    await user.click(await screen.findByPlaceholderText("Select a role"));
+    it("asks before replacing them, naming both", async () => {
+      mockSite(LED);
+      const post = mockPost({ status: "found", user: A_NURSE });
 
-    expect(
-      await screen.findByRole("option", { name: "Clinical lead" }),
-    ).toHaveAttribute("data-combobox-disabled", "true");
+      const user = userEvent.setup();
+      renderPage();
+      await findAndChooseRole(user, "Clinical lead");
+      await user.click(screen.getByTestId("submit-button"));
+
+      const dialog = await screen.findByRole("dialog");
+      expect(dialog).toHaveTextContent(
+        "dr.lead is the clinical lead of Oncology. Make a.patel the clinical lead instead? dr.lead stays at the site, but is no longer its lead.",
+      );
+      expect(post).not.toHaveBeenCalledWith(
+        "/org-units/1/members",
+        expect.anything(),
+      );
+    });
+
+    it("adds nobody when the question is cancelled", async () => {
+      mockSite(LED);
+      const post = mockPost({ status: "found", user: A_NURSE });
+      const put = vi.spyOn(apiLib.api, "put").mockResolvedValue({});
+
+      const user = userEvent.setup();
+      renderPage();
+      await findAndChooseRole(user, "Clinical lead");
+      await user.click(screen.getByTestId("submit-button"));
+      await user.click(
+        within(await screen.findByRole("dialog")).getByRole("button", {
+          name: "Cancel",
+        }),
+      );
+
+      await waitFor(() =>
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+      );
+      expect(post).not.toHaveBeenCalledWith(
+        "/org-units/1/members",
+        expect.anything(),
+      );
+      expect(put).not.toHaveBeenCalled();
+    });
+
+    it("adds and appoints them once the question is answered", async () => {
+      mockSite(LED);
+      const post = mockPost({ status: "found", user: A_NURSE });
+      const put = vi.spyOn(apiLib.api, "put").mockResolvedValue({});
+
+      const user = userEvent.setup();
+      renderPage();
+      await findAndChooseRole(user, "Clinical lead");
+      await user.click(screen.getByTestId("submit-button"));
+      await user.click(
+        within(await screen.findByRole("dialog")).getByRole("button", {
+          name: "Replace lead",
+        }),
+      );
+
+      // The API stands the old lead down; the page only names the new.
+      await waitFor(() =>
+        expect(put).toHaveBeenCalledWith("/org-units/1/clinical-lead", {
+          user_id: 9,
+        }),
+      );
+      expect(post).toHaveBeenCalledWith("/org-units/1/members", {
+        user_id: 9,
+        capacity: "staff",
+      });
+    });
+
+    it("asks nothing for any other role", async () => {
+      mockSite(LED);
+      const post = mockPost({ status: "found", user: A_NURSE });
+
+      const user = userEvent.setup();
+      renderPage();
+      await findAndChooseRole(user, "Staff");
+      await user.click(screen.getByTestId("submit-button"));
+
+      await waitFor(() =>
+        expect(post).toHaveBeenCalledWith("/org-units/1/members", {
+          user_id: 9,
+          capacity: "staff",
+        }),
+      );
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
   });
 
   it("opens the new user form, filled in, when nobody has the address", async () => {

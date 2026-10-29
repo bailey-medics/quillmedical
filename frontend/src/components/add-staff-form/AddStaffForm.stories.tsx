@@ -140,6 +140,45 @@ export const AlreadyHere: Story = {
   },
 };
 
+/**
+ * A role that asks first: here, taking over a post somebody else holds.
+ * The question opens once Add staff member is pressed.
+ */
+export const RoleAsksFirst: Story = {
+  args: {
+    roleOptions: [
+      {
+        value: "clinical_lead",
+        label: "Clinical lead",
+        confirm: (user) => ({
+          title: "Replace the clinical lead?",
+          acceptLabel: "Replace lead",
+          children: `dr.lead is the clinical lead of Oncology. Make ${user.username} the clinical lead instead? dr.lead stays at the site, but is no longer its lead.`,
+        }),
+      },
+      { value: "staff", label: "Staff" },
+      { value: "trainee", label: "Trainee" },
+    ],
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = await lookUp(canvasElement, "a.patel@example.org");
+
+    await userEvent.click(await canvas.findByPlaceholderText("Select a role"));
+    await userEvent.click(
+      await within(canvasElement.ownerDocument.body).findByRole("option", {
+        name: "Clinical lead",
+      }),
+    );
+    await userEvent.click(canvas.getByTestId("submit-button"));
+
+    await expect(
+      await within(canvasElement.ownerDocument.body).findByText(
+        /Make a\.patel the clinical lead instead\?/,
+      ),
+    ).toBeInTheDocument();
+  },
+};
+
 export const DarkMode: Story = {
   ...FoundNotYetStaff,
   globals: { colorScheme: "dark" },

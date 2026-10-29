@@ -27,7 +27,9 @@ There is no need to create a new account, or to change their base profession. Wh
 2. Under **Find somebody by username or email**, type their username or email address and press **Find**.
 3. Under **Role**, choose **Clinical lead**, then press **Add staff member**. They are added to the site as staff and named as its clinical lead.
 
-**Clinical lead** is greyed out if the site already has one. Add them as **Staff** instead, then choose them under **Clinical lead** in **Edit site**, which stands the current lead down.
+If the site already has a clinical lead, Quill asks whether to replace them. Press **Replace lead** to make the new person lead. The old lead stays at the site, but is no longer its lead.
+
+To leave a site without a clinical lead, open it from [**Sites**](/admin/sites), press the **Edit site** icon, and choose **No clinical lead**. The old lead stays at the site, but is no longer its lead. Until the site has a new one, nobody can join it by registering, and nobody is sent a certificate when a delegate there passes.
 
 ## If they are new to Quill
 
