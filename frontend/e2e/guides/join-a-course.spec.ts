@@ -116,3 +116,16 @@ test("the verification email", async ({ page }) => {
   ).toBeVisible();
   await shot(page, "join-a-course/verification-email");
 });
+
+// The page the email's button opens. A real token needs a real email, so
+// the check is answered as accepted, for the picture only: nobody's
+// address is marked verified.
+test("the email verified page", async ({ page }) => {
+  await page.route("**/api/auth/verify-email", (route) =>
+    route.fulfill({ json: {} }),
+  );
+
+  await page.goto("/verify-email?token=guide-picture");
+  await expect(page.getByText("Email verified")).toBeVisible();
+  await shot(page, "join-a-course/email-verified");
+});
