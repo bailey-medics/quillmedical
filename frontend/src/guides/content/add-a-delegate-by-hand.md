@@ -20,10 +20,8 @@ And if they are new to Quill:
 1. In the side menu, choose [**Admin**](/admin) and then [**Sites**](/admin/sites), and open the delegate's to be site.
 2. Press the **Add staff** button :icon-user-plus: , above the **Site specific staff members** table.
    ![A site's page, with the Add staff button above its staff table](add-a-delegate-by-hand/site.png)
-3. Under **Find somebody by username or email**, type the delegate's email address and press **Find**.
+3. Under **Find somebody by username or email**, type the delegate's email address or username and press **Find**.
    ![The Add staff page, with the Find somebody by username or email box empty](add-a-delegate-by-hand/add-staff.png)
-
-If you do not find the user using the above method, then carry on with the steps below.
 
 ## If they are new to Quill
 
