@@ -39,6 +39,11 @@ import {
 import ErrorState from "@/components/error-state/ErrorState";
 import ActionCard from "@/components/action-card";
 import { ConfirmModal } from "@/components/confirm-modal";
+import {
+  clinicalLeadOptions,
+  fromLeadChoice,
+  toLeadChoice,
+} from "@/lib/clinicalLead";
 
 interface ApiUser {
   id: number;
@@ -122,13 +127,9 @@ function EditSiteFields({
             render={({ field, fieldState }) => (
               <SelectField
                 label="Clinical lead"
-                placeholder="Search for a user"
-                data={users.map((u) => ({
-                  value: String(u.id),
-                  label: `${u.username} (${u.email})`,
-                }))}
-                value={field.value as string | null}
-                onChange={field.onChange}
+                data={clinicalLeadOptions(users)}
+                value={toLeadChoice(field.value as string | null)}
+                onChange={(choice) => field.onChange(fromLeadChoice(choice))}
                 error={fieldState.error?.message}
                 searchable
                 disabled={usersLoading}

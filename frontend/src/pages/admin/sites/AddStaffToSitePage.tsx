@@ -6,22 +6,26 @@
  * needs, or offers to create them with this site already chosen.
  *
  * Clinical lead is a post, not a capacity. Somebody made lead is added
- * as staff and then appointed, and the option is shown but not offered
- * while the post is filled.
+ * as staff and then appointed. While somebody else holds the post,
+ * choosing it asks first: the lead is who certificates go to, so it is
+ * not changed by accident, and the API stands the old lead down.
  */
 
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Stack } from "@mantine/core";
 import { AddStaffForm } from "@/components/add-staff-form";
-import type { AddStaffValues } from "@/components/add-staff-form";
+import type {
+  AddStaffRoleOption,
+  AddStaffValues,
+} from "@/components/add-staff-form";
 import type { FormSubmitResult } from "@/components/form/Form";
 import ErrorState from "@/components/error-state/ErrorState";
 import { newUserSearch } from "@/components/member-lookup";
 import PageHeader from "@/components/page-header";
 import { orgUnits } from "@/domains/orgUnit";
 
-const ROLE_OPTIONS = [
+const ROLE_OPTIONS: AddStaffRoleOption[] = [
   { value: "clinical_lead", label: "Clinical lead" },
   { value: "staff", label: "Staff" },
   { value: "trainee", label: "Trainee" },
@@ -31,7 +35,8 @@ export default function AddStaffToSitePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [hasClinicalLead, setHasClinicalLead] = useState(false);
+  // Null while the post is vacant. A username, as page messages use.
+  const [currentLead, setCurrentLead] = useState<string | null>(null);
   const [siteName, setSiteName] = useState("this site");
 
   useEffect(() => {
@@ -45,8 +50,16 @@ export default function AddStaffToSitePage() {
         const site = await orgUnits.get(Number(id));
 
         // The post, not a role on a staff row: a site can have the post
-        // and nobody in it, which is exactly when a lead may be added.
-        setHasClinicalLead(site.clinical_lead_id !== null);
+        // and nobody in it. Whoever holds it is a member, so is named
+        // from the members; failing that, the question still asks.
+        const holder = site.members.find(
+          (member) => member.id === site.clinical_lead_id,
+        );
+        setCurrentLead(
+          site.clinical_lead_id === null
+            ? null
+            : (holder?.username ?? "Somebody else"),
+        );
         setSiteName(site.name);
       } catch (err) {
         setLoadError(
@@ -59,8 +72,16 @@ export default function AddStaffToSitePage() {
   }, [id]);
 
   const roleOptions = ROLE_OPTIONS.map((opt) =>
-    opt.value === "clinical_lead" && hasClinicalLead
-      ? { ...opt, disabled: true }
+    opt.value === "clinical_lead" && currentLead !== null
+      ? {
+          ...opt,
+          confirm: (user: { username: string }) => ({
+            title: "Replace the clinical lead?",
+            acceptLabel: "Replace lead",
+            submittingLabel: "Adding…",
+            children: `${currentLead} is the clinical lead of ${siteName}. Make ${user.username} the clinical lead instead? ${currentLead} stays at the site, but is no longer its lead.`,
+          }),
+        }
       : opt,
   );
 

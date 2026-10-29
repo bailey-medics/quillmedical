@@ -280,6 +280,58 @@ Pass criteria are evaluated after all items are answered. Each criterion must pa
 
 Both rules compare the computed value against the `threshold` (0.0-1.0).
 
+### Certificate emails
+
+A pass sends up to two emails, each switched on under `results:` in the
+module's `assessment.yaml`:
+
+```yaml
+results:
+  email_student_on_pass: true
+  email_coordinator_on_pass: true
+```
+
+- **`email_student_on_pass`** - the delegate is sent their certificate.
+- **`email_coordinator_on_pass`** - the clinical lead of the delegate's
+  own site is sent a copy. That is whoever holds the clinical lead post
+  at the site, beneath the organisation serving the module, that the
+  delegate is a member of. There is no walk up the tree: a site with no
+  lead does not fall back to its organisation's lead, or to anybody
+  else's, because that would email the wrong person without anything
+  saying so.
+
+The sending is `_maybe_enqueue_certificate_emails` in
+`backend/app/features/teaching/router.py`.
+
+#### When no clinical lead is reached
+
+With `email_coordinator_on_pass` on, a pass can reach no lead in three
+ways:
+
+- **The site has no clinical lead.** The post is vacant, as it is after
+  an admin chooses **No clinical lead** on Edit site.
+- **The lead has no email address.**
+- **The delegate belongs to no site** beneath the organisation.
+
+In each case every address in `FEEDBACK_NOTIFY_EMAIL` is sent a notice
+instead (`no_lead_told.html.j2`). It says who passed which module, at
+which site, and why nobody was told, with a link to the site's page, or
+to the delegate's for somebody with no site, so a lead can be named or
+the certificate sent on by hand. It never carries the result or the
+certificate.
+
+- **Who that is.** `FEEDBACK_NOTIFY_EMAIL` is the same list of addresses
+  feedback is sent to, read from the `feedback-notify-email` secret in
+  App production. It is not the superadmin role: being a superadmin
+  puts nobody on the list. App production refuses to start with no
+  address in it; in development it is empty, and no notice is sent.
+- **Nothing is lost.** The pass is recorded and the delegate's own
+  certificate is sent either way. A notice that fails to send is logged
+  and swallowed.
+
+A site with no lead also cannot be joined by registering, since a
+delegate finds their site by typing in its lead's email address.
+
 ---
 
 ## Database models

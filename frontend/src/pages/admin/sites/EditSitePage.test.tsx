@@ -168,6 +168,41 @@ describe("EditSitePage", () => {
       );
     });
 
+    it("stands the lead down on no clinical lead, leaving the post vacant", async () => {
+      const user = userEvent.setup();
+      mockLoad({ clinical_lead_id: lead.id });
+      const put = vi.spyOn(apiLib.api, "put").mockResolvedValue({ id: 1 });
+      const post = vi.spyOn(apiLib.api, "post").mockResolvedValue({});
+      await renderPage();
+
+      await user.click(
+        screen.getByRole("combobox", { name: /clinical lead/i }),
+      );
+      await user.click(
+        await screen.findByRole("option", { name: "No clinical lead" }),
+      );
+      await user.click(screen.getByTestId("submit-button"));
+
+      // No person leaves the post vacant. They stay at the place: only
+      // the post is given up, so nobody is added or removed.
+      await waitFor(() => {
+        expect(put).toHaveBeenCalledWith("/org-units/1/clinical-lead", {
+          user_id: null,
+        });
+      });
+      expect(post).not.toHaveBeenCalled();
+    });
+
+    it("shows a vacant post as no clinical lead", async () => {
+      mockLoad();
+
+      await renderPage();
+
+      expect(
+        screen.getByRole("combobox", { name: /clinical lead/i }),
+      ).toHaveValue("No clinical lead");
+    });
+
     it("leaves the post alone when the lead has not changed", async () => {
       const user = userEvent.setup();
       mockLoad({ clinical_lead_id: lead.id });
