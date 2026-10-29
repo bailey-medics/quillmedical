@@ -1,17 +1,15 @@
 /**
  * AddStaffToSitePage Component Tests
  *
- * The site picker carries the same question as the organisation one:
- * the list is unfiltered, so somebody holding nothing a member of staff
- * would can be selected, and is asked about rather than refused.
- *
- * The page had no tests before this. They start here rather than
- * covering everything it has ever done, so they are about the selection
- * and the grant; the role field appears only where it interacts.
+ * The card itself, what each lookup answer brings up and the question
+ * asked about somebody holding nothing staff-like, is tested in
+ * `AddStaffForm.test.tsx`. These are about what the page does with it:
+ * the site it asks about, the request it sends for each role, and where
+ * it goes afterwards.
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { screen, waitFor, within } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithRouter } from "@/test/test-utils";
 import AddStaffToSitePage from "./AddStaffToSitePage";
@@ -19,8 +17,6 @@ import * as apiLib from "@/lib/api";
 
 const mockNavigate = vi.fn();
 
-// The page offers only what the viewer may grant, read from here. Null
-// lists mean no limit, as for a holder of `manage_users`.
 vi.mock("@/auth/AuthContext", () => ({
   useAuth: () => ({
     state: {
@@ -38,30 +34,30 @@ vi.mock("react-router-dom", async () => {
   };
 });
 
-/** Already staff somewhere: no grant needed, no question asked. */
+/** Already staff somewhere, so nothing is asked before adding them. */
 const A_NURSE = {
-  id: 1,
-  username: "drsmith",
-  email: "dr@test.com",
+  id: 9,
+  username: "a.patel",
+  full_name: "Anita Patel",
   competencies: ["access_patient_records"],
 };
 
-/** Holds only their own record - the case the page now asks about. */
-const A_PATIENT = {
-  id: 2,
-  username: "janesmith",
-  email: "jane@test.com",
-  competencies: ["access_own_patient_records"],
-};
-
 /** Nobody here yet, and the clinical lead post is vacant. */
-const EMPTY_SITE = { members: [], clinical_lead_id: null };
+const SITE = { name: "Oncology", members: [], clinical_lead_id: null };
 
-function mockLoad(users: object[], site = EMPTY_SITE) {
-  return vi.spyOn(apiLib.api, "get").mockImplementation((path: string) => {
-    if (path === "/users") return Promise.resolve({ users });
-    return Promise.resolve(site);
-  });
+function mockSite(site: object = SITE) {
+  return vi.spyOn(apiLib.api, "get").mockResolvedValue(site);
+}
+
+/** Answer the lookup with `answer`, and any other post with success. */
+function mockPost(answer: object) {
+  return vi
+    .spyOn(apiLib.api, "post")
+    .mockImplementation((path: string) =>
+      Promise.resolve(
+        path.endsWith("/member-lookup") ? answer : { status: "added" },
+      ),
+    );
 }
 
 function renderPage() {
@@ -71,21 +67,17 @@ function renderPage() {
   });
 }
 
-async function selectUser(
+async function findAndChooseRole(
   user: ReturnType<typeof userEvent.setup>,
-  label: string,
+  role: string,
 ) {
-  const selectInput = await screen.findByPlaceholderText("Search for a user");
-  await user.click(selectInput);
-  await user.click(await screen.findByRole("option", { name: label }));
-}
-
-async function selectRole(
-  user: ReturnType<typeof userEvent.setup>,
-  label: string,
-) {
-  await user.click(screen.getByPlaceholderText("Select a role"));
-  await user.click(await screen.findByRole("option", { name: label }));
+  await user.type(
+    await screen.findByLabelText(/username or email address/i),
+    "a.patel@example.org",
+  );
+  await user.click(screen.getByRole("button", { name: "Find" }));
+  await user.click(await screen.findByPlaceholderText("Select a role"));
+  await user.click(await screen.findByRole("option", { name: role }));
 }
 
 describe("AddStaffToSitePage", () => {
@@ -95,251 +87,128 @@ describe("AddStaffToSitePage", () => {
   });
 
   it("renders the page title", async () => {
-    mockLoad([]);
+    mockSite();
 
     renderPage();
 
     expect(
-      screen.getByRole("heading", { name: "Add staff to site" }),
+      await screen.findByRole("heading", { name: "Add staff to site" }),
     ).toBeInTheDocument();
   });
 
-  it("shows an error when loading fails", async () => {
-    vi.spyOn(apiLib.api, "get").mockRejectedValue(
-      new Error("Failed to load data"),
-    );
+  it("shows an error when the site cannot be loaded", async () => {
+    vi.spyOn(apiLib.api, "get").mockRejectedValue(new Error("Network error"));
 
     renderPage();
 
-    await waitFor(() => {
-      expect(screen.getByText("Failed to load data")).toBeInTheDocument();
-    });
+    expect(await screen.findByText("Network error")).toBeInTheDocument();
   });
 
-  describe("Somebody already staff", () => {
-    it("is added without being asked about", async () => {
-      mockLoad([A_NURSE]);
-      const post = vi
-        .spyOn(apiLib.api, "post")
-        .mockResolvedValue({ status: "added" });
-
-      const user = userEvent.setup();
-      renderPage();
-
-      await waitFor(() => expect(apiLib.api.get).toHaveBeenCalled());
-      await selectUser(user, "drsmith (dr@test.com)");
-      await selectRole(user, "Staff");
-
-      expect(
-        screen.queryByText(/holds nothing a member of staff would/),
-      ).not.toBeInTheDocument();
-
-      await user.click(screen.getByTestId("submit-button"));
-
-      await waitFor(() => {
-        // What somebody is here, not what post they hold: those were
-        // one word on the old address and are two facts now.
-        expect(post).toHaveBeenCalledWith("/org-units/1/members", {
-          user_id: 1,
-          capacity: "staff",
-        });
-      });
-    });
-  });
-
-  describe("Somebody holding nothing staff-like", () => {
-    it("brings up the grant fields on selection", async () => {
-      mockLoad([A_PATIENT]);
-
-      const user = userEvent.setup();
-      renderPage();
-
-      await waitFor(() => expect(apiLib.api.get).toHaveBeenCalled());
-      await selectUser(user, "janesmith (jane@test.com)");
-
-      expect(
-        await screen.findByText(/holds nothing a member of staff would/),
-      ).toBeInTheDocument();
-      expect(
-        screen.getByRole("combobox", { name: /Base profession/ }),
-      ).toBeInTheDocument();
-    });
-
-    it("asks for confirmation before submitting", async () => {
-      mockLoad([A_PATIENT]);
-      const post = vi.spyOn(apiLib.api, "post").mockResolvedValue({});
-
-      const user = userEvent.setup();
-      renderPage();
-
-      await waitFor(() => expect(apiLib.api.get).toHaveBeenCalled());
-      await selectUser(user, "janesmith (jane@test.com)");
-      await selectRole(user, "Trainee");
-      await user.click(screen.getByTestId("submit-button"));
-
-      expect(
-        await screen.findByText("Add as a staff member?"),
-      ).toBeInTheDocument();
-      expect(post).not.toHaveBeenCalled();
-    });
-
-    // The longest path in the file: two dropdowns, the profession picker
-    // over a catalogue of every profession, then the modal. It fits well
-    // inside the default alone, and only overruns when the whole suite
-    // is competing for the machine.
-    it(
-      "grants the chosen profession in the same request",
-      { timeout: 15000 },
-      async () => {
-        mockLoad([A_PATIENT]);
-        const post = vi
-          .spyOn(apiLib.api, "post")
-          .mockResolvedValue({ status: "added" });
-
-        const user = userEvent.setup();
-        renderPage();
-
-        await waitFor(() => expect(apiLib.api.get).toHaveBeenCalled());
-        await selectUser(user, "janesmith (jane@test.com)");
-        await selectRole(user, "Staff");
-
-        const professionSelect = await screen.findByRole("combobox", {
-          name: /Base profession/,
-        });
-        await user.click(professionSelect);
-        await user.click(
-          await screen.findByRole("option", {
-            name: "Healthcare Assistant (HCA)",
-          }),
-        );
-
-        await user.click(screen.getByTestId("submit-button"));
-        await screen.findByText("Add as a staff member?");
-        const modal = screen.getByRole("dialog");
-        await user.click(
-          within(modal).getByRole("button", { name: "Add as staff" }),
-        );
-
-        await waitFor(() => {
-          expect(post).toHaveBeenCalledWith("/org-units/1/members", {
-            user_id: 2,
-            capacity: "staff",
-            base_profession: "healthcare_assistant",
-          });
-        });
-      },
-    );
-  });
-
-  it("leaves somebody who operates Quill out of the picker", async () => {
-    // The user list names operators to an admin who works beside one.
-    // Adding one is another operator's alone, so the picker skips them.
-    mockLoad([
-      A_NURSE,
-      { ...A_PATIENT, username: "the.operator", platform_role: "superadmin" },
-    ]);
+  it("asks about this site, and names it in the answer", async () => {
+    mockSite();
+    const post = mockPost({ status: "found", user: A_NURSE });
 
     const user = userEvent.setup();
     renderPage();
-    await waitFor(() => expect(apiLib.api.get).toHaveBeenCalled());
-    await user.click(await screen.findByPlaceholderText("Search for a user"));
+    await user.type(
+      await screen.findByLabelText(/username or email address/i),
+      "a.patel@example.org",
+    );
+    await user.click(screen.getByRole("button", { name: "Find" }));
 
+    expect(post).toHaveBeenCalledWith("/org-units/1/member-lookup", {
+      term: "a.patel@example.org",
+    });
     expect(
-      await screen.findByRole("option", { name: "drsmith (dr@test.com)" }),
+      await screen.findByText(/ready to add to Oncology/),
     ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("option", { name: /the\.operator/ }),
-    ).not.toBeInTheDocument();
   });
 
-  describe("Somebody the admin cannot see", () => {
-    // Somebody who runs only this site sees its members and nobody
-    // else, so the picker is empty and the lookup is the way in.
-    const SITE = { name: "Oncology", members: [], clinical_lead_id: null };
+  it("adds somebody found with the role chosen, and goes back to the site", async () => {
+    mockSite();
+    const post = mockPost({ status: "found", user: A_NURSE });
 
-    async function findByEmail(
-      user: ReturnType<typeof userEvent.setup>,
-      email: string,
-    ) {
-      await user.type(
-        await screen.findByLabelText(/username or email address/i),
-        email,
-      );
-      await user.click(screen.getByRole("button", { name: "Find" }));
-    }
+    const user = userEvent.setup();
+    renderPage();
+    await findAndChooseRole(user, "Trainee");
+    await user.click(screen.getByTestId("submit-button"));
 
-    it("says the picker is empty and points at the lookup", async () => {
-      mockLoad([], SITE);
-
-      renderPage();
-
-      expect(
-        await screen.findByText(/Nobody you can see is waiting to be added/),
-      ).toBeInTheDocument();
-    });
-
-    it("adds somebody the lookup finds", async () => {
-      mockLoad([], SITE);
-      const post = vi
-        .spyOn(apiLib.api, "post")
-        .mockImplementation((path: string) =>
-          Promise.resolve(
-            path.endsWith("/member-lookup")
-              ? {
-                  status: "found",
-                  user: {
-                    id: 9,
-                    username: "a.patel",
-                    full_name: "Anita Patel",
-                    competencies: ["access_patient_records"],
-                  },
-                }
-              : { status: "added" },
-          ),
-        );
-
-      const user = userEvent.setup();
-      renderPage();
-      await findByEmail(user, "a.patel@example.org");
-
-      expect(post).toHaveBeenCalledWith("/org-units/1/member-lookup", {
-        term: "a.patel@example.org",
-      });
-      // Chosen for them, in the picker below.
-      await waitFor(() =>
-        expect(screen.getByPlaceholderText("Search for a user")).toHaveValue(
-          "a.patel",
-        ),
-      );
-
-      await selectRole(user, "Trainee");
-      await user.click(screen.getByTestId("submit-button"));
-
-      await waitFor(() => {
-        expect(post).toHaveBeenCalledWith("/org-units/1/members", {
-          user_id: 9,
-          capacity: "trainee",
-        });
+    await waitFor(() => {
+      expect(post).toHaveBeenCalledWith("/org-units/1/members", {
+        user_id: 9,
+        capacity: "trainee",
       });
     });
-
-    it("opens the new user form, filled in, when nobody has the address", async () => {
-      mockLoad([], SITE);
-      vi.spyOn(apiLib.api, "post").mockResolvedValue({
-        status: "not_found",
-        user: null,
-      });
-
-      const user = userEvent.setup();
-      renderPage();
-      await findByEmail(user, "new.person@example.org");
-      await user.click(
-        await screen.findByRole("button", { name: "Create new user" }),
-      );
-
-      expect(mockNavigate).toHaveBeenCalledWith(
-        "/admin/users/new?email=new.person%40example.org&org_unit=1",
-      );
+    expect(mockNavigate).toHaveBeenCalledWith("/admin/sites/1", {
+      state: {
+        flash: {
+          title: "Staff member added",
+          description: "a.patel has been added to this site",
+        },
+      },
     });
+  });
+
+  it("adds a clinical lead as staff, then appoints them to the post", async () => {
+    mockSite();
+    const post = mockPost({ status: "found", user: A_NURSE });
+    const put = vi.spyOn(apiLib.api, "put").mockResolvedValue({});
+
+    const user = userEvent.setup();
+    renderPage();
+    await findAndChooseRole(user, "Clinical lead");
+    await user.click(screen.getByTestId("submit-button"));
+
+    await waitFor(() => {
+      // What somebody is here, not what post they hold: those were one
+      // word on the old address and are two facts now.
+      expect(post).toHaveBeenCalledWith("/org-units/1/members", {
+        user_id: 9,
+        capacity: "staff",
+      });
+    });
+    await waitFor(() =>
+      expect(put).toHaveBeenCalledWith("/org-units/1/clinical-lead", {
+        user_id: 9,
+      }),
+    );
+  });
+
+  it("does not offer the clinical lead post while it is filled", async () => {
+    mockSite({ ...SITE, clinical_lead_id: 4 });
+    mockPost({ status: "found", user: A_NURSE });
+
+    const user = userEvent.setup();
+    renderPage();
+    await user.type(
+      await screen.findByLabelText(/username or email address/i),
+      "a.patel@example.org",
+    );
+    await user.click(screen.getByRole("button", { name: "Find" }));
+    await user.click(await screen.findByPlaceholderText("Select a role"));
+
+    expect(
+      await screen.findByRole("option", { name: "Clinical lead" }),
+    ).toHaveAttribute("data-combobox-disabled", "true");
+  });
+
+  it("opens the new user form, filled in, when nobody has the address", async () => {
+    mockSite();
+    mockPost({ status: "not_found", user: null });
+
+    const user = userEvent.setup();
+    renderPage();
+    await user.type(
+      await screen.findByLabelText(/username or email address/i),
+      "new.person@example.org",
+    );
+    await user.click(screen.getByRole("button", { name: "Find" }));
+    await user.click(
+      await screen.findByRole("button", { name: "Create new user" }),
+    );
+
+    expect(mockNavigate).toHaveBeenCalledWith(
+      "/admin/users/new?email=new.person%40example.org&org_unit=1",
+    );
   });
 });

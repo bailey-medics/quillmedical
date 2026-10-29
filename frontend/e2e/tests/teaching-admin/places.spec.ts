@@ -55,13 +55,16 @@ async function createSite(page: Page, name: string): Promise<number> {
   return ((await response.json()) as { id: number }).id;
 }
 
-/** Find somebody on an add-staff page and pick them. */
+/** Find somebody on an add-staff page; the lookup chooses them. */
 async function findAndPick(page: Page, username: string): Promise<void> {
   await page.getByLabel("Username or email address").fill(username);
   await page.getByRole("button", { name: "Find" }).click();
-  await expect(page.getByRole("combobox", { name: "User" })).toHaveValue(
-    new RegExp(username),
-  );
+  // Anchored at the start: the lookup's own help text says "already has
+  // a Quill account" too.
+  const escaped = username.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  await expect(
+    page.getByText(new RegExp(`^${escaped}.*already has a Quill account`)),
+  ).toBeVisible();
 }
 
 test.describe("A teaching admin and the organisation", () => {

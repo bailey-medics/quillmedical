@@ -29,6 +29,7 @@ function renderLookup(result: Result | Error, withCreate = true) {
         ? vi.fn().mockRejectedValue(result)
         : vi.fn().mockResolvedValue(result),
     onFound: vi.fn(),
+    onForget: vi.fn(),
     onCreate: vi.fn(),
   };
   renderWithMantine(
@@ -36,6 +37,7 @@ function renderLookup(result: Result | Error, withCreate = true) {
       placeName="Oncology"
       onLookUp={handlers.onLookUp}
       onFound={handlers.onFound}
+      onForget={handlers.onForget}
       onCreate={withCreate ? handlers.onCreate : undefined}
     />,
   );
@@ -140,7 +142,9 @@ describe("MemberLookup", () => {
     expect(onFound).toHaveBeenCalledWith(person);
     expect(screen.getByText("a.patel")).toBeInTheDocument();
     expect(
-      screen.getByText(/They are chosen below, ready to add to Oncology/),
+      screen.getByText(
+        /already has a Quill\s+account, ready to add to Oncology/,
+      ),
     ).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "Create new user" }),
@@ -203,5 +207,38 @@ describe("MemberLookup", () => {
       screen.getByText("Could not look that up. Please try again."),
     ).toBeInTheDocument();
     expect(onFound).not.toHaveBeenCalled();
+  });
+
+  it("says before each answer that whoever was found no longer stands", async () => {
+    const { onForget, onFound } = renderLookup({
+      status: "found",
+      user: person,
+    });
+
+    const user = await find("a.patel@example.org");
+
+    expect(onForget).toHaveBeenCalledTimes(1);
+    expect(onForget.mock.invocationCallOrder[0]).toBeLessThan(
+      onFound.mock.invocationCallOrder[0] ?? 0,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Find" }));
+
+    expect(onForget).toHaveBeenCalledTimes(2);
+  });
+
+  it("forgets whoever was found when the next thing typed is refused", async () => {
+    const { onForget, onLookUp } = renderLookup({
+      status: "found",
+      user: person,
+    });
+
+    const user = await find("a.patel@example.org");
+    await user.clear(screen.getByLabelText(/username or email address/i));
+    await user.type(screen.getByLabelText(/username or email address/i), "ab");
+    await user.click(screen.getByRole("button", { name: "Find" }));
+
+    expect(onForget).toHaveBeenCalledTimes(2);
+    expect(onLookUp).toHaveBeenCalledTimes(1);
   });
 });
