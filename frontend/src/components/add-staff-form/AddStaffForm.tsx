@@ -22,6 +22,10 @@
  * asked about before they are added. The grant is additive on the
  * backend, so a patient becoming a healthcare assistant keeps access to
  * their own record.
+ *
+ * A role can ask a question of its own before adding, such as a post
+ * somebody else already holds. When both apply they are put together,
+ * as one question.
  */
 
 import { useState } from "react";
@@ -54,8 +58,13 @@ import { ACTIVE_COMPETENCIES } from "@/types/cbac";
 export interface AddStaffRoleOption {
   value: string;
   label: string;
-  /** Shown but not choosable, such as a post already filled */
+  /** Shown but not choosable */
   disabled?: boolean;
+  /**
+   * Asked before adding somebody in this role, such as taking over a
+   * post that somebody else holds. Leave it out to add straight away.
+   */
+  confirm?: (user: MemberLookupUser) => FormConfirmConfig;
 }
 
 /** What the card hands to the page when somebody is added. */
@@ -112,9 +121,11 @@ function AddStaffFields({
   onCancel,
   found,
   onFoundChange,
+  onRoleChange,
 }: Omit<AddStaffFormProps, "placeKind" | "onSubmit"> & {
   found: MemberLookupUser | null;
   onFoundChange: (user: MemberLookupUser | null) => void;
+  onRoleChange: (role: string | null) => void;
 }) {
   const { methods } = useFormContext();
 
@@ -150,6 +161,7 @@ function AddStaffFields({
             onForget={() => {
               methods.reset(EMPTY);
               onFoundChange(null);
+              onRoleChange(null);
             }}
             onCreate={(term) => {
               // Leaving is the point of the button, so whatever was
@@ -157,6 +169,7 @@ function AddStaffFields({
               // you sure you want to leave?". Flushed, so the form is
               // clean before the navigation is judged, not after.
               flushSync(() => methods.reset(EMPTY));
+              onRoleChange(null);
               onCreate(term);
             }}
           />
@@ -172,7 +185,10 @@ function AddStaffFields({
                   placeholder="Select a role"
                   data={roleOptions}
                   value={field.value as string | null}
-                  onChange={field.onChange}
+                  onChange={(role) => {
+                    field.onChange(role);
+                    onRoleChange(role);
+                  }}
                   error={fieldState.error?.message}
                   withAsterisk
                 />
@@ -248,13 +264,12 @@ export default function AddStaffForm({
   // Above the form, because `confirm` is a prop on `Form` and depends on
   // who was found.
   const [found, setFound] = useState<MemberLookupUser | null>(null);
+  const [role, setRole] = useState<string | null>(null);
 
   const needsConfirmation =
     found !== null && !holdsStaffLikeCompetency(found.competencies ?? []);
 
-  // Undefined submits straight through: `Form` only asks when this is
-  // set, so the question is put for exactly the people it is about.
-  const confirm: FormConfirmConfig | undefined =
+  const staffQuestion: FormConfirmConfig | undefined =
     found && needsConfirmation
       ? {
           title: "Add as a staff member?",
@@ -263,6 +278,27 @@ export default function AddStaffForm({
           children: `${found.username} holds nothing a member of staff would - only access to patient records as a patient or advocate. Adding them here makes them staff of this ${placeKind}.`,
         }
       : undefined;
+
+  const roleAsks = fieldProps.roleOptions?.find(
+    (option) => option.value === role,
+  )?.confirm;
+  const roleQuestion = found && roleAsks ? roleAsks(found) : undefined;
+
+  // Undefined submits straight through: `Form` only asks when this is
+  // set, so the question is put for exactly the people it is about. The
+  // role's question leads, since it is what was chosen; the staff one
+  // follows it in the same modal rather than in a second.
+  const confirm: FormConfirmConfig | undefined =
+    roleQuestion && staffQuestion
+      ? {
+          ...roleQuestion,
+          children: (
+            <>
+              {roleQuestion.children} {staffQuestion.children}
+            </>
+          ),
+        }
+      : (roleQuestion ?? staffQuestion);
 
   async function handleSubmit(data: FieldValues): Promise<FormSubmitResult> {
     // The button shows only once somebody is found, so this is a guard
@@ -290,7 +326,12 @@ export default function AddStaffForm({
       submitLabel="Add staff member"
       submittingLabel="Adding…"
     >
-      <AddStaffFields {...fieldProps} found={found} onFoundChange={setFound} />
+      <AddStaffFields
+        {...fieldProps}
+        found={found}
+        onFoundChange={setFound}
+        onRoleChange={setRole}
+      />
     </Form>
   );
 }

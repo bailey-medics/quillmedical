@@ -105,10 +105,12 @@ fi
 
 # Inside tmux, TERM_PROGRAM names tmux rather than the terminal, so VS
 # Code's terminal is only recognised from outside, which is where the
-# note is wanted.
+# link is wanted. VS Code moves to a new port each time it restarts, so
+# a Claude already running may hold a link that no longer answers: ask
+# it to link again, and its picker waits for the person attaching. Text
+# left half-typed in Claude's input would be sent along with it.
 if [ "${claude_was_running}" = true ] && [ "${TERM_PROGRAM:-}" = "vscode" ]; then
-    exec tmux attach -t "=${name}" ";" \
-        display-message -d 5000 "Type /ide to link this VS Code window"
+    tmux send-keys -t "${pane_id}" "/ide" Enter
 fi
 
 exec tmux attach -t "=${name}"

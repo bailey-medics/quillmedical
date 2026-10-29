@@ -27,4 +27,4 @@ The site's page opens. You can now [add delegates to it by hand](/guides/add-a-d
 
 ## Name the clinical lead later
 
-If you left **Clinical lead** empty, open the site from [**Sites**](/admin/sites), press **Edit**, and choose them there. You will have to create the clinical lead's account first if they do not already have one. Until a site has a clinical lead, nobody can join it by registering, and nobody is sent a certificate when a delegate there passes.
+If you left **Clinical lead** as **No clinical lead**, open the site from [**Sites**](/admin/sites), press **Edit**, and choose them there. You will have to create the clinical lead's account first if they do not already have one. Until a site has a clinical lead, nobody can join it by registering, and nobody is sent a certificate when a delegate there passes.
