@@ -111,6 +111,11 @@ export default function LoginPage() {
           state: "error",
           message: { title: "Please verify your email first" },
         };
+      } else if (code === "totp_locked") {
+        // Too many wrong codes in a row. The message says how long to
+        // wait; keep the code field so they can try again after it.
+        setRequireTotp(true);
+        errorMessage = message;
       } else if (code === "invalid_totp") {
         setRequireTotp(true);
         errorMessage = requireTotp

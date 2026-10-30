@@ -64,24 +64,35 @@ at `high` effort, rather than one `medium` pass over the whole tree. Run
 each from a clean worktree on current `main` in auto mode, so the report's
 revision stamp names a commit with no uncommitted changes in it.
 
-- [ ] **Access control** - `backend/app/cbac/` (grants, grant scope,
+- [x] **Access control** - `backend/app/cbac/` (grants, grant scope,
       practising, positions), `backend/app/deps.py` and
       `backend/app/organisations.py`. The intersection of competency and
       place is the rule the whole app rests on, and its failure mode is
-      silent: a request that should be refused succeeds.
+      silent: a request that should be refused succeeds. Scanned
+      `backend/app/cbac` on 30 October 2026.
 
-- [ ] **Authentication and sessions** - `backend/app/security.py` and the
+- [x] **Authentication and sessions** - `backend/app/security.py` and the
       auth routes: JWT cookies, refresh, CSRF, TOTP, password reset and
-      email verification.
+      email verification. Scanned on 30 October 2026, scoped to
+      `security.py`, `deps.py`, `main.py`, `rate_limit.py`,
+      `registrations.py` and the sign-in modules under `users/`.
+
+- [x] **Org units and users** - `backend/app/org_units`,
+      `backend/app/users` and `backend/app/organisations.py`. Added after
+      the first two scans: their findings led into these modules, which
+      neither scan had read whole. Scanned on 30 October 2026.
 
 - [ ] **Clinical data paths** - `backend/app/fhir_client.py`,
       `backend/app/ehrbase_client.py` and the patient routes, looking for
       a patient reachable outside the caller's org units and for PHI in
-      logs or error messages.
+      logs or error messages. Set aside on 30 October 2026: clinical
+      services are not deployed to a live service, so this waits until
+      EHR production is in view.
 
-- [ ] **Uploads and job callbacks** - the upload routes and the `/api/ci/`
+- [x] **Uploads and job callbacks** - the upload routes and the `/api/ci/`
       job routes, the surface the upload safety and job callbacks plans
-      hardened, to check that work from the outside.
+      hardened, to check that work from the outside. Scanned on
+      30 October 2026.
 
 - [ ] **Frontend** - `frontend/src/auth/` guards and `frontend/src/lib/api.ts`.
       Lower priority, since the API is what refuses, but a guard that
@@ -125,7 +136,76 @@ revision stamp names a commit with no uncommitted changes in it.
       `docs/docs/cybersecurity/` in one line: the class of flaw and a link
       to the published advisory, with no exploit detail.
 
-## Phase 4: Decide the cadence
+## Phase 4: Fixes from the first round of scans
+
+Six fixes, each its own unit and pull request, built with `/f`. The
+repository is public, so each step names only the area it hardens until
+its code is in place; then the step is rewritten to say what was wrong
+and what changed, in the same commit as the fix. The detail to build
+from is in the private notes in `local/` (`just lp`),
+`2026-10-30-security-fixes-private-notes.md`, under the same fix
+numbers. A unit that turns out too large for one review splits into
+consecutive units, as the notes suggest for fixes 3, 5 and 7.
+
+- [x] **Fix 2: request throttling.** The rate limits keyed on
+      `get_remote_address`, and the production image runs uvicorn with
+      `--forwarded-allow-ips *`, so the address was the leftmost
+      `X-Forwarded-For` entry: the one the client writes. Every limit was
+      per request rather than per client. A wrong two-factor code was not
+      counted per account either, and a login naming no account answered
+      before any Argon2 work, so the time taken said which usernames
+      exist.
+
+      Research before choosing: Google's documentation gives the header
+      the load balancer forwards as
+      `<supplied-value>,<client-ip>,<load-balancer-ip>` and says it "does
+      not verify any IP addresses that precede" that pair
+      ([external Application Load Balancer overview](https://docs.cloud.google.com/load-balancing/docs/https)).
+      It does not document whether Cloud Run's own front end appends more
+      after it, so counting entries from the right was a guess, and a wrong
+      count would put every user in one bucket. A custom request header the
+      load balancer writes is not a guess: "Headers added by the load
+      balancer overwrite any existing headers that have the same name"
+      ([custom headers](https://docs.cloud.google.com/load-balancing/docs/https/custom-headers-global)).
+      Cloud Run ingress is `INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER`, so
+      nothing outside the VPC reaches the backend without it.
+
+      So the backend service sets `X-Quill-Client-IP: {client_ip_address}`
+      (`infra/modules/load-balancer/main.tf`), the backend is told to trust
+      it through `TRUSTED_CLIENT_IP_HEADER` (`infra/main.tf`), and
+      `backend/app/client_address.py` reads it for the limiter and the
+      access log, falling back to the peer address when it is unset or
+      missing. Either half deploying first is safe: without the setting the
+      header is ignored, and without the header the peer is used.
+
+      `backend/app/users/totp.py` now counts wrong codes per account, as
+      RFC 6238 section 5.1 asks: three in a row lock two-factor sign-in and
+      enrolment for 15 minutes, answered with a 429 and `totp_locked`, and
+      a right code clears the count. The count is committed before the
+      route raises, since the rollback would otherwise take it too.
+      Migration `70429248cf95` adds the two columns. A login naming no
+      account now checks the password against a stand-in hash
+      (`spend_password_check` in `security.py`). The login page shows the
+      lockout message.
+
+- [ ] **Fix 3: session lifetime after account changes.** Hardening of
+      when existing sessions end. Detail in the private notes.
+
+- [ ] **Fix 4: two-factor enrolment.** Hardening of the TOTP setup
+      route. Detail in the private notes.
+
+- [ ] **Fix 5: changing the account email.** Hardening of the profile
+      email change. Detail in the private notes.
+
+- [ ] **Fix 6: the clinical lead check.** Hardening of the public
+      clinical lead lookup used by self-registration. Detail in the
+      private notes.
+
+- [ ] **Fix 7: content and upload scanning.** Hardening of the teaching
+      content pipeline's malware scan and of the upload scan handoff.
+      Detail in the private notes.
+
+## Phase 5: Decide the cadence
 
 - [ ] After Phase 3, run one whole-repository scan at `medium` and compare
       it with the focused results. If it finds nothing the focused scans

@@ -1,6 +1,6 @@
-"""Tests for using a two-factor code once."""
+"""Tests for using a two-factor code once, and for the lockout."""
 
-from datetime import UTC, datetime, tzinfo
+from datetime import UTC, datetime, timedelta, tzinfo
 
 import pyotp
 import pytest
@@ -8,7 +8,13 @@ from sqlalchemy.orm import Session
 
 from app.models import User
 from app.security import generate_totp_secret
-from app.users.totp import use_totp_code
+from app.users.totp import (
+    LOCKOUT,
+    MAX_FAILED_ATTEMPTS,
+    record_totp_failure,
+    totp_locked,
+    use_totp_code,
+)
 
 
 def _with_two_factor(db: Session, user: User) -> pyotp.TOTP:
@@ -131,3 +137,69 @@ class TestTheWindowOfOneStepEitherSide:
             use_totp_code(db_session, test_user, totp.generate_otp(frozen - 1))
             is False
         )
+
+
+class TestWrongCodesLockTheAccount:
+    def test_the_limit_is_three_wrong_codes_for_fifteen_minutes(
+        self,
+    ) -> None:
+        assert MAX_FAILED_ATTEMPTS == 3
+        assert LOCKOUT == timedelta(minutes=15)
+
+    def test_wrong_codes_below_the_limit_only_count(
+        self, db_session: Session, test_user: User
+    ) -> None:
+        for _ in range(MAX_FAILED_ATTEMPTS - 1):
+            record_totp_failure(db_session, test_user, now=MOMENT)
+
+        db_session.refresh(test_user)
+        assert test_user.totp_failed_attempts == MAX_FAILED_ATTEMPTS - 1
+        assert totp_locked(test_user, now=MOMENT) is False
+
+    def test_the_limit_locks_the_account_and_resets_the_count(
+        self, db_session: Session, test_user: User
+    ) -> None:
+        for _ in range(MAX_FAILED_ATTEMPTS):
+            record_totp_failure(db_session, test_user, now=MOMENT)
+
+        db_session.refresh(test_user)
+        assert test_user.totp_failed_attempts == 0
+        assert totp_locked(test_user, now=MOMENT) is True
+
+    def test_the_lock_ends_when_its_time_is_up(
+        self, db_session: Session, test_user: User
+    ) -> None:
+        for _ in range(MAX_FAILED_ATTEMPTS):
+            record_totp_failure(db_session, test_user, now=MOMENT)
+
+        db_session.refresh(test_user)
+        just_before = MOMENT + LOCKOUT - timedelta(seconds=1)
+        assert totp_locked(test_user, now=just_before) is True
+        assert totp_locked(test_user, now=MOMENT + LOCKOUT) is False
+
+    def test_a_failure_survives_the_request_being_rolled_back(
+        self, db_session: Session, test_user: User
+    ) -> None:
+        """The route raises after a wrong code, which rolls back; the
+        count is committed first so it is not lost with it."""
+        record_totp_failure(db_session, test_user, now=MOMENT)
+        db_session.rollback()
+
+        db_session.refresh(test_user)
+        assert test_user.totp_failed_attempts == 1
+
+    def test_a_right_code_clears_the_count(
+        self, db_session: Session, test_user: User
+    ) -> None:
+        totp = _with_two_factor(db_session, test_user)
+        record_totp_failure(db_session, test_user, now=MOMENT)
+
+        assert use_totp_code(db_session, test_user, totp.now()) is True
+        db_session.refresh(test_user)
+        assert test_user.totp_failed_attempts == 0
+        assert test_user.totp_locked_until is None
+
+    def test_an_account_never_locked_is_not_locked(
+        self, test_user: User
+    ) -> None:
+        assert totp_locked(test_user) is False
