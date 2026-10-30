@@ -550,12 +550,12 @@ def clinical_lead_site(
     """
     email = normalise_email(email)
 
-    # Find the user by email (case-insensitive)
-    user = (
-        db.execute(select(User).where(User.email.ilike(email)))
-        .scalars()
-        .first()
-    )
+    # Equality, never a LIKE: the address is typed by somebody not signed
+    # in, and in a LIKE pattern `%` and `_` match anything, so "%" alone
+    # would find the first account and admit them as if they knew a
+    # lead's address. Addresses are held in lower case, so equality on
+    # the normalised one is already case-insensitive, and unique.
+    user = db.scalar(select(User).where(User.email == email))
 
     if not user:
         return ValidateClinicalLeadOut(valid=False)
