@@ -186,6 +186,9 @@ describe("useModuleMedia", () => {
     });
 
     expect(requests[0].headers["x-goog-resumable"]).toBe("start");
+    // Signed into the URL: the upload finishes only while nothing is
+    // stored at the key, so a scanned file cannot be swapped.
+    expect(requests[0].headers["x-goog-if-generation-match"]).toBe("0");
     // The opening request carries no body - it only asks for a session.
     expect(requests[0].body).toBeUndefined();
   });

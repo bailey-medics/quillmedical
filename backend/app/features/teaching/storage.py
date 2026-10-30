@@ -751,6 +751,17 @@ ALLOWED_MEDIA_TYPES: dict[str, str] = {
 MAX_MEDIA_UPLOAD_BYTES = 2047 * 1024 * 1024
 
 
+#: The headers a resumable upload URL is signed with, which the browser
+#: must send as they are. ``x-goog-resumable: start`` opens a session;
+#: ``x-goog-if-generation-match: 0`` lets it finish only while nothing is
+#: stored at the key, so a file once uploaded cannot be replaced through
+#: the same URL. See ``create_resumable_upload_url``.
+RESUMABLE_UPLOAD_HEADERS = {
+    "x-goog-resumable": "start",
+    "x-goog-if-generation-match": "0",
+}
+
+
 def create_resumable_upload_url(
     bucket_name: str,
     org_id: int,
@@ -768,6 +779,15 @@ def create_resumable_upload_url(
     Writes only to the source bucket. The processed bucket needs no
     credential here at all: releasing a video is an HMAC over a shared
     secret, not a GCS call.
+
+    Signed with ``x-goog-if-generation-match: 0``, so the upload succeeds
+    only while nothing is stored at the key. The URL lasts six hours and
+    can open any number of sessions, and without this one could replace
+    the file after its malware scan had passed it and before the
+    transcode read it, so FFmpeg would read a file never scanned. Every
+    upload gets a fresh ``asset_id``, so nothing legitimate writes the
+    same key twice. The browser must send the header too: the signature
+    covers it.
     """
     import datetime as dt
 
@@ -794,7 +814,7 @@ def create_resumable_upload_url(
             expiration=dt.timedelta(hours=6),
             method="POST",
             content_type=content_type,
-            headers={"x-goog-resumable": "start"},
+            headers=RESUMABLE_UPLOAD_HEADERS,
             service_account_email=sa_email,
             access_token=credentials.token,
         )
