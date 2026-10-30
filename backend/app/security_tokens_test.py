@@ -108,8 +108,8 @@ def _in(seconds: int) -> int:
     return int(time.time()) + seconds
 
 
-ACCESS = {"sub": "ada", "type": "access", "tv": 0}
-REFRESH = {"sub": "ada", "type": "refresh", "tv": 0}
+ACCESS = {"sub": "7", "uid": 7, "type": "access", "tv": 0}
+REFRESH = {"sub": "7", "uid": 7, "type": "refresh", "tv": 0}
 INVITE = {
     "type": "invite",
     "patient_id": "p-1",
@@ -124,12 +124,12 @@ PASSPORT_INVITE = {
 
 # Each decoder with a payload it reads, and what it hands back for it.
 DECODERS: list[tuple[str, Decoder, dict[str, Any], object]] = [
-    ("decode_token", decode_token, ACCESS, SessionClaims("ada", 0)),
+    ("decode_token", decode_token, ACCESS, SessionClaims(7, 0)),
     (
         "decode_refresh_token",
         decode_refresh_token,
         REFRESH,
-        SessionClaims("ada", 0),
+        SessionClaims(7, 0),
     ),
     (
         "decode_invite_token",
@@ -168,12 +168,10 @@ class TestWhatEachDecoderTakes:
         assert decode(token) == expected
 
     def test_the_tokens_this_app_makes_are_read(self) -> None:
-        assert decode_token(create_access_token("ada", 3)) == SessionClaims(
-            "ada", 3
+        assert decode_token(create_access_token(7, 3)) == SessionClaims(7, 3)
+        assert decode_refresh_token(create_refresh_token(7, 3)) == (
+            SessionClaims(7, 3)
         )
-        assert decode_refresh_token(
-            create_refresh_token("ada", 3)
-        ) == SessionClaims("ada", 3)
         assert decode_invite_token(
             create_invite_token("p-1", "ada@example.com", "external_hcp")
         ) == InviteClaims("p-1", "ada@example.com", "external_hcp")
@@ -350,6 +348,29 @@ class TestATokenMissingAClaim:
 
         assert refused(decode_token, token)
 
+    def test_an_account_id_of_true(self) -> None:
+        token = forge({**ACCESS, "uid": True, "sub": "True", "exp": _in(60)})
+
+        assert refused(decode_token, token)
+
+    def test_one_whose_sub_and_uid_disagree(self) -> None:
+        """Signed by us, but not a token this app makes."""
+        token = forge({**ACCESS, "sub": "8", "exp": _in(60)})
+
+        assert refused(decode_token, token)
+
+    @pytest.mark.parametrize("payload", [ACCESS, REFRESH], ids=["a", "r"])
+    def test_one_from_before_tokens_named_the_id(
+        self, payload: dict[str, Any]
+    ) -> None:
+        """A username in ``sub`` and no ``uid``: refused, so its holder
+        signs in again rather than being read as somebody's id."""
+        old = {k: v for k, v in payload.items() if k != "uid"}
+        token = forge({**old, "sub": "7", "exp": _in(60)})
+        decode = decode_token if payload is ACCESS else decode_refresh_token
+
+        assert refused(decode, token)
+
 
 def _me(client: TestClient, token: str) -> int:
     client.cookies.clear()
@@ -364,9 +385,7 @@ class TestWhatARequestIsAnswered:
     def test_a_good_access_token_is_signed_in(
         self, test_client: TestClient, test_user: User
     ) -> None:
-        token = create_access_token(
-            test_user.username, test_user.token_version
-        )
+        token = create_access_token(test_user.id, test_user.token_version)
 
         assert _me(test_client, token) == 200
 
@@ -401,7 +420,8 @@ class TestWhatARequestIsAnswered:
         make: Callable[[dict[str, Any]], str],
     ) -> None:
         payload = {
-            "sub": test_user.username,
+            "sub": str(test_user.id),
+            "uid": test_user.id,
             "type": "access",
             "tv": test_user.token_version,
         }
@@ -413,7 +433,8 @@ class TestWhatARequestIsAnswered:
     ) -> None:
         token = forge(
             {
-                "sub": "nobody-at-all",
+                "sub": "999999",
+                "uid": 999_999,
                 "type": "access",
                 "tv": 0,
                 "exp": _in(60),
@@ -421,6 +442,48 @@ class TestWhatARequestIsAnswered:
         )
 
         assert _me(test_client, token) == 401
+
+    def test_a_token_naming_a_username_is_answered_401(
+        self, test_client: TestClient, test_user: User
+    ) -> None:
+        """Tokens made before they named the id. Its holder signs in
+        again, once."""
+        token = forge(
+            {
+                "sub": test_user.username,
+                "type": "access",
+                "tv": test_user.token_version,
+                "exp": _in(60),
+            }
+        )
+
+        assert _me(test_client, token) == 401
+
+    def test_a_session_does_not_follow_a_username_to_its_next_owner(
+        self, test_client: TestClient, test_user: User, db_session
+    ) -> None:
+        """Renamed, and the name given to a new account: the old
+        account's token still opens the old account only."""
+        token = create_access_token(test_user.id, test_user.token_version)
+        old_name = test_user.username
+        test_user.username = "renamed"
+        db_session.add(
+            User(
+                username=old_name,
+                email="newcomer@example.com",
+                password_hash="x",
+                is_active=True,
+                email_verified=True,
+            )
+        )
+        db_session.commit()
+
+        test_client.cookies.clear()
+        test_client.cookies.set("access_token", token)
+        me = test_client.get("/api/auth/me")
+
+        assert me.status_code == 200
+        assert me.json()["username"] == "renamed"
 
     def test_a_token_from_before_a_sign_out_everywhere_is_answered_401(
         self, test_client: TestClient, test_user: User
@@ -430,7 +493,8 @@ class TestWhatARequestIsAnswered:
         working."""
         token = forge(
             {
-                "sub": test_user.username,
+                "sub": str(test_user.id),
+                "uid": test_user.id,
                 "type": "access",
                 "tv": test_user.token_version + 1,
                 "exp": _in(60),
@@ -451,8 +515,6 @@ class TestWhatARequestIsAnswered:
     ) -> None:
         """Changed with the move to PyJWT, on purpose. It signed the
         caller in, for its seven days and not fifteen minutes."""
-        token = create_refresh_token(
-            test_user.username, test_user.token_version
-        )
+        token = create_refresh_token(test_user.id, test_user.token_version)
 
         assert _me(test_client, token) == 401
