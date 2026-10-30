@@ -207,7 +207,7 @@ class TestSomebodyElseStillCan:
         db_session.refresh(colleague)
         assert "take_teaching_modules" in colleague.get_final_competencies()
 
-    def test_an_admin_may_still_edit_their_own_email(
+    def test_an_admin_may_still_edit_their_own_name(
         self,
         test_client: TestClient,
         db_session: Session,
@@ -217,13 +217,35 @@ class TestSomebodyElseStillCan:
         client = _login(test_client, "the_admin")
         response = client.patch(
             f"/api/users/{admin.id}",
-            json={"email": "moved@example.test"},
+            json={"name": "The Admin"},
             headers=_csrf(client),
         )
 
         assert response.status_code == 200, response.text
         db_session.refresh(admin)
-        assert admin.email == "moved@example.test"
+        assert admin.full_name == "The Admin"
+
+    def test_an_admin_changes_their_own_email_on_the_profile_page(
+        self,
+        test_client: TestClient,
+        db_session: Session,
+        admin: User,
+    ) -> None:
+        """Changed on purpose: this route used to allow it. It asks for
+        no current password, so it may not be the way round the profile
+        route, which does."""
+        client = _login(test_client, "the_admin")
+        email_before = admin.email
+        response = client.patch(
+            f"/api/users/{admin.id}",
+            json={"email": "moved@example.test"},
+            headers=_csrf(client),
+        )
+
+        assert response.status_code == 403, response.text
+        assert "profile page" in response.json()["detail"]
+        db_session.refresh(admin)
+        assert admin.email == email_before
 
 
 class TestTheSelfRouteRefusesEveryoneButOperators:

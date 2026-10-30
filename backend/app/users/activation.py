@@ -23,6 +23,7 @@ from app.users.errors import (
     AlreadyDeactivated,
     DeactivatingYourself,
 )
+from app.users.identity import end_sessions
 from app.users.reach import account_the_caller_may_act_on
 
 
@@ -58,6 +59,10 @@ def deactivate_account(db: Session, actor: User, user_id: int) -> User:
         raise AlreadyDeactivated()
 
     user.is_active = False
+    # A session must not survive the account being closed, or come back
+    # with it when it is opened again: a refresh token checks only
+    # ``token_version``, and lasts a week.
+    end_sessions(user)
     db.flush()
 
     # Closing an account is not the person saying "stop emailing me": it
@@ -96,6 +101,8 @@ def reactivate_account(db: Session, actor: User, user_id: int) -> User:
         raise AlreadyActive()
 
     user.is_active = True
+    # Whatever was signed in before it was closed stays signed out.
+    end_sessions(user)
     db.flush()
 
     # Nobody is on the list and an open account both: the list entry is

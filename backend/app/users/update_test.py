@@ -22,6 +22,7 @@ from app.security import hash_password, verify_password
 from app.users.errors import (
     AccountOutOfScope,
     EnrolmentNotAllowed,
+    OwnSignInOnProfile,
     PasswordTooShort,
     PlaceNotFound,
     PlatformRoleNotAllowed,
@@ -723,3 +724,66 @@ def test_one_save_settles_every_part_together(
         org_unit_id=trust.id,
         question_bank_id=MODULE,
     )
+
+
+# --- the caller's own sign-in details --------------------------------------
+
+
+def test_an_admin_does_not_set_their_own_password_here(
+    db_session: Session, manager: User
+) -> None:
+    """The profile routes ask for the current password; this one does
+    not, so it may not be the way round them."""
+    hash_before = manager.password_hash
+
+    with pytest.raises(OwnSignInOnProfile):
+        update_account(
+            db_session,
+            manager,
+            manager,
+            AccountChanges(password="NewPassword456!"),
+        )
+
+    assert manager.password_hash == hash_before
+
+
+def test_an_admin_does_not_set_their_own_email_here(
+    db_session: Session, manager: User
+) -> None:
+    with pytest.raises(OwnSignInOnProfile):
+        update_account(
+            db_session,
+            manager,
+            manager,
+            AccountChanges(email="someone.else@example.test"),
+        )
+
+
+def test_an_admin_saving_their_own_email_unchanged_is_not_refused(
+    db_session: Session, manager: User
+) -> None:
+    """The user form sends the email on every save."""
+    update_account(
+        db_session,
+        manager,
+        manager,
+        AccountChanges(email=manager.email.upper(), name="Mo Manager"),
+    )
+
+    assert manager.full_name == "Mo Manager"
+
+
+def test_an_admin_still_sets_another_persons_password_and_ends_sessions(
+    db_session: Session, manager: User, surgeon: User
+) -> None:
+    before = surgeon.token_version
+
+    update_account(
+        db_session,
+        manager,
+        surgeon,
+        AccountChanges(password="NewPassword456!"),
+    )
+
+    assert verify_password("NewPassword456!", surgeon.password_hash)
+    assert surgeon.token_version == before + 1
