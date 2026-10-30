@@ -109,6 +109,27 @@ def test_deactivating_closes_the_account(
     assert _is_active(db_session, colleague) is False
 
 
+def test_deactivating_ends_their_sessions(
+    db_session: Session, manager: User, colleague: User
+) -> None:
+    before = colleague.token_version
+
+    deactivate_account(db_session, manager, colleague.id)
+
+    assert colleague.token_version == before + 1
+
+
+def test_a_session_from_before_closing_does_not_come_back_on_reopening(
+    db_session: Session, manager: User, colleague: User
+) -> None:
+    before = colleague.token_version
+
+    deactivate_account(db_session, manager, colleague.id)
+    reactivate_account(db_session, manager, colleague.id)
+
+    assert colleague.token_version > before
+
+
 def test_deactivating_leaves_everything_else_about_them_as_it_was(
     db_session: Session, manager: User, colleague: User, trust: OrgUnit
 ) -> None:

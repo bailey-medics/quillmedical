@@ -3,6 +3,14 @@
 The part of saving a person's page that any holder of the account could
 also do for themselves. What somebody may do, and where, is in the
 modules beside this one.
+
+A change to the username, email or password ends every session the
+account holds, and every reset or setup link already sent, by moving
+``token_version`` on: those are checked against it and nothing else. An
+administrator setting a new password is usually answering a compromise,
+and a session the attacker already holds would otherwise outlive it. A
+name change is not a change to how somebody signs in, so it leaves them
+signed in.
 """
 
 from sqlalchemy import select
@@ -36,8 +44,9 @@ def change_identity(
     field on every save, so a value that matches what is already held is
     not an error: somebody's own username is not "taken" by them.
 
-    Nothing is flushed. The caller's transaction decides whether the
-    change is kept.
+    A change to the username, email or password ends the account's
+    sessions: see the module docstring. Nothing is flushed. The caller's
+    transaction decides whether the change is kept.
 
     Args:
         db: The database session.
@@ -53,18 +62,34 @@ def change_identity(
         EmailTaken: If another account has the address.
         PasswordTooShort: If the password is under eight characters.
     """
+    signs_in_differently = False
+
     if username is not None:
-        _change_username(db, user, username.strip())
+        signs_in_differently |= _change_username(db, user, username.strip())
 
     if name is not None:
         user.full_name = name.strip() or None
 
     if email is not None:
-        _change_email(db, user, normalise_email(email))
+        signs_in_differently |= _change_email(db, user, normalise_email(email))
 
     if password:
         check_password_long_enough(password)
         user.password_hash = hash_password(password)
+        signs_in_differently = True
+
+    if signs_in_differently:
+        end_sessions(user)
+
+
+def end_sessions(user: User) -> None:
+    """End every session *user* holds, and every link already sent them.
+
+    Access and refresh tokens, and reset and setup links, carry the
+    ``token_version`` they were made under and are refused once it
+    differs. Nothing is flushed.
+    """
+    user.token_version += 1
 
 
 def check_password_long_enough(password: str) -> None:
@@ -103,22 +128,34 @@ def check_email_free(db: Session, email: str) -> None:
         raise EmailTaken()
 
 
-def _change_username(db: Session, user: User, username: str) -> None:
-    """Give *user* the username, unless it is theirs already or taken."""
+def _change_username(db: Session, user: User, username: str) -> bool:
+    """Give *user* the username, unless it is theirs already or taken.
+
+    Returns:
+        Whether it changed.
+    """
     if username == user.username:
-        return
+        return False
 
     check_username_free(db, username)
     user.username = username
 
+    return True
 
-def _change_email(db: Session, user: User, email: str) -> None:
-    """Give *user* the address, unless it is theirs already or taken."""
+
+def _change_email(db: Session, user: User, email: str) -> bool:
+    """Give *user* the address, unless it is theirs already or taken.
+
+    Returns:
+        Whether it changed.
+    """
     if email == user.email:
-        return
+        return False
 
     if not email:
         raise EmailRequired()
 
     check_email_free(db, email)
     user.email = email
+
+    return True
