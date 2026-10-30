@@ -92,7 +92,7 @@
     "tier-1-clinical and major-version-bump.",
     "============================================================="
   ],
-  "extends": ["config:recommended"],
+  "extends": ["config:recommended", "helpers:pinGitHubActionDigests"],
   "constraints": {
     "poetry": "2.5.1"
   },
