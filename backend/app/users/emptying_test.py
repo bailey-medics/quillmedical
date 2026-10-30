@@ -61,6 +61,7 @@ def _person(db: Session, name: str, *, closed: bool = True) -> User:
         totp_last_step=59_000_000,
         totp_failed_attempts=2,
         totp_locked_until=NOW,
+        pending_email=f"{name}.new@example.test",
         fhir_patient_id=f"patient-{name}",
         marketing_emails=True,
     )
@@ -195,6 +196,7 @@ class TestTheRow:
         assert ada.totp_last_step is None
         assert ada.totp_failed_attempts == 0
         assert ada.totp_locked_until is None
+        assert ada.pending_email is None
         assert ada.fhir_patient_id is None
         assert ada.email_verified is False
         assert ada.marketing_emails is False

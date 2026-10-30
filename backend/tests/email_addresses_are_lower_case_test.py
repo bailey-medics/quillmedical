@@ -180,4 +180,5 @@ class TestChangingYourOwnAddress:
 
         assert response.status_code == 200, response.text
         db_session.refresh(test_user)
-        assert test_user.email == "moved.house@example.org"
+        assert test_user.pending_email == "moved.house@example.org"
+        assert "moved.house@example.org" in sent

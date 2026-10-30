@@ -837,6 +837,87 @@ def verify_email_verify_token(token: str) -> str | None:
     return email
 
 
+# --- Email change links ---
+# Its own salt, so a link to verify an address cannot be presented as one
+# to change it, though both are read by the same route.
+_email_change = URLSafeTimedSerializer(
+    settings.JWT_SECRET.get_secret_value(), salt="email-change"
+)
+
+
+class EmailChangeClaims(NamedTuple):
+    """What a link to confirm a new email address says."""
+
+    user_id: int
+    email: str
+    token_version: int
+
+
+def create_email_change_token(
+    user_id: int, email: str, token_version: int
+) -> str:
+    """Create a time-limited link to move an account to a new address.
+
+    It names the account by id and the address it is to move to, so it
+    can only ever move that one account to that one address. It also
+    carries the account's ``token_version``, so once the account's
+    sessions end, for a password change or another email change, an
+    older link stops working.
+
+    Args:
+        user_id: The account asking to change address.
+        email: The new address, which the link is sent to.
+        token_version: The account's ``token_version`` now.
+
+    Returns:
+        URL-safe signed token.
+
+    Raises:
+        ValueError: If the id or address is not one an account could have.
+    """
+    _check_user_id(user_id)
+
+    if not email or not email.strip():
+        raise ValueError("Email cannot be empty")
+
+    return _email_change.dumps(
+        {"uid": user_id, "email": email.strip().lower(), "tv": token_version}
+    )
+
+
+def verify_email_change_token(token: str) -> EmailChangeClaims | None:
+    """Check a link to move an account to a new address.
+
+    Args:
+        token: The token from the link.
+
+    Returns:
+        What the link says, or None if it is tampered with, has expired
+        or does not carry all three claims.
+    """
+    try:
+        data = _email_change.loads(
+            token, max_age=settings.EMAIL_VERIFY_TTL_MIN * 60
+        )
+    except BadSignature:
+        return None
+    if not isinstance(data, dict):
+        return None
+
+    user_id = data.get("uid")
+    email = data.get("email")
+    token_version = data.get("tv")
+
+    if isinstance(user_id, bool) or not isinstance(user_id, int):
+        return None
+    if not isinstance(email, str):
+        return None
+    if isinstance(token_version, bool) or not isinstance(token_version, int):
+        return None
+
+    return EmailChangeClaims(user_id, email, token_version)
+
+
 # --- Marketing unsubscribe links ---
 # Signed and never timed, unlike the two above. A newsletter is read
 # months after it was sent, and a link that has stopped working is an

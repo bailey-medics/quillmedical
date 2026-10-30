@@ -212,6 +212,13 @@ class User(Base):
     email_verified: Mapped[bool] = mapped_column(
         Boolean, default=False, server_default="false"
     )
+    #: An address the account holder asked to move to, held until they
+    #: follow the link sent to it. ``email`` stays as it was until then,
+    #: so password resets keep going to the address already proven. Null
+    #: when no change is waiting. See ``update_profile`` in ``main``.
+    pending_email: Mapped[str | None] = mapped_column(
+        String(255), nullable=True
+    )
 
     # Token version - incremented on password change to invalidate sessions
     token_version: Mapped[int] = mapped_column(
