@@ -142,34 +142,42 @@ class TestJWTTokens:
 
     def test_create_access_token(self):
         """Test access token creation."""
-        username = "testuser"
-        token = create_access_token(username, 3)
+        token = create_access_token(42, 3)
 
-        assert decode_token(token) == SessionClaims(username, 3)
+        assert decode_token(token) == SessionClaims(42, 3)
 
     def test_access_token_names_the_user_and_nothing_more(self):
         """Roles and competencies are read from the database on every
         request, never from the cookie, so the token does not carry
         them: a claim that crept back in would grow the cookie with
         every competency granted."""
-        decoded = _raw(create_access_token("testuser"))
+        decoded = _raw(create_access_token(42))
 
-        assert set(decoded) == {"sub", "type", "tv", "exp"}
+        assert set(decoded) == {"sub", "uid", "type", "tv", "exp"}
+        assert decoded["uid"] == 42
+        assert decoded["sub"] == "42"
 
         # Verify expiration is in the future
         exp_time = datetime.fromtimestamp(decoded["exp"], UTC)
         assert exp_time > datetime.now(UTC)
 
-    def test_create_refresh_token_refuses_an_empty_subject(self):
-        with pytest.raises(ValueError, match="cannot be empty"):
-            create_refresh_token("   ")
+    @pytest.mark.parametrize("user_id", [0, -1, True])
+    def test_create_refresh_token_refuses_an_id_no_account_has(
+        self, user_id: int
+    ):
+        with pytest.raises(ValueError, match="User id"):
+            create_refresh_token(user_id)
+
+    def test_create_access_token_refuses_a_username(self):
+        """The id is what a token names now, never the username."""
+        with pytest.raises(ValueError, match="User id"):
+            create_access_token(cast(int, "testuser"))
 
     def test_create_refresh_token(self):
         """Test refresh token creation."""
-        username = "testuser"
-        token = create_refresh_token(username)
+        token = create_refresh_token(42)
 
-        assert decode_refresh_token(token) == SessionClaims(username, 0)
+        assert decode_refresh_token(token) == SessionClaims(42, 0)
 
         decoded = _raw(token)
         assert decoded["type"] == "refresh"
@@ -178,11 +186,33 @@ class TestJWTTokens:
         exp_time = datetime.fromtimestamp(decoded["exp"], UTC)
         assert exp_time > datetime.now(UTC)
 
+    @pytest.mark.parametrize("kind", ["access", "refresh"])
+    def test_a_token_made_before_ids_is_refused(self, kind: str):
+        """A token naming a username in ``sub`` and no ``uid`` was made
+        before tokens named the id. It is refused rather than read, so a
+        username of digits cannot be taken for somebody's id."""
+        payload = {
+            "sub": "42",
+            "type": kind,
+            "tv": 0,
+            "exp": datetime.now(UTC) + timedelta(minutes=15),
+        }
+        token = jwt.encode(
+            payload,
+            settings.JWT_SECRET.get_secret_value(),
+            algorithm=settings.JWT_ALG,
+        )
+        decode = decode_token if kind == "access" else decode_refresh_token
+
+        with pytest.raises(TokenNotAcceptable, match="uid"):
+            decode(token)
+
     def test_decode_token_expired(self):
         """Test decoding an expired token raises exception."""
         # Create token that expired 1 day ago
         payload = {
-            "sub": "testuser",
+            "sub": "42",
+            "uid": 42,
             "type": "access",
             "exp": datetime.now(UTC) - timedelta(days=1),
         }
@@ -200,7 +230,8 @@ class TestJWTTokens:
         """Test decoding token with invalid signature raises exception."""
         # Create token with wrong secret
         payload = {
-            "sub": "testuser",
+            "sub": "42",
+            "uid": 42,
             "type": "access",
             "exp": datetime.now(UTC) + timedelta(minutes=15),
         }
@@ -216,10 +247,8 @@ class TestJWTTokens:
 
     def test_token_expiration_times(self):
         """Test tokens have correct expiration times."""
-        username = "testuser"
-
         # Access token should expire in ACCESS_TTL_MIN minutes
-        access_token = create_access_token(username)
+        access_token = create_access_token(42)
         decoded_access = _raw(access_token)
         access_exp = datetime.fromtimestamp(decoded_access["exp"], UTC)
         expected_access_exp = datetime.now(UTC) + timedelta(
@@ -229,7 +258,7 @@ class TestJWTTokens:
         assert abs((access_exp - expected_access_exp).total_seconds()) < 5
 
         # Refresh token should expire in REFRESH_TTL_DAYS days
-        refresh_token = create_refresh_token(username)
+        refresh_token = create_refresh_token(42)
         decoded_refresh = _raw(refresh_token)
         refresh_exp = datetime.fromtimestamp(decoded_refresh["exp"], UTC)
         expected_refresh_exp = datetime.now(UTC) + timedelta(
@@ -244,63 +273,62 @@ class TestCSRF:
 
     def test_make_csrf_token(self):
         """Test CSRF token creation."""
-        username = "testuser"
-        token = make_csrf(username)
+        token = make_csrf(42)
         assert token
         assert isinstance(token, str)
 
-    def test_make_csrf_refuses_an_empty_subject(self):
-        with pytest.raises(ValueError, match="cannot be empty"):
-            make_csrf("")
+    def test_make_csrf_refuses_an_id_no_account_has(self):
+        with pytest.raises(ValueError, match="User id"):
+            make_csrf(0)
 
     def test_verify_csrf_success(self):
         """Test CSRF verification with correct token."""
-        username = "testuser"
-        token = make_csrf(username)
-        assert verify_csrf(token, username) is True
+        token = make_csrf(42)
+        assert verify_csrf(token, 42) is True
 
     def test_verify_csrf_wrong_user(self):
-        """Test CSRF verification with wrong username."""
-        token = make_csrf("user1")
-        assert verify_csrf(token, "user2") is False
+        """Test CSRF verification with another account's id."""
+        token = make_csrf(1)
+        assert verify_csrf(token, 2) is False
 
     def test_verify_csrf_invalid_token(self):
         """Test CSRF verification with invalid token."""
-        assert verify_csrf("invalid_token_string", "testuser") is False
+        assert verify_csrf("invalid_token_string", 42) is False
 
     def test_csrf_tokens_are_different(self):
         """Test that CSRF tokens for different users are different."""
-        token1 = make_csrf("user1")
-        token2 = make_csrf("user2")
+        token1 = make_csrf(1)
+        token2 = make_csrf(2)
         assert token1 != token2
 
     def test_csrf_token_consistent(self):
         """Test that CSRF tokens are consistent for same user."""
-        username = "testuser"
-        token1 = make_csrf(username)
-        token2 = make_csrf(username)
+        token1 = make_csrf(42)
+        token2 = make_csrf(42)
         # Both should be valid
-        assert verify_csrf(token1, username) is True
-        assert verify_csrf(token2, username) is True
+        assert verify_csrf(token1, 42) is True
+        assert verify_csrf(token2, 42) is True
 
-    def test_verify_csrf_accepts_a_non_ascii_username(self):
-        """The subjects are compared as bytes, so a name outside ASCII
-        is not a TypeError from ``hmac.compare_digest``."""
-        username = "zoë"
-        assert verify_csrf(make_csrf(username), username) is True
+    def test_verify_csrf_refuses_a_token_signed_for_a_username(self):
+        """A token from before CSRF tokens named the id is refused, even
+        when the username happens to be the account's id in digits."""
+        from app.security import _csrf
+
+        assert verify_csrf(_csrf.dumps({"sub": "42"}), 42) is False
 
     def test_verify_csrf_refuses_a_token_that_names_no_subject(self):
         """A good signature over the wrong shape is still refused."""
         from app.security import _csrf
 
-        assert verify_csrf(_csrf.dumps(["not", "a", "dict"]), "u") is False
-        assert verify_csrf(_csrf.dumps({"sub": 7}), "7") is False
+        assert verify_csrf(_csrf.dumps(["not", "a", "dict"]), 7) is False
+        assert verify_csrf(_csrf.dumps({"uid": "7"}), 7) is False
+        assert verify_csrf(_csrf.dumps({"uid": True}), 1) is False
 
     def test_verify_csrf_does_not_swallow_a_fault_in_our_code(self):
         """Only a bad signature reads as a wrong token. Anything else
         raised in the check is a bug, and must surface."""
         with pytest.raises(TypeError):
-            verify_csrf(cast(str, None), "testuser")
+            verify_csrf(cast(str, None), 42)
 
 
 class TestTimedTokens:

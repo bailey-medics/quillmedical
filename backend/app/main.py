@@ -640,9 +640,9 @@ def login(
         db.add(user)
 
     roles = [r.name for r in user.roles]
-    access = create_access_token(user.username, user.token_version)
-    refresh = create_refresh_token(user.username, user.token_version)
-    xsrf = make_csrf(user.username)
+    access = create_access_token(user.id, user.token_version)
+    refresh = create_refresh_token(user.id, user.token_version)
+    xsrf = make_csrf(user.id)
     set_auth_cookies(response, access, refresh, xsrf)
 
     return LoginOut(
@@ -1298,13 +1298,9 @@ def change_password(
     db.commit()
 
     # Re-issue cookies so the current session stays authenticated
-    access = create_access_token(
-        current_user.username, current_user.token_version
-    )
-    refresh = create_refresh_token(
-        current_user.username, current_user.token_version
-    )
-    xsrf = make_csrf(current_user.username)
+    access = create_access_token(current_user.id, current_user.token_version)
+    refresh = create_refresh_token(current_user.id, current_user.token_version)
+    xsrf = make_csrf(current_user.id)
     set_auth_cookies(response, access, refresh, xsrf)
 
     return DetailResponse(detail="Password changed")
@@ -1520,7 +1516,7 @@ def refresh(
     except Exception as e:
         raise HTTPException(401, "Bad refresh token") from e
 
-    user = db.scalar(select(User).where(User.username == claims.username))
+    user = db.get(User, claims.user_id)
 
     if not user or not user.is_active:
         raise HTTPException(401, "Inactive user")
@@ -1528,11 +1524,9 @@ def refresh(
     if claims.token_version != user.token_version:
         raise HTTPException(401, "Session invalidated")
 
-    new_access = create_access_token(user.username, user.token_version)
-    new_refresh = create_refresh_token(
-        user.username, user.token_version
-    )  # rotate
-    xsrf = make_csrf(user.username)
+    new_access = create_access_token(user.id, user.token_version)
+    new_refresh = create_refresh_token(user.id, user.token_version)  # rotate
+    xsrf = make_csrf(user.id)
     set_auth_cookies(response, new_access, new_refresh, xsrf)
 
     return RefreshOut(detail="refreshed")
