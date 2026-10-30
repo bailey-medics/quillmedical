@@ -282,9 +282,31 @@ consecutive units, as the notes suggest for fixes 3, 5 and 7.
       `EmailStr`: equality already refuses a pattern, and narrowing the
       accepted input would be an API change for no further gain.
 
-- [ ] **Fix 7: content and upload scanning.** Hardening of the teaching
-      content pipeline's malware scan and of the upload scan handoff.
-      Detail in the private notes.
+- [x] **Fix 7a: the teaching content pipeline's malware scan.** Two
+      gaps in the check every teaching repository's pull request must pass.
+      The workflow installed the `clamav-mirror` image's `.deb` as root
+      with no check against the checksum pinned in `backend/Dockerfile.scan`,
+      though the scan image's own build does check it, so a mirror that had
+      been overwritten could run anything on the runner and pass any scan.
+      And `scan-content.sh` ran `clamscan` with ClamAV's default limits
+      (25 MB, 100 MB, two minutes), past which a file is skipped and
+      reported clean, so a large enough file reached the teaching bucket
+      without being scanned; the app's own scanner already raises them.
+
+      `fetch-mirror.sh` now checks both packages against
+      `CLAMAV_SHA256_AMD64` and `CLAMAV_SHA256_ARM64`, and the mirror's
+      `VERSION` against `CLAMAV_VERSION`, before anything uses them, so
+      the teaching pipeline, `deploy.yml` and `clamav-mirror.yml` all get
+      the check. `scan-content.sh` passes the limits `scan_cli.py` uses,
+      with `--alert-exceeds-max=yes` and `--alert-encrypted=yes`, and
+      fails on `Heuristics.Limits.Exceeded` with its own message. The
+      mirror is still pulled by tag, not digest: the tag moves daily with
+      the definitions, and the package, the part that runs as root, is now
+      checked whatever the tag points at.
+
+- [ ] **Fix 7b: the upload scan handoff.** Hardening of how an uploaded
+      file passes from the malware scan to the transcode job. Detail in
+      the private notes.
 
 - [ ] **Fix 5b: the current password is required for a new email
       (contract).** Make `current_password` required on
