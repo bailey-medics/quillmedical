@@ -22,9 +22,9 @@ jobs:
       - name: Create pull request
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: bash .github/scripts/auto-pr/create-pr.sh "${{ github.ref_name }}"
+        run: bash .github/scripts/auto-pr/create-pr.sh "$GITHUB_REF_NAME"
 
       - name: Label PR by branch prefix
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: bash .github/scripts/auto-pr/label-pr.sh "${{ github.ref_name }}"
+        run: bash .github/scripts/auto-pr/label-pr.sh "$GITHUB_REF_NAME"
