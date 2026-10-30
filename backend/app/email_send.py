@@ -218,8 +218,20 @@ class Attachment(TypedDict):
     content: bytes
 
 
+#: Carried by every message, since the app sends every one of them. The
+#: first is the standard way to say a message was sent automatically, and
+#: the second is the one Exchange and Outlook read, so neither answers with
+#: an out-of-office reply to the sending address.
+_AUTOMATIC_HEADERS = {
+    "Auto-Submitted": "auto-generated",
+    "X-Auto-Response-Suppress": "All",
+}
+
 #: Headers a caller may not set: the ones ``send_email`` writes itself.
-_OWN_HEADERS = frozenset({"from", "to", "subject", "reply-to", "cc", "bcc"})
+_OWN_HEADERS = frozenset(
+    {"from", "to", "subject", "reply-to", "cc", "bcc"}
+    | {name.lower() for name in _AUTOMATIC_HEADERS}
+)
 
 
 def _checked_headers(headers: Mapping[str, str] | None) -> dict[str, str]:
@@ -342,7 +354,7 @@ def _mime_message(
 
     if reply_to is not None:
         message["Reply-To"] = reply_to
-    for name, value in (headers or {}).items():
+    for name, value in (_AUTOMATIC_HEADERS | dict(headers or {})).items():
         message[name] = value
 
     if text_body is None:
