@@ -46,6 +46,7 @@ from app.api_compatibility import REQUIRED_CLIENT_GENERATION
 from app.body_limit import BodyLimitMiddleware
 from app.cbac.grant_scope import scope_for
 from app.cbac.router import router as cbac_router
+from app.client_address import client_address
 from app.compat_harness_endpoints import test_api_router
 from app.config import settings
 from app.deps import (
@@ -138,6 +139,7 @@ from app.security import (
     hash_password,
     make_csrf,
     password_needs_rehash,
+    spend_password_check,
     totp_provisioning_uri,
     verify_email_verify_token,
     verify_password,
@@ -151,7 +153,12 @@ from app.users.register import (
     undo_registration,
 )
 from app.users.router import router as users_router
-from app.users.totp import use_totp_code
+from app.users.totp import (
+    LOCKOUT,
+    record_totp_failure,
+    totp_locked,
+    use_totp_code,
+)
 
 setup_logging()
 logger = logging.getLogger(__name__)
@@ -389,7 +396,7 @@ async def log_requests(
             "route": route_template(request.scope),
             "status": response.status_code,
             "duration_ms": elapsed_ms,
-            "client_ip": request.client.host if request.client else None,
+            "client_ip": client_address(request),
         },
     )
 
@@ -509,6 +516,27 @@ def clear_auth_cookies(response: Response) -> None:
     )
 
 
+def _totp_locked_error() -> HTTPException:
+    """The refusal while an account's two-factor step is locked.
+
+    Said plainly, so a person who mistyped knows to wait rather than
+    keep trying, and distinct from a wrong code so the page can tell
+    them how long.
+    """
+    minutes = int(LOCKOUT.total_seconds() // 60)
+
+    return HTTPException(
+        status_code=429,
+        detail={
+            "message": (
+                "Too many wrong two-factor codes. "
+                f"Try again in {minutes} minutes."
+            ),
+            "error_code": "totp_locked",
+        },
+    )
+
+
 @router.post("/auth/login", response_model=LoginOut)
 @limiter.limit("5/minute")
 def login(
@@ -551,7 +579,13 @@ def login(
         select(User).where(User.username == data.username.strip())
     )
 
-    if not user or not verify_password(data.password, user.password_hash):
+    # A username with no account still costs a password check, so the
+    # time taken does not say which usernames exist.
+    if not user:
+        spend_password_check(data.password)
+        raise HTTPException(400, "Invalid credentials")
+
+    if not verify_password(data.password, user.password_hash):
         raise HTTPException(400, "Invalid credentials")
 
     # A deactivated account answers exactly as a wrong password does, so
@@ -586,7 +620,10 @@ def login(
                     "error_code": "two_factor_required",
                 },
             )
+        if totp_locked(user):
+            raise _totp_locked_error()
         if not use_totp_code(db, user, data.totp_code):
+            record_totp_failure(db, user)
             raise HTTPException(
                 status_code=400,
                 detail={
@@ -1157,7 +1194,10 @@ def totp_verify(
                 "error_code": "no_totp_secret",
             },
         )
+    if totp_locked(current_user):
+        raise _totp_locked_error()
     if not use_totp_code(db, current_user, payload.code):
+        record_totp_failure(db, current_user)
         raise HTTPException(
             status_code=400,
             detail={"message": "Invalid code", "error_code": "invalid_totp"},
@@ -1204,6 +1244,8 @@ def totp_disable(
     current_user.is_totp_enabled = False
     current_user.totp_secret = None
     current_user.totp_last_step = None
+    current_user.totp_failed_attempts = 0
+    current_user.totp_locked_until = None
     db.add(current_user)
 
     return DetailResponse(detail="disabled")

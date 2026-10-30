@@ -10,8 +10,8 @@ handler; this module only creates it.
 """
 
 from slowapi import Limiter
-from slowapi.util import get_remote_address
 
+from app.client_address import client_address
 from app.config import settings
 
 #: Off in development, so local work is not throttled, and off in testing.
@@ -20,7 +20,10 @@ from app.config import settings
 #: a minute ``/auth/login`` allows, so a valid login in the second project
 #: was refused with a 429 and the run failed. Tests of the limiter itself
 #: force-enable it, as ``security_pentest_test.py`` does.
+#:
+#: Keyed on ``client_address``, never the leftmost ``X-Forwarded-For``
+#: entry, which the client writes.
 limiter = Limiter(
-    key_func=get_remote_address,
+    key_func=client_address,
     enabled=settings.BACKEND_ENV not in {"development", "testing"},
 )

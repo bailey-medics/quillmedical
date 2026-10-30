@@ -182,6 +182,16 @@ class User(Base):
     #: and again once two-factor is turned off. See
     #: ``app.users.totp.use_totp_code``.
     totp_last_step: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    #: Wrong two-factor codes entered in a row since the last right one
+    #: or the last lockout. See ``app.users.totp``.
+    totp_failed_attempts: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
+    #: Until when two-factor codes are refused for this account, after
+    #: too many wrong ones in a row. Null when not locked.
+    totp_locked_until: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     #: When the account was closed or deactivated. Null while it is
     #: active, and for an account closed before this column existed. The
