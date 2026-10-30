@@ -57,7 +57,8 @@ It was written from `.github/workflows/ci.yml`,
 ### GitHub's releases
 
 - **Used for** - the exact Python in `.python-version`, which the runner
-  does not carry, and the `actionlint`, `gitleaks` and `oasdiff` tools.
+  does not carry, and the `actionlint`, `gitleaks`, `oasdiff` and
+  `zizmor` tools.
 - **How it failed** - 504, three times in a row for Python on 12 October
   2026, and once for `actionlint` the same day.
 - **Cover** - for Python, a copy: the shared action keeps the installed
