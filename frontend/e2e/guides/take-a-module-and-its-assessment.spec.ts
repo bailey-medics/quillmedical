@@ -47,6 +47,10 @@ test("take a module and its assessment", async ({ page }) => {
 
   // The assessment, sat to the end. This writes an attempt, which is
   // why the spec has a seeded delegate of its own.
+  await expect(
+    page.getByRole("button", { name: "Start assessment" }),
+  ).toBeVisible();
+  await shot(page, "take-a-module-and-its-assessment/start-assessment");
   await page.getByRole("button", { name: "Start assessment" }).click();
   const begin = page.getByRole("button", { name: "Begin", exact: true });
   await expect(begin).toBeVisible();
@@ -57,8 +61,14 @@ test("take a module and its assessment", async ({ page }) => {
   const submit = page.getByRole("button", { name: "Submit & finish" });
   await expect(page.getByRole("button", { name: "End exam" })).toBeVisible();
   await expect(page.getByRole("radio").first()).toBeAttached();
+  // The top of the page first, as a question opens: its image, with the
+  // time left and End exam above it.
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await shot(page, "take-a-module-and-its-assessment/question-top");
+
+  // Choosing an answer scrolls down to the answers.
   await page.getByRole("radio").first().check({ force: true });
-  await shot(page, "take-a-module-and-its-assessment/question");
+  await shot(page, "take-a-module-and-its-assessment/question-answers");
 
   await page.getByRole("button", { name: "End exam" }).click();
   await expect(
@@ -83,12 +93,23 @@ test("take a module and its assessment", async ({ page }) => {
 
 // A result worth showing is one that passed, and a spec cannot be relied
 // on to pass an exam, nor should it hold the answers. So this is the
-// attempt `seed_guides.py` gives its first delegate.
+// attempt `seed_guides.py` gives the learner, signed in as them so every
+// picture in the guide names the same person. The attempt sat above may
+// sit beside it in the history, so the row is chosen by its badge.
 test("a passed result", async ({ page }) => {
-  await signIn(page, PEOPLE.passedDelegate);
+  await signIn(page, PEOPLE.learner);
   await page.goto("/teaching");
-  await expect(page.getByRole("heading", { name: "My history" })).toBeVisible();
-  await page.getByRole("row").nth(1).click();
+  const history = page.getByRole("heading", { name: "My history" });
+  await expect(history).toBeVisible();
+  // The heading is already on screen; the rows beneath it are not.
+  await page.getByRole("row").last().scrollIntoViewIfNeeded();
+  await shot(page, "take-a-module-and-its-assessment/my-history");
+
+  await page
+    .getByRole("row")
+    .filter({ has: page.getByText("Pass", { exact: true }) })
+    .first()
+    .click();
 
   await expect(
     page.getByRole("heading", { level: 1, name: "Passed" }),

@@ -15,7 +15,7 @@ export const PEOPLE = {
   operator: "morgan.reid",
   /** A teaching admin at the organisation. */
   teachingAdmin: "sarah.mitchell",
-  /** A delegate with no attempts, for specs that take a module. */
+  /** Takes a module, and has one passed attempt to show its result. */
   learner: "sam.harding",
   /** Holds a passport with something in each of its parts. */
   passportHolder: "maya.collins",
