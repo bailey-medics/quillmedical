@@ -53,8 +53,6 @@ on:
 
 permissions:
   contents: read
-  id-token: write       # Workload Identity Federation
-  pull-requests: write
   actions: read         # Resolve the plan job's URL for the PR comment
 
 concurrency:
@@ -65,6 +63,11 @@ jobs:
   # ---------- Terraform plan (PRs only) ----------
   plan:
     name: Plan (${{ matrix.environment }})
+    permissions:
+      contents: read
+      id-token: write       # Workload Identity Federation
+      pull-requests: write  # The plan comment
+      actions: read
     runs-on: ubuntu-26.04
     if: github.event_name == 'pull_request'
     strategy:
@@ -137,6 +140,9 @@ jobs:
   # ---------- Terraform apply (main branch) ----------
   apply:
     name: Apply (${{ matrix.environment }})
+    permissions:
+      contents: read
+      id-token: write       # Workload Identity Federation
     runs-on: ubuntu-26.04
     if: >-
       (github.event_name == 'push' && github.ref == 'refs/heads/main')

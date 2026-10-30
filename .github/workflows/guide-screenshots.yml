@@ -33,7 +33,6 @@ on:
 
 permissions:
   contents: read
-  id-token: write # Workload Identity Federation
   packages: read # the mirrored Postgres and Caddy images, in GHCR
 
 # One at a time, newest wins: the bucket is mirrored, so two runs finishing
@@ -162,6 +161,9 @@ jobs:
 
   publish:
     name: Publish to app
+    permissions:
+      contents: read
+      id-token: write # Workload Identity Federation
     runs-on: ubuntu-26.04
     needs: take
     # The environment that holds the GCP_APP_* secrets read below, as

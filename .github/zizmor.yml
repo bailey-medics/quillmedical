@@ -22,8 +22,6 @@ rules:
   # Off until the Phase 6 step that fixes each one turns it back on, so
   # the hook and CI are green from the first commit and each fix shows
   # its audit returning. Findings on 30 October 2026 in brackets.
-  excessive-permissions: # (16)
-    disable: true
   secrets-inherit: # (18)
     disable: true
   overprovisioned-secrets: # (22)
