@@ -125,6 +125,14 @@ class Settings(BaseSettings):
     COOKIE_DOMAIN: str | None = None
     SECURE_COOKIES: bool = False
 
+    #: A request header the load balancer sets to the client's address,
+    #: overwriting any header of that name the client sent. Unset, the
+    #: address is the connection's peer. Set only where every request
+    #: reaches the backend through a load balancer that writes the header,
+    #: since anywhere else a client could write it. See
+    #: ``app.client_address``.
+    TRUSTED_CLIENT_IP_HEADER: str | None = None
+
     # --- Frontend URL (for email links) ---
     FRONTEND_URL: str = Field(
         "http://localhost",

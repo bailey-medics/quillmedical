@@ -127,6 +127,16 @@ resource "google_compute_backend_service" "backend" {
     sample_rate = var.log_sample_rate
   }
 
+  # The address that opened the connection, for the backend's rate limits
+  # and access log. A header the load balancer adds overwrites one of the
+  # same name the client sent, so unlike X-Forwarded-For, whose leading
+  # entries the client writes, this cannot be forged. The backend reads it
+  # through TRUSTED_CLIENT_IP_HEADER, set beside it in infra/main.tf; the
+  # two names must match. See backend/app/client_address.py.
+  custom_request_headers = [
+    "X-Quill-Client-IP: {client_ip_address}",
+  ]
+
   # Security headers for every API response.
   #
   # `/api/*` is routed straight to the backend service and never passes

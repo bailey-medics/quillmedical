@@ -59,6 +59,8 @@ def _person(db: Session, name: str, *, closed: bool = True) -> User:
         totp_secret="JBSWY3DPEHPK3PXP",
         is_totp_enabled=True,
         totp_last_step=59_000_000,
+        totp_failed_attempts=2,
+        totp_locked_until=NOW,
         fhir_patient_id=f"patient-{name}",
         marketing_emails=True,
     )
@@ -191,6 +193,8 @@ class TestTheRow:
         assert ada.totp_secret is None
         assert ada.is_totp_enabled is False
         assert ada.totp_last_step is None
+        assert ada.totp_failed_attempts == 0
+        assert ada.totp_locked_until is None
         assert ada.fhir_patient_id is None
         assert ada.email_verified is False
         assert ada.marketing_emails is False
