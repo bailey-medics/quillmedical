@@ -253,3 +253,81 @@ def test_the_address_check_refuses_only_one_that_is_held(
 
     with pytest.raises(EmailTaken):
         check_email_free(db_session, "alex@example.test")
+
+
+# --- ending sessions --------------------------------------------------------
+
+
+def test_a_new_password_ends_every_session(
+    db_session: Session, person: User
+) -> None:
+    before = person.token_version
+
+    change_identity(db_session, person, password="NewPassword456!")
+
+    assert person.token_version == before + 1
+
+
+def test_a_new_email_ends_every_session(
+    db_session: Session, person: User
+) -> None:
+    before = person.token_version
+
+    change_identity(db_session, person, email="sam.new@example.test")
+
+    assert person.token_version == before + 1
+
+
+def test_a_new_username_ends_every_session(
+    db_session: Session, person: User
+) -> None:
+    """A session keyed on the old username must not carry over to
+    whichever account is given it next."""
+    before = person.token_version
+
+    change_identity(db_session, person, username="sam-renamed")
+
+    assert person.token_version == before + 1
+
+
+def test_several_changes_at_once_move_the_version_once(
+    db_session: Session, person: User
+) -> None:
+    before = person.token_version
+
+    change_identity(
+        db_session,
+        person,
+        username="sam-renamed",
+        email="sam.new@example.test",
+        password="NewPassword456!",
+    )
+
+    assert person.token_version == before + 1
+
+
+def test_a_new_name_leaves_them_signed_in(
+    db_session: Session, person: User
+) -> None:
+    before = person.token_version
+
+    change_identity(db_session, person, name="Sam Jones")
+
+    assert person.token_version == before
+
+
+def test_values_matching_what_is_held_leave_them_signed_in(
+    db_session: Session, person: User
+) -> None:
+    """The user form sends every field on every save."""
+    before = person.token_version
+
+    change_identity(
+        db_session,
+        person,
+        username=person.username,
+        email=person.email.upper(),
+        password="",
+    )
+
+    assert person.token_version == before

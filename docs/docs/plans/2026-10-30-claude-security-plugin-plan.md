@@ -188,8 +188,27 @@ consecutive units, as the notes suggest for fixes 3, 5 and 7.
       (`spend_password_check` in `security.py`). The login page shows the
       lockout message.
 
-- [ ] **Fix 3: session lifetime after account changes.** Hardening of
-      when existing sessions end. Detail in the private notes.
+- [x] **Fix 3a: sessions end when an administrator changes how somebody
+      signs in.** Sessions, and reset and setup links, are revoked only by
+      a change to `token_version`. The self-service change-password and
+      reset routes moved it; an administrator setting a password, email or
+      username through `PATCH /api/users/{id}`, or deactivating and
+      reactivating an account, did not. So a session an attacker already
+      held outlived the very reset meant to end it, for up to the 7-day
+      refresh lifetime. The same route also let an administrator set their
+      own password or email with no current password, round the check the
+      profile routes make.
+
+      `change_identity` in `backend/app/users/identity.py` now ends every
+      session when the username, email or password actually changes (a
+      name change does not), through a new `end_sessions`, and
+      `deactivate_account` and `reactivate_account` call it too.
+      `update_account` refuses a caller's own password or a new email with
+      `OwnSignInOnProfile`, pointing them at the profile page; an email
+      sent unchanged, as the user form always sends it, is not refused.
+
+- [ ] **Fix 3b: session lifetime after account changes.** Hardening of
+      what a session token is tied to. Detail in the private notes.
 
 - [ ] **Fix 4: two-factor enrolment.** Hardening of the TOTP setup
       route. Detail in the private notes.

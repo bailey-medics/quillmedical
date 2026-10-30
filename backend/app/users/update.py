@@ -24,6 +24,7 @@ from sqlalchemy.orm import Session
 from app.models import User, normalise_email, org_unit_member
 from app.users.competencies import settle_competencies
 from app.users.enrolments import settle_teaching_enrolments
+from app.users.errors import OwnSignInOnProfile
 from app.users.identity import change_identity
 from app.users.membership import settle_membership
 from app.users.practice import settle_practice
@@ -179,6 +180,8 @@ def update_account(
             caller's scope has a limit.
         SelfGranting: If the caller is saving their own page with a
             profession, a competency list or a platform role on it.
+        OwnSignInOnProfile: If the caller is saving their own page with
+            a password or a new email on it.
         UserAdminError: Whatever a part refuses, in the order identity,
             competencies, membership, practice, enrolments.
     """
@@ -210,6 +213,8 @@ def update_account(
             or changes.platform_role is not None
         ),
     )
+
+    check_not_changing_own_sign_in(actor, user, changes)
 
     change_identity(
         db,
@@ -256,6 +261,34 @@ def update_account(
         settle_teaching_enrolments(
             db, actor, user, changes.teaching_enrolments
         )
+
+
+def check_not_changing_own_sign_in(
+    actor: User, user: User, changes: AccountChanges
+) -> None:
+    """Refuse a caller setting their own password or email here.
+
+    ``/auth/change-password`` and ``/auth/profile`` ask for the current
+    password before either changes, so a stolen session cannot take the
+    account over through them. This route asks for nothing like it, so
+    it may not be the way round them. The user form sends the email on
+    every save, so an address that matches what is held is not a change.
+    Operators too: they have the profile routes like anybody else.
+
+    Raises:
+        OwnSignInOnProfile: If the caller is the person, and the save
+            sets a password or a different email.
+    """
+    if user.id != actor.id:
+        return
+
+    new_email = (
+        changes.email is not None
+        and normalise_email(changes.email) != user.email
+    )
+
+    if changes.password or new_email:
+        raise OwnSignInOnProfile()
 
 
 def _org_units_they_belong_to(db: Session, user: User) -> set[int]:
