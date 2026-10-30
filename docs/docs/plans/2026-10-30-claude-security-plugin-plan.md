@@ -304,9 +304,24 @@ consecutive units, as the notes suggest for fixes 3, 5 and 7.
       the definitions, and the package, the part that runs as root, is now
       checked whatever the tag points at.
 
-- [ ] **Fix 7b: the upload scan handoff.** Hardening of how an uploaded
-      file passes from the malware scan to the transcode job. Detail in
-      the private notes.
+- [x] **Fix 7b: an uploaded file cannot be swapped after its scan.** The
+      clean verdict on a teaching upload is recorded against its object
+      key, and `after_scan` in `backend/app/features/teaching/ci_media.py`
+      then starts the transcode, which reads whatever is at that key. The
+      signed upload URL lasts six hours and can open any number of
+      sessions, so a `manage_teaching` holder could upload a harmless file,
+      let it be scanned, then finish a second upload at the same key, and
+      FFmpeg would read a file never scanned.
+
+      The private notes suggested recording the object generation and
+      pinning the transcode's read to it. A narrower fix closes the same
+      gap: `create_resumable_upload_url` in `storage.py` now signs the URL
+      with `x-goog-if-generation-match: 0`, so Google Cloud Storage lets an
+      upload finish only while nothing is stored at the key. Every upload
+      already gets a fresh `asset_id`, so nothing legitimate writes a key
+      twice, and once the first file lands the URL cannot replace it,
+      during the scan or after. The browser sends the header, which the
+      signature covers, and the source bucket's CORS rule allows it.
 
 - [ ] **Fix 5b: the current password is required for a new email
       (contract).** Make `current_password` required on

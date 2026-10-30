@@ -835,3 +835,45 @@ class TestLocalCoverImageUrl:
         assert local_cover_image_url(
             str(tmp_path), "missing", "cover.png"
         ) == ("/api/teaching/images/cover/missing/cover.png")
+
+
+class TestResumableUploadUrl:
+    """What a teaching upload URL is signed with."""
+
+    def _sign(self) -> dict[str, object]:
+        from app.features.teaching.storage import create_resumable_upload_url
+
+        blob = MagicMock()
+        blob.generate_signed_url.return_value = "https://signed.example/u"
+        mock_client = MagicMock()
+        mock_client.bucket.return_value.blob.return_value = blob
+        credentials = MagicMock()
+        credentials.service_account_email = "uploads@example.iam"
+        credentials.token = "token"
+        ms = _mock_gcs_client(mock_client)
+
+        with (
+            patch.object(_gc, "storage", ms, create=True),
+            patch("google.auth.default", return_value=(credentials, "p")),
+        ):
+            create_resumable_upload_url(
+                "source-bucket", 7, "mod-1", "asset-1", "video/mp4"
+            )
+
+        kwargs: dict[str, object] = blob.generate_signed_url.call_args.kwargs
+
+        return kwargs
+
+    def test_it_opens_a_resumable_session(self) -> None:
+        headers = self._sign()["headers"]
+
+        assert isinstance(headers, dict)
+        assert headers["x-goog-resumable"] == "start"
+
+    def test_it_cannot_replace_a_file_already_stored(self) -> None:
+        """Without this, the same URL could swap a file after its
+        malware scan passed it and before the transcode read it."""
+        headers = self._sign()["headers"]
+
+        assert isinstance(headers, dict)
+        assert headers["x-goog-if-generation-match"] == "0"

@@ -46,10 +46,15 @@ resource "google_storage_bucket" "source" {
   # after a dropped connection, GCS answers 308 with Range saying how
   # many bytes it holds. A header not exposed here is hidden from the
   # page, which could then only start again from nothing.
+  #
+  # x-goog-if-generation-match is sent by the browser on the POST, and
+  # the upload URL is signed with it, so the upload finishes only while
+  # nothing is stored at the key: a file cannot be replaced after its
+  # malware scan. Listed here so the preflight allows it.
   cors {
     origin          = [var.app_origin]
     method          = ["POST", "PUT", "OPTIONS"]
-    response_header = ["Content-Type", "Location", "Range", "x-goog-resumable"]
+    response_header = ["Content-Type", "Location", "Range", "x-goog-resumable", "x-goog-if-generation-match"]
     max_age_seconds = 3600
   }
 }
