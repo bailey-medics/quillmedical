@@ -171,7 +171,10 @@ class TestChangingYourOwnAddress:
     ) -> None:
         response = authenticated_client.patch(
             "/api/auth/profile",
-            json={"email": "Moved.House@Example.org"},
+            json={
+                "email": "Moved.House@Example.org",
+                "current_password": "TestPassword123!",
+            },
             headers={
                 "X-CSRF-Token": authenticated_client.cookies.get("XSRF-TOKEN")
                 or ""
