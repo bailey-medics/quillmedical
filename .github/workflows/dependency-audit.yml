@@ -119,4 +119,5 @@ jobs:
         The run names the package, the advisory and the version that fixes it. Update the package, or if the advisory does not apply, excuse it by name with a reason: `backend/.pip-audit-ignore` or `npmAuditIgnoreAdvisories` in `frontend/.yarnrc.yml`.
 
         *Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>
-    secrets: inherit
+    secrets:
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

@@ -10,7 +10,8 @@
 #       text: |
 #         *✅ Deployed to teaching*
 #         *Commit:* <...|sha>
-#     secrets: inherit
+#     secrets:
+#       SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 #
 # Callers pass a slack channel name and markdown message. Unknown channels cause
 # a workflow failure.
@@ -18,7 +19,7 @@
 # Callable from outside Quill - the content repos reach it through the teaching
 # pipeline. It checks out Quill by name rather than relying on the run's own
 # repository, so the channel validation script is always present. The calling
-# repository must hold SLACK_WEBHOOK_URL for `secrets: inherit` to supply it.
+# repository must hold SLACK_WEBHOOK_URL and pass it on by name.
 name: Slack notify
 
 on:
@@ -32,6 +33,11 @@ on:
         description: "Slack channel to post to (must be a valid channel name)"
         required: true
         type: string
+    # Named rather than inherited, so a caller hands over this one secret
+    # and not every secret it holds.
+    secrets:
+      SLACK_WEBHOOK_URL:
+        required: true
 
 # A called workflow cannot hold more than its caller grants, but saying
 # so here keeps it to reading, whoever calls it.

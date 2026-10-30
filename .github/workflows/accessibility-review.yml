@@ -110,4 +110,5 @@ jobs:
         the REVIEWED date in accessibility-statement.tsx and deploy the public
         site; that stops these reminders. The checklist is in the email to
         mark@quill-medical.com.
-    secrets: inherit
+    secrets:
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

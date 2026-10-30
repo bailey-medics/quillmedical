@@ -67,7 +67,8 @@ jobs:
 
         Passive scan ran; any findings are filed as GitHub issues.
         *Run:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View run>
-    secrets: inherit
+    secrets:
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 
   # ---------- Notify: weekly scan failed ----------
   # Fires only on genuine breakage (fail_action is false, so findings stay green).
@@ -83,4 +84,5 @@ jobs:
 
         The scan job did not complete - the security control may not have run.
         *Logs:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View run>
-    secrets: inherit
+    secrets:
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

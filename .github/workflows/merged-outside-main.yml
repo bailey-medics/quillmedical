@@ -73,4 +73,5 @@ jobs:
         ${{ github.event.pull_request.html_url }}
 
         It is safe in that branch: open one pull request from `${{ github.event.pull_request.base.ref }}` into `main` to carry it there. Only the bottom of a stack is merged; `just stack-sync` brings the next branch down.
-    secrets: inherit
+    secrets:
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
