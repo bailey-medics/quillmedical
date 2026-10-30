@@ -155,7 +155,9 @@ const CONNECTION_LOST =
  * upload rather than performing one. GCS answers with a session URL in
  * the `Location` header, and the bytes go there.
  *
- * The signature covers the method and those headers, so sending
+ * It is also signed with `x-goog-if-generation-match: 0`, so the
+ * upload finishes only while nothing is stored at the key. The
+ * signature covers the method and those headers, so sending
  * anything else is rejected as a mismatch. A plain `PUT` to this URL
  * fails, which is exactly how this was broken.
  */
@@ -164,6 +166,10 @@ function startResumableUpload(url: string, file: File): Promise<string> {
     const request = new XMLHttpRequest();
     request.open("POST", url);
     request.setRequestHeader("x-goog-resumable", "start");
+    // Only while nothing is stored at the key, so a file once uploaded
+    // cannot be swapped after its malware scan. The URL is signed with
+    // it, so it must be sent exactly so.
+    request.setRequestHeader("x-goog-if-generation-match", "0");
     request.setRequestHeader("Content-Type", file.type);
 
     request.addEventListener("load", () => {
