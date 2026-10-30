@@ -102,8 +102,12 @@ PASSPORT_STARTER = "owen.price"
 #: Named on the holder's sign-off requests: one signed, one still waiting.
 PASSPORT_ASSESSOR = "helen.marsh"
 PASSPORT_ADMIN = "alex.turner"
-#: Takes a module in the specs, so starts with no attempts of their own.
+#: Takes a module in the specs, and shows its result. The specs cannot pass
+#: an exam, so the one passed attempt is seeded, dated after every
+#: delegate's; the spec starts a new attempt beside it.
 LEARNER = "sam.harding"
+#: How many questions the learner's seeded attempt got right: all of them.
+LEARNER_CORRECT = 4
 #: Has an account and belongs nowhere, for the picture of adding somebody
 #: who already has one to a site.
 DELEGATE_WITH_NO_SITE = "oliver.grant"
@@ -668,6 +672,16 @@ def seed() -> None:
                         started_at=FIRST_ATTEMPT
                         + timedelta(days=day, weeks=week),
                     )
+
+            _seed_attempt(
+                db,
+                learner,
+                org_unit_id=organisation.id,
+                bank_id=bank_id,
+                version=version,
+                correct=LEARNER_CORRECT,
+                started_at=FIRST_ATTEMPT + timedelta(days=len(DELEGATES)),
+            )
             print(f"Seeded attempts at {bank_id}")
 
         db.commit()
