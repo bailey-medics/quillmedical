@@ -345,6 +345,12 @@ module "cloud_run_backend" {
       # No COOKIE_DOMAIN: unset means host-only, so a cookie set by this
       # host is never sent to another subdomain of quill-medical.com.
       FRONTEND_URL = "https://${var.lb_domains[0]}"
+      # The header the load balancer writes the client's address into, for
+      # rate limits and the access log. Must match custom_request_headers
+      # on the backend service in modules/load-balancer/main.tf. Safe only
+      # because ingress below admits nothing but the load balancer and the
+      # VPC, so no client reaches the backend without the header rewritten.
+      TRUSTED_CLIENT_IP_HEADER = "X-Quill-Client-IP"
       # The app's own origin and nothing else. Unset, the backend falls back
       # to ["*"], and with allow_credentials Starlette then answers any
       # origin by naming it as allowed. A JSON list, because the setting is

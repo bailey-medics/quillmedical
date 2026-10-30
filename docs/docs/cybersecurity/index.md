@@ -88,6 +88,10 @@ Rate limiting restricts how many requests a user can make in a given time window
 | `POST /api/auth/totp/verify`     | 5 per minute |
 | `POST /api/auth/totp/disable`    | 5 per minute |
 
+Each limit is per client address, read by `backend/app/client_address.py`. In production that is the `X-Quill-Client-IP` header the load balancer writes, which overwrites any header of that name a client sends, and never the leading entries of `X-Forwarded-For`, which the client writes. Elsewhere it is the connection's peer.
+
+Wrong two-factor codes are also counted per account, whatever the address: three in a row lock two-factor sign-in and enrolment for that account for 15 minutes (RFC 6238 section 5.1), and a right code clears the count. A login naming no account still checks the password against a stand-in hash, so the time taken does not say which usernames exist.
+
 In production, **Google Cloud Platform (GCP) Cloud Armor** provides additional global rate limiting at the load balancer level: 500 requests a minute per IP address. That one rule is all the policy holds. It has no rules that look for attack patterns, so it is not a web application firewall.
 
 ### Anti-enumeration

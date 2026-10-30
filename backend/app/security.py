@@ -10,7 +10,9 @@ All functions use industry-standard algorithms and handle secrets securely.
 """
 
 import binascii
+import functools
 import hmac
+import secrets
 from datetime import UTC, datetime, timedelta
 from typing import Any, NamedTuple
 
@@ -88,6 +90,30 @@ def verify_password(password: str, password_hash: str) -> bool:
         return _ph.verify(password_hash, password)
     except VerifyMismatchError:
         return False
+
+
+@functools.cache
+def _stand_in_hash() -> str:
+    """A hash of no account's password, made once under today's settings."""
+    return _ph.hash(secrets.token_urlsafe(32))
+
+
+def spend_password_check(password: str) -> None:
+    """Take as long as checking a password, for a login with no account.
+
+    Without it, a login naming no account answers before any Argon2 work
+    and one naming a real account answers after it, so the time taken
+    says which usernames exist. Checking against a stand-in hash makes
+    both cost the same. The answer is thrown away.
+
+    Args:
+        password: The password the caller sent, so the work done is the
+            same as for a real check.
+    """
+    try:
+        _ph.verify(_stand_in_hash(), password or " ")
+    except VerifyMismatchError:
+        pass
 
 
 def password_needs_rehash(password_hash: str) -> bool:

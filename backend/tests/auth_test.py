@@ -352,6 +352,74 @@ class TestLogin:
         assert second.status_code == 400
         assert second.json()["detail"]["error_code"] == "invalid_totp"
 
+    def test_three_wrong_codes_lock_two_factor_sign_in(
+        self, test_client: TestClient, test_user: User, db_session
+    ):
+        """After the third wrong code in a row, even the right code is
+        refused until the lockout ends, so guessing gets nowhere."""
+        import pyotp
+
+        test_user.totp_secret = generate_totp_secret()
+        test_user.is_totp_enabled = True
+        db_session.commit()
+        totp = pyotp.TOTP(test_user.totp_secret)
+        wrong = str((int(totp.now()) + 500_000) % 1_000_000).zfill(6)
+        sign_in = {"username": "testuser", "password": "TestPassword123!"}
+
+        for _ in range(3):
+            refused = test_client.post(
+                "/api/auth/login", json={**sign_in, "totp_code": wrong}
+            )
+            assert refused.json()["detail"]["error_code"] == "invalid_totp"
+
+        locked = test_client.post(
+            "/api/auth/login", json={**sign_in, "totp_code": totp.now()}
+        )
+
+        assert locked.status_code == 429
+        assert locked.json()["detail"]["error_code"] == "totp_locked"
+        assert "15 minutes" in locked.json()["detail"]["message"]
+
+    def test_two_wrong_codes_then_the_right_one_signs_in(
+        self, test_client: TestClient, test_user: User, db_session
+    ):
+        import pyotp
+
+        test_user.totp_secret = generate_totp_secret()
+        test_user.is_totp_enabled = True
+        db_session.commit()
+        totp = pyotp.TOTP(test_user.totp_secret)
+        wrong = str((int(totp.now()) + 500_000) % 1_000_000).zfill(6)
+        sign_in = {"username": "testuser", "password": "TestPassword123!"}
+
+        for _ in range(2):
+            test_client.post(
+                "/api/auth/login", json={**sign_in, "totp_code": wrong}
+            )
+        right = test_client.post(
+            "/api/auth/login", json={**sign_in, "totp_code": totp.now()}
+        )
+
+        assert right.status_code == 200
+        db_session.refresh(test_user)
+        assert test_user.totp_failed_attempts == 0
+
+    def test_an_unknown_username_still_costs_a_password_check(
+        self, test_client: TestClient, monkeypatch: pytest.MonkeyPatch
+    ):
+        """Otherwise the time taken says which usernames exist."""
+        spent: list[str] = []
+        monkeypatch.setattr(main, "spend_password_check", spent.append)
+
+        response = test_client.post(
+            "/api/auth/login",
+            json={"username": "nobody-here", "password": "a guess"},
+        )
+
+        assert response.status_code == 400
+        assert response.json()["detail"] == "Invalid credentials"
+        assert spent == ["a guess"]
+
 
 class TestLogout:
     """Test user logout endpoint."""
@@ -571,6 +639,32 @@ class TestTOTPVerify:
             "/api/auth/totp/verify", json={"code": "123456"}
         )
         assert response.status_code == 401
+
+
+class TestTOTPVerifyLockout:
+    def test_three_wrong_codes_lock_enrolment_too(
+        self, authenticated_client: TestClient
+    ):
+        """The verify route counts wrong codes the same way, so a stolen
+        session cannot guess its way through enrolment either."""
+        authenticated_client.post(
+            "/api/auth/totp/setup", headers=_csrf(authenticated_client)
+        )
+
+        for _ in range(3):
+            authenticated_client.post(
+                "/api/auth/totp/verify",
+                json={"code": "abcdef"},
+                headers=_csrf(authenticated_client),
+            )
+        locked = authenticated_client.post(
+            "/api/auth/totp/verify",
+            json={"code": "123456"},
+            headers=_csrf(authenticated_client),
+        )
+
+        assert locked.status_code == 429
+        assert locked.json()["detail"]["error_code"] == "totp_locked"
 
 
 class TestTOTPDisable:
