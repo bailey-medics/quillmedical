@@ -54,7 +54,8 @@ jobs:
         id: reached
         env:
           GH_TOKEN: ${{ github.token }}
-        run: bash .github/scripts/ci/reached-main.sh "${{ github.repository }}" "${{ github.event.pull_request.merge_commit_sha }}"
+          MERGE_COMMIT: ${{ github.event.pull_request.merge_commit_sha }}
+        run: bash .github/scripts/ci/reached-main.sh "$GITHUB_REPOSITORY" "$MERGE_COMMIT"
 
   notify:
     name: A pull request missed main
