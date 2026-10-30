@@ -1,0 +1,33 @@
+{#-
+  Tell the current address that somebody asked to move the account to
+  another. Sent with the confirmation to the new address, so a change
+  the account holder did not ask for is seen where they already read.
+  Context:
+    new_email  the address the change was asked for
+    name       who to greet: their full name, or their username where
+               the account has none
+    username   the account's username
+    email      the current address this is sent to, said back to them
+-#}
+{% extends "base.html.j2" %}
+{% import "_components.html.j2" as c with context %}
+{% block subject %}A change to your Quill email address was asked for{% endblock subject %}
+{% block preheader %}Nothing changes unless the new address confirms it.{% endblock preheader %}
+{% block body %}
+{{ c.heading("Your email *change*") }}
+{{ c.paragraph("Hi " ~ name ~ ",") }}
+{% call c.paragraph() %}Somebody signed in as <strong>{{ username }}</strong> asked to move this Quill account to <strong>{{ new_email }}</strong>. Nothing changes unless that address confirms it.{% endcall %}
+{{ c.paragraph("If that was you, there is nothing to do here. If it was not, change your password now and tell your Quill administrator.") }}
+{{ c.small("This email was sent to " ~ email ~ ".") }}
+{% endblock body %}
+{% block reason %}You are receiving this because this is the email address on a Quill account.{% endblock reason %}
+
+{% block text %}
+Hi {{ name }},
+
+Somebody signed in as {{ username }} asked to move this Quill account to {{ new_email }}. Nothing changes unless that address confirms it.
+
+If that was you, there is nothing to do here. If it was not, change your password now and tell your Quill administrator.
+
+This email was sent to {{ email }}.
+{% endblock text %}

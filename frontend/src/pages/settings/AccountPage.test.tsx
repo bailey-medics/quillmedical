@@ -96,8 +96,10 @@ describe("AccountPage", () => {
     });
   });
 
-  it("calls profile API when email is changed", async () => {
-    const mockPatch = vi.fn().mockResolvedValue({ detail: "Profile updated" });
+  it("sends the current password with a new email", async () => {
+    const mockPatch = vi
+      .fn()
+      .mockResolvedValue({ detail: "Check your new email" });
     (apiModule.api.patch as ReturnType<typeof vi.fn>) = mockPatch;
 
     const user = userEvent.setup();
@@ -106,12 +108,79 @@ describe("AccountPage", () => {
     const emailField = screen.getByLabelText(/email/i);
     await user.clear(emailField);
     await user.type(emailField, "new@example.com");
+    await user.type(screen.getByLabelText(/current password/i), "OldPass123!");
     await user.click(screen.getByTestId("submit-button"));
 
     await waitFor(() => {
       expect(mockPatch).toHaveBeenCalledWith("/auth/profile", {
         email: "new@example.com",
+        current_password: "OldPass123!",
       });
+    });
+    expect(
+      await screen.findByText(/Check new@example.com for a link/),
+    ).toBeInTheDocument();
+  });
+
+  it("asks for the current password before changing the email", async () => {
+    const mockPatch = vi.fn();
+    (apiModule.api.patch as ReturnType<typeof vi.fn>) = mockPatch;
+
+    const user = userEvent.setup();
+    renderWithRouter(<AccountPage />);
+
+    const emailField = screen.getByLabelText(/email/i);
+    await user.clear(emailField);
+    await user.type(emailField, "new@example.com");
+
+    expect(screen.getByText("Needed to change your email")).toBeInTheDocument();
+    expect(screen.getByTestId("submit-button")).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
+
+    await user.type(screen.getByLabelText(/current password/i), "OldPass123!");
+
+    expect(screen.getByTestId("submit-button")).not.toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
+    expect(mockPatch).not.toHaveBeenCalled();
+  });
+
+  it("changes the password before asking for a new email", async () => {
+    const calls: string[] = [];
+    const mockPost = vi.fn().mockImplementation(async (url: string) => {
+      calls.push(url);
+      return { detail: "Password changed" };
+    });
+    const mockPatch = vi.fn().mockImplementation(async (url: string) => {
+      calls.push(url);
+      return { detail: "Check your new email" };
+    });
+    (apiModule.api.post as ReturnType<typeof vi.fn>) = mockPost;
+    (apiModule.api.patch as ReturnType<typeof vi.fn>) = mockPatch;
+
+    const user = userEvent.setup();
+    renderWithRouter(<AccountPage />);
+
+    const emailField = screen.getByLabelText(/email/i);
+    await user.clear(emailField);
+    await user.type(emailField, "new@example.com");
+    await user.type(screen.getByLabelText(/current password/i), "OldPass123!");
+    await user.type(screen.getByLabelText(/^new password/i), "NewPass456!");
+    await user.type(
+      screen.getByLabelText(/confirm new password/i),
+      "NewPass456!",
+    );
+    await user.click(screen.getByTestId("submit-button"));
+
+    await waitFor(() => {
+      expect(calls).toEqual(["/auth/change-password", "/auth/profile"]);
+    });
+    expect(mockPatch).toHaveBeenCalledWith("/auth/profile", {
+      email: "new@example.com",
+      current_password: "NewPass456!",
     });
   });
 

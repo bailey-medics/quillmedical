@@ -1,0 +1,39 @@
+{#-
+  Confirm a new email address. Sent to the new address when somebody
+  asks, on their account page, to move their account to it. The account
+  keeps its old address until the link is followed. Context:
+    confirm_url  the link that makes the change
+    ttl_minutes  how long the link lasts
+    name         who to greet: their full name, or their username where
+                 the account has none
+    username     the account's username, which they log in with
+    email        the new address this is sent to, said back to them
+-#}
+{% extends "base.html.j2" %}
+{% import "_components.html.j2" as c with context %}
+{% block subject %}Confirm your new Quill email address{% endblock subject %}
+{% block preheader %}The link lasts {{ ttl_minutes }} minutes.{% endblock preheader %}
+{% block body %}
+{{ c.heading("Confirm your *new email address*") }}
+{{ c.paragraph("Hi " ~ name ~ ",") }}
+{{ c.paragraph("You asked to move your Quill account to this address. Your account keeps its old address until you confirm.") }}
+{% call c.paragraph() %}Your username is <strong>{{ username }}</strong>. You will be asked to log in again once the change is made.{% endcall %}
+{{ c.button("Confirm your new email", confirm_url) }}
+{{ c.small("This link expires in " ~ ttl_minutes ~ " minutes.") }}
+{{ c.small("This email was sent to " ~ email ~ ".") }}
+{% endblock body %}
+{% block reason %}You are receiving this because this address was entered as the new email for a Quill account.{% endblock reason %}
+
+{% block text %}
+Hi {{ name }},
+
+You asked to move your Quill account to this address. Your account keeps its old address until you confirm.
+
+Your username is {{ username }}. You will be asked to log in again once the change is made.
+
+Confirm your new email: {{ confirm_url }}
+
+This link expires in {{ ttl_minutes }} minutes.
+
+This email was sent to {{ email }}.
+{% endblock text %}
