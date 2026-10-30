@@ -1093,8 +1093,10 @@ def totp_setup(
 ) -> TotpSetupOut:
     """TOTP Two-Factor Setup.
 
-    Generates a new TOTP secret for the authenticated user (or reuses existing)
-    and returns a provision URI for QR code display. The frontend renders this
+    Generates a new TOTP secret for the authenticated user (or reuses one
+    not yet verified) and returns a provision URI for QR code display.
+    Refused with 409 once two-factor is on, so the live secret is never
+    returned. The frontend renders this
     URI as a QR code that users scan with their authenticator app (Google
     Authenticator, Authy, etc.). The secret is saved to the database but TOTP
     is not enabled until the user verifies a code with /auth/totp/verify.
@@ -1122,6 +1124,24 @@ def totp_setup(
     Returns:
         TotpSetupOut: Provisioning URI encoded with issuer and account name.
     """
+    # Once two-factor is on, its secret is never handed out again: it is
+    # the second factor itself, and anybody holding the session could
+    # otherwise read it and make codes for good. Setting up a new
+    # authenticator goes through turning two-factor off, which asks for
+    # the password. Until a code is verified the secret is not yet a
+    # factor, so it is reused, and the page can be opened twice.
+    if current_user.is_totp_enabled:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "message": (
+                    "Two-factor is already on. Turn it off first to set "
+                    "up a new authenticator."
+                ),
+                "error_code": "totp_already_enabled",
+            },
+        )
+
     if not getattr(current_user, "totp_secret", None):
         current_user.totp_secret = generate_totp_secret()
 

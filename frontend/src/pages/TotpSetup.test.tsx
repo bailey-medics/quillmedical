@@ -244,4 +244,26 @@ describe("TotpSetup", () => {
 
     expect(mockNavigate).toHaveBeenCalledWith("/settings");
   });
+
+  it("says to turn two-factor off first when it is already on", async () => {
+    vi.mocked(apiModule.api.post).mockRejectedValue(
+      Object.assign(
+        new Error(
+          "Two-factor is already on. Turn it off first to set up a new authenticator.",
+        ),
+        { error_code: "totp_already_enabled" },
+      ),
+    );
+
+    renderWithRouter(<TotpSetup />);
+
+    expect(
+      await screen.findByText(
+        "Two-factor is already on. Turn it off first to set up a new authenticator.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("Failed to get provisioning URI"),
+    ).not.toBeInTheDocument();
+  });
 });

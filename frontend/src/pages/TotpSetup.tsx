@@ -80,8 +80,15 @@ export default function TotpSetup() {
           "/auth/totp/setup",
         );
         setProvisionUri(out.provision_uri);
-      } catch {
-        setSetupError("Failed to get provisioning URI");
+      } catch (err: unknown) {
+        // Once two-factor is on, the backend will not hand its secret
+        // out again, and says to turn it off first. Pass that on.
+        const code = (err as Error & { error_code?: string }).error_code;
+        setSetupError(
+          code === "totp_already_enabled" && err instanceof Error
+            ? err.message
+            : "Failed to get provisioning URI",
+        );
       }
     }
     void fetchUri();
