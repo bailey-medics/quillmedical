@@ -171,13 +171,18 @@ class UpdateProfileIn(BaseModel):
 
     Attributes:
         full_name: Updated display name.
-        email: Updated email address (resets email_verified).
+        email: A new address. Held as pending, and a link sent to it,
+            until the link is followed.
+        current_password: The account's password, checked when the email
+            changes. Optional for now, so a page loaded before it was
+            added still works; it becomes required in a later release.
     """
 
     model_config = ConfigDict(extra="forbid")
 
     full_name: str | None = Field(default=None, max_length=MAX_FULL_NAME)
     email: EmailStr | None = Field(default=None, max_length=MAX_EMAIL)
+    current_password: str | None = Field(default=None, max_length=MAX_PASSWORD)
 
 
 class DetailResponse(BaseModel):
