@@ -207,8 +207,24 @@ consecutive units, as the notes suggest for fixes 3, 5 and 7.
       `OwnSignInOnProfile`, pointing them at the profile page; an email
       sent unchanged, as the user form always sends it, is not refused.
 
-- [ ] **Fix 3b: session lifetime after account changes.** Hardening of
-      what a session token is tied to. Detail in the private notes.
+- [x] **Fix 3b: sessions name the account by id, not by username.**
+      Access and refresh tokens carried the username in `sub`, the CSRF
+      token was signed for the username, and `get_current_user` and
+      `/auth/refresh` looked the account up by it. Every new account starts
+      at `token_version` 0, so once a username was freed by a rename, a
+      refresh token made for it opened whichever account was given the
+      name next, with no password and no second factor.
+
+      Tokens now carry the id in a new required `uid` claim, with `sub`
+      the same id as a string (RFC 7519 wants a string there), and the CSRF
+      token is signed for the id. Accounts are looked up with `db.get` by
+      id in `backend/app/deps.py` and the refresh route. `uid` is
+      required, rather than `sub` re-read as a number, because an old
+      token's `sub` is a username, and a username of digits would read as
+      somebody's id. Old tokens have no `uid`, so they are refused, and
+      everybody signed in to App production signs in once more after this
+      deploys, as agreed before the run. A token whose `sub` and `uid`
+      disagree is refused too.
 
 - [ ] **Fix 4: two-factor enrolment.** Hardening of the TOTP setup
       route. Detail in the private notes.

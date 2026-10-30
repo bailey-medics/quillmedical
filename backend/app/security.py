@@ -159,9 +159,14 @@ INVITE_TYPE = "invite"
 
 
 class SessionClaims(NamedTuple):
-    """What an access or a refresh token says, once it has been read."""
+    """What an access or a refresh token says, once it has been read.
 
-    username: str
+    The account is named by its id, which never changes, and not by its
+    username, which can: a token naming a username would follow the name
+    to whichever account is given it next.
+    """
+
+    user_id: int
     token_version: int
 
 
@@ -207,8 +212,33 @@ def _int_claim(data: dict[str, Any], name: str) -> int:
 
 
 def _session_claims(data: dict[str, Any]) -> SessionClaims:
-    """The claims an access or a refresh token carries."""
-    return SessionClaims(_str_claim(data, "sub"), _int_claim(data, "tv"))
+    """The claims an access or a refresh token carries.
+
+    The account is read from ``uid``, never from ``sub``. A token made
+    before ``uid`` existed carries a username in ``sub``, and a username
+    of digits would otherwise read as somebody's id; such a token has no
+    ``uid``, so it is refused and its holder signs in again. ``sub``
+    must still say the same id, so a token that disagrees with itself is
+    not one this app made.
+    """
+    user_id = _int_claim(data, "uid")
+
+    if _str_claim(data, "sub") != str(user_id):
+        raise TokenNotAcceptable("Token names two accounts")
+
+    return SessionClaims(user_id, _int_claim(data, "tv"))
+
+
+def _check_user_id(user_id: int) -> None:
+    """Refuse an account id no account could have.
+
+    Raises:
+        ValueError: If it is not a whole number above zero.
+    """
+    if isinstance(user_id, bool) or not isinstance(user_id, int):
+        raise ValueError("User id must be a whole number")
+    if user_id < 1:
+        raise ValueError("User id must be above zero")
 
 
 def _read(token: str, kind: str, not_that_kind: str) -> dict[str, Any]:
@@ -243,10 +273,10 @@ def _read(token: str, kind: str, not_that_kind: str) -> dict[str, Any]:
     return data
 
 
-def create_access_token(username: str, token_version: int = 0) -> str:
+def create_access_token(user_id: int, token_version: int = 0) -> str:
     """Create JWT Access Token.
 
-    Creates a short-lived JWT access token naming the user. The token is
+    Creates a short-lived JWT access token naming the user by id. The token is
     signed with HS256 and expires after ACCESS_TTL_MIN minutes (default:
     15). Used for authenticating API requests.
 
@@ -258,20 +288,22 @@ def create_access_token(username: str, token_version: int = 0) -> str:
     the size of a cookie.
 
     Args:
-        username: Who the token is for.
+        user_id: The id of the account the token is for.
         token_version: User's token version for session invalidation.
 
     Returns:
         str: Encoded JWT access token valid for ACCESS_TTL_MIN minutes.
 
     Raises:
-        ValueError: If the username is empty.
+        ValueError: If the id is not one an account could have.
     """
-    if not username or not username.strip():
-        raise ValueError("Username cannot be empty")
+    _check_user_id(user_id)
 
+    # ``sub`` must be a string (RFC 7519), so the id goes in it as one for
+    # anything that reads tokens generally. This app reads ``uid``.
     payload: dict[str, Any] = {
-        "sub": username,
+        "sub": str(user_id),
+        "uid": user_id,
         "type": ACCESS_TYPE,
         "tv": token_version,
         "exp": _now() + timedelta(minutes=settings.ACCESS_TTL_MIN),
@@ -284,7 +316,7 @@ def create_access_token(username: str, token_version: int = 0) -> str:
     )
 
 
-def create_refresh_token(username: str, token_version: int = 0) -> str:
+def create_refresh_token(user_id: int, token_version: int = 0) -> str:
     """Create JWT Refresh Token.
 
     Creates a long-lived JWT refresh token used to obtain new access tokens
@@ -292,20 +324,20 @@ def create_refresh_token(username: str, token_version: int = 0) -> str:
     (default: 7 days). Stored in HTTP-only cookie with restricted path.
 
     Args:
-        username: Who the token is for.
+        user_id: The id of the account the token is for.
         token_version: User's token version for session invalidation.
 
     Returns:
         str: Encoded JWT refresh token valid for REFRESH_TTL_DAYS days.
 
     Raises:
-        ValueError: If the username is empty.
+        ValueError: If the id is not one an account could have.
     """
-    if not username or not username.strip():
-        raise ValueError("Username cannot be empty")
+    _check_user_id(user_id)
 
     payload: dict[str, Any] = {
-        "sub": username,
+        "sub": str(user_id),
+        "uid": user_id,
         "type": REFRESH_TYPE,
         "tv": token_version,
         "exp": _now() + timedelta(days=settings.REFRESH_TTL_DAYS),
@@ -329,11 +361,11 @@ def decode_token(token: str) -> SessionClaims:
         token: The token.
 
     Returns:
-        The username and token version it carries.
+        The account id and token version it carries.
 
     Raises:
         TokenNotAcceptable: If the token is not valid, is not an access
-            token, or is missing its username or token version.
+            token, or is missing its account id or token version.
     """
     data = _read(token, ACCESS_TYPE, "Not an access token")
 
@@ -350,11 +382,11 @@ def decode_refresh_token(token: str) -> SessionClaims:
         token: The token.
 
     Returns:
-        The username and token version it carries.
+        The account id and token version it carries.
 
     Raises:
         TokenNotAcceptable: If the token is not valid, is not a refresh
-            token, or is missing its username or token version.
+            token, or is missing its account id or token version.
     """
     data = _read(token, REFRESH_TYPE, "Not a refresh token")
 
@@ -365,7 +397,7 @@ def decode_refresh_token(token: str) -> SessionClaims:
 _csrf = URLSafeSerializer(settings.JWT_SECRET.get_secret_value(), salt="csrf")
 
 
-def make_csrf(username: str) -> str:
+def make_csrf(user_id: int) -> str:
     """Create CSRF Protection Token.
 
     Generates a CSRF token for protecting state-changing operations against
@@ -374,35 +406,37 @@ def make_csrf(username: str) -> str:
     for POST/PUT/PATCH/DELETE requests.
 
     Args:
-        username: Who the token is tied to.
+        user_id: The id of the account the token is tied to.
 
     Returns:
         str: URL-safe CSRF token signed with JWT_SECRET.
 
     Raises:
-        ValueError: If the username is empty.
+        ValueError: If the id is not one an account could have.
     """
-    if not username or not username.strip():
-        raise ValueError("Username cannot be empty")
+    _check_user_id(user_id)
 
-    return _csrf.dumps({"sub": username})
+    return _csrf.dumps({"uid": user_id})
 
 
-def verify_csrf(token: str, username: str) -> bool:
+def verify_csrf(token: str, user_id: int) -> bool:
     """Verify CSRF Token.
 
-    Verifies a CSRF token matches the expected username. Used by the
+    Verifies a CSRF token matches the expected account. Used by the
     require_csrf dependency to protect state-changing operations. Returns
-    False when the signature is bad or the username is another user's.
+    False when the signature is bad or the account is another user's.
+    A token signed for a username, as they were before, names no account
+    id and is refused.
     Only a bad signature is caught: anything else raised here is a fault
     in our code, and surfaces rather than reading as a wrong token.
 
     Args:
         token: CSRF token from X-CSRF-Token header.
-        username: Who the request's access token names.
+        user_id: The account the request's access token names.
 
     Returns:
-        bool: True if token is valid and username matches, False otherwise.
+        bool: True if token is valid and the account matches, False
+        otherwise.
     """
     try:
         data = _csrf.loads(token)
@@ -411,11 +445,11 @@ def verify_csrf(token: str, username: str) -> bool:
     if not isinstance(data, dict):
         return False
 
-    signed_username = data.get("sub")
-    if not isinstance(signed_username, str):
+    signed_id = data.get("uid")
+    if isinstance(signed_id, bool) or not isinstance(signed_id, int):
         return False
 
-    return hmac.compare_digest(signed_username.encode(), username.encode())
+    return hmac.compare_digest(str(signed_id).encode(), str(user_id).encode())
 
 
 def generate_totp_secret() -> str:
