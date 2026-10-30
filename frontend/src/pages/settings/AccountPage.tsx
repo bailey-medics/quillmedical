@@ -37,18 +37,23 @@ function AccountFields() {
   const { state } = useAuth();
   const { methods, formState } = useFormContext<AccountFormValues>();
   const newPasswordValue = methods.watch("newPassword");
+  const emailValue = methods.watch("email");
+
+  const currentEmail = state.status === "authenticated" ? state.user.email : "";
 
   useEffect(() => {
     if (formState === "success") {
+      // The email shown is the one the account has, not the one typed:
+      // a new address waits until the link sent to it is followed.
       methods.reset({
         fullName: methods.getValues("fullName"),
-        email: methods.getValues("email"),
+        email: currentEmail,
         currentPassword: "",
         newPassword: "",
         confirmPassword: "",
       });
     }
-  }, [formState, methods]);
+  }, [formState, methods, currentEmail]);
 
   const username = state.status === "authenticated" ? state.user.username : "";
 
@@ -77,10 +82,17 @@ function AccountFields() {
           <Divider my="sm" />
           <PasswordField
             label="Current password"
+            description={
+              emailValue !== currentEmail
+                ? "Needed to change your email"
+                : undefined
+            }
             {...methods.register("currentPassword", {
               validate: (v: string) => {
                 const newPw = methods.getValues("newPassword");
                 if (newPw && !v) return "Current password is required";
+                if (methods.getValues("email") !== currentEmail && !v)
+                  return "Enter your current password to change your email";
                 return true;
               },
             })}
@@ -142,21 +154,8 @@ export default function AccountPage() {
     const emailChanged =
       state.status === "authenticated" && data.email !== state.user.email;
 
-    if (nameChanged || emailChanged) {
-      try {
-        await api.patch("/auth/profile", {
-          ...(nameChanged ? { full_name: data.fullName } : {}),
-          ...(emailChanged ? { email: data.email } : {}),
-        });
-        profileUpdated = true;
-      } catch (err) {
-        errors.push(
-          err instanceof Error ? err.message : "Failed to update profile",
-        );
-      }
-    }
-
-    // Change password if fields are filled
+    // The password first: changing it ends every session, which would
+    // stop a link to confirm a new email that had just been sent.
     if (data.newPassword) {
       try {
         await api.post("/auth/change-password", {
@@ -167,6 +166,27 @@ export default function AccountPage() {
       } catch (err) {
         errors.push(
           err instanceof Error ? err.message : "Failed to change password",
+        );
+      }
+    }
+
+    if (nameChanged || emailChanged) {
+      try {
+        await api.patch("/auth/profile", {
+          ...(nameChanged ? { full_name: data.fullName } : {}),
+          ...(emailChanged
+            ? {
+                email: data.email,
+                current_password: passwordChanged
+                  ? data.newPassword
+                  : data.currentPassword,
+              }
+            : {}),
+        });
+        profileUpdated = true;
+      } catch (err) {
+        errors.push(
+          err instanceof Error ? err.message : "Failed to update profile",
         );
       }
     }
@@ -188,7 +208,10 @@ export default function AccountPage() {
 
     const parts: string[] = [];
     if (nameChanged && profileUpdated) parts.push("Full name changed.");
-    if (emailChanged && profileUpdated) parts.push("Email changed.");
+    if (emailChanged && profileUpdated)
+      parts.push(
+        `Check ${data.email} for a link to confirm your new email. Your email stays as it is until then.`,
+      );
     if (passwordChanged) parts.push("Password changed.");
 
     return {

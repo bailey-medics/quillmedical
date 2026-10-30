@@ -130,7 +130,9 @@ from app.schemas.patients import (
     AcceptInviteOut,
 )
 from app.security import (
+    EmailChangeClaims,
     create_access_token,
+    create_email_change_token,
     create_email_verify_token,
     create_password_reset_token,
     create_refresh_token,
@@ -141,11 +143,13 @@ from app.security import (
     password_needs_rehash,
     spend_password_check,
     totp_provisioning_uri,
+    verify_email_change_token,
     verify_email_verify_token,
     verify_password,
     verify_password_reset_token,
 )
 from app.users.errors import UserAdminError
+from app.users.identity import end_sessions
 from app.users.invites import accept_external_invite
 from app.users.register import (
     Registration,
@@ -815,6 +819,50 @@ def _take_back_registration(db: Session, user_id: int) -> None:
         )
 
 
+def _confirm_email_change(
+    db: Session, change: EmailChangeClaims
+) -> DetailResponse:
+    """Move an account to the address its change link was sent to.
+
+    The link must still match what is waiting: the same account, the
+    address it holds as pending, and the sessions it had when the link
+    was made. A second change asked for since, or a password changed,
+    makes an older link stop working. The address must still be free.
+
+    The account's sessions end with the change, as they do whenever the
+    address somebody signs in by changes.
+
+    Raises:
+        HTTPException: 400 if the link no longer matches, or another
+            account has taken the address meanwhile.
+    """
+    user = db.get(User, change.user_id)
+
+    if (
+        user is None
+        or not user.is_active
+        or user.pending_email != change.email
+        or user.token_version != change.token_version
+    ):
+        raise HTTPException(status_code=400, detail="Invalid or expired token")
+
+    taken = db.scalar(
+        select(User.id).where(User.email == change.email, User.id != user.id)
+    )
+
+    if taken:
+        raise HTTPException(
+            status_code=400, detail="Email address is already in use"
+        )
+
+    user.email = change.email
+    user.email_verified = True
+    user.pending_email = None
+    end_sessions(user)
+
+    return DetailResponse(detail="verified")
+
+
 @router.post("/auth/verify-email", response_model=DetailResponse)
 @limiter.limit("10/minute")
 def verify_email(
@@ -837,6 +885,11 @@ def verify_email(
     Raises:
         HTTPException: 400 if the token is invalid or expired.
     """
+    change = verify_email_change_token(data.token)
+
+    if change is not None:
+        return _confirm_email_change(db, change)
+
     email = verify_email_verify_token(data.token)
 
     if not email:
@@ -1446,45 +1499,106 @@ def update_profile(
 ) -> DetailResponse:
     """Update the current user's profile.
 
-    Allows updating full_name and email. If email is changed,
-    email_verified is reset to False. Username cannot be changed.
+    Allows updating full_name and email. Username cannot be changed.
+
+    A new email is not taken at once. It is held as ``pending_email`` and
+    a link is sent to it; ``email`` changes only when that link is
+    followed, through ``/auth/verify-email``. Until then password resets
+    keep going to the address already proven. The current address is
+    told a change was asked for, so one its holder did not ask for is
+    seen where they already read.
+
+    The current password, when sent, must be right. It is optional only
+    while pages loaded before it was added are still open, and becomes
+    required in a later release.
 
     Args:
-        data: Profile update payload (full_name, email - both optional).
+        data: Profile update payload (full_name, email, current_password).
         current_user: Currently authenticated user (with CSRF validation).
         db: Database session for updating user.
 
     Returns:
-        dict: Success response with {"detail": "Profile updated"}.
+        DetailResponse: ``Profile updated``, or ``Check your new email``
+        when a new address is waiting to be confirmed.
 
     Raises:
-        HTTPException: 400 if no fields provided or email already taken.
+        HTTPException: 400 if no fields provided, the email is already
+            taken, or the current password sent is wrong.
     """
     if data.full_name is None and data.email is None:
         raise HTTPException(status_code=400, detail="No fields to update")
 
+    new_email: str | None = None
+
+    if data.email is not None:
+        candidate = normalise_email(data.email)
+        if candidate != (current_user.email or "").strip().lower():
+            new_email = candidate
+
+    if new_email is not None and data.current_password is not None:
+        if not verify_password(
+            data.current_password, current_user.password_hash
+        ):
+            raise HTTPException(
+                status_code=400, detail="Current password is incorrect"
+            )
+
+    if new_email is not None:
+        existing = db.execute(
+            select(User.id).where(
+                User.email == new_email, User.id != current_user.id
+            )
+        ).scalar_one_or_none()
+        if existing:
+            raise HTTPException(
+                status_code=400,
+                detail="Email address is already in use",
+            )
+
     if data.full_name is not None:
         current_user.full_name = data.full_name.strip()
 
-    if data.email is not None:
-        new_email = normalise_email(data.email)
-        if new_email != (current_user.email or "").strip().lower():
-            existing = db.execute(
-                select(User.id).where(
-                    User.email == new_email, User.id != current_user.id
-                )
-            ).scalar_one_or_none()
-            if existing:
-                raise HTTPException(
-                    status_code=400,
-                    detail="Email address is already in use",
-                )
-            current_user.email = new_email
-            current_user.email_verified = False
-
     db.add(current_user)
 
-    return DetailResponse(detail="Profile updated")
+    if new_email is None:
+        return DetailResponse(detail="Profile updated")
+
+    current_user.pending_email = new_email
+    token = create_email_change_token(
+        current_user.id, new_email, current_user.token_version
+    )
+    confirm_url = f"{settings.FRONTEND_URL}/verify-email?token={token}"
+
+    send_email(
+        to=new_email,
+        **send_args(
+            render_email(
+                "email_change_confirm.html.j2",
+                "quill",
+                {
+                    **account_email_values(current_user),
+                    "email": new_email,
+                    "confirm_url": confirm_url,
+                    "ttl_minutes": settings.EMAIL_VERIFY_TTL_MIN,
+                },
+            )
+        ),
+    )
+    send_email(
+        to=current_user.email,
+        **send_args(
+            render_email(
+                "email_change_notice.html.j2",
+                "quill",
+                {
+                    **account_email_values(current_user),
+                    "new_email": new_email,
+                },
+            )
+        ),
+    )
+
+    return DetailResponse(detail="Check your new email")
 
 
 @router.post("/auth/refresh", response_model=RefreshOut)

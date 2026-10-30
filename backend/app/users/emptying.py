@@ -87,6 +87,7 @@ COLUMN_RULES: dict[str, Rule] = {
     "totp_last_step": "wiped",
     "totp_failed_attempts": "wiped",
     "totp_locked_until": "wiped",
+    "pending_email": "wiped",
     # Stays false. An emptied account is a closed one.
     "is_active": "kept",
     # When it was closed and when it was emptied: dates, not a person.
@@ -264,6 +265,7 @@ def _wipe_the_row(user: User, now: datetime) -> None:
     user.totp_last_step = None
     user.totp_failed_attempts = 0
     user.totp_locked_until = None
+    user.pending_email = None
     user.email_verified = False
     user.token_version += 1
     user.marketing_emails = False

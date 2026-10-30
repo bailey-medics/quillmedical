@@ -177,6 +177,31 @@ def previews() -> list[Preview]:
             },
         ),
         Preview(
+            id="email-change-confirm",
+            label="Confirm a new email address",
+            template="email_change_confirm.html.j2",
+            context={
+                "name": "John Smith",
+                "username": "john.smith",
+                "email": "john.smith@newtrust.nhs.uk",
+                "confirm_url": (
+                    "https://quill-medical.com/verify-email?token=example"
+                ),
+                "ttl_minutes": 60,
+            },
+        ),
+        Preview(
+            id="email-change-notice",
+            label="Email change asked for",
+            template="email_change_notice.html.j2",
+            context={
+                "name": "John Smith",
+                "username": "john.smith",
+                "email": "john.smith@example.org",
+                "new_email": "john.smith@newtrust.nhs.uk",
+            },
+        ),
+        Preview(
             id="account-closed",
             label="Account closed",
             template="account_closed.html.j2",

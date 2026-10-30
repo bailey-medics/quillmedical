@@ -72,6 +72,42 @@
     }
   },
   {
+    "id": "email-change-confirm",
+    "label": "Confirm a new email address",
+    "quill": {
+      "file": "email-change-confirm--quill.html",
+      "subject": "Confirm your new Quill email address",
+      "preheader": "The link lasts 60 minutes.",
+      "fromName": "Quill Medical",
+      "replyTo": null
+    },
+    "ldd": {
+      "file": "email-change-confirm--ldd.html",
+      "subject": "Confirm your new Quill email address",
+      "preheader": "The link lasts 60 minutes.",
+      "fromName": "Let's Do Digital",
+      "replyTo": null
+    }
+  },
+  {
+    "id": "email-change-notice",
+    "label": "Email change asked for",
+    "quill": {
+      "file": "email-change-notice--quill.html",
+      "subject": "A change to your Quill email address was asked for",
+      "preheader": "Nothing changes unless the new address confirms it.",
+      "fromName": "Quill Medical",
+      "replyTo": null
+    },
+    "ldd": {
+      "file": "email-change-notice--ldd.html",
+      "subject": "A change to your Quill email address was asked for",
+      "preheader": "Nothing changes unless the new address confirms it.",
+      "fromName": "Let's Do Digital",
+      "replyTo": null
+    }
+  },
+  {
     "id": "account-closed",
     "label": "Account closed",
     "quill": {

@@ -241,8 +241,34 @@ consecutive units, as the notes suggest for fixes 3, 5 and 7.
       React does in development, show the QR code for a secret that is no
       longer stored. The setup page shows the backend's message.
 
-- [ ] **Fix 5: changing the account email.** Hardening of the profile
-      email change. Detail in the private notes.
+- [x] **Fix 5a: a new email waits for a link sent to it (expand).**
+      `PATCH /api/auth/profile` replaced the account's email at once, with
+      no current password, no link to the new address and no word to the
+      old one, and a password reset then went to the new, unproven
+      address. So anybody holding a session could move the account to an
+      address they owned and reset its password.
+
+      A new email is now held in `users.pending_email` (migration
+      `772b1a92d9dd`) and a link is sent to it; `email` changes only when
+      that link is followed, through the existing `/auth/verify-email`
+      route, which tells the new link from a verification link by its own
+      salt. The link names the account by id, the address, and the
+      account's `token_version`, so a later change or a password change
+      stops an older link, and following it ends the account's sessions.
+      The current address is told a change was asked for. The account page
+      sends `current_password` with a new email, and the backend checks it
+      when it is sent. It is optional for now, by expand then contract
+      (`.claude/rules/backend.md`), so a page loaded before this deploy
+      still works. The page changes the password before asking for the
+      new email when both are saved together, since a password change
+      would otherwise stop the link just sent.
+
+- [ ] **Fix 5b: the current password is required for a new email
+      (contract).** Make `current_password` required on
+      `PATCH /api/auth/profile` whenever `email` differs, with its
+      `api-compatibility/` decision file. Its pull request merges only
+      after fix 5a has been deployed for at least a release, so no open
+      page still sends the email without it.
 
 - [ ] **Fix 6: the clinical lead check.** Hardening of the public
       clinical lead lookup used by self-registration. Detail in the
