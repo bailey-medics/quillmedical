@@ -92,6 +92,38 @@ EOF
   grep -q -- "$MODULES" "$CALLS"
 }
 
+@test "raises the size and time limits to the app scanner's" {
+  stub_clamscan 0
+
+  run bash "$SCRIPT" "$MODULES" "$DB"
+
+  [ "$status" -eq 0 ]
+  grep -q -- "--max-filesize=2047M" "$CALLS"
+  grep -q -- "--max-scansize=2047M" "$CALLS"
+  grep -q -- "--max-scantime=1440000" "$CALLS"
+}
+
+@test "asks ClamAV to report a file it cannot scan in full" {
+  stub_clamscan 0
+
+  run bash "$SCRIPT" "$MODULES" "$DB"
+
+  [ "$status" -eq 0 ]
+  grep -q -- "--alert-exceeds-max=yes" "$CALLS"
+  grep -q -- "--alert-encrypted=yes" "$CALLS"
+}
+
+@test "fails and names a file too large to scan in full" {
+  stub_clamscan 1 "${MODULES}/a-module/images/figure.png: Heuristics.Limits.Exceeded.MaxFileSize FOUND"
+
+  run bash "$SCRIPT" "$MODULES" "$DB"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"too large, or took too long, to scan in full"* ]]
+  [[ "$output" == *"figure.png: Heuristics.Limits.Exceeded.MaxFileSize FOUND"* ]]
+  [[ "$output" != *"Malware found"* ]]
+}
+
 @test "passes when clamscan finds nothing" {
   stub_clamscan 0
 
