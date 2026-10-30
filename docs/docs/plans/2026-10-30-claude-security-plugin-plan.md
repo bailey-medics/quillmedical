@@ -226,8 +226,20 @@ consecutive units, as the notes suggest for fixes 3, 5 and 7.
       deploys, as agreed before the run. A token whose `sub` and `uid`
       disagree is refused too.
 
-- [ ] **Fix 4: two-factor enrolment.** Hardening of the TOTP setup
-      route. Detail in the private notes.
+- [x] **Fix 4: two-factor enrolment.** `POST /api/auth/totp/setup`
+      reused whatever secret was stored and returned it in the
+      `otpauth://` URI, even once two-factor was on. Anybody holding a
+      session, for a few minutes at an unlocked machine, could read the
+      live second factor and make valid codes for good, though turning
+      two-factor off asks for the password for exactly that reason.
+
+      Setup now answers 409 with `totp_already_enabled` while two-factor is
+      on; a new authenticator goes through turning it off first, which
+      asks for the password. Until a code is verified the secret is not
+      yet a factor, so it is still reused rather than made afresh on each
+      call: a fresh one each time would let a page that asks twice, as
+      React does in development, show the QR code for a secret that is no
+      longer stored. The setup page shows the backend's message.
 
 - [ ] **Fix 5: changing the account email.** Hardening of the profile
       email change. Detail in the private notes.
