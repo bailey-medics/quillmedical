@@ -15,7 +15,6 @@ from typing import Any
 
 from fastapi import Depends, HTTPException, Request
 from google.auth.exceptions import GoogleAuthError
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.cbac.competencies import SCOPED_MANAGER_IDS
@@ -184,7 +183,9 @@ def get_current_user(request: Request, db: Session = DEP_GET_SESSION) -> User:
     except Exception as e:
         raise HTTPException(401, "Invalid token") from e
 
-    user = db.scalar(select(User).where(User.username == claims.username))
+    # By id, which never changes. A token naming a username followed the
+    # name to whichever account was given it next.
+    user = db.get(User, claims.user_id)
 
     if not user or not user.is_active:
         raise HTTPException(401, "Inactive user")
@@ -209,8 +210,8 @@ def require_csrf(
     the page, and sent back in the ``X-CSRF-Token`` header. Another site
     can make a browser send the cookie but cannot read it to fill in the
     header, so the two matching shows the request came from our own page.
-    The token is also signed for one username, so one user's token is no
-    use against another.
+    The token is also signed for one account id, so one user's token is
+    no use against another.
 
     The one definition of this check. ``main`` takes it from here, as
     every router does, so a router never has to import ``main`` back.
@@ -230,7 +231,7 @@ def require_csrf(
         not header
         or not cookie
         or header != cookie
-        or not verify_csrf(cookie, current_user.username)
+        or not verify_csrf(cookie, current_user.id)
     ):
         raise HTTPException(403, "CSRF failed")
 
@@ -265,7 +266,7 @@ def get_optional_user(
     except Exception:
         return None
 
-    user = db.scalar(select(User).where(User.username == claims.username))
+    user = db.get(User, claims.user_id)
 
     if not user or not user.is_active:
         return None

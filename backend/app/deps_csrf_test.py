@@ -18,8 +18,8 @@ from app.models import User
 from app.security import make_csrf
 
 
-def _user(username: str = "alice") -> User:
-    return cast(User, SimpleNamespace(username=username))
+def _user(user_id: int = 1) -> User:
+    return cast(User, SimpleNamespace(id=user_id, username=f"user{user_id}"))
 
 
 def _request(*, header: str | None, cookie: str | None) -> Request:
@@ -37,13 +37,13 @@ def _request(*, header: str | None, cookie: str | None) -> Request:
 
 def test_a_matching_header_and_cookie_signed_for_the_user_passes() -> None:
     user = _user()
-    token = make_csrf(user.username)
+    token = make_csrf(user.id)
 
     assert require_csrf(_request(header=token, cookie=token), user) is user
 
 
 def test_no_header_is_refused() -> None:
-    token = make_csrf("alice")
+    token = make_csrf(1)
 
     with pytest.raises(HTTPException) as refused:
         require_csrf(_request(header=None, cookie=token), _user())
@@ -52,7 +52,7 @@ def test_no_header_is_refused() -> None:
 
 
 def test_no_cookie_is_refused() -> None:
-    token = make_csrf("alice")
+    token = make_csrf(1)
 
     with pytest.raises(HTTPException) as refused:
         require_csrf(_request(header=token, cookie=None), _user())
@@ -63,7 +63,7 @@ def test_no_cookie_is_refused() -> None:
 def test_a_header_that_differs_from_the_cookie_is_refused() -> None:
     """What another site can manage: the browser sends the cookie, and
     the header is a guess."""
-    token = make_csrf("alice")
+    token = make_csrf(1)
 
     with pytest.raises(HTTPException) as refused:
         require_csrf(_request(header="a-guess", cookie=token), _user())
@@ -73,10 +73,10 @@ def test_a_header_that_differs_from_the_cookie_is_refused() -> None:
 
 def test_a_token_signed_for_somebody_else_is_refused() -> None:
     """Both halves match, but the token is another user's."""
-    token = make_csrf("mallory")
+    token = make_csrf(2)
 
     with pytest.raises(HTTPException) as refused:
-        require_csrf(_request(header=token, cookie=token), _user("alice"))
+        require_csrf(_request(header=token, cookie=token), _user(1))
 
     assert refused.value.status_code == 403
 
