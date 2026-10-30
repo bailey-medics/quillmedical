@@ -421,14 +421,31 @@ anything, and each step is a unit of its own.
       versions, GitHub usernames and registry names, none of which a pull
       request writes. The report moved into `env:` too.
 
-- [ ] **Narrow the permissions (16).** `ci.yml`, for one, grants
-      `pull-requests: write` and `packages: write` to every job at the
-      top of the file. Each workflow's top-level `permissions:` drops to
-      `contents: read` (or `{}`), and the write permissions move onto
-      the jobs that use them. `slack-notify.yml` and
-      `teaching-pipeline.yml` have no top-level block at all; both are
-      reusable workflows, so check whether the caller's grant already
-      bounds them before adding one.
+- [x] **Narrow the permissions (16).** Thirteen workflows granted a
+      write permission at the top of the file, so every job in them held
+      it. Each top-level block is now read-only, and the write moves onto
+      the jobs that use it, worked out from what each job's steps and
+      scripts do with the token rather than from the job names: Workload
+      Identity (`id-token: write`) onto the jobs that sign in to Google
+      Cloud, `issues: write` onto the jobs that open issues (the two hold
+      checks and the ZAP scan), `pull-requests: write` onto the jobs that
+      comment (the two gate comment jobs and the Terraform plan), and
+      `packages: write` onto `heavy_e2e_images`, the one CI job that
+      pushes an image. A job's block replaces the workflow's rather than
+      adding to it, so each one restates the reads it needs.
+
+      Two things turned up. `ci.yml` granted `pull-requests: write` to
+      all 23 jobs and none used it: the two that comment or read runs
+      already carried their own block. And the docs build's
+      `configure-pages` reads the Pages settings, so the build job keeps
+      `pages: read`. Its own README does not say what it needs, and
+      reading the settings should need no more than read, but that is
+      unconfirmed: if the docs deploy fails after this merges, this is
+      the first thing to check.
+      `teaching-pipeline.yml`'s Slack job had no block at all, so it took
+      the calling repository's default, and `slack-notify.yml` had none
+      either. Both now say `contents: read`, which is all the Slack
+      workflow needs, to check out Quill's scripts.
 
 - [ ] **Pass secrets by name (40).** Eighteen calls to reusable
       workflows use `secrets: inherit`, which hands over every secret

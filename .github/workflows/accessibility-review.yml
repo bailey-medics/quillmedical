@@ -28,7 +28,6 @@ on:
 
 permissions:
   contents: read
-  id-token: write # Workload Identity Federation, to start the admin job
 
 concurrency:
   group: accessibility-review
@@ -58,6 +57,9 @@ jobs:
     name: Email the reminder
     needs: check
     if: ${{ needs.check.outputs.due == 'true' }}
+    permissions:
+      contents: read
+      id-token: write # Workload Identity Federation, to start the admin job
     runs-on: ubuntu-26.04
     timeout-minutes: 10
     steps:

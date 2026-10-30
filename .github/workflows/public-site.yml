@@ -27,7 +27,6 @@ on:
 
 permissions:
   contents: read
-  id-token: write # Workload Identity Federation
 
 concurrency:
   group: deploy-public-site
@@ -57,6 +56,9 @@ jobs:
 
   deploy:
     name: Deploy to app
+    permissions:
+      contents: read
+      id-token: write # Workload Identity Federation
     runs-on: ubuntu-26.04
     needs: build
     # The environment that holds the GCP_APP_* secrets read below, and the
