@@ -1508,9 +1508,8 @@ def update_profile(
     told a change was asked for, so one its holder did not ask for is
     seen where they already read.
 
-    The current password, when sent, must be right. It is optional only
-    while pages loaded before it was added are still open, and becomes
-    required in a later release.
+    A new email needs the current password, so a session alone cannot
+    move the account somewhere its holder does not control.
 
     Args:
         data: Profile update payload (full_name, email, current_password).
@@ -1523,7 +1522,8 @@ def update_profile(
 
     Raises:
         HTTPException: 400 if no fields provided, the email is already
-            taken, or the current password sent is wrong.
+            taken, or a new email comes without the right current
+            password.
     """
     if data.full_name is None and data.email is None:
         raise HTTPException(status_code=400, detail="No fields to update")
@@ -1535,7 +1535,12 @@ def update_profile(
         if candidate != (current_user.email or "").strip().lower():
             new_email = candidate
 
-    if new_email is not None and data.current_password is not None:
+    if new_email is not None:
+        if data.current_password is None:
+            raise HTTPException(
+                status_code=400,
+                detail="Enter your current password to change your email",
+            )
         if not verify_password(
             data.current_password, current_user.password_hash
         ):

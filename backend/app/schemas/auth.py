@@ -173,9 +173,9 @@ class UpdateProfileIn(BaseModel):
         full_name: Updated display name.
         email: A new address. Held as pending, and a link sent to it,
             until the link is followed.
-        current_password: The account's password, checked when the email
-            changes. Optional for now, so a page loaded before it was
-            added still works; it becomes required in a later release.
+        current_password: The account's password, required when the
+            email changes and not otherwise. Optional in the schema, since
+            a name change alone does not need it.
     """
 
     model_config = ConfigDict(extra="forbid")

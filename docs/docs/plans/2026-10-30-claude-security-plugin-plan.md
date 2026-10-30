@@ -323,12 +323,17 @@ consecutive units, as the notes suggest for fixes 3, 5 and 7.
       during the scan or after. The browser sends the header, which the
       signature covers, and the source bucket's CORS rule allows it.
 
-- [ ] **Fix 5b: the current password is required for a new email
-      (contract).** Make `current_password` required on
-      `PATCH /api/auth/profile` whenever `email` differs, with its
-      `api-compatibility/` decision file. Its pull request merges only
-      after fix 5a has been deployed for at least a release, so no open
-      page still sends the email without it. Built last in this phase,
+- [x] **Fix 5b: the current password is required for a new email
+      (contract).** `PATCH /api/auth/profile` now refuses a new email that
+      comes without `current_password`, with "Enter your current password
+      to change your email", so a session alone cannot ask for the account
+      to move. The same address sent unchanged, as the account page sends
+      it on every save, is not refused. The field stays optional in the
+      schema, because a name change alone does not need it, so `oasdiff`
+      sees no change and no `api-compatibility/` decision file is needed.
+      What it does need is time: its pull request merges only after fix
+      5a has been deployed for at least a release, so no open page still
+      sends a new email without the password. Built last in this phase,
       at the top of the stack, so waiting for it holds back no other fix.
 
 ## Phase 5: Decide the cadence
