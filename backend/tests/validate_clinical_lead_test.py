@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import pytest
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
@@ -117,6 +118,27 @@ class TestValidateClinicalLead:
         )
         assert resp.status_code == 200
         assert resp.json()["valid"] is True
+
+    @pytest.mark.parametrize(
+        "pattern",
+        ["%", "%@test.local", "lead@%", "l%", "lea_@test.local", "%%"],
+    )
+    def test_a_wildcard_is_not_an_address(
+        self, test_client, db_session, pattern: str
+    ):
+        """The address is compared exactly. In a LIKE pattern `%` and `_`
+        match anything, so a stranger could pass the check, and learn a
+        lead's address a letter at a time, without knowing it."""
+        _setup_org_with_site_and_lead(db_session)
+
+        resp = test_client.post(
+            "/api/teaching/public/validate-clinical-lead",
+            json={"email": pattern, "bank_id": "test-bank"},
+        )
+
+        assert resp.status_code == 200
+        assert resp.json()["valid"] is False
+        assert resp.json().get("site_name") in (None, "")
 
     def test_unknown_email(self, test_client, db_session):
         """Unknown email returns valid=False."""
@@ -284,6 +306,33 @@ class TestRegisterWithSiteMembership:
         ).first()
         assert site_row is not None
         assert site_row.capacity == "trainee"
+
+    def test_register_with_a_wildcard_for_the_lead_is_refused(
+        self, test_client, db_session
+    ):
+        """Registration asks the same check again, so a pattern that
+        matched a lead there would admit a stranger to the site."""
+        org, site, _lead = _setup_org_with_site_and_lead(db_session)
+
+        resp = test_client.post(
+            "/api/auth/register",
+            json={
+                "username": "stranger",
+                "email": "stranger@example.com",
+                "password": "Secure123!",
+                "full_name": "A Stranger",
+                "org_unit_id": org.id,
+                "site_id": site.id,
+                "teaching_module_id": "test-bank",
+                "clinical_lead_email": "%",
+            },
+        )
+
+        assert resp.status_code != 200
+        assert (
+            db_session.scalar(select(User).where(User.username == "stranger"))
+            is None
+        )
 
     def test_register_site_without_a_clinical_lead_fails(
         self, test_client, db_session

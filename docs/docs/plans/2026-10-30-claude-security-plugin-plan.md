@@ -263,20 +263,36 @@ consecutive units, as the notes suggest for fixes 3, 5 and 7.
       new email when both are saved together, since a password change
       would otherwise stop the link just sent.
 
+- [x] **Fix 6: the clinical lead check.** `clinical_lead_site` in
+      `backend/app/users/register.py` found the lead with
+      `User.email.ilike(email)`, on an address typed by somebody not
+      signed in, through the public
+      `POST /api/teaching/public/validate-clinical-lead` and
+      `POST /api/auth/register`. In a LIKE pattern `%` and `_` match
+      anything, so a stranger could pass the "you must know your clinical
+      lead's address" rule without knowing it, join the site as a trainee,
+      and, since the check answers with the site, recover a lead's address
+      a letter at a time. Live in App production, where self-registration
+      is on.
+
+      It now compares with `User.email == normalise_email(email)`.
+      Addresses are held in lower case, so that is already
+      case-insensitive, and `email` is unique, so it finds one account at
+      most. The request fields stay plain strings rather than becoming
+      `EmailStr`: equality already refuses a pattern, and narrowing the
+      accepted input would be an API change for no further gain.
+
+- [ ] **Fix 7: content and upload scanning.** Hardening of the teaching
+      content pipeline's malware scan and of the upload scan handoff.
+      Detail in the private notes.
+
 - [ ] **Fix 5b: the current password is required for a new email
       (contract).** Make `current_password` required on
       `PATCH /api/auth/profile` whenever `email` differs, with its
       `api-compatibility/` decision file. Its pull request merges only
       after fix 5a has been deployed for at least a release, so no open
-      page still sends the email without it.
-
-- [ ] **Fix 6: the clinical lead check.** Hardening of the public
-      clinical lead lookup used by self-registration. Detail in the
-      private notes.
-
-- [ ] **Fix 7: content and upload scanning.** Hardening of the teaching
-      content pipeline's malware scan and of the upload scan handoff.
-      Detail in the private notes.
+      page still sends the email without it. Built last in this phase,
+      at the top of the stack, so waiting for it holds back no other fix.
 
 ## Phase 5: Decide the cadence
 
