@@ -832,6 +832,8 @@ class TestExtraHeaders:
             {"Subject": "Not the real one"},
             {"bcc": "eve@example.com"},
             {"From": "eve@example.com"},
+            {"Auto-Submitted": "no"},
+            {"x-auto-response-suppress": "None"},
         ],
     )
     @patch("app.email_send.boto3")
@@ -854,6 +856,46 @@ class TestExtraHeaders:
             )
 
         mock_boto3.client.assert_not_called()
+
+
+class TestNoAutomaticReplies:
+    """An out-of-office answered a reminder, to Quill's own inbox."""
+
+    def setup_method(self) -> None:
+        _rate_log.clear()
+
+    @patch("app.email_send.boto3")
+    @patch("app.email_send.settings")
+    def test_every_message_says_it_was_sent_automatically(
+        self, mock_settings: MagicMock, mock_boto3: MagicMock
+    ) -> None:
+        _ses_settings(mock_settings)
+
+        send_email(to="a@example.com", subject="Hi", html_body="<p>x</p>")
+
+        message = _sent_message(mock_boto3)
+        assert message["Auto-Submitted"] == "auto-generated"
+        assert message["X-Auto-Response-Suppress"] == "All"
+
+    @patch("app.email_send.boto3")
+    @patch("app.email_send.settings")
+    def test_alongside_a_newsletter_s_own_headers(
+        self, mock_settings: MagicMock, mock_boto3: MagicMock
+    ) -> None:
+        _ses_settings(mock_settings)
+
+        send_email(
+            to="a@example.com",
+            subject="News",
+            html_body="<p>x</p>",
+            headers=TestExtraHeaders.HEADERS,
+        )
+
+        message = _sent_message(mock_boto3)
+        assert message["Auto-Submitted"] == "auto-generated"
+        assert message["List-Unsubscribe-Post"] == (
+            "List-Unsubscribe=One-Click"
+        )
 
 
 class TestSendingFromAnotherAddress:

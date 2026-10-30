@@ -26,7 +26,7 @@ from app.features.teaching.reminders import (
     send_enrolment_reminders,
     send_renewal_notices,
 )
-from app.models import OrgUnit, User
+from app.models import OrgUnit, User, UserCompetency
 
 NOW = datetime(2030, 6, 1, 9, 0, tzinfo=UTC)
 BANK = "colonoscopy-optical-diagnosis"
@@ -246,6 +246,25 @@ class TestWhoIsNot:
         _enrol(
             db_session, org, _user(db_session, "sam", **fields), days_ago=30
         )
+
+        assert due_enrolment_reminders(db_session, NOW) == []
+
+    # A teaching admin is enrolled so they can try a module. Their
+    # out-of-office answered the reminder, to Quill's own inbox.
+    def test_a_teaching_admin(self, db_session: Session, org: OrgUnit) -> None:
+        _module(db_session, org)
+        admin = _user(db_session, "ada")
+        db_session.add(
+            UserCompetency(
+                user_id=admin.id,
+                competency_id="manage_teaching",
+                starts_on=NOW - timedelta(days=30),
+                source="individual",
+            )
+        )
+        db_session.flush()
+        db_session.refresh(admin)
+        _enrol(db_session, org, admin, days_ago=30)
 
         assert due_enrolment_reminders(db_session, NOW) == []
 

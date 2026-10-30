@@ -12,6 +12,8 @@ Somebody is reminded while all of these hold:
 - fewer reminders have gone than the module allows
 - the interval has passed since the last one, or since they were
   enrolled for the first
+- they do not hold ``manage_teaching``: a teaching admin is enrolled so
+  they can try a module, and is not chased to finish it
 
 Each reminder is recorded on the enrolment row as it is sent, so a run
 that is repeated, or stopped part-way, never sends one twice.
@@ -57,6 +59,9 @@ from app.features.teaching.models import (
 from app.models import User
 
 logger = logging.getLogger(__name__)
+
+#: Holders run the modules rather than take them, so are never reminded.
+NOT_REMINDED = "manage_teaching"
 
 
 @dataclass(frozen=True)
@@ -167,6 +172,8 @@ def due_enrolment_reminders(db: Session, now: datetime) -> list[DueReminder]:
 
     for enrolment, user in rows:
         if not enrolment.is_current(now):
+            continue
+        if NOT_REMINDED in user.get_final_competencies():
             continue
 
         config = _served_config(
