@@ -587,6 +587,19 @@ check-competency-seeding env:
         --wait
 
 
+alias cw := check-workflows
+# Check the GitHub Actions workflows for security mistakes, with zizmor
+check-workflows:
+    #!/usr/bin/env bash
+    {{initialise}} "check-workflows"
+    set -euo pipefail
+
+    # The same pinned zizmor and the same settings as the pre-commit hook,
+    # over every file it reads rather than the staged ones. Offline: the
+    # audits that look things up on GitHub run in CI, which has a token.
+    pre-commit run zizmor --all-files
+
+
 alias c := claude-session
 # Go to this worktree's Claude session in tmux, starting it or Claude again if needed (home box)
 claude-session:

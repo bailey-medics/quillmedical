@@ -1,0 +1,41 @@
+# Settings for zizmor, the security checker for the GitHub Actions
+# workflows. Read by the pre-commit hook, `just check-workflows` and CI,
+# each of which passes it with --config so a worktree finds it too.
+#
+# Audits: https://docs.zizmor.sh/audits/
+# Plan: docs/docs/plans/2026-10-30-claude-security-plugin-plan.md, Phase 6
+
+rules:
+  # Flags actions/checkout keeping its token on disk for later steps.
+  # zizmor rates it lower from checkout v6, and every workflow here is on
+  # v7, so it would be 65 findings of little weight.
+  artipacked:
+    disable: true
+
+  # Tags are allowed for now: pinning all 187 references by commit is the
+  # last step of the plan's Phase 6, and this turns to "*": hash-pin then.
+  unpinned-uses:
+    config:
+      policies:
+        "*": ref-pin
+
+  # Off until the Phase 6 step that fixes each one turns it back on, so
+  # the hook and CI are green from the first commit and each fix shows
+  # its audit returning. Findings on 30 October 2026 in brackets.
+  template-injection: # (8)
+    disable: true
+  excessive-permissions: # (16)
+    disable: true
+  secrets-inherit: # (18)
+    disable: true
+  overprovisioned-secrets: # (22)
+    disable: true
+  dependabot-cooldown: # (6)
+    disable: true
+
+  # `uses: ./...` for an action or workflow in this repository. GitHub's
+  # `uses: $/...` form (July 2026) cannot load a file a previous step
+  # wrote, and counts as pinned. Switched with the commit pins, once
+  # actionlint is checked to accept it. (34)
+  self-repository:
+    disable: true

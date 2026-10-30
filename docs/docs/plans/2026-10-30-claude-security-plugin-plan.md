@@ -20,7 +20,10 @@ drafts patches it never applies itself. The outcome of this plan is the
 plugin installed for the project, a first round of focused scans over the
 code where a flaw would matter most, every confirmed finding fixed in its
 own pull request, and a written cadence for scanning again. Docs:
-<https://code.claude.com/docs/en/claude-security>.
+<https://code.claude.com/docs/en/claude-security>. Phase 6 then adds
+zizmor, which reads the GitHub Actions workflows for security mistakes:
+the one part of the repository none of these layers checks, since
+`actionlint` checks only that a workflow is valid.
 
 ## Phase 1: Install the plugin for the project
 
@@ -348,6 +351,125 @@ consecutive units, as the notes suggest for fixes 3, 5 and 7.
       change to `backend/app/cbac/` or `security.py`, and a change scan
       (`/claude-security scan my branch at high`) on branches that touch
       those modules, in place of `/security-review` there.
+
+## Phase 6: Check the workflows with zizmor
+
+zizmor (<https://docs.zizmor.sh>, 1.31.1 on 30 October 2026) is a static
+checker for GitHub Actions: code injection through `${{ }}` expansion,
+permissions wider than a job needs, secrets passed on in bulk, and
+actions referenced by a tag that can be moved. That last one is how the
+`tj-actions/changed-files` compromise of March 2025 spread: the
+attacker moved the action's version tags to a commit that printed the
+runner's secrets into public build logs, and every repository asking for
+the tag ran it. A trial run on 30 October 2026, offline, over all 25
+workflows reported 525 findings: 153 tag pins, 65 checkout credentials
+left on disk, 40 secrets passed on in bulk, 16 permissions wider than
+needed, 8 template injections, and the rest style or informational. The
+steps below go in this order so that the check is green before it gates
+anything, and each step is a unit of its own.
+
+- [x] **Install it locally, with its settings file.** zizmor 1.31.1 from
+      `zizmorcore/zizmor-pre-commit` in `.pre-commit-config.yaml`, so a
+      staged workflow, action or Dependabot file is checked on commit,
+      and `just check-workflows` (`just cw`), which runs that same hook
+      over every file it reads. Both run `--offline`, since the audits
+      that call GitHub need a token and CI has one, and
+      `--min-severity=low`, which leaves out the 35 template expansions
+      zizmor itself rates informational, such as
+      `${{ github.repository }}`. Both pass `--config`: zizmor looks for
+      `.github/zizmor.yml` from the repository root, and does not
+      recognise a worktree's root until 1.32. The settings file:
+  - **`artipacked` off.** It flags `actions/checkout` keeping its token
+    on disk; zizmor itself rates that lower from checkout v6, and every
+    workflow here is on v7.
+  - **`unpinned-uses` set to `"*": ref-pin`**, allowing tags until the
+    last step of this phase pins by commit.
+  - **Each audit a later step fixes is switched off, and that step
+    switches it back on.** Found while building: the hook checks every
+    finding in a staged file, not only the lines staged, so the unit
+    fixing the injections in `ci.yml` would have been blocked by
+    `ci.yml`'s permission findings, which a later unit fixes. Starting
+    from a baseline keeps every commit green, and each pull request's
+    diff shows its own audit returning.
+  - **`self-repository` off too (34).** It asks for GitHub's
+    `uses: $/...` form for an action or workflow in this repository,
+    introduced in July 2026: it cannot load a file a previous step
+    wrote, and counts as pinned. It belongs with the commit pins, below.
+
+- [ ] **Fix the template injections (8).** `auto-pr.yml`,
+      `teaching-pipeline.yml`, `ci.yml`, `gate-breaking.yml` and
+      `merged-outside-main.yml` paste a value such as
+      `github.ref_name` or `github.event.pull_request.base.ref` straight
+      into a `run:` block, so a branch named to contain shell would run
+      as shell, in a job holding `GH_TOKEN`. Only collaborators can push
+      here, but `teaching-pipeline.yml` is called from the teaching
+      repositories, where content authors push, and `CLAUDE.md` already
+      treats them as less trusted. Each value moves into the step's
+      `env:` and the script reads it as a quoted variable, which is
+      zizmor's own fix. The scripts' bats tests are unchanged, since the
+      scripts take the same arguments.
+
+- [ ] **Narrow the permissions (16).** `ci.yml`, for one, grants
+      `pull-requests: write` and `packages: write` to every job at the
+      top of the file. Each workflow's top-level `permissions:` drops to
+      `contents: read` (or `{}`), and the write permissions move onto
+      the jobs that use them. `slack-notify.yml` and
+      `teaching-pipeline.yml` have no top-level block at all; both are
+      reusable workflows, so check whether the caller's grant already
+      bounds them before adding one.
+
+- [ ] **Pass secrets by name (40).** Eighteen calls to reusable
+      workflows use `secrets: inherit`, which hands over every secret
+      the caller can see; each becomes a list of the secrets that
+      workflow declares. The 22 `overprovisioned-secrets` findings are
+      nearly all in `deploy.yml`, where
+      `secrets[format('GCP_{0}_…', matrix.environment)]` picks a secret
+      by environment name and so needs the whole context. Decide there
+      between GitHub environments, each holding its own `GCP_*` secrets
+      under one name, which zizmor's `secrets-outside-env` also favours,
+      and keeping the lookup with a zizmor ignore comment saying why.
+      The environments route changes where the secrets are stored, so
+      it is Mark's call and a change in `infra/github/` if it is taken.
+
+- [ ] **Give Dependabot a cooldown (6).** A `cooldown:` of a few days on
+      each ecosystem in `.github/dependabot.yml`, so a release is not
+      proposed the day it is published. Most poisoned releases are
+      found and pulled within days, so the wait costs nothing and
+      misses most of them.
+
+- [ ] **Run it in CI.** A step in the `shell_checks` job in `ci.yml`,
+      after `actionlint`, so it is in the fast tier on every push and in
+      the merge queue with the rest of that job. Installed by
+      `.github/scripts/ci/install-zizmor.sh`, pinned and checked against
+      its published checksum as `install-actionlint.sh` is, with a bats
+      test sharing `install-tool.bash`. If upstream publishes no release
+      archive with checksums, install from PyPI with `pip install
+      --require-hashes` instead, and say so in the script. CI runs it
+      online, with `GH_TOKEN: ${{ github.token }}`, which adds
+      `known-vulnerable-actions`, `impostor-commit` and `ref-confusion`.
+      Its output goes to the job log only: no SARIF upload, for the same
+      reason as Claude Security's in Decisions, and not
+      `zizmorcore/zizmor-action`, which uploads SARIF by default. Add
+      zizmor to the tools listed in `docs/docs/cicd/outside-services.md`.
+
+- [ ] **Pin every action by commit.** The 187 `uses:` references, in the
+      workflows and in `.github/actions/`, change from `@v7.0.1` to the
+      full commit SHA with the version as a comment
+      (`@<sha> # v7.0.1`), which zizmor's `ref-version-mismatch` then
+      keeps honest. Dependabot's `github-actions` ecosystem already in
+      `.github/dependabot.yml` updates pins in that form, comment
+      included. Then turn `unpinned-uses` in `.github/zizmor.yml` to
+      require commit pins, so a new tag reference fails CI. The 34
+      `uses: ./...` references move to `uses: $/...` in the same unit,
+      and `self-repository` is switched back on, once the pinned
+      actionlint is checked to accept that form; if it does not, that
+      part waits for an actionlint that does. Mechanical but wide, so it
+      is the last unit and its own pull request.
+
+- [ ] Add zizmor to "CI/CD security pipeline" in
+      `docs/docs/cybersecurity/index.md`, beside Semgrep and ZAP: what
+      it checks, that it gates the fast tier, and that actions are
+      pinned by commit.
 
 ## Decisions
 
