@@ -121,3 +121,4 @@
 - [Resumable Video Uploads](2026-10-20-resumable-video-uploads-plan.md)
 - [Guides Add People From Their Place](2026-10-22-guides-add-people-from-their-place-plan.md)
 - [E2E Shards](2026-10-27-e2e-shards-plan.md)
+- [Claude Security Plugin](2026-10-30-claude-security-plugin-plan.md)
