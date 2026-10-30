@@ -51,3 +51,7 @@ __pycache__/
 
 # eslint
 .eslintcache
+
+# Claude Security plugin reports: each lists open vulnerabilities, and the
+# repository is public, so none may be committed
+CLAUDE-SECURITY-*/

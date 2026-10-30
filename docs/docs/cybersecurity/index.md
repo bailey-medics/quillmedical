@@ -317,6 +317,15 @@ Secret scanning prevents credentials from being committed to the repository, cat
 
 Code reaches `main` through its author and the automated checks above. An audit is a third pair of eyes after those two: somebody reads a file as it stands and stamps it. The stamps are kept in `audit/ledger.tsv`, each recording the file, a fingerprint of the exact version, the date and the auditor, so a file edited after its audit shows as changed. See [The audit ledger](../conventions/audit-ledger.md).
 
+### Source code security scans
+
+The checks above either match known patterns (Bandit, Semgrep) or probe the running application from outside (ZAP). Neither reasons about the source as a reviewer would, so neither finds a logic flaw: a route that checks a competency but not the place, or a scoped manager reaching past what it may grant. Two tools from Claude Code do:
+
+- **`/security-review`** - one pass over the changes on the current branch. Anyone can run it before opening a pull request. It reads only the diff, so code already on `main` is not looked at again.
+- **The Claude Security plugin** - a multi-agent scan of the whole repository, one area of it, or a diff, in which independent agents try to disprove every finding before it is reported. Installed at project scope through `enabledPlugins` in `.claude/settings.json`, and run with `/claude-security`. Each scan writes a `CLAUDE-SECURITY-<timestamp>/` folder, which the root `.gitignore` keeps out of git, because the repository is public and a report lists open vulnerabilities. Findings are triaged in draft GitHub private security advisories. See the [Claude Security plugin plan](../plans/2026-10-30-claude-security-plugin-plan.md).
+
+Neither runs in CI: a scan takes a long session and many tokens, and two runs over the same code can report different findings. They add to the checks above and replace none of them.
+
 ### Recommended improvements
 
 | Priority | Item                                 | Status                                    |
