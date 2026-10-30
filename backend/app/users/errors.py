@@ -181,6 +181,22 @@ class SelfGranting(UserAdminError):
     )
 
 
+class OwnSignInOnProfile(UserAdminError):
+    """An administrator changing their own password or email here.
+
+    The profile routes ask for the current password before either
+    changes, so a stolen session cannot take the account over. This
+    route asks for nothing of the kind, so it leaves the caller's own
+    sign-in details alone and sends them to the profile page.
+    """
+
+    status_code = 403
+    message = (
+        "Change your own password or email from your profile page, "
+        "which asks for your current password"
+    )
+
+
 class PlaceDeactivated(UserAdminError):
     """Somebody placed at an org unit that has been deactivated."""
 
