@@ -570,6 +570,59 @@ class TestTOTPSetup:
         response = test_client.post("/api/auth/totp/setup")
         assert response.status_code == 401
 
+    def test_setup_once_two_factor_is_on_hands_out_no_secret(
+        self, authenticated_client: TestClient, test_user: User, db_session
+    ):
+        """The enrolled secret is the second factor itself. A session
+        alone must not be able to read it back."""
+        test_user.totp_secret = generate_totp_secret()
+        test_user.is_totp_enabled = True
+        db_session.commit()
+
+        response = authenticated_client.post(
+            "/api/auth/totp/setup", headers=_csrf(authenticated_client)
+        )
+
+        assert response.status_code == 409
+        assert response.json()["detail"]["error_code"] == (
+            "totp_already_enabled"
+        )
+        assert test_user.totp_secret not in response.text
+
+    def test_setup_before_verifying_shows_the_same_secret_again(
+        self, authenticated_client: TestClient
+    ):
+        """Not yet a factor, so reused: opening the page twice must not
+        leave the QR code showing a secret that is no longer stored."""
+        first = authenticated_client.post(
+            "/api/auth/totp/setup", headers=_csrf(authenticated_client)
+        )
+        second = authenticated_client.post(
+            "/api/auth/totp/setup", headers=_csrf(authenticated_client)
+        )
+
+        assert first.json()["provision_uri"] == second.json()["provision_uri"]
+
+    def test_setup_works_again_after_two_factor_is_turned_off(
+        self, authenticated_client: TestClient, test_user: User, db_session
+    ):
+        test_user.totp_secret = generate_totp_secret()
+        test_user.is_totp_enabled = True
+        db_session.commit()
+        old_secret = test_user.totp_secret
+
+        authenticated_client.post(
+            "/api/auth/totp/disable",
+            json={"password": "TestPassword123!"},
+            headers=_csrf(authenticated_client),
+        )
+        response = authenticated_client.post(
+            "/api/auth/totp/setup", headers=_csrf(authenticated_client)
+        )
+
+        assert response.status_code == 200
+        assert old_secret not in response.json()["provision_uri"]
+
 
 class TestTOTPVerify:
     """Test TOTP verification endpoint."""
