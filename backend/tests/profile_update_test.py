@@ -76,7 +76,10 @@ class TestUpdateProfile:
         )
         resp = test_client.patch(
             "/api/auth/profile",
-            json={"email": "newemail@example.com"},
+            json={
+                "email": "newemail@example.com",
+                "current_password": "TestPassword123!",
+            },
             headers={"X-CSRF-Token": csrf},
         )
         assert resp.status_code == 200
@@ -124,6 +127,7 @@ class TestUpdateProfile:
             json={
                 "full_name": "Dr Bob Jones",
                 "email": "bob@example.com",
+                "current_password": "TestPassword123!",
             },
             headers={"X-CSRF-Token": csrf},
         )
@@ -171,7 +175,10 @@ class TestUpdateProfile:
         )
         resp = test_client.patch(
             "/api/auth/profile",
-            json={"email": "taken@example.com"},
+            json={
+                "email": "taken@example.com",
+                "current_password": "TestPassword123!",
+            },
             headers={"X-CSRF-Token": csrf},
         )
         assert resp.status_code == 400
@@ -226,6 +233,40 @@ class TestTheCurrentPassword:
         )
 
         return client.cookies.get("XSRF-TOKEN", "")
+
+    def test_a_new_email_without_it_is_refused(
+        self,
+        test_client: TestClient,
+        test_user: User,
+        db_session: Session,
+        sent: list[dict[str, Any]],
+    ) -> None:
+        """A session alone cannot move the account somewhere else."""
+        csrf = self._login(test_client)
+        resp = test_client.patch(
+            "/api/auth/profile",
+            json={"email": "new@example.com"},
+            headers={"X-CSRF-Token": csrf},
+        )
+
+        assert resp.status_code == 400
+        assert "current password" in resp.json()["detail"]
+        db_session.refresh(test_user)
+        assert test_user.pending_email is None
+        assert sent == []
+
+    def test_the_same_email_without_it_is_not_refused(
+        self, test_client: TestClient, test_user: User
+    ) -> None:
+        """The account page sends the email on every save."""
+        csrf = self._login(test_client)
+        resp = test_client.patch(
+            "/api/auth/profile",
+            json={"email": "test@example.com", "full_name": "Dr Alice"},
+            headers={"X-CSRF-Token": csrf},
+        )
+
+        assert resp.status_code == 200
 
     def test_a_wrong_current_password_is_refused(
         self,
