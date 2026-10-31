@@ -554,18 +554,24 @@ people who act on it, then what must not leak.
 
 ### On a phone, and for everyone
 
-- [ ] 25. As a PH on a phone, I want to open my passport, open a
+- [x] 25. As a PH on a phone, I want to open my passport, open a
       competency and add a logbook entry, so that I can record a procedure
       where I did it.
       A `*.phone.spec.ts`, run by the `phone` project, as teaching's Phase
       21 is. Tested: the framework tables become cards below `sm`, and the
       side navigation is behind the hamburger.
-- [ ] 26. As Quill, I want every passport page to pass the axe scan, light
+- [x] 26. As Quill, I want every passport page to pass the axe scan, light
       and dark, so that the passport is usable by everybody.
       Run with `fixtures/axe.ts` on the landing page in both views, a
       competency's page, Sign-offs, Logbook, CPD, Certificates,
       Reflections, Download and the assessor's sign-off page, as teaching's
       Phase 11 scans each slide.
+
+      Story 25 is `tests/passport/holding-a-passport.phone.spec.ts`, and
+      story 26 `tests/passport/accessibility.spec.ts`. Every page was
+      scanned with something on it (a logbook entry, a CPD activity, a
+      reflection and a waiting sign-off) and none needed a fix: each of
+      the ten passes in light and dark, in Chromium and WebKit.
 
 ## Decisions
 
