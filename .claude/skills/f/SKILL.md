@@ -140,10 +140,11 @@ is usually about right.
   branch below". That belongs folded into the branch below with
   `just stack-update`, not stacked on top of it. This is the single most
   common way a stack becomes twice as long as it should be.
-- **Too big** is a pull request whose description cannot be written inside
-  `/crpd`'s three sections and 200-word ceiling, or which a reviewer
-  cannot hold in their head at once. Needing a fourth section, or running
-  past the ceiling to say what changed, means the unit is really two.
+- **Too big** is a pull request whose `## Decisions to check` or
+  `## What has changed` cannot be said in a handful of bullets, whose
+  `Look hardest at` line wants to be a list, or which a reviewer cannot
+  hold in their head at once. Needing a fourth section means the unit is
+  really two.
 - **A unit must stand on its own.** Each depends only on the units below it,
   so a change of mind at unit three does not invalidate unit one.
   - **Units must be built to pass all tests.** But don't run all tests locally, only run tests relevant to the current unit locally, and rely on the CI to catch any regressions outside the scope of the current unit.
@@ -325,7 +326,7 @@ past on a pull request where everything is green. So:
 
 - **Change the test only when the unit deliberately changed what is
   correct.** Then the test is out of date and updating it *is* the fix. Say
-  so in the pull request description, under `## LLM decisions`, naming the
+  so in the pull request description, under `## Decisions to check`, naming the
   old behaviour and the new one.
 - **Never weaken a test to get green.** No widening an assertion to a range,
   no swapping an exact match for "contains", no deleting a case, no marking
