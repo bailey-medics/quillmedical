@@ -6,10 +6,15 @@ assessor you name decides.
 
 ## Ask
 
-1. Choose [**Passport**](/passport), then on the **Sign-offs** card press **Open sign-offs**. You can also go straight to [**Sign-offs**](/passport/sign-offs).
+1. Go to [**Sign-offs**](/passport/sign-offs). If your passport opens **By record**, choose [**Passport**](/passport), then **Open sign-offs** on the **Sign-offs** card.
    ![The Sign-offs page, with requests waiting and signed](ask-for-a-sign-off/sign-offs.png)
 2. Press **Ask for a sign-off**.
 3. Under **Which competency?**, find what you are asking to be signed off for. Type a word of it to search.
+
+   In the **By competency** view of [**Passport**](/passport), you can
+   instead choose the competency's row, and press **Ask for a sign-off**
+   on its page. The competency is then already chosen.
+
 4. Under **Who should assess this?**, type your assessor's username or email address. A line beneath tells you whether they already use Quill. If they do not, they are emailed an invitation and can register to sign.
    ![The request form, with a competency and an assessor chosen](ask-for-a-sign-off/request.png)
 5. Under **Observed on**, give the day the work happened, not today's date.
