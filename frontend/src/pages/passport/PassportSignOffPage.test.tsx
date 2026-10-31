@@ -8,7 +8,7 @@
  */
 
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithRouter } from "@/test/test-utils";
 import { Component as PassportSignOffPage } from "./PassportSignOffPage";
@@ -16,9 +16,10 @@ import { inboxItem } from "@/components/passport/fixtures";
 import { onInboxChanged } from "@/lib/inbox/inbox";
 import type * as passportLib from "@lib/passport";
 
-const { fetchInbox, signOff } = vi.hoisted(() => ({
+const { fetchInbox, signOff, declineSignOff } = vi.hoisted(() => ({
   fetchInbox: vi.fn<typeof passportLib.fetchInbox>(),
   signOff: vi.fn<typeof passportLib.signOff>(),
+  declineSignOff: vi.fn<typeof passportLib.declineSignOff>(),
 }));
 const mockNavigate = vi.fn();
 
@@ -33,6 +34,7 @@ vi.mock("react-router-dom", async () => {
 vi.mock("@lib/passport", () => ({
   fetchInbox,
   signOff,
+  declineSignOff,
 }));
 
 function renderPage(signOffId = inboxItem.sign_off.id) {
@@ -166,5 +168,89 @@ describe("PassportSignOffPage", () => {
     expect(
       await screen.findByText(/That request could not be loaded/),
     ).toBeInTheDocument();
+  });
+
+  describe("declining", () => {
+    /** Open the decline box from the page. */
+    async function openDecline(user: ReturnType<typeof userEvent.setup>) {
+      await user.click(
+        await screen.findByRole("button", { name: "Decline request" }),
+      );
+
+      return screen.findByRole("dialog", { name: "Decline this request" });
+    }
+
+    it("offers to decline a request in the inbox", async () => {
+      fetchInbox.mockResolvedValue([inboxItem]);
+      renderPage();
+
+      expect(
+        await screen.findByRole("button", { name: "Decline request" }),
+      ).toBeInTheDocument();
+    });
+
+    it("asks why, and sends nothing without a reason", async () => {
+      const user = userEvent.setup();
+      fetchInbox.mockResolvedValue([inboxItem]);
+      renderPage();
+
+      const dialog = await openDecline(user);
+      await user.click(within(dialog).getByRole("button", { name: "Decline" }));
+
+      expect(
+        await within(dialog).findByText("Say why you are declining"),
+      ).toBeInTheDocument();
+      expect(declineSignOff).not.toHaveBeenCalled();
+    });
+
+    it("declines with the reason, against the passport the inbox named", async () => {
+      const user = userEvent.setup();
+      const told = vi.fn<() => void>();
+      const stop = onInboxChanged(told);
+      fetchInbox.mockResolvedValue([inboxItem]);
+      declineSignOff.mockResolvedValue({
+        name: inboxItem.sign_off.name,
+        status: "declined",
+        commit: "abc",
+      });
+      renderPage();
+
+      const dialog = await openDecline(user);
+      await user.type(
+        within(dialog).getByRole("textbox", { name: /Why are you declining/ }),
+        "Not yet ready to do this unsupervised.",
+      );
+      await user.click(within(dialog).getByRole("button", { name: "Decline" }));
+
+      await waitFor(() => {
+        expect(declineSignOff).toHaveBeenCalledWith(
+          inboxItem.passport_id,
+          inboxItem.sign_off.name,
+          { reason: "Not yet ready to do this unsupervised." },
+        );
+      });
+      expect(mockNavigate).toHaveBeenCalledWith("/inbox");
+      expect(told).toHaveBeenCalled();
+      stop();
+    });
+
+    it("says why a decline was refused, and stays open", async () => {
+      const user = userEvent.setup();
+      fetchInbox.mockResolvedValue([inboxItem]);
+      declineSignOff.mockRejectedValue(new Error("That request has closed."));
+      renderPage();
+
+      const dialog = await openDecline(user);
+      await user.type(
+        within(dialog).getByRole("textbox", { name: /Why are you declining/ }),
+        "Not what I assessed.",
+      );
+      await user.click(within(dialog).getByRole("button", { name: "Decline" }));
+
+      expect(
+        await within(dialog).findByText("That request has closed."),
+      ).toBeInTheDocument();
+      expect(mockNavigate).not.toHaveBeenCalled();
+    });
   });
 });

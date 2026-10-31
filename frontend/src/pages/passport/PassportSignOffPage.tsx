@@ -12,17 +12,29 @@
  * Reached from `/inbox`, the page of everything waiting on somebody, and
  * it goes back there. The passport had a queue page of its own,
  * `/passport/inbox`, until 4 October 2026.
+ *
+ * **An assessor may decline instead, with a reason.** The form tells them
+ * to decline a request that is not what they assessed, so the page offers
+ * the way to: "Decline request", beneath the form, opening a confirm box
+ * that asks why. The holder sees the reason on their Sign-offs page.
  */
 
 import { useEffect, useState } from "react";
-import { Stack } from "@mantine/core";
+import { Group, Stack } from "@mantine/core";
 import { useNavigate, useParams } from "react-router-dom";
 import PageHeader from "@/components/page-header";
+import IconTextButton from "@/components/button/IconTextButton";
+import { ConfirmModal } from "@/components/confirm-modal";
+import TextAreaField from "@/components/form/TextAreaField";
 import SignOffCard from "@/components/passport/SignOffCard";
 import SignOffForm from "@/components/passport/SignOffForm";
 import ErrorState from "@/components/error-state/ErrorState";
 import { INBOX_PATH, inboxChanged } from "@/lib/inbox/inbox";
-import { fetchInbox, signOff as submitSignOff } from "@lib/passport";
+import {
+  declineSignOff,
+  fetchInbox,
+  signOff as submitSignOff,
+} from "@lib/passport";
 import type { InboxItem, SignOffInput } from "@lib/passport";
 
 export function Component() {
@@ -31,6 +43,11 @@ export function Component() {
   const [item, setItem] = useState<InboxItem | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [declining, setDeclining] = useState(false);
+  const [reason, setReason] = useState("");
+  // Said under the reason box, so the confirm box stays open with what
+  // was typed rather than closing on a refusal.
+  const [declineError, setDeclineError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -90,6 +107,43 @@ export function Component() {
     }
   }
 
+  /**
+   * Decline with the reason typed. Throws to keep the confirm box open
+   * when there is no reason, or when the server refuses, which
+   * `ConfirmModal` takes as "stay open".
+   */
+  async function handleDecline() {
+    if (!item) return;
+
+    const given = reason.trim();
+    if (given === "") {
+      setDeclineError("Say why you are declining");
+      throw new Error("No reason given");
+    }
+
+    try {
+      await declineSignOff(item.passport_id, item.sign_off.name, {
+        reason: given,
+      });
+    } catch (caught) {
+      const said = caught instanceof Error ? caught.message.trim() : "";
+      setDeclineError(
+        said !== ""
+          ? said
+          : "The request could not be declined. Please try again.",
+      );
+      throw caught;
+    }
+
+    inboxChanged();
+    navigate(INBOX_PATH);
+  }
+
+  function closeDecline() {
+    setDeclining(false);
+    setDeclineError(null);
+  }
+
   return (
     <Stack gap="lg">
       <PageHeader title="Sign off" />
@@ -105,6 +159,39 @@ export function Component() {
             onCancel={() => navigate(INBOX_PATH)}
             isSubmitting={submitting}
           />
+
+          <Group justify="flex-end">
+            <IconTextButton
+              icon="x"
+              label="Decline request"
+              onClick={() => setDeclining(true)}
+              disabled={submitting}
+            />
+          </Group>
+
+          <ConfirmModal
+            opened={declining}
+            onClose={closeDecline}
+            onAccept={handleDecline}
+            title="Decline this request"
+            acceptLabel="Decline"
+            submittingLabel="Declining…"
+            field={
+              <TextAreaField
+                label="Why are you declining?"
+                description="The holder sees this on their Sign-offs page."
+                value={reason}
+                onChange={(event) => {
+                  setReason(event.currentTarget.value);
+                  setDeclineError(null);
+                }}
+                error={declineError ?? undefined}
+                required
+              />
+            }
+          >
+            The holder is told it was declined, and why. They can ask again.
+          </ConfirmModal>
         </>
       )}
     </Stack>
