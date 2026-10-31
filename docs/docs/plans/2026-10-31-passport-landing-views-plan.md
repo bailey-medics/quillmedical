@@ -410,31 +410,36 @@ people who act on it, then what must not leak.
       Tested: the landing page shows the six cards and the Records table
       after the switch, and the tables again after switching back. The
       choice is read back from `GET /passport/me`.
-- [ ] 7. As a PH, I want to change my frameworks in Settings, so that the
+- [x] 7. As a PH, I want to change my frameworks in Settings, so that the
       passport offers what I work to.
       Tested: dropping a framework removes its table from the landing
       page and keeps the logbook entry made under it, which shows again
       when the framework is added back.
-- [ ] 8. As a PH, I want to record CPD against a date range I set, so that
+- [x] 8. As a PH, I want to record CPD against a date range I set, so that
       it totals over my appraisal year.
       Tested: a date range set in `/settings/cpd-date-ranges`, an
       activity added at `/passport/cpd`, and the total shown for the range.
-- [ ] 9. As a PH, I want to add a certificate with its file and open the
+- [x] 9. As a PH, I want to add a certificate with its file and open the
       file again, so that the evidence travels with the claim.
       Tested: a small PDF uploaded, the certificate listed, and the
       attachment downloads as the same bytes. `UPLOAD_SCAN_JOB` is unset
       in the stack, so nothing is scanned; say so in the test.
-- [ ] 10. As a PH, I want to write a reflection and read it back, so that
+- [x] 10. As a PH, I want to write a reflection and read it back, so that
       I keep what I learned from a case.
-- [ ] 11. As a PH, I want to download my passport as Markdown, PDF and a
+- [x] 11. As a PH, I want to download my passport as Markdown, PDF and a
       zip, so that I can take it anywhere without Quill.
       Tested: each download arrives, of its type, and the zip holds the
       passport's files.
-- [ ] 12. As a PH, I want to ask a supervisor to confirm a logbook entry,
+- [x] 12. As a PH, I want to ask a supervisor to confirm a logbook entry,
       so that the entry carries their name.
       Tested with the AS as supervisor: the AS opens it from their inbox
       at `/passport/logbook-confirmation/:id`, confirms, and the holder's
       entry shows who confirmed it.
+
+      Built as written, with one correction: the email links to the
+      supervisor's `/inbox`, not to the confirmation itself, so the test
+      follows it there and opens the request from the list. Stories 1 to
+      12 are in `tests/passport/holding-a-passport.spec.ts`.
 
 ### The people who act on it
 
