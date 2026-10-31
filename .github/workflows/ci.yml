@@ -374,6 +374,15 @@ jobs:
         run: bash .github/scripts/ci/install-actionlint.sh
       - name: Lint GitHub Actions workflows
         run: actionlint -color
+      # Checks the workflows for security mistakes, with the settings in
+      # .github/zizmor.yml. Online, where the pre-commit hook is not, so it
+      # also looks up actions with known advisories and impostor commits.
+      - name: Install zizmor
+        run: bash .github/scripts/ci/install-zizmor.sh
+      - name: Check GitHub Actions workflows for security mistakes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: zizmor --no-progress --min-severity=low --config=.github/zizmor.yml .github/
       - name: Set up bats
         uses: bats-core/bats-action@4.0.0
         with:

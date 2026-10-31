@@ -472,34 +472,49 @@ anything, and each step is a unit of its own.
       comment pointing here. The alternative is to keep the lookup and
       make that exclusion permanent, with the reason recorded.
 
-- [ ] **Give Dependabot a cooldown (6).** A `cooldown:` of a few days on
-      each ecosystem in `.github/dependabot.yml`, so a release is not
-      proposed the day it is published. Most poisoned releases are
-      found and pulled within days, so the wait costs nothing and
-      misses most of them.
+- [x] **No Dependabot cooldown: Renovate already has one (6).** Found
+      while building: `.github/dependabot.yml` raises vulnerability alerts
+      only, with `open-pull-requests-limit: 0` on every ecosystem, and
+      Renovate proposes every version bump. Its `minimumReleaseAge` of
+      three days in `renovate.json` is the cooldown, so a Dependabot one
+      would change nothing. `dependabot-cooldown` is switched off in
+      `.github/zizmor.yml` with that reason.
 
-- [ ] **Run it in CI.** A step in the `shell_checks` job in `ci.yml`,
+- [x] **Run it in CI.** A step in the `shell_checks` job in `ci.yml`,
       after `actionlint`, so it is in the fast tier on every push and in
       the merge queue with the rest of that job. Installed by
-      `.github/scripts/ci/install-zizmor.sh`, pinned and checked against
-      its published checksum as `install-actionlint.sh` is, with a bats
-      test sharing `install-tool.bash`. If upstream publishes no release
-      archive with checksums, install from PyPI with `pip install
-      --require-hashes` instead, and say so in the script. CI runs it
-      online, with `GH_TOKEN: ${{ github.token }}`, which adds
-      `known-vulnerable-actions`, `impostor-commit` and `ref-confusion`.
-      Its output goes to the job log only: no SARIF upload, for the same
-      reason as Claude Security's in Decisions, and not
-      `zizmorcore/zizmor-action`, which uploads SARIF by default. Add
-      zizmor to the tools listed in `docs/docs/cicd/outside-services.md`.
+      `.github/scripts/ci/install-zizmor.sh` from the release archive.
+      zizmor publishes no checksums file, so the script pins the
+      archive's SHA-256 itself, copied from the digest GitHub records
+      for the release asset and checked against a download. That is
+      stronger than the `actionlint` pattern of a checksums file fetched
+      beside the archive: a replaced release cannot bring a matching hash
+      with it. Its bats test builds its own archive and runs a copy of
+      the script pinned to that archive's hash, and checks the pre-commit
+      hook pins the same version. CI runs it online, with
+      `GH_TOKEN: ${{ github.token }}`, which adds
+      `known-vulnerable-actions`, `impostor-commit` and `ref-confusion`;
+      run online on 30 October 2026 it found nothing more. Its output
+      goes to the job log only: no SARIF upload, for the same reason as
+      Claude Security's in Decisions, and not `zizmorcore/zizmor-action`,
+      which uploads SARIF by default. zizmor is added to the tools in
+      `docs/docs/cicd/outside-services.md`.
+
+      `.github/instructions/workflows.instructions.md`, and its synced
+      copy in `.claude/rules/workflows.md`, told authors to pass
+      `"${{ github.ref_name }}"` to a script, the pasted form fixed
+      above. They now say to read such values from the environment, to
+      grant write permissions on the job, and to pass a reusable
+      workflow its secrets by name.
 
 - [ ] **Pin every action by commit.** The 187 `uses:` references, in the
       workflows and in `.github/actions/`, change from `@v7.0.1` to the
       full commit SHA with the version as a comment
       (`@<sha> # v7.0.1`), which zizmor's `ref-version-mismatch` then
-      keeps honest. Dependabot's `github-actions` ecosystem already in
-      `.github/dependabot.yml` updates pins in that form, comment
-      included. Then turn `unpinned-uses` in `.github/zizmor.yml` to
+      keeps honest. Renovate, which proposes the action bumps here
+      (Dependabot only raises alerts), updates pins in that form,
+      comment included, once `helpers:pinGitHubActionDigests` is in
+      `renovate.json`'s `extends`. Then turn `unpinned-uses` in `.github/zizmor.yml` to
       require commit pins, so a new tag reference fails CI. The 34
       `uses: ./...` references move to `uses: $/...` in the same unit,
       and `self-repository` is switched back on, once the pinned
