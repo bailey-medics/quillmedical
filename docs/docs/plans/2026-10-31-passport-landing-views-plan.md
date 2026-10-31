@@ -240,7 +240,7 @@ there, before anything is stored or routed.
 
 ## Phase 4: The landing page chooses its view
 
-- [ ] In `PassportPage.tsx`, read `landing_view` and render one of:
+- [x] In `PassportPage.tsx`, read `landing_view` and render one of:
 
       - **By competency** - `PassportByCompetency` from Phase 1, given the
         holder's frameworks and `PassportDetail.competencies`, each row
@@ -254,14 +254,30 @@ there, before anything is stored or routed.
       no frameworks chosen, By competency has no tables to show, and the
       warning is the whole page apart from the cards.
 
-- [ ] The loading skeleton follows the view, so the page settles rather
+      Built so. The records behind By record are fetched only in that
+      view, so a holder on By competency is spared five requests whose
+      answers it never shows.
+
+- [x] The loading skeleton follows the view, so the page settles rather
       than changes shape, as the existing comment on the skeleton asks.
 
-- [ ] Add the switch to `PassportFrameworksCard`: a segmented control
+      Found while building: the view is not known until the passport
+      arrives, because the choice comes with it, so the skeleton cannot
+      follow it. It takes the default view's shape, a framework table
+      above four cards, which is what nearly every holder sees. A holder
+      who chose By record sees it settle into six cards instead.
+
+- [x] Add the switch to `PassportFrameworksCard`: a segmented control
       labelled "Passport home page", with "By competency" and "By
       record". It saves on change, as the frameworks field does. It stays
       enabled on a read-only passport, because the choice changes how the
       record is shown and never the record.
+
+      Departed from the plan: built with `RadioField` rather than a
+      segmented control. There is no segmented control in
+      `components/form/`, and the component rules ask for a new atomic
+      component to be agreed before it is built. Two labelled radios
+      read as plainly, and can be swapped for one later.
 
 ## Phase 5: Guides and accessibility
 
