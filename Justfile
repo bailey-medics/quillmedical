@@ -526,6 +526,22 @@ aws-login which="emails":
     echo "Use it with: AWS_PROFILE=$profile aws ..."
 
 
+alias bu := backend-update
+# Upgrade the named backend packages in poetry.lock, within pyproject's ranges (e.g. just bu fastapi)
+backend-update +packages:
+    #!/usr/bin/env bash
+    {{initialise}} "backend-update"
+    set -euo pipefail
+
+    # Moves only the named packages, and what they need, leaving the rest
+    # of the lock where it was. That is what a pip-audit failure on one
+    # indirect package wants: pyproject never names it, so Renovate does
+    # not propose the fix itself. Run on the host, as poetry-install is,
+    # with the Poetry version .poetry-version pins.
+    cd backend
+    poetry update --lock {{packages}}
+
+
 alias ba := build-admin
 # Build and push the admin image, and point the Cloud Run Job at it (app)
 build-admin env:
