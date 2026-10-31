@@ -27,8 +27,13 @@
 # App environment - deployable from main only
 # ---------------------------------------------------------------------------
 #
-# The environment deploy.yml and terraform.yml run their main-branch jobs in,
-# holding the GCP_APP_* secrets. It replaced `teaching` here on 2026-09-25:
+# The environment every main-branch job that reaches GCP runs in: deploy.yml
+# and terraform.yml, and the scheduled jobs. It holds GCP_PROJECT_ID,
+# GCP_WIF_PROVIDER, GCP_SERVICE_ACCOUNT and GCP_DEPLOY_SERVICE_ACCOUNT, named
+# without the environment so a matrix job reads `secrets.GCP_PROJECT_ID` and
+# the environment decides which project that is. An index such as
+# `secrets[format('GCP_{0}_...')]` would send the runner every repository
+# secret, which zizmor's overprovisioned-secrets refuses. It replaced `teaching` here on 2026-09-25:
 # teaching's project had been deleted, and its main-only policy had drifted
 # away in GitHub while app's had been set by hand, outside Terraform. Imported
 # rather than created, so the live policy was adopted, not replaced. See
@@ -49,6 +54,28 @@ resource "github_repository_environment_deployment_policy" "app_main" {
   repository     = var.github_repository
   environment    = github_repository_environment.app.environment
   branch_pattern = "main"
+}
+
+# ---------------------------------------------------------------------------
+# App plan environment - the read-only account, for pull requests
+# ---------------------------------------------------------------------------
+#
+# Holds GCP_WIF_PROVIDER and GCP_PLAN_SERVICE_ACCOUNT only: the account that
+# can read the app project and write nothing. terraform.yml's plan job and
+# ci.yml's teaching content sweep run in it, on pull requests from any branch,
+# with `deployment: false`, so it records no deployments.
+#
+# Kept apart from `app` on purpose. `app` takes main only, so a pull request
+# cannot run in it; and opening `app` to every branch would hand the apply
+# and deploy accounts to any branch somebody can push. Here the worst a
+# branch can reach is a read. See Phase 6 of
+# docs/docs/plans/2026-10-30-claude-security-plugin-plan.md.
+#
+# No deployment_branch_policy: every branch may use it, which is the point.
+
+resource "github_repository_environment" "app_plan" {
+  repository  = var.github_repository
+  environment = "app-plan"
 }
 
 # ---------------------------------------------------------------------------

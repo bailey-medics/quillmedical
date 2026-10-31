@@ -38,6 +38,12 @@ jobs:
       id-token: write # Workload Identity Federation
     runs-on: ubuntu-26.04
     timeout-minutes: 10
+    # For the GCP_* secrets, which live in the app environment rather than
+    # the repository. It deploys nothing, so it records no deployment.
+    # app takes main only, so a run by hand must be from main.
+    environment:
+      name: app
+      deployment: false
     outputs:
       stale: ${{ steps.check.outputs.stale }}
 
@@ -47,8 +53,8 @@ jobs:
       - name: Authenticate to GCP
         uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
         with:
-          workload_identity_provider: ${{ secrets.GCP_APP_WIF_PROVIDER }}
-          service_account: ${{ secrets.GCP_APP_SERVICE_ACCOUNT }}
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
 
       - name: Set up gcloud
         uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
@@ -56,7 +62,7 @@ jobs:
       - name: Check for stale incidents
         id: check
         env:
-          GCP_PROJECT: ${{ secrets.GCP_APP_PROJECT_ID }}
+          GCP_PROJECT: ${{ secrets.GCP_PROJECT_ID }}
           STALE_HOURS: ${{ inputs.stale_hours || '24' }}
         run: bash .github/scripts/monitoring/stale-incidents.sh
 
