@@ -154,22 +154,41 @@ The service accounts have the following IAM roles:
 
 #### quillmedical repository
 
-GCP credentials are set via `gh secret set`, one trio per environment:
+GCP credentials live in GitHub environments, not in the repository, set
+with `gh secret set --env <environment>`. Each is named without the
+environment, so a matrix job reads `secrets.GCP_PROJECT_ID` and the
+environment it runs in decides which project that is. An index such as
+`secrets[format('GCP_{0}_...', matrix.environment)]` would make GitHub send
+the runner every repository secret, which zizmor refuses.
 
-| Secret                      | Value pattern                                                                                    |
-| --------------------------- | ------------------------------------------------------------------------------------------------ |
-| `GCP_{ENV}_WIF_PROVIDER`    | `projects/{number}/locations/global/workloadIdentityPools/github-pool/providers/github-provider` |
-| `GCP_{ENV}_SERVICE_ACCOUNT` | `github-actions@quill-medical-{env}.iam.gserviceaccount.com`                                     |
-| `GCP_{ENV}_PROJECT_ID`      | `quill-medical-{env}`                                                                            |
+`app`, main only, for every job that runs from `main`:
 
-Where `{ENV}` is `APP`. Two further accounts exist: `GCP_APP_DEPLOY_SERVICE_ACCOUNT` (builds and deploys) and `GCP_APP_PLAN_SERVICE_ACCOUNT` (read-only, for the Terraform plan on pull requests).
+| Secret                       | Value pattern                                                                                    |
+| ---------------------------- | ------------------------------------------------------------------------------------------------ |
+| `GCP_WIF_PROVIDER`           | `projects/{number}/locations/global/workloadIdentityPools/github-pool/providers/github-provider` |
+| `GCP_SERVICE_ACCOUNT`        | `github-actions@quill-medical-app.iam.gserviceaccount.com`, the Terraform apply account          |
+| `GCP_DEPLOY_SERVICE_ACCOUNT` | the account that builds and deploys                                                              |
+| `GCP_PROJECT_ID`             | `quill-medical-app`                                                                              |
+
+`app-plan`, open to every branch, for pull request jobs:
+
+| Secret                     | Value pattern                                          |
+| -------------------------- | ------------------------------------------------------ |
+| `GCP_WIF_PROVIDER`         | the same provider as in `app`                          |
+| `GCP_PLAN_SERVICE_ACCOUNT` | the read-only account, for the Terraform plan and the teaching content sweep |
 
 Scoping:
 
-- Jobs that declare `environment: app` (`deploy.yml` build + deploy,
-  `terraform.yml` apply) read the values scoped to the `app` environment.
-- The `plan` job in `terraform.yml` runs on pull requests with no
-  `environment:`, so it cannot use the main-only `app` environment.
+- Jobs that deploy (`deploy.yml` build and deploy, `terraform.yml` apply,
+  `public-site.yml`, `guide-screenshots.yml`, `clamav-mirror.yml`) declare
+  `environment: app`.
+- Scheduled jobs that only read the secrets (`alert-route-test.yml`,
+  `accessibility-review.yml`, `stale-incidents.yml`) declare `app` with
+  `deployment: false`, so they record no deployment. A run by hand must be
+  from `main`.
+- Pull request jobs (`terraform.yml` plan, `ci.yml` teaching content sweep)
+  declare `app-plan` with `deployment: false`. `app` takes main only, and a
+  pull request must never reach the apply or deploy accounts.
 - The app environment enforces a **main-only** deployment branch policy
   (see `infra/github/environments.tf`).
 

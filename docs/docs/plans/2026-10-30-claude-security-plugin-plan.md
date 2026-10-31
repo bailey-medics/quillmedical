@@ -457,7 +457,7 @@ anything, and each step is a unit of its own.
       with `inherit`, as `docs/docs/infrastructure/gcp.md` describes, and
       the pipeline now passes on only the webhook.
 
-- [ ] **Decide on GitHub environments for the deploy secrets (22).**
+- [x] **Decide on GitHub environments for the deploy secrets (22).**
       `deploy.yml` (18) and `terraform.yml` (4) pick each `GCP_*` secret
       by environment name, `secrets[format('GCP_{0}_…',
       matrix.environment)]`. GitHub cannot work out in advance which
@@ -471,6 +471,55 @@ anything, and each step is a unit of its own.
       excludes the two files from `overprovisioned-secrets`, with a
       comment pointing here. The alternative is to keep the lookup and
       make that exclusion permanent, with the reason recorded.
+
+      Mark decided on 31 October 2026: use GitHub environments, and move
+      the secrets out of the repository-wide store into them, which
+      changes where they live and who looks after them.
+
+- [ ] **Move the `GCP_*` secrets into GitHub environments.** Every job
+      that reads one runs in an environment, and the environment holds
+      it under a name with no environment in it, so a matrix job reads
+      `secrets.GCP_PROJECT_ID` and the environment decides which project
+      that is. Nothing indexes `secrets` any more, and the
+      `overprovisioned-secrets` exclusion comes out of
+      `.github/zizmor.yml`.
+
+      - `app`, main only as now, holds `GCP_PROJECT_ID`,
+        `GCP_WIF_PROVIDER`, `GCP_SERVICE_ACCOUNT` (the Terraform apply
+        account) and `GCP_DEPLOY_SERVICE_ACCOUNT`. Every job that reads
+        them runs from `main`: the deploy, apply and publish jobs that
+        are in it already, and the scheduled jobs in
+        `alert-route-test.yml`, `accessibility-review.yml` and
+        `stale-incidents.yml`, which today read the repository copies.
+      - `app-plan`, new in `infra/github/environments.tf`, open to any
+        branch, holds only `GCP_WIF_PROVIDER` and
+        `GCP_PLAN_SERVICE_ACCOUNT`, the read-only account. It serves the
+        pull request jobs: Terraform's plan, and the teaching content
+        sweep in `ci.yml`. Kept apart from `app` so a pull request from
+        any branch can never reach the apply or deploy accounts.
+      - A job that only borrows an environment's secrets, rather than
+        deploying, sets `deployment: false`, so it leaves no deployment
+        in the environment's history
+        ([GitHub docs](https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/control-deployments)).
+      - A scheduled job run by hand must now be run from `main`, because
+        `app` refuses any other branch.
+      - actionlint goes from 1.7.8 to 1.7.12 in
+        `.github/scripts/ci/install-actionlint.sh`. 1.7.8 refuses
+        `deployment:` under `environment:` as an unknown key; 1.7.12
+        accepts it and finds nothing else in the workflows.
+
+      **Order matters, because the secret values never pass through
+      Terraform or the repository.** Mark sets the new environment
+      secrets with `gh secret set --env` before this merges, since a job
+      reading a name nobody has set gets an empty string and fails to
+      sign in. Only after a deploy, an apply and a plan have run green
+      from the new names are the repository-wide `GCP_APP_*` secrets,
+      and the old `GCP_APP_*` copies in `app`, deleted.
+
+- [ ] **After it merges: delete the old secrets.** The five
+      repository-wide `GCP_APP_*` secrets and the four `GCP_APP_*` copies
+      in the `app` environment, with `gh secret delete`, once the first
+      deploy, apply and plan from the new names have passed.
 
 - [x] **No Dependabot cooldown: Renovate already has one (6).** Found
       while building: `.github/dependabot.yml` raises vulnerability alerts

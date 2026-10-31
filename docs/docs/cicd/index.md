@@ -164,13 +164,13 @@ The `transcode` stage is the last stage - building without `--target` produces t
 
 ## Secrets
 
-| Secret                           | Purpose                                       |
-| -------------------------------- | --------------------------------------------- |
-| `GCP_APP_WIF_PROVIDER`           | Workload Identity Federation for app          |
-| `GCP_APP_DEPLOY_SERVICE_ACCOUNT` | App deploy service account                    |
-| `GCP_APP_PLAN_SERVICE_ACCOUNT`   | Read-only account for Terraform plan          |
-| `GCP_APP_SERVICE_ACCOUNT`        | Terraform apply service account               |
-| `GCP_APP_PROJECT_ID`             | App GCP project ID                            |
+| Secret                       | Purpose                                               |
+| ---------------------------- | ----------------------------------------------------- |
+| `GCP_WIF_PROVIDER`           | Workload Identity Federation, in `app` and `app-plan` |
+| `GCP_DEPLOY_SERVICE_ACCOUNT` | App deploy service account, in `app`                  |
+| `GCP_PLAN_SERVICE_ACCOUNT`   | Read-only account for Terraform plan, in `app-plan`   |
+| `GCP_SERVICE_ACCOUNT`        | Terraform apply service account, in `app`             |
+| `GCP_PROJECT_ID`             | App GCP project ID, in `app`                          |
 
 Authentication uses **Workload Identity Federation** - no long-lived service account keys.
 

@@ -32,20 +32,8 @@ rules:
 
   # `uses: ./...` for an action or workflow in this repository. GitHub's
   # `uses: $/...` form (July 2026) cannot load a file a previous step
-  # wrote, and counts as pinned. Off until actionlint accepts it: 1.7.8,
-  # pinned here, and 1.7.12, the newest on 30 October 2026, both refuse
-  # it. (34)
+  # wrote, and counts as pinned. Off until actionlint accepts it: 1.7.12,
+  # pinned in install-actionlint.sh and the newest on 31 October 2026,
+  # refuses it. (34)
   self-repository:
     disable: true
-
-  # deploy.yml and terraform.yml pick each GCP_* secret by environment
-  # name, `secrets[format('GCP_{0}_...', matrix.environment)]`, and an
-  # index GitHub cannot resolve in advance sends the runner every secret
-  # the repository holds. The fix is a GitHub environment per deployment
-  # environment, each holding its own secrets under one name, which moves
-  # where the secrets are stored and is left for a person to decide: see
-  # Phase 6 of docs/docs/plans/2026-10-30-claude-security-plugin-plan.md.
-  overprovisioned-secrets:
-    ignore:
-      - deploy.yml
-      - terraform.yml

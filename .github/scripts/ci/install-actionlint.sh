@@ -18,7 +18,7 @@ set -euo pipefail
 # shellcheck source=../shared/logging.sh
 source "$(dirname "$0")/../shared/logging.sh" "install-actionlint"
 
-ACTIONLINT_VERSION="1.7.8"
+ACTIONLINT_VERSION="1.7.12"
 OS="linux"
 ARCH="amd64"
 
