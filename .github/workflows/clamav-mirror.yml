@@ -173,4 +173,5 @@ jobs:
 
         The scan job carries on with the definitions it has until the next run succeeds.
         *Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>
-    secrets: inherit
+    secrets:
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

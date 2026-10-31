@@ -209,7 +209,8 @@ jobs:
 
         *Drift check result:* ${{ needs.alembic_drift_check.result }}
         *Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>
-    secrets: inherit
+    secrets:
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 
 
 
@@ -1017,7 +1018,8 @@ jobs:
         *Image build result:* ${{ needs.heavy_e2e_images.result }}
         *E2E result:* ${{ needs.heavy_e2e.result }}
         *Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>
-    secrets: inherit
+    secrets:
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 
   # ---------- Competency catalogue ----------
   # A competency is retired, never deleted. Deleting one from
@@ -1150,4 +1152,5 @@ jobs:
     with:
       channel: app
       text: ${{ needs.queue_failure_report.outputs.text }}
-    secrets: inherit
+    secrets:
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
