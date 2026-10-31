@@ -2907,6 +2907,12 @@ test-shell-scripts *ARGS:
     fi
 
 
+alias tw := tmux-window
+# Go to a plain shell in tmux for this worktree, starting it if needed (home box)
+tmux-window:
+    @bash scripts/tmux-window.sh
+
+
 alias uaw := unit-tests-alert-watcher
 # Run the alert watcher's type check and tests (in a throwaway container)
 unit-tests-alert-watcher *ARGS:
