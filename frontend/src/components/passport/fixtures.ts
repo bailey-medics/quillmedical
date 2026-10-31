@@ -14,6 +14,7 @@ import type {
   Certificate,
   CompetencyState,
   CpdEntry,
+  FrameworkRef,
   Logbook,
   LogbookConfirmation,
   Reflection,
@@ -529,3 +530,164 @@ export const passportRecords: PassportRecord[] = collectRecords({
   competencyName: (id) =>
     competencies.find((competency) => competency.id === id)?.name ?? id,
 });
+
+/**
+ * A clinical oncology registrar working to two frameworks: the
+ * Gloucestershire radiotherapy record and the SACT prescriber
+ * competencies. Built for the By competency view of the passport, so
+ * between them the rows show every state one can be in.
+ */
+export const oncologyFrameworks: FrameworkRef[] = [
+  {
+    id: "ghnft_radiotherapy_record",
+    name: "Clinical oncology registrar record of radiotherapy training and competence",
+  },
+  {
+    id: "uk_sact_board_2023",
+    name: "Prescriber competencies for reviewing and prescribing SACT",
+  },
+];
+
+/** Signed off, with a logbook behind it. */
+export const referPalliativeCompetency: CompetencyState = {
+  id: "ghnft_radiotherapy_record_refer_palliative",
+  name: "Refer patients for palliative radiotherapy unsupervised",
+  status: "signed_off",
+  level: null,
+  signed_on: "2026-07-02",
+  signed_off_by: "Dr Helen Marsh",
+  expires_on: null,
+  sign_off: "2026-07-02-refer-palliative",
+  previous_sign_offs: [],
+  logbook_entries: 12,
+  certificates: [],
+};
+
+/** Waiting on an assessor, with a logbook behind it. */
+export const prescribePalliativeCompetency: CompetencyState = {
+  ...referPalliativeCompetency,
+  id: "ghnft_radiotherapy_record_plan_and_prescribe_palliative",
+  name: "Plan and prescribe palliative radiotherapy unsupervised",
+  status: "requested",
+  signed_on: null,
+  signed_off_by: null,
+  sign_off: "2026-10-12-plan-and-prescribe-palliative",
+  logbook_entries: 8,
+};
+
+/**
+ * Never asked for, with logbook entries already. The index reports
+ * evidence with no sign-off as `requested` with no `sign_off`, so this
+ * is how a "Not asked" row with a count arrives.
+ */
+export const referRadicalCompetency: CompetencyState = {
+  ...referPalliativeCompetency,
+  id: "ghnft_radiotherapy_record_refer_radical",
+  name: "Refer patients for radical radiotherapy unsupervised",
+  status: "requested",
+  signed_on: null,
+  signed_off_by: null,
+  sign_off: null,
+  logbook_entries: 3,
+};
+
+/** Signed off with no logbook: an acquaintance item, signed on sight. */
+export const pinnacleCompetency: CompetencyState = {
+  ...referPalliativeCompetency,
+  id: "ghnft_radiotherapy_record_acquaintance_with_pinnacle",
+  name: "Acquaintance with Pinnacle treatment planning software",
+  signed_on: "2026-06-11",
+  sign_off: "2026-06-11-acquaintance-with-pinnacle",
+  logbook_entries: 0,
+};
+
+export const ariaCompetency: CompetencyState = {
+  ...pinnacleCompetency,
+  id: "ghnft_radiotherapy_record_acquaintance_with_aria",
+  name: "Acquaintance with Aria",
+  sign_off: "2026-06-11-acquaintance-with-aria",
+};
+
+/** The latest sign-off was declined: the assessor said "not yet". */
+export const antiemeticsCompetency: CompetencyState = {
+  ...referPalliativeCompetency,
+  id: "uk_sact_board_2023_determine_antiemetic_requirements",
+  name: "Level 2: Ability to determine the antiemetic requirements of patients receiving SACT",
+  status: "declined",
+  signed_on: null,
+  signed_off_by: null,
+  sign_off: "2026-09-20-determine-antiemetic-requirements",
+  logbook_entries: 0,
+};
+
+/**
+ * Everything the oncology registrar's passport holds evidence for. The
+ * SACT prescribing competency is signed off one tumour site at a time,
+ * so it appears twice: `lungCompetency` and `breastCompetency`. The
+ * other items in both frameworks have nothing yet.
+ */
+export const oncologyCompetencies: CompetencyState[] = [
+  referPalliativeCompetency,
+  prescribePalliativeCompetency,
+  referRadicalCompetency,
+  pinnacleCompetency,
+  ariaCompetency,
+  lungCompetency,
+  breastCompetency,
+  antiemeticsCompetency,
+];
+
+/** The sign-offs on `prescribePalliativeCompetency`: one waiting. */
+export const prescribePalliativeSignOffs: SignOff[] = [
+  {
+    ...requested,
+    name: "2026-10-12-plan-and-prescribe-palliative",
+    id: "20261012T091044.000Z-6d3f8a20",
+    competency: {
+      id: prescribePalliativeCompetency.id,
+      name: prescribePalliativeCompetency.name,
+    },
+    observed_on: "2026-10-10",
+  },
+];
+
+/** The logbook for `prescribePalliativeCompetency`. */
+export const prescribePalliativeLogbook: Logbook = {
+  competency: prescribePalliativeCompetency.id,
+  count: 3,
+  entries: [
+    {
+      ...logbook.entries[0],
+      filename: "2026-10-24-101500.yaml",
+      competency: prescribePalliativeCompetency.id,
+      performed_on: "2026-10-24",
+      setting: "Cheltenham General Hospital",
+      supervision: "supervised",
+      supervisor: "Dr Helen Marsh",
+      indication: "Painful bone metastasis, right hip",
+      outcome: "8 Gy single fraction planned and prescribed",
+    },
+    {
+      ...logbook.entries[0],
+      filename: "2026-10-17-142000.yaml",
+      competency: prescribePalliativeCompetency.id,
+      performed_on: "2026-10-17",
+      setting: "Cheltenham General Hospital",
+      supervision: "supervised",
+      supervisor: "Dr Helen Marsh",
+      indication: "Haemoptysis from a central lung tumour",
+      outcome: "20 Gy in 5 fractions planned and prescribed",
+    },
+    {
+      ...logbook.entries[0],
+      filename: "2026-10-03-093000.yaml",
+      competency: prescribePalliativeCompetency.id,
+      performed_on: "2026-10-03",
+      setting: "Gloucestershire Royal Hospital",
+      supervision: "supervised",
+      supervisor: "Dr Helen Marsh",
+      indication: "Spinal cord compression, T8",
+      outcome: "20 Gy in 5 fractions planned and prescribed",
+    },
+  ],
+};
