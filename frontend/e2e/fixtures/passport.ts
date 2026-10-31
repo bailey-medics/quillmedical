@@ -35,6 +35,8 @@ export const FRAMEWORK_NAMES = {
 
 /** A person made for one test. */
 export interface PassportPerson {
+  /** Their user id, for the passport admin's own changes to them. */
+  id: number;
   username: string;
   /** Their address, where any email to them is captured. */
   email: string;
@@ -58,7 +60,7 @@ export function passportEmailOf(username: string): string {
 }
 
 /** Sign a fresh browser context in as the passport admin. */
-async function asPassportAdmin(browser: Browser): Promise<Page> {
+export async function asPassportAdmin(browser: Browser): Promise<Page> {
   const context = await browser.newContext({
     storageState: { cookies: [], origins: [] },
   });
@@ -86,7 +88,7 @@ async function makePassportPerson(
   const email = passportEmailOf(username);
   const page = await asPassportAdmin(browser);
 
-  await createAccount(page, {
+  const id = await createAccount(page, {
     username,
     name: `Person ${username}`,
     email,
@@ -97,7 +99,7 @@ async function makePassportPerson(
   });
   await page.context().close();
 
-  return { username, email };
+  return { id, username, email };
 }
 
 /**
