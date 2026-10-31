@@ -172,6 +172,23 @@ repos:
       - id: gitleaks
         name: gitleaks (secret scanning)
 
+  - repo: https://github.com/zizmorcore/zizmor-pre-commit
+    rev: v1.31.1
+    hooks:
+      - id: zizmor
+        name: zizmor (GitHub Actions security)
+        # --config because zizmor finds .github/zizmor.yml from the
+        # repository root, which it does not recognise in a worktree until
+        # 1.32. --offline because the audits that call GitHub need a
+        # token; CI runs those. --min-severity low leaves out findings
+        # zizmor itself only reports as informational, such as a
+        # `${{ github.repository }}` no outsider can set.
+        args:
+          - --no-progress
+          - --offline
+          - --min-severity=low
+          - --config=.github/zizmor.yml
+
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
     hooks:
