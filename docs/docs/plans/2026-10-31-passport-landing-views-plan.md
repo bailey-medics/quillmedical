@@ -109,10 +109,46 @@ there, before anything is stored or routed.
       a fourth state, and a scoped competency as one row and as a row per
       scope.
 
-- [ ] **Stop here for review.** Mark looks at the stories, with the
+- [x] **Stop here for review.** Mark looks at the stories, with the
       oncology lead if useful, and they are adjusted until agreed. Record
       each answer under Decisions, and remove the variants that lost.
       Nothing in Phase 2 onwards starts until this is done.
+
+      Reviewed by Mark on 31 October 2026. The four answers are under
+      Decisions. Adjusted along the way, in #2276: the By competency view
+      stories show the Gloucestershire radiotherapy record alone, its
+      Phone story was removed, and on `PassportCompetencyDetail` each add
+      button now sits above the table it adds to.
+
+- [x] Settle the components on the answers, and remove the variants that
+      lost:
+
+      - **No signed count** - remove `showSignedCount` from
+        `CompetencyFrameworkTable` and `PassportByCompetency`, and the
+        `SignedCountToDecide` and `WithSignedCount` stories.
+
+      - **Declined reads as Not asked** - remove `showDeclined` and the
+        `declined` standing from `lib/passport/competencyTable.ts`, and
+        the `DeclinedToDecide` story. `standingOf` keeps mapping a
+        declined sign-off to `not_asked`, so a later change to a fourth
+        state is one branch in one function.
+
+      - **A row for each site with a sign-off** - replace `rowPerScope`
+        with the agreed behaviour as the only one: in `frameworkRows`, a
+        scoped competency gets one row per scope whose sign-off is
+        signed off or requested, with that scope's own logbook count.
+        A scope that has only logbook entries, or a declined sign-off,
+        gets no row of its own. When no scope has a sign-off, the
+        competency is one row reading Not asked, as an unscoped one
+        would. `ScopesToDecide` becomes a plain story of the agreed
+        rows.
+
+      - Update `competencyTable.test.ts` and the two components' tests
+        to match.
+
+      Done as described. `ScopesToDecide` is now `ScopedCompetency`, which
+      shows a signed site, a requested site and a site with logbook
+      entries only, which gets no row.
 
 ## Phase 2: Store which view a holder wants
 
@@ -231,21 +267,28 @@ there, before anything is stored or routed.
   of them belongs to a single competency, so they keep their cards below
   the tables.
 
-- **To confirm in Phase 1: no "3 of 7 signed off" line under each
-  framework** - the first sketch had one. `CompetencySummary` was
-  deliberately built without totals or percentages, because a passport
-  was not a fixed set of competencies and a denominator would invent one.
-  Frameworks now make the set fixed for each table, so a count is
-  defensible, but it reverses that decision and needs Mark's say.
+- **No "3 of 7 signed off" line under each framework** - Mark's
+  choice at the Phase 1 review. `CompetencySummary` was deliberately
+  built without totals or percentages, because a passport was not a fixed
+  set of competencies and a denominator would invent one. Frameworks now
+  make the set fixed for each table, so a count would have been
+  defensible, but the earlier decision stands.
 
-- **To confirm in Phase 1: a declined or superseded latest sign-off** -
-  `SignOffStatus` also has `declined` and `superseded`. The plan reads
-  the latest sign-off that is `signed_off` or `requested`, and shows
-  **Not asked** when there is neither. Whether a decline should show as
-  a fourth state is a clinical question for Mark.
+- **A declined or superseded latest sign-off reads as Not asked, for
+  now** - Mark's choice at the Phase 1 review. `SignOffStatus` also has
+  `declined` and `superseded`; the table reads the latest sign-off that
+  is `signed_off` or `requested`, and shows **Not asked** when there is
+  neither. A fourth "Declined" state may be revisited, and is kept to one
+  function so that is cheap.
 
-- **To confirm in Phase 1: competencies signed off one scope at a time** -
-  some competencies are signed off per part of practice
-  (`lib/passport/scopes.ts`). The plan shows one row per competency,
-  signed if any scope is signed, and lists each scope on the
-  competency's page. A row per scope is the alternative.
+- **A competency signed off one site at a time lists each site with a
+  sign-off** - Mark's choice at the Phase 1 review. One row per scope
+  (`lib/passport/scopes.ts`) that is signed off or requested, and no row
+  for a scope with nothing asked, because a Not asked row for every
+  tumour site would bury the ones that matter. A scoped competency with
+  no sign-off at any site is one Not asked row.
+
+- **Badges read "Signed off" and "Requested", as elsewhere in the
+  passport** - Mark's choice at the Phase 1 review, over "Signed" and
+  "Waiting". `SignOffStatusBadge` is used unchanged, so a state reads the
+  same on every passport page.
