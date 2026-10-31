@@ -469,16 +469,38 @@ people who act on it, then what must not leak.
 
       Stories 13 to 16 are in `tests/passport/assessing.spec.ts`.
 
-- [ ] Found while building story 14: an assessor has no way to decline
-      on screen. `declineSignOff` is in `lib/passport/api.ts` and
-      `POST /sign-offs/{id}/decline` works, but no page calls it, though
-      `SignOffForm` tells an assessor to "Decline if it is not what you
-      assessed". Story 14 declines through the API instead, and a test
-      marked `test.fail()`, "an assessor is offered a way to decline on
-      the sign-off page", fails the suite the day a Decline button
-      appears, so the marker can come off. Building the button is a
-      change to the assessor's page, not a test, and is Mark's to ask
-      for.
+- [x] Give an assessor a Decline button on the sign-off page, asked for
+      by Mark on 31 October 2026. Found while building story 14: an
+      assessor had no way to decline on screen. `declineSignOff` is in
+      `lib/passport/api.ts` and `POST /sign-offs/{id}/decline` works, but
+      no page called it, though `SignOffForm` tells an assessor to
+      "Decline if it is not what you assessed".
+
+      In `pages/passport/PassportSignOffPage.tsx`, beneath the form, a
+      "Decline request" `IconTextButton` with an `x` icon, right-aligned
+      as the holder's "Withdraw request" is on their side. It opens a
+      `ConfirmModal`, "Decline this request", with a `TextAreaField` in
+      its `field` slot for the reason, which the route requires
+      (`SignOffDeclineIn.reason`, non-empty). An empty reason keeps the
+      modal open with "Say why you are declining", so nothing is sent.
+      On success the inbox is told (`inboxChanged`), and the assessor goes
+      back to `/inbox`, as after signing; a refusal from the server is
+      shown in its own words. The holder's row then reads Not asked, as
+      decided in Phase 1, and the decline is kept under "Declined" on
+      their Sign-offs page with the reason.
+
+      Built from existing components, with no new one: `IconTextButton`
+      gains an `x` entry in `iconTextButtonIcons.tsx`, and `IconX` is
+      already registered in `appIcons.ts`. Tests: the page's own test for
+      the button, an empty reason, a decline and a refusal; story 14
+      declines on screen rather than through the API, and the
+      `test.fail()` marker comes off its companion test.
+
+      Built as described. The companion test was folded into story 14,
+      which now declines on screen. The sign-off page is on accessibility
+      journey 4, so journey 4 again, for declining, is added to "Not yet
+      run" in `testing-log.md`; the axe scan of the page in story 26 still
+      passes with the button on it.
 - [x] 17. As a PA, I want to give `passport_write` to a member of my place,
       so that they can add to their passport.
       Tested: the member's passport offers "Add an entry" afterwards.
