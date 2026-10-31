@@ -109,12 +109,12 @@ jobs:
       - name: Authenticate to GCP (app)
         uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
         with:
-          workload_identity_provider: ${{ secrets.GCP_APP_WIF_PROVIDER }}
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
           # The deploy account: pushes images and deploys Cloud Run, and
           # nothing else. The Terraform account, which can grant itself any
           # role, is kept out of the job that runs on every merge. Batch 9
           # Phase 1 of the environment isolation plan.
-          service_account: ${{ secrets.GCP_APP_DEPLOY_SERVICE_ACCOUNT }}
+          service_account: ${{ secrets.GCP_DEPLOY_SERVICE_ACCOUNT }}
 
       - name: Configure Docker for Artifact Registry
         run: gcloud auth configure-docker ${{ env.AR_REGISTRY }} --quiet
@@ -153,8 +153,8 @@ jobs:
           target: prod
           push: true
           tags: |
-            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_APP_PROJECT_ID }}/quill/${{ matrix.service }}:${{ needs.prepare.outputs.sha }}
-            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_APP_PROJECT_ID }}/quill/${{ matrix.service }}:latest
+            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_PROJECT_ID }}/quill/${{ matrix.service }}:${{ needs.prepare.outputs.sha }}
+            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_PROJECT_ID }}/quill/${{ matrix.service }}:latest
           build-args: |
             VITE_VAPID_PUBLIC=${{ env.VITE_VAPID_PUBLIC }}
             VITE_CLINICAL_SERVICES_ENABLED=false
@@ -172,8 +172,8 @@ jobs:
           target: admin
           push: true
           tags: |
-            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_APP_PROJECT_ID }}/quill/admin:${{ needs.prepare.outputs.sha }}
-            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_APP_PROJECT_ID }}/quill/admin:latest
+            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_PROJECT_ID }}/quill/admin:${{ needs.prepare.outputs.sha }}
+            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_PROJECT_ID }}/quill/admin:latest
           build-args: ${{ steps.base.outputs.build_args }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -187,8 +187,8 @@ jobs:
           target: transcode
           push: true
           tags: |
-            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_APP_PROJECT_ID }}/quill/transcode:${{ needs.prepare.outputs.sha }}
-            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_APP_PROJECT_ID }}/quill/transcode:latest
+            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_PROJECT_ID }}/quill/transcode:${{ needs.prepare.outputs.sha }}
+            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_PROJECT_ID }}/quill/transcode:latest
           build-args: ${{ steps.base.outputs.build_args }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -204,8 +204,8 @@ jobs:
           file: ./backend/Dockerfile.caption
           push: true
           tags: |
-            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_APP_PROJECT_ID }}/quill/caption:${{ needs.prepare.outputs.sha }}
-            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_APP_PROJECT_ID }}/quill/caption:latest
+            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_PROJECT_ID }}/quill/caption:${{ needs.prepare.outputs.sha }}
+            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_PROJECT_ID }}/quill/caption:latest
           build-args: ${{ steps.base.outputs.build_args }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -230,8 +230,8 @@ jobs:
           file: ./backend/Dockerfile.scan
           push: true
           tags: |
-            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_APP_PROJECT_ID }}/quill/scan:${{ needs.prepare.outputs.sha }}
-            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_APP_PROJECT_ID }}/quill/scan:latest
+            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_PROJECT_ID }}/quill/scan:${{ needs.prepare.outputs.sha }}
+            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_PROJECT_ID }}/quill/scan:latest
           build-args: ${{ steps.base.outputs.build_args }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -269,9 +269,9 @@ jobs:
       - name: Authenticate to GCP
         uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
         with:
-          workload_identity_provider: ${{ secrets[format('GCP_{0}_WIF_PROVIDER', matrix.environment)] }}
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
           # The deploy account, as in the build job above.
-          service_account: ${{ secrets[format('GCP_{0}_DEPLOY_SERVICE_ACCOUNT', matrix.environment)] }}
+          service_account: ${{ secrets.GCP_DEPLOY_SERVICE_ACCOUNT }}
 
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
@@ -283,7 +283,7 @@ jobs:
         id: placeholder
         run: |
           bash .github/scripts/deploy/find-placeholder-services.sh \
-            ${{ secrets[format('GCP_{0}_PROJECT_ID', matrix.environment)] }} \
+            ${{ secrets.GCP_PROJECT_ID }} \
             ${{ env.GCP_REGION }} \
             ${{ matrix.environment }}
 
@@ -296,9 +296,9 @@ jobs:
         run: |
           bash .github/scripts/deploy/run-migrations.sh \
             quill-admin-${{ matrix.environment }} \
-            ${{ secrets[format('GCP_{0}_PROJECT_ID', matrix.environment)] }} \
+            ${{ secrets.GCP_PROJECT_ID }} \
             ${{ env.GCP_REGION }} \
-            ${{ env.AR_REGISTRY }}/${{ secrets[format('GCP_{0}_PROJECT_ID', matrix.environment)] }}/quill/admin:${{ needs.prepare.outputs.sha }}
+            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_PROJECT_ID }}/quill/admin:${{ needs.prepare.outputs.sha }}
 
       # A Cloud Run job cannot be created without naming some image, and at
       # `terraform apply` time ours has not been built yet - so every image
@@ -320,9 +320,9 @@ jobs:
         if: ${{ needs.prepare.outputs.backend_changed == 'true' || steps.placeholder.outputs.backend == 'true' }}
         run: |
           gcloud run jobs update quill-transcode-${{ matrix.environment }} \
-            --project=${{ secrets[format('GCP_{0}_PROJECT_ID', matrix.environment)] }} \
+            --project=${{ secrets.GCP_PROJECT_ID }} \
             --region=${{ env.GCP_REGION }} \
-            --image=${{ env.AR_REGISTRY }}/${{ secrets[format('GCP_{0}_PROJECT_ID', matrix.environment)] }}/quill/transcode:${{ needs.prepare.outputs.sha }}
+            --image=${{ env.AR_REGISTRY }}/${{ secrets.GCP_PROJECT_ID }}/quill/transcode:${{ needs.prepare.outputs.sha }}
 
       # The caption image is built from its own Dockerfile rather than a
       # target of the shared one, because Whisper pulls torch and has no
@@ -332,18 +332,18 @@ jobs:
         if: ${{ needs.prepare.outputs.backend_changed == 'true' || steps.placeholder.outputs.backend == 'true' }}
         run: |
           gcloud run jobs update quill-caption-${{ matrix.environment }} \
-            --project=${{ secrets[format('GCP_{0}_PROJECT_ID', matrix.environment)] }} \
+            --project=${{ secrets.GCP_PROJECT_ID }} \
             --region=${{ env.GCP_REGION }} \
-            --image=${{ env.AR_REGISTRY }}/${{ secrets[format('GCP_{0}_PROJECT_ID', matrix.environment)] }}/quill/caption:${{ needs.prepare.outputs.sha }}
+            --image=${{ env.AR_REGISTRY }}/${{ secrets.GCP_PROJECT_ID }}/quill/caption:${{ needs.prepare.outputs.sha }}
 
       # The scan job is pointed at the same way.
       - name: Point the scan job at this build
         if: ${{ needs.prepare.outputs.backend_changed == 'true' || steps.placeholder.outputs.backend == 'true' }}
         run: |
           gcloud run jobs update quill-scan-${{ matrix.environment }} \
-            --project=${{ secrets[format('GCP_{0}_PROJECT_ID', matrix.environment)] }} \
+            --project=${{ secrets.GCP_PROJECT_ID }} \
             --region=${{ env.GCP_REGION }} \
-            --image=${{ env.AR_REGISTRY }}/${{ secrets[format('GCP_{0}_PROJECT_ID', matrix.environment)] }}/quill/scan:${{ needs.prepare.outputs.sha }}
+            --image=${{ env.AR_REGISTRY }}/${{ secrets.GCP_PROJECT_ID }}/quill/scan:${{ needs.prepare.outputs.sha }}
 
       # The teaching sync job runs the admin image with ADMIN_ACTION fixed
       # to sync-teaching, started by the content pipeline. The admin job's
@@ -354,9 +354,9 @@ jobs:
         if: ${{ needs.prepare.outputs.backend_changed == 'true' || steps.placeholder.outputs.backend == 'true' }}
         run: |
           gcloud run jobs update quill-teaching-sync-${{ matrix.environment }} \
-            --project=${{ secrets[format('GCP_{0}_PROJECT_ID', matrix.environment)] }} \
+            --project=${{ secrets.GCP_PROJECT_ID }} \
             --region=${{ env.GCP_REGION }} \
-            --image=${{ env.AR_REGISTRY }}/${{ secrets[format('GCP_{0}_PROJECT_ID', matrix.environment)] }}/quill/admin:${{ needs.prepare.outputs.sha }}
+            --image=${{ env.AR_REGISTRY }}/${{ secrets.GCP_PROJECT_ID }}/quill/admin:${{ needs.prepare.outputs.sha }}
 
       # The smoke test runs inside the admin job rather than from this
       # runner, because a tagged revision's *.run.app URL is only reachable
@@ -366,7 +366,7 @@ jobs:
         if: ${{ needs.prepare.outputs.backend_changed == 'true' || steps.placeholder.outputs.backend == 'true' }}
         env:
           SMOKE_TEST_JOB: quill-admin-${{ matrix.environment }}
-          SMOKE_TEST_PROJECT: ${{ secrets[format('GCP_{0}_PROJECT_ID', matrix.environment)] }}
+          SMOKE_TEST_PROJECT: ${{ secrets.GCP_PROJECT_ID }}
           SMOKE_TEST_REGION: ${{ env.GCP_REGION }}
         run: |
           SHA="${{ needs.prepare.outputs.sha }}"
@@ -374,9 +374,9 @@ jobs:
           # full 40-char SHA won't fit alongside the service name.
           bash .github/scripts/deploy/deploy-tagged.sh \
             quill-backend-${{ matrix.environment }} \
-            ${{ secrets[format('GCP_{0}_PROJECT_ID', matrix.environment)] }} \
+            ${{ secrets.GCP_PROJECT_ID }} \
             ${{ env.GCP_REGION }} \
-            ${{ env.AR_REGISTRY }}/${{ secrets[format('GCP_{0}_PROJECT_ID', matrix.environment)] }}/quill/backend:${SHA} \
+            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_PROJECT_ID }}/quill/backend:${SHA} \
             "rev-${SHA:0:12}" \
             /api/health
 
@@ -384,9 +384,9 @@ jobs:
         if: ${{ needs.prepare.outputs.frontend_changed == 'true' || steps.placeholder.outputs.frontend == 'true' }}
         run: |
           gcloud run services update quill-frontend-${{ matrix.environment }} \
-            --project=${{ secrets[format('GCP_{0}_PROJECT_ID', matrix.environment)] }} \
+            --project=${{ secrets.GCP_PROJECT_ID }} \
             --region=${{ env.GCP_REGION }} \
-            --image=${{ env.AR_REGISTRY }}/${{ secrets[format('GCP_{0}_PROJECT_ID', matrix.environment)] }}/quill/frontend:${{ needs.prepare.outputs.sha }}
+            --image=${{ env.AR_REGISTRY }}/${{ secrets.GCP_PROJECT_ID }}/quill/frontend:${{ needs.prepare.outputs.sha }}
 
       # Public-edge check, complementing (not replacing) the tagged-revision
       # smoke test above - confirms the live edge is serving correctly too.

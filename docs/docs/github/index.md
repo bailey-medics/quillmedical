@@ -153,15 +153,15 @@ Frontend lint-staged hooks also run via Husky but only when frontend files are s
 
 ## Secrets
 
-GitHub Actions secrets are configured per-environment. Never commit tokens or keys.
+GitHub Actions secrets for GCP live in the `app` and `app-plan` environments, not the repository (see `docs/docs/infrastructure/gcp.md`). Never commit tokens or keys.
 
-| Secret                           | Used by                                       |
-| -------------------------------- | --------------------------------------------- |
-| `GCP_APP_WIF_PROVIDER`           | Workload Identity Federation for app          |
-| `GCP_APP_DEPLOY_SERVICE_ACCOUNT` | App deploy service account                    |
-| `GCP_APP_PLAN_SERVICE_ACCOUNT`   | Read-only account for Terraform plan          |
-| `GCP_APP_SERVICE_ACCOUNT`        | Terraform apply service account               |
-| `GCP_APP_PROJECT_ID`             | App GCP project ID                            |
+| Secret                       | Used by                                               |
+| ---------------------------- | ----------------------------------------------------- |
+| `GCP_WIF_PROVIDER`           | Workload Identity Federation, in `app` and `app-plan` |
+| `GCP_DEPLOY_SERVICE_ACCOUNT` | App deploy service account, in `app`                  |
+| `GCP_PLAN_SERVICE_ACCOUNT`   | Read-only account for Terraform plan, in `app-plan`   |
+| `GCP_SERVICE_ACCOUNT`        | Terraform apply service account, in `app`             |
+| `GCP_PROJECT_ID`             | App GCP project ID, in `app`                          |
 
 Authentication to GCP uses **Workload Identity Federation** - no long-lived service account keys.
 
