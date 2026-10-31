@@ -312,4 +312,5 @@ jobs:
 
         *Sync job:* ${{ needs.deploy.outputs.execution != '' && format('<{0}|{1}>', needs.deploy.outputs.log_url, needs.deploy.outputs.execution) || 'not started, see the run' }}
         The rejected banks, if any, are listed in its log.
-    secrets: inherit
+    secrets:
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

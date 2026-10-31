@@ -447,18 +447,30 @@ anything, and each step is a unit of its own.
       either. Both now say `contents: read`, which is all the Slack
       workflow needs, to check out Quill's scripts.
 
-- [ ] **Pass secrets by name (40).** Eighteen calls to reusable
-      workflows use `secrets: inherit`, which hands over every secret
-      the caller can see; each becomes a list of the secrets that
-      workflow declares. The 22 `overprovisioned-secrets` findings are
-      nearly all in `deploy.yml`, where
-      `secrets[format('GCP_{0}_…', matrix.environment)]` picks a secret
-      by environment name and so needs the whole context. Decide there
-      between GitHub environments, each holding its own `GCP_*` secrets
-      under one name, which zizmor's `secrets-outside-env` also favours,
-      and keeping the lookup with a zizmor ignore comment saying why.
-      The environments route changes where the secrets are stored, so
-      it is Mark's call and a change in `infra/github/` if it is taken.
+- [x] **Pass secrets by name (18 of 40).** All 18 `secrets: inherit`
+      calls went to `slack-notify.yml`, which reads one secret,
+      `SLACK_WEBHOOK_URL`. It now declares that secret under
+      `workflow_call.secrets`, and every caller passes it by name, so a
+      Slack job no longer receives every secret its caller holds. That
+      includes the call from `teaching-pipeline.yml`, which runs in the
+      content repositories: they still hand the pipeline their secrets
+      with `inherit`, as `docs/docs/infrastructure/gcp.md` describes, and
+      the pipeline now passes on only the webhook.
+
+- [ ] **Decide on GitHub environments for the deploy secrets (22).**
+      `deploy.yml` (18) and `terraform.yml` (4) pick each `GCP_*` secret
+      by environment name, `secrets[format('GCP_{0}_…',
+      matrix.environment)]`. GitHub cannot work out in advance which
+      secret an index like that reaches, so it sends the runner every
+      secret the repository holds. The fix is a GitHub environment per
+      deployment environment (only `app` today), each holding its own
+      secrets under one name such as `GCP_PROJECT_ID`, which zizmor's
+      `secrets-outside-env` also favours. That changes where the secrets
+      are stored, in `infra/github/`, so it is Mark's call and was not
+      built in the autonomous run. Until then `.github/zizmor.yml`
+      excludes the two files from `overprovisioned-secrets`, with a
+      comment pointing here. The alternative is to keep the lookup and
+      make that exclusion permanent, with the reason recorded.
 
 - [ ] **Give Dependabot a cooldown (6).** A `cooldown:` of a few days on
       each ecosystem in `.github/dependabot.yml`, so a release is not
