@@ -7,10 +7,15 @@ they sign you off.
 
 ## Add an entry
 
-1. Choose [**Passport**](/passport), then **Open logbook**, or go straight to [**Logbook**](/passport/logbook).
+1. Go to [**Logbook**](/passport/logbook). If your passport opens **By record**, choose [**Passport**](/passport), then **Open logbook**.
    ![The logbook, with entries grouped by competency](keep-your-logbook/logbook.png)
 2. Press **Add an entry**.
 3. Under **Which competency?**, choose the one this procedure counts towards.
+
+   In the **By competency** view of [**Passport**](/passport), you can
+   instead choose the competency's row, and press **Add an entry** on its
+   page. The competency is then already chosen.
+
 4. Under **Performed on**, give the day it happened.
    ![The form for a logbook entry](keep-your-logbook/entry.png)
 5. Fill in what is useful: **Setting**, **Supervision**, **Supervisor**, **Indication**, **Outcome** and **Notes**. All are optional.
