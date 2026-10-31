@@ -576,7 +576,7 @@ def seed_other_feature_places(db: Session, enabled_by: User) -> None:
                 db.flush()
                 appoint(db, post, member, appointed_by=enabled_by)
 
-    seed_passport_admin(db)
+    seed_passport_admin(db, enabled_by)
 
     db.flush()
     print("Seeded the passport and safety places")
@@ -590,20 +590,63 @@ def seed_other_feature_places(db: Session, enabled_by: User) -> None:
 PASSPORT_ADMIN = "ci_passport_admin"
 
 
-def seed_passport_admin(db: Session) -> None:
-    """Seed the passport admin of the passport organisation.
+#: A second passport organisation, with its own site, passport admin and
+#: member, so the leak tests can see that running the passport at one
+#: trust shows nothing of another.
+SECOND_PASSPORT_PLACE = (
+    "CI Second Passport Hospital",
+    "CI Second Passport Centre",
+    "ci_second_passport_admin",
+    "ci_second_passport",
+)
 
-    A member of the organisation itself, so the people they may make
-    reach everything beneath it, "CI Passport Centre" included: a scoped
-    manager administers the organisations they belong to and the places
-    under them.
+
+def seed_passport_admin(db: Session, enabled_by: User) -> None:
+    """Seed the passport admin of each passport organisation.
+
+    Each is a member of the organisation itself, so the people they may
+    make reach everything beneath it: a scoped manager administers the
+    organisations they belong to and the places under them. The second
+    organisation also gets a member at its site, for a passport admin of
+    the first to be refused.
     """
     organisation = _ensure_org_unit(
         db, OTHER_FEATURE_PLACES[0][0], "organisation", None
     )
     admin = _ensure_user(db, PASSPORT_ADMIN, "passport_admin")
-
     add_org_unit_member(db, organisation.id, admin.id, "staff")
+
+    name, site_name, second_admin, member_name = SECOND_PASSPORT_PLACE
+    second = _ensure_org_unit(db, name, "organisation", None)
+    site = _ensure_org_unit(db, site_name, "site", second.id)
+    feature_on = db.scalar(
+        select(OrgUnitFeature.id).where(
+            OrgUnitFeature.org_unit_id == second.id,
+            OrgUnitFeature.feature_key == "passport",
+        )
+    )
+
+    if feature_on is None:
+        db.add(
+            OrgUnitFeature(
+                org_unit_id=second.id,
+                feature_key="passport",
+                enabled_by=enabled_by.id,
+            )
+        )
+
+    add_org_unit_member(
+        db,
+        second.id,
+        _ensure_user(db, second_admin, "passport_admin").id,
+        "staff",
+    )
+    add_org_unit_member(
+        db,
+        site.id,
+        _ensure_user(db, member_name, "passport_delegate").id,
+        "staff",
+    )
 
 
 #: The learners whose attempt has run out of time, one per browser project,
