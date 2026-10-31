@@ -120,58 +120,41 @@ test.describe("Assessing a passport", () => {
     expect(await holderRowText(browser, holder)).toContain("Signed off");
   });
 
-  test("14. an assessor declines a request", async ({ browser }, testInfo) => {
-    // Declined through the API: no page offers a Decline button yet. The
-    // test below says so, and fails the build when one is added.
+  test("14. an assessor declines a request, with a reason", async ({
+    page,
+    browser,
+  }, testInfo) => {
     const holder = await makeHolder(browser, testInfo.project.name);
     const assessor = await makeAssessor(browser, testInfo.project.name);
     const name = await askThroughTheApi(browser, holder, assessor.email);
 
-    const theirs = await pageAs(browser, assessor.username);
-    const declined = await send(
-      theirs,
-      "POST",
-      `/passport/${holder.passportId}/sign-offs/${name}/decline`,
-      { reason: "Not yet ready to do this unsupervised." },
-    );
-    expect(declined.status(), await declined.text()).toBe(200);
-    await theirs.context().close();
-
-    // The row reads Not asked, as decided in Phase 1, and the decline is
-    // kept on the Sign-offs page with the assessor's reason.
-    expect(await holderRowText(browser, holder)).toContain("Not asked");
-    const page = await pageAs(browser, holder.username);
-    const listed = await read<SignOffListed[]>(
-      page,
-      `/passport/${holder.passportId}/sign-offs`,
-    );
-    expect(listed.find((signOff) => signOff.name === name)?.status).toBe(
-      "declined",
-    );
-    await page.goto("/passport/sign-offs");
-    await expect(page.getByRole("heading", { name: "Declined" })).toBeVisible();
-    await page.context().close();
-  });
-
-  test("14b. an assessor is offered a way to decline on the sign-off page", async ({
-    page,
-    browser,
-  }, testInfo) => {
-    // Found while building Phase 6: `declineSignOff` exists in the API
-    // client and no page calls it, though the form tells an assessor to
-    // decline a scope they did not assess. Marked as failing, so the
-    // suite says when a Decline button arrives.
-    test.fail();
-    const holder = await makeHolder(browser, testInfo.project.name);
-    const assessor = await makeAssessor(browser, testInfo.project.name);
-    await askThroughTheApi(browser, holder, assessor.email);
-
+    // On the sign-off page, from the inbox, with the reason asked for.
     await signIn(page, assessor.username);
     await page.goto("/inbox");
     await page.getByText(REFER_PALLIATIVE.name).first().click();
-    await expect(page.getByRole("button", { name: /Decline/ })).toBeVisible({
-      timeout: 5_000,
-    });
+    await page.getByRole("button", { name: "Decline request" }).click();
+    const dialog = page.getByRole("dialog", { name: "Decline this request" });
+    await dialog
+      .getByRole("textbox", { name: /Why are you declining/ })
+      .fill("Not yet ready to do this unsupervised.");
+    await dialog.getByRole("button", { name: "Decline", exact: true }).click();
+    await expect(page).toHaveURL(/\/inbox$/);
+
+    // The row reads Not asked, as decided in Phase 1, and the decline is
+    // kept on the holder's Sign-offs page with the reason.
+    expect(await holderRowText(browser, holder)).toContain("Not asked");
+    const theirs = await pageAs(browser, holder.username);
+    const listed = await read<SignOffListed[]>(
+      theirs,
+      `/passport/${holder.passportId}/sign-offs`,
+    );
+    const declined = listed.find((signOff) => signOff.name === name);
+    expect(declined?.status).toBe("declined");
+    await theirs.goto("/passport/sign-offs");
+    await expect(
+      theirs.getByRole("heading", { name: "Declined" }),
+    ).toBeVisible();
+    await theirs.context().close();
   });
 
   test("15. an external assessor joins through the invitation and signs", async ({
