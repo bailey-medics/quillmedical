@@ -27,7 +27,6 @@ permissions:
   # Read only: write was for the CalVer tag, which went with the
   # promote-to-production job.
   contents: read
-  id-token: write  # Workload Identity Federation for Google Cloud Platform
   packages: read  # To pull the mirrored base images the builds start from
 
 concurrency:
@@ -87,6 +86,10 @@ jobs:
   # ---------- Build and push Docker images ----------
   build:
     name: Build ${{ matrix.service }}
+    permissions:
+      contents: read
+      id-token: write  # Workload Identity Federation for Google Cloud Platform
+      packages: read
     runs-on: ubuntu-26.04
     needs: prepare
     if: ${{ needs.prepare.outputs.services != '[]' }}
@@ -236,6 +239,10 @@ jobs:
   # ---------- Deploy to teaching ----------
   deploy:
     name: Deploy to ${{ matrix.environment }}
+    permissions:
+      contents: read
+      id-token: write  # Workload Identity Federation for Google Cloud Platform
+      packages: read
     runs-on: ubuntu-26.04
     # A healthy run finishes in a few minutes. The ceiling stops a stalled
     # Cloud Run operation from holding the serialised deploy queue for an

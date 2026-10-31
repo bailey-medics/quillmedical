@@ -17,8 +17,6 @@ on:
 
 permissions:
   contents: read
-  id-token: write
-  pages: write
 
 concurrency:
   group: docs
@@ -28,6 +26,9 @@ jobs:
   # ---------- Build documentation ----------
   build:
     name: Build documentation
+    permissions:
+      contents: read
+      pages: read # configure-pages reads the site's settings
     runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v7.0.1
@@ -85,6 +86,9 @@ jobs:
   deploy:
     name: Deploy to GitHub Pages
     needs: build
+    permissions:
+      pages: write # deploy-pages publishes the site
+      id-token: write # and proves to Pages which run it came from
     runs-on: ubuntu-26.04
     environment:
       name: github-pages

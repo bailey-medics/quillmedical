@@ -297,6 +297,8 @@ jobs:
   notify-deploy-failure:
     needs: deploy
     if: always() && needs.deploy.result == 'failure'
+    permissions:
+      contents: read # slack-notify checks out Quill's scripts
     uses: bailey-medics/quillmedical/.github/workflows/slack-notify.yml@main
     with:
       channel: app

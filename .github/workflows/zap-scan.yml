@@ -15,7 +15,6 @@ on:
 
 permissions:
   contents: read
-  issues: write  # To create issues for alerts
 
 concurrency:
   group: zap-scan
@@ -23,6 +22,9 @@ concurrency:
 
 jobs:
   zap-baseline:
+    permissions:
+      contents: read
+      issues: write  # To create issues for alerts
     runs-on: ubuntu-26.04
     name: ZAP baseline scan
     timeout-minutes: 20

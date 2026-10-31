@@ -25,7 +25,6 @@ on:
 
 permissions:
   contents: read
-  id-token: write # Workload Identity Federation
 
 concurrency:
   group: stale-incidents
@@ -34,6 +33,9 @@ concurrency:
 jobs:
   check:
     name: Check for stuck incidents (teaching)
+    permissions:
+      contents: read
+      id-token: write # Workload Identity Federation
     runs-on: ubuntu-26.04
     timeout-minutes: 10
     outputs:

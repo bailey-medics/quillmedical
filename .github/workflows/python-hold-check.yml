@@ -29,7 +29,6 @@ on:
 
 permissions:
   contents: read
-  issues: write # Opens the issue when the hold can go
 
 concurrency:
   group: python-hold-check
@@ -61,6 +60,9 @@ jobs:
     name: Raise an issue
     needs: check
     if: ${{ needs.check.outputs.liftable != '' }}
+    permissions:
+      contents: read
+      issues: write # Opens the issue when the hold can go
     runs-on: ubuntu-24.04
     timeout-minutes: 10
 
