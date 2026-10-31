@@ -113,6 +113,7 @@ EXPECTED_PATHS = {
     "/api/passport/{passport_id}/sign-offs/{signoff_id}/sign-off",
     "/api/passport/{passport_id}/sign-offs/{signoff_id}/withdraw",
     "/api/passport/{passport_id}/frameworks",
+    "/api/passport/{passport_id}/landing-view",
 }
 
 

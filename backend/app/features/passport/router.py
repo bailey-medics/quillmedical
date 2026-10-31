@@ -103,6 +103,7 @@ from app.schemas.passport import (
     FrameworksIn,
     InboxItemOut,
     InvitePreviewOut,
+    LandingViewIn,
     LogbookConfirmAnswerOut,
     LogbookConfirmationOut,
     LogbookConfirmIn,
@@ -727,6 +728,7 @@ def _passport_out(row: Passport, profile: Profile) -> PassportOut:
         ],
         created_at=row.created_at.date(),
         head_commit=row.head_commit,
+        landing_view=row.landing_view,
     )
 
 
@@ -891,6 +893,33 @@ def set_frameworks(
 
     commit = records.set_frameworks(store, row.id, _actor(user), chosen)
     row.head_commit = commit
+    db.flush()
+
+    return _passport_out(row, _read_profile(store, row.id))
+
+
+@passport_router.put(
+    "/{passport_id}/landing-view",
+    response_model=PassportOut,
+    dependencies=[_DEP_PASSPORT, DEP_REQUIRE_CSRF],
+)
+def set_landing_view(
+    passport_id: str,
+    body: LandingViewIn,
+    user: User = DEP_CURRENT_USER,
+    db: Session = _DEP_SESSION,
+    store: PassportStore = _DEP_STORE,
+) -> PassportOut:
+    """Choose how the passport home page lays out the record.
+
+    **The holder alone, and allowed on a read-only passport.** It changes
+    how the record is shown and never the record, so it is behind
+    ``_require_holder`` rather than ``_require_writer``, and writes the
+    passport row only: no commit to the repository.
+    """
+    row = _require_holder(db, passport_id, user)
+
+    row.landing_view = body.landing_view
     db.flush()
 
     return _passport_out(row, _read_profile(store, row.id))

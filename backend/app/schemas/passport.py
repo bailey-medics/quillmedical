@@ -32,8 +32,18 @@ them to defer to it.
 from datetime import date, datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    EmailStr,
+    Field,
+    field_validator,
+)
 
+from app.features.passport.models import (
+    DEFAULT_PASSPORT_LANDING_VIEW,
+    validate_passport_landing_view,
+)
 from app.features.passport.schemas import (
     CompetencyIdField,
     CpdActivityType,
@@ -207,6 +217,24 @@ class PassportOut(BaseModel):
     frameworks: list[FrameworkOut] = Field(default_factory=list)
     created_at: date
     head_commit: str | None = None
+    #: How the holder's home page lays out the record: ``by_competency``
+    #: or ``by_record``. Stored on the passport row, not in the record.
+    landing_view: str = DEFAULT_PASSPORT_LANDING_VIEW
+
+
+class LandingViewIn(_In):
+    """Choosing how the passport home page lays out the record.
+
+    Checked against ``PASSPORT_LANDING_VIEWS``, so an unknown view is a
+    422 naming the known ones.
+    """
+
+    landing_view: str = Field(max_length=32)
+
+    @field_validator("landing_view")
+    @classmethod
+    def _known_view(cls, value: str) -> str:
+        return validate_passport_landing_view(value)
 
 
 class PassportCreateIn(_In):
