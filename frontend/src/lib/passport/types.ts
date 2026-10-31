@@ -196,7 +196,18 @@ export interface Passport {
   frameworks?: FrameworkRef[];
   created_at: IsoDate;
   head_commit: string | null;
+  /**
+   * How the holder's home page lays out the record. Optional so an older
+   * response still lands somewhere: read it through `landingViewOf` in `landingView.ts`.
+   */
+  landing_view?: LandingView;
 }
+
+/**
+ * One way the passport home page can lay out the record. Mirrors
+ * `PASSPORT_LANDING_VIEWS` in `backend/app/features/passport/models.py`.
+ */
+export type LandingView = "by_competency" | "by_record";
 
 /**
  * One competency's state, from the derived index.
