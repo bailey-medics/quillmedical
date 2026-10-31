@@ -445,27 +445,40 @@ people who act on it, then what must not leak.
 
 `tests/passport/assessing.spec.ts`.
 
-- [ ] 13. As an AS, I want to see a request in my inbox and sign it off,
+- [x] 13. As an AS, I want to see a request in my inbox and sign it off,
       so that the holder's record shows my judgement.
       Tested: the request is listed at `/inbox`, the sign-off form is
       filled and submitted, and the PH's row then reads "Signed off" with
       the AS's name on the sign-off page.
-- [ ] 14. As an AS, I want to decline a request, so that a holder not yet
+- [x] 14. As an AS, I want to decline a request, so that a holder not yet
       ready is told so.
       Tested: the PH's row reads "Not asked", as decided in Phase 1, and
       the declined sign-off is listed under "Declined" on the Sign-offs
       page with the AS's comment.
-- [ ] 15. As an EA, I want the invitation a request sends me to bring me
+- [x] 15. As an EA, I want the invitation a request sends me to bring me
       into Quill to sign, so that a holder can be assessed by somebody
       from another hospital.
       Tested: the PH names an address with no account, the EA follows the
       captured invitation to `/passport/assessors/accept`, makes their
       account, and signs the sign-off. The PH's row then reads "Signed
       off".
-- [ ] 16. As Quill, I want a holder never to sign off their own request,
+- [x] 16. As Quill, I want a holder never to sign off their own request,
       so that every sign-off is somebody else's judgement.
       Tested: asking with the holder's own address is refused on screen,
       and a forged sign-off of their own request is refused at the API.
+
+      Stories 13 to 16 are in `tests/passport/assessing.spec.ts`.
+
+- [ ] Found while building story 14: an assessor has no way to decline
+      on screen. `declineSignOff` is in `lib/passport/api.ts` and
+      `POST /sign-offs/{id}/decline` works, but no page calls it, though
+      `SignOffForm` tells an assessor to "Decline if it is not what you
+      assessed". Story 14 declines through the API instead, and a test
+      marked `test.fail()`, "an assessor is offered a way to decline on
+      the sign-off page", fails the suite the day a Decline button
+      appears, so the marker can come off. Building the button is a
+      change to the assessor's page, not a test, and is Mark's to ask
+      for.
 - [ ] 17. As a PA, I want to give `passport_write` to a member of my place,
       so that they can add to their passport.
       Tested: the member's passport offers "Add an entry" afterwards.
