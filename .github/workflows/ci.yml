@@ -484,6 +484,11 @@ jobs:
     name: Published teaching content still validates
     timeout-minutes: 10
     continue-on-error: true
+    # For the read-only plan account, kept in app-plan: app takes main
+    # only, and a pull request must never reach its deploy accounts.
+    environment:
+      name: app-plan
+      deployment: false
     permissions:
       contents: read
       id-token: write
@@ -521,8 +526,8 @@ jobs:
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
         with:
-          workload_identity_provider: ${{ secrets.GCP_APP_WIF_PROVIDER }}
-          service_account: ${{ secrets.GCP_APP_PLAN_SERVICE_ACCOUNT }}
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_PLAN_SERVICE_ACCOUNT }}
 
       - name: Set up gcloud CLI
         uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
