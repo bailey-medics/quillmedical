@@ -8,6 +8,8 @@ import userEvent from "@testing-library/user-event";
 import { renderWithMantine } from "@test/test-utils";
 import CompetencyFrameworkTable from "./CompetencyFrameworkTable";
 import {
+  breastCompetency,
+  lungCompetency,
   oncologyCompetencies,
   oncologyFrameworks,
   prescribePalliativeCompetency,
@@ -15,7 +17,7 @@ import {
   referRadicalCompetency,
 } from "./fixtures";
 
-const [radiotherapy] = oncologyFrameworks;
+const [radiotherapy, sact] = oncologyFrameworks;
 
 /** The table row holding this text. */
 function rowFor(text: string): HTMLElement {
@@ -56,23 +58,31 @@ describe("CompetencyFrameworkTable", () => {
     expect(within(notAsked).getByText("3 entries")).toBeInTheDocument();
   });
 
-  it("shows no signed count unless asked", () => {
-    const { rerender } = renderWithMantine(
+  it("shows no signed count under the framework's name", () => {
+    renderWithMantine(
       <CompetencyFrameworkTable
         framework={radiotherapy}
         competencies={oncologyCompetencies}
       />,
     );
-    expect(screen.queryByText(/signed off$/)).not.toBeInTheDocument();
 
-    rerender(
+    expect(screen.queryByText(/ of \d+ signed off/)).not.toBeInTheDocument();
+  });
+
+  it("names the site on each row of a scoped competency", () => {
+    renderWithMantine(
       <CompetencyFrameworkTable
-        framework={radiotherapy}
-        competencies={oncologyCompetencies}
-        showSignedCount
+        framework={sact}
+        competencies={[lungCompetency, breastCompetency]}
       />,
     );
-    expect(screen.getByText("3 of 7 signed off")).toBeInTheDocument();
+
+    expect(
+      screen.getByText(`${lungCompetency.name} (Lung)`),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(`${lungCompetency.name} (Breast)`),
+    ).toBeInTheDocument();
   });
 
   it("opens a competency by its id", async () => {

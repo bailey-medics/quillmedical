@@ -17,7 +17,7 @@ import type { CompetencyState, ScopeRef } from "./types";
  * which `_entry` in `backend/app/features/passport/index.py` gives as
  * `requested` with no `sign_off` behind it.
  */
-export type Standing = "signed_off" | "requested" | "declined" | "not_asked";
+export type Standing = "signed_off" | "requested" | "not_asked";
 
 /** One row of the table. */
 export interface CompetencyTableRow {
@@ -29,90 +29,73 @@ export interface CompetencyTableRow {
   logbookEntries: number;
 }
 
-/** Choices about how rows are made, still to be settled at review. */
-export interface CompetencyTableOptions {
-  /** Give a declined latest sign-off a state of its own */
-  showDeclined?: boolean;
-  /** Give each scope of a scoped competency a row of its own */
-  rowPerScope?: boolean;
-}
-
-/** Strongest first, for a row made from several scopes' entries. */
-const STANDING_ORDER: Standing[] = [
-  "signed_off",
-  "requested",
-  "declined",
-  "not_asked",
-];
+/** Strongest first, for a row made from several entries. */
+const STANDING_ORDER: Standing[] = ["signed_off", "requested", "not_asked"];
 
 /**
  * Where one index entry stands.
  *
- * A declined sign-off is `not_asked` unless `showDeclined` is set: whether
- * a decline earns a state of its own is still to be decided. `superseded`
- * is always `not_asked`, because a sign-off corrected by a later one says
- * nothing about where the competency stands now.
+ * A declined sign-off reads as `not_asked`, as agreed at review: the
+ * holder has nothing standing for it, and may ask again. A fourth state
+ * for it would be one more branch here. `superseded` is `not_asked` too,
+ * because a sign-off corrected by a later one says nothing about where
+ * the competency stands now.
  */
-export function standingOf(
-  state: CompetencyState,
-  showDeclined = false,
-): Standing {
+export function standingOf(state: CompetencyState): Standing {
   if (state.status === "signed_off") return "signed_off";
   if (state.status === "requested" && state.sign_off) return "requested";
-  if (state.status === "declined" && showDeclined) return "declined";
 
   return "not_asked";
-}
-
-/** The strongest of several standings. */
-function strongest(standings: Standing[]): Standing {
-  return (
-    STANDING_ORDER.find((standing) => standings.includes(standing)) ??
-    "not_asked"
-  );
 }
 
 /**
  * The framework's rows, in the order its file lists its items.
  *
  * A competency signed off one scope at a time has an index entry for each
- * scope. By default it is still one row, standing at the strongest of its
- * scopes; `rowPerScope` gives each scope a row instead. The logbook count
- * is the largest any entry reports rather than a sum, because the entries
+ * scope. **Each scope that is signed off or requested gets a row of its
+ * own**, with that scope's logbook count. A scope with nothing asked gets
+ * no row, because a Not asked row for every tumour site would bury the
+ * ones that matter. When no scope has a sign-off, the competency is one
+ * Not asked row, as an unscoped one would be, and its logbook count is
+ * the largest any entry reports rather than a sum, because the entries
  * for one competency may count the same procedures.
  */
 export function frameworkRows(
   frameworkId: string,
   competencies: CompetencyState[],
-  { showDeclined = false, rowPerScope = false }: CompetencyTableOptions = {},
 ): CompetencyTableRow[] {
   const rows: CompetencyTableRow[] = [];
 
   for (const item of frameworkItems(frameworkId)) {
     const states = competencies.filter((state) => state.id === item.id);
+    const scopedWithSignOff = states.filter(
+      (state) => state.scope && standingOf(state) !== "not_asked",
+    );
 
-    if (rowPerScope && states.some((state) => state.scope)) {
-      for (const state of states) {
+    if (scopedWithSignOff.length > 0) {
+      for (const state of scopedWithSignOff) {
         rows.push({
           key: `${item.id}:${state.scope?.id ?? ""}`,
           id: item.id,
           name: item.display_name,
           scope: state.scope ?? null,
-          standing: standingOf(state, showDeclined),
+          standing: standingOf(state),
           logbookEntries: state.logbook_entries,
         });
       }
       continue;
     }
 
+    const standings = states.map(standingOf);
+    const standing =
+      STANDING_ORDER.find((each) => standings.includes(each)) ?? "not_asked";
+
     rows.push({
       key: item.id,
       id: item.id,
       name: item.display_name,
       scope: null,
-      standing: strongest(
-        states.map((state) => standingOf(state, showDeclined)),
-      ),
+      standing,
       logbookEntries: Math.max(
         0,
         ...states.map((state) => state.logbook_entries),
