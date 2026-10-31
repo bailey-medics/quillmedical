@@ -2595,8 +2595,25 @@ storybook:
         echo "" >&2
     fi
 
+    # On the home box, listen on every interface so a phone on the tailnet
+    # can open it. Safe there and nowhere else: Storybook runs on the host,
+    # not in Docker, so the firewall covers it, and the box's firewall
+    # drops anything that does not arrive over Tailscale. Tailscale being
+    # installed and connected on Linux is what marks that box. A Mac keeps
+    # localhost alone, because nothing keeps it off the Wi-Fi it is on.
+    host_args=()
+
+    if [[ "$OSTYPE" != darwin* ]] && command -v tailscale >/dev/null \
+        && tailscale ip -4 >/dev/null 2>&1; then
+        host_args=(--host 0.0.0.0)
+        echo "On your phone, with Tailscale on: http://$(just _host-address):6006"
+    fi
+
     cd frontend
-    yarn storybook
+
+    # Written so an empty list expands to nothing under `set -u` in the
+    # bash 3.2 a Mac ships, which otherwise calls it unbound.
+    yarn storybook ${host_args[@]+"${host_args[@]}"}
 
 
 alias sbt := storybook-test
