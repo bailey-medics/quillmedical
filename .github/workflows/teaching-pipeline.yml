@@ -54,7 +54,7 @@ jobs:
         working-directory: question_bank_content
         env:
           GH_TOKEN: ${{ github.token }}
-        run: bash ../tooling/.github/scripts/auto-pr/create-pr.sh "${{ github.ref_name }}"
+        run: bash ../tooling/.github/scripts/auto-pr/create-pr.sh "$GITHUB_REF_NAME"
 
   # -------------------------------------------------------------------
   # Validate content on pull request
