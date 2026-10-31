@@ -29,6 +29,7 @@ import {
   createPassport,
   fetchPassportFrameworks,
   setPassportFrameworks,
+  setPassportLandingView,
   declineSignOff,
   fetchCertificates,
   fetchAllCpd,
@@ -98,6 +99,7 @@ describe("passport paths", () => {
       "/api/passport/requests/logbook-confirmations/{request_id}",
       "/api/passport/frameworks",
       "/api/passport/{passport_id}/frameworks",
+      "/api/passport/{passport_id}/landing-view",
       "/api/passport/{passport_id}/logbook",
       "/api/passport/{passport_id}/logbook/{competency_id}",
       "/api/passport/{passport_id}/logbook/{competency_id}/{stem}",
@@ -141,6 +143,14 @@ describe("passport", () => {
     expect(api.put).toHaveBeenCalledWith(
       `/passport/${PASSPORT_ID}/frameworks`,
       { frameworks: ["clinical"] },
+    );
+  });
+
+  it("chooses how the passport home page lays out the record", async () => {
+    await setPassportLandingView(PASSPORT_ID, "by_record");
+    expect(api.put).toHaveBeenCalledWith(
+      `/passport/${PASSPORT_ID}/landing-view`,
+      { landing_view: "by_record" },
     );
   });
 

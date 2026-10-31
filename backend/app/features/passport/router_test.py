@@ -5175,6 +5175,107 @@ class TestAppraisalPeriods:
         assert response.status_code == 404
 
 
+class TestLandingView:
+    """How the holder's passport home page lays out the record."""
+
+    def _put(
+        self, client: TestClient, passport_id: str, view: str
+    ) -> Response:
+        return client.put(
+            f"/api/passport/{passport_id}/landing-view",
+            json={"landing_view": view},
+        )
+
+    def test_a_new_passport_opens_by_competency(
+        self, holder_client: TestClient
+    ) -> None:
+        response = holder_client.post("/api/passport", json=WORKING_TO)
+
+        assert response.status_code == 201, response.text
+        assert response.json()["landing_view"] == "by_competency"
+
+    def test_an_existing_passport_opens_by_competency(
+        self,
+        holder_client: TestClient,
+        holder: User,
+        db_session: Session,
+    ) -> None:
+        """A row written before the column reads the server default."""
+        passport_id = _create_passport(holder_client)
+
+        row = db_session.get(Passport, passport_id)
+        assert row is not None
+        assert row.landing_view == "by_competency"
+
+        read = holder_client.get("/api/passport/me").json()
+        assert read["passport"]["landing_view"] == "by_competency"
+
+    @pytest.mark.parametrize("view", ["by_record", "by_competency"])
+    def test_the_holder_can_choose_either_view(
+        self, holder_client: TestClient, view: str
+    ) -> None:
+        passport_id = _create_passport(holder_client)
+
+        response = self._put(holder_client, passport_id, view)
+
+        assert response.status_code == 200, response.text
+        assert response.json()["landing_view"] == view
+        read = holder_client.get("/api/passport/me").json()
+        assert read["passport"]["landing_view"] == view
+
+    def test_an_unknown_view_is_refused(
+        self, holder_client: TestClient
+    ) -> None:
+        passport_id = _create_passport(holder_client)
+
+        response = self._put(holder_client, passport_id, "by_colour")
+
+        assert response.status_code == 422, response.text
+
+    def test_choosing_writes_no_commit_to_the_repository(
+        self,
+        holder_client: TestClient,
+        passport_store: LocalPassportStore,
+    ) -> None:
+        """It is how the record is shown, not part of the record."""
+        passport_id = _create_passport(holder_client)
+        before = passport_store.head(passport_id)
+
+        response = self._put(holder_client, passport_id, "by_record")
+
+        assert response.status_code == 200, response.text
+        assert passport_store.head(passport_id) == before
+
+    def test_a_holder_whose_entitlement_lapsed_can_still_choose(
+        self,
+        holder_client: TestClient,
+        holder: User,
+        db_session: Session,
+    ) -> None:
+        """A read-only passport can still be laid out as its holder likes."""
+        passport_id = _create_passport(holder_client)
+        lapse(holder, "passport_write")
+        db_session.commit()
+
+        response = self._put(holder_client, passport_id, "by_record")
+
+        assert response.status_code == 200, response.text
+
+    def test_nobody_else_can_choose_for_them(
+        self,
+        test_client: TestClient,
+        holder_client: TestClient,
+        bystander: User,
+    ) -> None:
+        passport_id = _create_passport(holder_client)
+
+        response = self._put(
+            _login(test_client, "bystander"), passport_id, "by_record"
+        )
+
+        assert response.status_code == 404
+
+
 class TestCpdList:
     """Every CPD activity at once, for totalling over date ranges."""
 
