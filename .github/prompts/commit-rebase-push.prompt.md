@@ -239,55 +239,46 @@ nothing in the conversation makes merging part of this command.
    was generated here before. Anything else is someone's writing: show it, and
    ask before replacing it.
 
-4. **Write the body - short and scannable.** A reviewer should take it in
-   within thirty seconds. This repository has no pull request template, so the
-   shape below is the whole specification:
+4. **Write the body in the same shape as `/crpd` step 9.** One specification
+   for every pull request body, so a reviewer sees the same shape whether
+   the branch was stacked or not. The reader is the person who reviews
+   every line, reading on a phone, deciding in twenty seconds whether to
+   merge after a skim, read every line, or push back. In short:
 
-   - **One-line summary first.** A single sentence saying what the branch does.
-     Two only if the why is not obvious. No preamble, no restating the title.
-   - **Then bullets.** Six or fewer: one flat list, no headings. More than six:
-     group them under two to four bold one-line headings in sentence case
-     (e.g. `**Auth**`), grouping by theme rather than by file or commit.
-   - **One line per bullet**, ideally under fifteen words and never wrapping
-     past two lines. Start with a verb - adds, fixes, moves, removes - and
-     name the file, function or symbol in backticks. No sub-bullets.
-   - **No closing paragraph**, no overall-effect section, no praise, no
-     restating a bullet in prose.
+   - **A triage block first**, three lines, each a bold label and one
+     plain sentence: `**Size:**` (`tiny`, `small`, `medium` or `large`, and
+     what makes it so; a migration, a security boundary or clinical data
+     is `large`), `**Look hardest at:**` (one place, a file and a function,
+     and what to look for), `**Check for me:**` (the one thing the reader
+     must agree with before merging).
+   - **Then two or three short sentences**: what is true now that was not
+     true before, as someone using the thing would see it.
+   - **Then three sections**: `## Decisions to check` (what was chosen,
+     instead of what, and why; `my reading` or `a guess` where it is not
+     certain; omitted when there were none), `## Risks` (always present,
+     "None found." when nothing was found), and `## What has changed`
+     (always present, what a user now sees, not a file list).
+   - **Every bullet opens with its claim in bold**, five to eight words,
+     then one or two plain sentences giving the reason or the consequence.
+     The bold and the plain text never say the same thing.
+   - **Plain sentences, no word count.** The subject is a person or a named
+     thing in the code, the small words (that, which, because, so) stay,
+     one fact a sentence. Length follows the change.
+   - **Where the branch touches clinical data, patient records,
+     authentication, authorisation or a database migration**, say so and
+     how it is handled, under Risks; a reviewer should not discover it from
+     the diff.
    - Finish with `<!-- crp:pr-summary -->` on its own line - nothing after it,
      and no attribution footer anywhere in the body (see "Never" above).
 
-   Hard ceiling: **twelve bullets and 200 words**. Over either, you are
-   describing the diff instead of summarising it - merge the thin bullets.
+   Do not reproduce Copilot's `[[1]](diffhunk://…)` reference links - they
+   cannot be constructed reliably outside Copilot and add nothing a reviewer
+   reading the diff needs.
 
-   Cut anything the reviewer gets free from the diff: file and line counts,
-   lists of renamed symbols, restating the same change twice, and rationale for
-   the obvious. Do not reproduce Copilot's `[[1]](diffhunk://…)` reference
-   links - they cannot be constructed reliably outside Copilot and add nothing
-   a reviewer reading the diff needs.
-
-   Shape to aim for:
-
-   ```markdown
-   Moves clinical letter approval behind a CBAC competency.
-
-   - Adds `approve_clinical_letters` to `shared/competencies.yaml`.
-   - Gates `POST /api/letters/{id}/approve` on it in `main.py`.
-   - Hides the approve button in `LetterCard.tsx` without the competency.
-   - Tests: `just ub -k letters`, `just uf src/components/letter-card`.
-
-   <!-- crp:pr-summary -->
-   ```
-
-5. **Flag what this repository cares about - one bullet each, not a section.**
-   Where the branch touches clinical data, patient records, authentication,
-   authorisation (system permissions or CBAC), or database migrations, one
-   bullet must say so and how it is handled; a reviewer should not discover it
-   from the diff. Where tests were added or changed, one bullet naming the
-   commands actually run. Never claim a suite passed that was not run.
-
-   British English, sentence case throughout, no PHI and no secrets - the body
-   is visible to everyone with repository access. Describe the change; do not
-   praise it.
+5. **Keep it safe to publish.** British English, sentence case throughout,
+   no PHI and no secrets - the body is visible to everyone with repository
+   access. Describe the change; do not praise it. Name the test commands
+   actually run in the report, never a suite that was not run.
 
 6. **Apply it.** Write the body to a temporary file and pass that file, so
    backticks, quotes and newlines survive intact:
