@@ -59,6 +59,13 @@ const PASSPORT_PAGES: readonly (NavItem & { detail?: string })[] = [
   { label: "Download", href: "/passport/download" },
 ];
 
+/**
+ * One competency's page: `/passport/competencies/:competencyId`. There
+ * is no page of every competency above it, because the passport page is
+ * that list, so it hangs straight under Passport.
+ */
+const COMPETENCY_PREFIX = "/passport/competencies/";
+
 /** Where an assessor signs off one request: `/passport/sign-off/:id`. */
 const SIGN_OFF_PREFIX = "/passport/sign-off/";
 
@@ -79,6 +86,10 @@ function passportPageAt(pathname: string): NavItem | undefined {
   // page of its own between the two until 4 October 2026.
   if (pathname.startsWith(SIGN_OFF_PREFIX)) {
     return { label: "Sign off", href: pathname };
+  }
+
+  if (pathname.startsWith(COMPETENCY_PREFIX)) {
+    return { label: "Competency", href: pathname };
   }
 
   // Confirming a logbook entry is reached from the inbox too, and is
