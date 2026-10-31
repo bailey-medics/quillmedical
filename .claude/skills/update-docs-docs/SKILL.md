@@ -245,7 +245,7 @@ appear under `docs/docs/`:
    branch, pushes, and writes the draft pull request. Give its description
    what a reviewer on GitHub needs and cannot get from the diff:
 
-   - under `## LLM decisions`, anything left as written because the code
+   - under `## Decisions to check`, anything left as written because the code
      does not have it yet, and any question that could not be settled
    - for each correction that is not obvious, the file that shows what the
      code does
@@ -288,7 +288,7 @@ Then, for each document:
 
 3. **Finish the unit with `/crpd`.** One document, one branch, one pull
    request. Its description says who the document is for, which files it
-   was written from, and under `## LLM decisions` where each piece of
+   was written from, and under `## Decisions to check` where each piece of
    reasoning came from and anything the document says is not recorded.
 
 ## Stopping

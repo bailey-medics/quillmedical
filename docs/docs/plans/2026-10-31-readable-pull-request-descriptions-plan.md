@@ -223,7 +223,7 @@ plus the Report section. The skill is Claude-only, with no copy under
 
 ## Phase 2: one specification across the sibling skills
 
-- [ ] In `.claude/skills/f/SKILL.md`, under "Sizing a unit", replace "a
+- [x] In `.claude/skills/f/SKILL.md`, under "Sizing a unit", replace "a
       pull request whose description cannot be written inside `/crpd`'s three
       sections and 200-word ceiling" with the sizing the new shape implies: a
       unit whose Decisions to check or What has changed section cannot be
@@ -233,13 +233,13 @@ plus the Report section. The skill is Claude-only, with no copy under
       number. Under "Fix the code, not the test", rename `## LLM decisions`
       to `## Decisions to check`.
 
-- [ ] In `.claude/skills/update-docs-docs/SKILL.md`, rename the one mention
+- [x] In `.claude/skills/update-docs-docs/SKILL.md`, rename the one mention
       of `## LLM decisions`. Its Copilot source,
       `.github/prompts/update-docs-docs.prompt.md`, does not carry the
       section name, so the mention is Claude-only text and is edited in
       place.
 
-- [ ] Make `/nst-crp`'s "Final: update the pull request description" use the
+- [x] Make `/nst-crp`'s "Final: update the pull request description" use the
       same body as `/crpd` step 9, by reference, rather than its own flat
       list of up to twelve verb-first bullets under a 200-word ceiling. Keep
       only what genuinely differs for a branch cut from `main`: step 2 reads
@@ -253,8 +253,13 @@ plus the Report section. The skill is Claude-only, with no copy under
       the shape in a short form of its own: the triage block, the three
       section names, the bold lead and the marker.
 
-- [ ] Leave `.claude/skills/nst-crpf/SKILL.md` alone. Its "review packet"
-      is a chat message, not a pull request body.
+- [x] Departed from the plan: `.claude/skills/nst-crpf/SKILL.md` was not
+      left alone. Its "review packet" is a chat message, as the plan said,
+      but its "Final: update the pull request description" section carried
+      the same twelve-bullet, 200-word body specification as `/nst-crp`,
+      word for word. It gets the same replacement, in place, because the
+      text has no Copilot source: `follow-the-plan-document.prompt.md` does
+      not contain it.
 
 ## Phase 3: read a week of descriptions against the shape
 
