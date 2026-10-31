@@ -16,6 +16,7 @@ import {
 import { frameworkRows, logbookLabel, standingOf } from "./competencyTable";
 
 const [radiotherapy, sact] = oncologyFrameworks;
+const colorectal = { id: "colorectal", name: "Colorectal" };
 
 describe("standingOf", () => {
   it("reads a signed-off latest sign-off as signed off", () => {
@@ -31,9 +32,8 @@ describe("standingOf", () => {
     expect(standingOf(referRadicalCompetency)).toBe("not_asked");
   });
 
-  it("reads a decline as not asked unless asked to show it", () => {
+  it("reads a decline as not asked", () => {
     expect(standingOf(antiemeticsCompetency)).toBe("not_asked");
-    expect(standingOf(antiemeticsCompetency, true)).toBe("declined");
   });
 
   it("reads a superseded sign-off as not asked", () => {
@@ -60,32 +60,72 @@ describe("frameworkRows", () => {
     expect(rows.map((row) => row.id)).not.toContain(lungCompetency.id);
   });
 
-  it("makes one row of a scoped competency, at its strongest scope", () => {
+  it("makes a row for each scope that is signed off or requested", () => {
     const rows = frameworkRows(sact.id, [
-      { ...lungCompetency, status: "declined" },
-      breastCompetency,
+      lungCompetency,
+      { ...breastCompetency, status: "requested" },
     ]);
     const prescribing = rows.filter((row) => row.id === lungCompetency.id);
 
-    expect(prescribing).toHaveLength(1);
-    expect(prescribing[0].standing).toBe("signed_off");
+    expect(prescribing.map((row) => [row.scope?.name, row.standing])).toEqual([
+      ["Lung", "signed_off"],
+      ["Breast", "requested"],
+    ]);
   });
 
-  it("makes a row for each scope when asked", () => {
-    const rows = frameworkRows(sact.id, [lungCompetency, breastCompetency], {
-      rowPerScope: true,
-    });
+  it("gives each scope's row that scope's own logbook count", () => {
+    const rows = frameworkRows(sact.id, [
+      lungCompetency,
+      { ...breastCompetency, logbook_entries: 20 },
+    ]);
+    const counts = rows
+      .filter((row) => row.id === lungCompetency.id)
+      .map((row) => row.logbookEntries);
+
+    expect(counts).toEqual([12, 20]);
+  });
+
+  it("gives no row to a scope with nothing asked", () => {
+    const rows = frameworkRows(sact.id, [
+      lungCompetency,
+      { ...breastCompetency, status: "declined" },
+      {
+        ...breastCompetency,
+        scope: colorectal,
+        status: "requested",
+        sign_off: null,
+      },
+    ]);
     const scopes = rows
       .filter((row) => row.id === lungCompetency.id)
       .map((row) => row.scope?.name);
 
-    expect(scopes).toEqual(["Lung", "Breast"]);
+    expect(scopes).toEqual(["Lung"]);
+  });
+
+  it("makes one not asked row when no scope has a sign-off", () => {
+    const rows = frameworkRows(sact.id, [
+      { ...lungCompetency, status: "declined" },
+      { ...breastCompetency, status: "requested", sign_off: null },
+    ]);
+    const prescribing = rows.filter((row) => row.id === lungCompetency.id);
+
+    expect(prescribing).toHaveLength(1);
+    expect(prescribing[0]).toMatchObject({
+      scope: null,
+      standing: "not_asked",
+    });
   });
 
   it("takes the largest logbook count rather than adding them up", () => {
     const rows = frameworkRows(sact.id, [
-      lungCompetency,
-      { ...breastCompetency, logbook_entries: 20 },
+      { ...lungCompetency, status: "requested", sign_off: null },
+      {
+        ...breastCompetency,
+        status: "requested",
+        sign_off: null,
+        logbook_entries: 20,
+      },
     ]);
     const prescribing = rows.find((row) => row.id === lungCompetency.id);
 
