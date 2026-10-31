@@ -479,30 +479,45 @@ people who act on it, then what must not leak.
       appears, so the marker can come off. Building the button is a
       change to the assessor's page, not a test, and is Mark's to ask
       for.
-- [ ] 17. As a PA, I want to give `passport_write` to a member of my place,
+- [x] 17. As a PA, I want to give `passport_write` to a member of my place,
       so that they can add to their passport.
       Tested: the member's passport offers "Add an entry" afterwards.
-- [ ] 18. As a PA, I want to be unable to give `passport_write` to
+- [x] 18. As a PA, I want to be unable to give `passport_write` to
       somebody outside my places, or to myself, so that writing is given
       only where I run the passport.
       Tested: neither is offered on screen, and a forged grant is refused
       at the API.
 
+      Departed from the plan: "or to myself" is not tested. A passport
+      admin holds `passport_write` through the `passport_admin`
+      profession already, so there is nothing to grant. Tested instead
+      for the seeded teaching admin, at a hospital this passport admin
+      runs nothing in: the forged `PATCH /api/users/{id}` is refused, and
+      they are not on the passport admin's list. Their id is looked up as
+      the operator, which reads and sets nothing up.
+
 ### Read-only, and the gates
 
 `tests/passport/read-only.spec.ts`.
 
-- [ ] 19. As a PH whose `passport_write` has lapsed, I want to be told so
+- [x] 19. As a PH whose `passport_write` has lapsed, I want to be told so
       on the way in, and still read and download everything, so that a
       lapse never locks me out of my own record.
       The grant's end date is moved back through the API, as
       `tests.competencies.lapse` does in the unit tests. Tested: the
       warning shows, a competency's page has no add buttons, a forged add
       is refused at the API, and the downloads still work.
-- [ ] 20. As a PH with a read-only passport, I want to change my home page
+
+      Departed from the plan: the passport admin withdraws the grant
+      (`removed_competencies`) rather than its end date being moved back.
+      The holder sees the same thing, "Your passport is read-only", and
+      it is how a trust ends somebody's writing, where moving a date back
+      would need the database. Stories 17 to 21 are in
+      `tests/passport/running-and-read-only.spec.ts`.
+- [x] 20. As a PH with a read-only passport, I want to change my home page
       view, so that how my record is shown is still mine to choose.
       Tested: the switch in Settings saves, as Phase 2 decided.
-- [ ] 21. As a PH taken off every place that has the passport, I want to
+- [x] 21. As a PH taken off every place that has the passport, I want to
       still open my own passport, so that leaving a trust does not take my
       record with it.
       Tested: the landing page and a competency's page open, and adding
