@@ -85,6 +85,8 @@ export interface NewAccount {
    * user form's Practice and Enrolment steps do.
    */
   takesModule?: { siteId: number; organisationId: number; moduleId: string };
+  /** Competencies granted beyond their profession's. */
+  competencies?: string[];
 }
 
 /**
@@ -105,6 +107,9 @@ export async function createAccount(
     password: account.password ?? `${account.username}Pass123!`,
     base_profession: account.profession,
     org_unit_ids: account.orgUnitIds,
+    ...(account.competencies
+      ? { additional_competencies: account.competencies }
+      : {}),
     ...(account.takesModule
       ? {
           practising: [
