@@ -281,20 +281,38 @@ there, before anything is stored or routed.
 
 ## Phase 5: Guides and accessibility
 
-- [ ] Re-take the pictures that show the landing page:
+- [x] Re-take the pictures that show the landing page:
       `start-your-passport/passport.png`, and any other passport guide
       that opens on `/passport`. Their seeded holders get the new default
       without any change to `seed_guides.py`.
 
-- [ ] Update the passport guides' wording where they say "choose
+      `start-your-passport.spec.ts` was the only guide script that
+      opened `/passport`. It now waits for the framework table, and a
+      third picture, `start-your-passport/by-record.png`, shows the same
+      passport By record: the script switches the holder to it in
+      Settings and back again afterwards. Taken with `just
+      guide-screenshots start-your-passport`.
+
+- [x] Update the passport guides' wording where they say "choose
       **Passport**, then **Open logbook**" and the like, since the new
       view has no such cards. Add a short section to "Start your
       passport" on the two views and where to switch between them.
 
-- [ ] This changes a layout, so name which journeys in
+      The CPD, certificates, reflections and download guides were left
+      as they were: those four cards are in both views. "Ask for a
+      sign-off" and "Keep your logbook" now go straight to their pages,
+      say how to get there By record, and say a competency's own page
+      offers the same button with the competency already chosen.
+
+- [x] This changes a layout, so name which journeys in
       `docs/docs/frontend/accessibility/journeys.md` pass through the
       passport landing page, and add them to "Not yet run" in
       `testing-log.md`.
+
+      None of the four does: journey 4 is an assessor, who comes in from
+      the inbox. So the landing page in both views, a competency's page
+      and the Settings choice went into "Not yet run" as pages to check
+      by themselves, as a guide page already is.
 
 ## Decisions
 
