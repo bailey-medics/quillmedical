@@ -19,10 +19,10 @@ rules:
       policies:
         "*": ref-pin
 
-  # Off until the Phase 6 step that fixes each one turns it back on, so
-  # the hook and CI are green from the first commit and each fix shows
-  # its audit returning. Findings on 30 October 2026 in brackets.
-  dependabot-cooldown: # (6)
+  # Dependabot here raises vulnerability alerts only
+  # (open-pull-requests-limit: 0); Renovate proposes every version bump,
+  # and its minimumReleaseAge in renovate.json is the cooldown. (6)
+  dependabot-cooldown:
     disable: true
 
   # `uses: ./...` for an action or workflow in this repository. GitHub's
