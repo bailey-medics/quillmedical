@@ -113,6 +113,22 @@ evidence the NHS DTAC's accessibility section (D1) asks for, and the
   check the choice is announced as one group with its question, "Which
   site are you joining?". On the account form, check the heading naming
   the site is reached before the form's fields.
+- **The passport landing page, in both views, and a competency's page** -
+  added on 31 October 2026 by the
+  [passport landing views plan](../../plans/2026-10-31-passport-landing-views-plan.md).
+  None of the four journeys passes through `/passport`: journey 4 is an
+  assessor, who comes in from the inbox. A holder now lands on the By
+  competency view: a table for each framework, where each row opens
+  `/passport/competencies/:competencyId`. Check each table is announced
+  with its framework's name as its heading, that a row is reached and
+  activated from the keyboard and announces the competency, its
+  sign-off state and its logbook count in that order, and that on a
+  phone each row, now a card, still reads that way. On the competency's
+  page, check "Ask for a sign-off" and "Add an entry" are reached
+  before the tables they add to, and that opening either form moves a
+  screen reader user to it. In Settings, check "Passport home page" is
+  announced as one group with its two choices, and that saving one is
+  heard.
 - **JAWS and Dragon** - deferred to a commissioned audit.
 - **Journeys 1 to 4 on a phone, by touch** - the
   [touch target sizes plan](../../plans/2026-09-28-touch-target-sizes-plan.md)
