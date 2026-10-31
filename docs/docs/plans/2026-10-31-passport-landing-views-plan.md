@@ -14,7 +14,9 @@ the current one, **By record**, remains for anybody who prefers it. The
 holder chooses between them with a switch in the "Clinician passport"
 card in Settings (`PassportFrameworksCard`), beside their frameworks and
 CPD date ranges. The new view is drawn in Storybook first and adjusted
-there, before anything is stored or routed.
+there, before anything is stored or routed. Phase 6 then walks the whole
+passport end to end, as the teaching coverage plan did for teaching:
+nothing in `frontend/e2e/` follows a holder or an assessor today.
 
 ## Phase 1: Draw the new view in Storybook, and adjust it
 
@@ -314,6 +316,204 @@ there, before anything is stored or routed.
       and the Settings choice went into "Not yet run" as pages to check
       by themselves, as a guide page already is.
 
+## Phase 6: End-to-end journeys for the passport
+
+Asked for by Mark on 31 October 2026, after the landing views landed:
+the passport should be walked the way the
+[teaching E2E coverage plan](2026-10-15-teaching-e2e-coverage-plan.md)
+walks teaching. Today the end-to-end suite touches the passport only to
+prove teaching people cannot reach it (`tests/leaks/other-features.spec.ts`,
+`tests/everyday/everyday.spec.ts`) and to draw one certificate page from
+answers it fakes (`tests/pdf-pages.spec.ts`). Nothing signs in as a
+holder, an assessor or a passport admin.
+
+The patterns carry over from teaching, and each is reused rather than
+built again:
+
+- **Each journey makes the people it acts on**, through the API, named
+  for the browser project and the time, so nothing is shared between
+  tests, browsers or retries, and nothing has to be put back. Teaching
+  found seeded people carried a failed run's state into the retry.
+- **A refusal is checked at the API as well as on screen.** A hidden
+  button proves nothing if the request behind it still succeeds.
+- **Emails are read from the capture folder** (`fixtures/mail.ts`), and a
+  person who is sent email is made fresh, because `send_email` refuses an
+  eleventh email to one address in an hour.
+- **User stories**, for a passport holder (PH), an assessor who has a
+  Quill account (AS), an external assessor with no account yet (EA), a
+  passport admin holding `manage_passport` (PA) and a passport clinical
+  lead (PCL).
+
+Specs under `frontend/e2e/tests/passport/`, run in the CI heavy tier
+against `compose.ci.yml`, as `just e2e` does. Written in the order to
+build them: the people first, then the holder's own record, then the
+people who act on it, then what must not leak.
+
+- [ ] Give the fixtures passport people, in `frontend/e2e/fixtures/people.ts`.
+      `seed_ci.py` already seeds "CI Passport Hospital" and "CI Passport
+      Centre" with the passport feature on (`seed_other_feature_places`)
+      and `ci_passport`, a `passport_delegate` holding a passport. Add a
+      seeded passport admin there (`ci_passport_admin`, profession
+      `passport_admin`), a member of the Centre, and `makeHolder(page,
+      project)`, which signs in as that admin and makes a
+      `passport_delegate` at the Centre with `passport_write` granted, as
+      an admin would. `makeAssessor` makes a `passport_delegate` at the
+      same Centre with no passport. Both go through `POST /api/users` as
+      the passport admin, never the operator: decided by Mark on
+      31 October 2026, below under Decisions. The route admits any scoped
+      manager (`DEP_REQUIRE_MANAGE_PEOPLE`), and `manage_passport` may give
+      `passport_delegate` and grant `passport_write`, so this is within
+      what a real passport admin does. The holder's
+      frameworks are set through `PUT /passport/{id}/frameworks`, to
+      `clinical` and `ghnft_radiotherapy_record`, so both the general
+      table and the Gloucestershire one are drawn.
+
+### The holder's own record
+
+`tests/passport/holding-a-passport.spec.ts`, each for a PH.
+
+- [ ] 1. As a PH with no passport, I want to choose my frameworks and
+      create one, so that I can start recording.
+      Tested: "Create my passport" is disabled until a framework is
+      chosen, and afterwards the page shows a table for each framework.
+- [ ] 2. As a PH, I want my passport to open By competency, with a table
+      for each framework I work to, so that I see where I stand on each
+      competency at once.
+      Tested: a row for every assessable item in the framework file, all
+      "Not asked" on a new passport, and no Sign-offs or Logbook card.
+- [ ] 3. As a PH, I want to open a competency from its row and add a
+      logbook entry there, so that I record a procedure against the
+      competency I was looking at.
+      Tested: the form opens with the competency chosen, the entry is
+      saved, and back on the landing page the row's logbook count is 1.
+- [ ] 4. As a PH, I want to ask for a sign-off from a competency's page,
+      naming an AS by email, so that an assessor I know can judge me.
+      Tested: the row reads "Requested" afterwards, and the AS is sent the
+      captured email.
+- [ ] 5. As a PH, I want to withdraw a request still waiting, so that I
+      can take back one sent to the wrong person.
+      Tested: the row goes back to "Not asked", and the AS's inbox no
+      longer lists it.
+- [ ] 6. As a PH, I want to switch my passport to By record in Settings
+      and back, so that I can see it the way I prefer.
+      Tested: the landing page shows the six cards and the Records table
+      after the switch, and the tables again after switching back. The
+      choice is read back from `GET /passport/me`.
+- [ ] 7. As a PH, I want to change my frameworks in Settings, so that the
+      passport offers what I work to.
+      Tested: dropping a framework removes its table from the landing
+      page and keeps the logbook entry made under it, which shows again
+      when the framework is added back.
+- [ ] 8. As a PH, I want to record CPD against a date range I set, so that
+      it totals over my appraisal year.
+      Tested: a date range set in `/settings/cpd-date-ranges`, an
+      activity added at `/passport/cpd`, and the total shown for the range.
+- [ ] 9. As a PH, I want to add a certificate with its file and open the
+      file again, so that the evidence travels with the claim.
+      Tested: a small PDF uploaded, the certificate listed, and the
+      attachment downloads as the same bytes. `UPLOAD_SCAN_JOB` is unset
+      in the stack, so nothing is scanned; say so in the test.
+- [ ] 10. As a PH, I want to write a reflection and read it back, so that
+      I keep what I learned from a case.
+- [ ] 11. As a PH, I want to download my passport as Markdown, PDF and a
+      zip, so that I can take it anywhere without Quill.
+      Tested: each download arrives, of its type, and the zip holds the
+      passport's files.
+- [ ] 12. As a PH, I want to ask a supervisor to confirm a logbook entry,
+      so that the entry carries their name.
+      Tested with the AS as supervisor: the AS opens it from their inbox
+      at `/passport/logbook-confirmation/:id`, confirms, and the holder's
+      entry shows who confirmed it.
+
+### The people who act on it
+
+`tests/passport/assessing.spec.ts`.
+
+- [ ] 13. As an AS, I want to see a request in my inbox and sign it off,
+      so that the holder's record shows my judgement.
+      Tested: the request is listed at `/inbox`, the sign-off form is
+      filled and submitted, and the PH's row then reads "Signed off" with
+      the AS's name on the sign-off page.
+- [ ] 14. As an AS, I want to decline a request, so that a holder not yet
+      ready is told so.
+      Tested: the PH's row reads "Not asked", as decided in Phase 1, and
+      the declined sign-off is listed under "Declined" on the Sign-offs
+      page with the AS's comment.
+- [ ] 15. As an EA, I want the invitation a request sends me to bring me
+      into Quill to sign, so that a holder can be assessed by somebody
+      from another hospital.
+      Tested: the PH names an address with no account, the EA follows the
+      captured invitation to `/passport/assessors/accept`, makes their
+      account, and signs the sign-off. The PH's row then reads "Signed
+      off".
+- [ ] 16. As Quill, I want a holder never to sign off their own request,
+      so that every sign-off is somebody else's judgement.
+      Tested: asking with the holder's own address is refused on screen,
+      and a forged sign-off of their own request is refused at the API.
+- [ ] 17. As a PA, I want to give `passport_write` to a member of my place,
+      so that they can add to their passport.
+      Tested: the member's passport offers "Add an entry" afterwards.
+- [ ] 18. As a PA, I want to be unable to give `passport_write` to
+      somebody outside my places, or to myself, so that writing is given
+      only where I run the passport.
+      Tested: neither is offered on screen, and a forged grant is refused
+      at the API.
+
+### Read-only, and the gates
+
+`tests/passport/read-only.spec.ts`.
+
+- [ ] 19. As a PH whose `passport_write` has lapsed, I want to be told so
+      on the way in, and still read and download everything, so that a
+      lapse never locks me out of my own record.
+      The grant's end date is moved back through the API, as
+      `tests.competencies.lapse` does in the unit tests. Tested: the
+      warning shows, a competency's page has no add buttons, a forged add
+      is refused at the API, and the downloads still work.
+- [ ] 20. As a PH with a read-only passport, I want to change my home page
+      view, so that how my record is shown is still mine to choose.
+      Tested: the switch in Settings saves, as Phase 2 decided.
+- [ ] 21. As a PH taken off every place that has the passport, I want to
+      still open my own passport, so that leaving a trust does not take my
+      record with it.
+      Tested: the landing page and a competency's page open, and adding
+      is refused.
+
+### What must not leak
+
+`tests/passport/leaks.spec.ts`.
+
+- [ ] 22. As Quill, I want one holder unable to open another's passport, so
+      that a record is read by its holder alone.
+      Tested: `GET /passport/{id}` for another holder is a 404, and their
+      sign-off and logbook addresses show the 404 page.
+- [ ] 23. As Quill, I want an AS to reach only the sign-off they were
+      asked about, so that being an assessor opens nothing else of the
+      holder's.
+      Tested: the AS opens that sign-off and gets 404 for the holder's
+      passport, logbook and reflections, by address and at the API.
+- [ ] 24. As Quill, I want a PA to see only the members of their own
+      places, so that running the passport at one trust shows nothing of
+      another.
+      Tested against a second passport organisation, seeded beside the
+      first as teaching's Phase 10 did: its members are not listed, and
+      their pages and the API refuse.
+
+### On a phone, and for everyone
+
+- [ ] 25. As a PH on a phone, I want to open my passport, open a
+      competency and add a logbook entry, so that I can record a procedure
+      where I did it.
+      A `*.phone.spec.ts`, run by the `phone` project, as teaching's Phase
+      21 is. Tested: the framework tables become cards below `sm`, and the
+      side navigation is behind the hamburger.
+- [ ] 26. As Quill, I want every passport page to pass the axe scan, light
+      and dark, so that the passport is usable by everybody.
+      Run with `fixtures/axe.ts` on the landing page in both views, a
+      competency's page, Sign-offs, Logbook, CPD, Certificates,
+      Reflections, Download and the assessor's sign-off page, as teaching's
+      Phase 11 scans each slide.
+
 ## Decisions
 
 - **Storybook first** - the view is drawn from fixtures and agreed before
@@ -359,3 +559,11 @@ there, before anything is stored or routed.
   passport** - Mark's choice at the Phase 1 review, over "Signed" and
   "Waiting". `SignOffStatusBadge` is used unchanged, so a state reads the
   same on every passport page.
+
+- **The passport admin sets up the end-to-end people, not the
+  operator** - Mark, 31 October 2026: in real life the superadmin should
+  do the least setting up and work possible, so the tests make holders
+  and assessors as the seeded passport admin does in a trust. That also
+  means every journey runs through the passport admin's own limits, and
+  a change that pushed account making back onto the operator would fail
+  the suite.
