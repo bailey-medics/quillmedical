@@ -48,7 +48,7 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout
-        uses: actions/checkout@v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       # A module for the teaching pages to show. seed_ci.py syncs it.
       - name: Fetch E2E teaching content
@@ -70,7 +70,7 @@ jobs:
       # refusal failed this workflow on 11 October 2026 with no screen
       # changed. mirror-images.yml makes the copies.
       - name: Log in to GHCR
-        uses: docker/login-action@v4.6.0
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -148,7 +148,7 @@ jobs:
         run: npx tsx scripts/list-public-guides.ts > public/guide-assets/public-guides.txt
 
       - name: Upload screenshots
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: guide-assets
           path: frontend/public/guide-assets/
@@ -173,21 +173,21 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Download screenshots
-        uses: actions/download-artifact@v8.0.1
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: guide-assets
           path: guide-assets/
 
       - name: Authenticate with Google Cloud
-        uses: google-github-actions/auth@v3.0.0
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
         with:
           workload_identity_provider: ${{ secrets.GCP_APP_WIF_PROVIDER }}
           service_account: ${{ secrets.GCP_APP_SERVICE_ACCOUNT }}
 
-      - uses: google-github-actions/setup-gcloud@v3.0.1
+      - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
 
       - name: Upload to GCS
         run: bash .github/scripts/guide-screenshots/upload-to-gcs.sh "${{ secrets.GCP_APP_PROJECT_ID }}"

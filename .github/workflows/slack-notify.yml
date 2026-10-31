@@ -59,7 +59,7 @@ jobs:
       # teaching pipeline is that content repo - where the validation script
       # does not exist. Naming Quill lets any repo in the org use this.
       - name: Check out the Quill scripts
-        uses: actions/checkout@v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: bailey-medics/quillmedical
           sparse-checkout: |
@@ -71,7 +71,7 @@ jobs:
         run: bash .github/scripts/slack-notify/validate-channel.sh
 
       - name: Post to Slack
-        uses: slackapi/slack-github-action@v4.0.0
+        uses: slackapi/slack-github-action@dcb1066f776dd043e64d0e8ba94ca15cc7e1875d # v4.0.0
         with:
           webhook: ${{ fromJSON(env.CHANNEL_WEBHOOKS)[inputs.channel] }}
           webhook-type: incoming-webhook

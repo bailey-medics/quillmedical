@@ -76,10 +76,10 @@ jobs:
       matrix:
         environment: [app]
     steps:
-      - uses: actions/checkout@v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up Terraform
-        uses: hashicorp/setup-terraform@v4.0.1
+        uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
         with:
           terraform_version: "1.15.8"
 
@@ -90,7 +90,7 @@ jobs:
       # and write nothing. Batch 9 Phase 2 of
       # docs/docs/plans/2026-09-18-environment-isolation-and-iap-plan.md.
       - name: Authenticate to GCP
-        uses: google-github-actions/auth@v3.0.0
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
         with:
           workload_identity_provider: ${{ secrets[format('GCP_{0}_WIF_PROVIDER', matrix.environment)] }}
           service_account: ${{ secrets[format('GCP_{0}_PLAN_SERVICE_ACCOUNT', matrix.environment)] }}
@@ -156,15 +156,15 @@ jobs:
       matrix:
         environment: [app]
     steps:
-      - uses: actions/checkout@v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up Terraform
-        uses: hashicorp/setup-terraform@v4.0.1
+        uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
         with:
           terraform_version: "1.15.8"
 
       - name: Authenticate to GCP
-        uses: google-github-actions/auth@v3.0.0
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
         with:
           workload_identity_provider: ${{ secrets[format('GCP_{0}_WIF_PROVIDER', matrix.environment)] }}
           service_account: ${{ secrets[format('GCP_{0}_SERVICE_ACCOUNT', matrix.environment)] }}

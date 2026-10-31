@@ -507,25 +507,32 @@ anything, and each step is a unit of its own.
       grant write permissions on the job, and to pass a reusable
       workflow its secrets by name.
 
-- [ ] **Pin every action by commit.** The 187 `uses:` references, in the
-      workflows and in `.github/actions/`, change from `@v7.0.1` to the
-      full commit SHA with the version as a comment
-      (`@<sha> # v7.0.1`), which zizmor's `ref-version-mismatch` then
-      keeps honest. Renovate, which proposes the action bumps here
-      (Dependabot only raises alerts), updates pins in that form,
-      comment included, once `helpers:pinGitHubActionDigests` is in
-      `renovate.json`'s `extends`. Then turn `unpinned-uses` in `.github/zizmor.yml` to
-      require commit pins, so a new tag reference fails CI. The 34
-      `uses: ./...` references move to `uses: $/...` in the same unit,
-      and `self-repository` is switched back on, once the pinned
-      actionlint is checked to accept that form; if it does not, that
-      part waits for an actionlint that does. Mechanical but wide, so it
-      is the last unit and its own pull request.
+- [x] **Pin every action by commit.** The 152 references to other
+      repositories' actions, in the workflows and in `.github/actions/`,
+      changed from `@v7.0.1` to the full commit SHA with the version as a
+      comment (`@<sha> # v7.0.1`), each SHA looked up from the tag through
+      the GitHub API. Two were pinned to a major tag only
+      (`setup-gcloud@v3`, `upload-pages-artifact@v5`), and their comments
+      name the exact release the SHA belongs to. Renovate, which proposes
+      the action bumps here (Dependabot only raises alerts), keeps pins in
+      that form current, comment included, through
+      `helpers:pinGitHubActionDigests` in `renovate.json`'s `extends`.
+      `unpinned-uses` in `.github/zizmor.yml` now requires commit pins,
+      checked by turning one back to a tag and seeing zizmor refuse it.
 
-- [ ] Add zizmor to "CI/CD security pipeline" in
-      `docs/docs/cybersecurity/index.md`, beside Semgrep and ZAP: what
-      it checks, that it gates the fast tier, and that actions are
-      pinned by commit.
+      Two exceptions. `teaching-pipeline.yml` calls
+      `bailey-medics/quillmedical/.github/workflows/slack-notify.yml@main`,
+      because it runs in the content repositories, and a commit pin there
+      would freeze Quill's own Slack workflow; `bailey-medics/quillmedical/*`
+      may use a tag or branch. And the 34 `uses: ./...` references stay as
+      they are, with `self-repository` still off: the pinned actionlint,
+      1.7.8, refuses GitHub's `uses: $/...` form, and so does 1.7.12, the
+      newest release on 30 October 2026, which predates the syntax. Switch
+      when an actionlint release accepts it.
+
+- [x] Add zizmor to "Static analysis" under "CI/CD security pipeline" in
+      `docs/docs/cybersecurity/index.md`, beside Bandit and Semgrep: what
+      it checks, where it runs, and that actions are pinned by commit.
 
 ## Decisions
 

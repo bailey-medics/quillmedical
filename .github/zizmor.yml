@@ -12,12 +12,17 @@ rules:
   artipacked:
     disable: true
 
-  # Tags are allowed for now: pinning all 187 references by commit is the
-  # last step of the plan's Phase 6, and this turns to "*": hash-pin then.
+  # Every action is pinned by commit, with its version as a comment
+  # (`@<sha> # v7.0.1`), because a tag can be moved to other code: that is
+  # how the tj-actions/changed-files compromise of March 2025 spread.
+  # Renovate keeps the pins current. Quill's own workflows are the one
+  # exception: teaching-pipeline.yml runs in the content repositories and
+  # calls slack-notify.yml at @main, which a commit pin would freeze.
   unpinned-uses:
     config:
       policies:
-        "*": ref-pin
+        "*": hash-pin
+        "bailey-medics/quillmedical/*": ref-pin
 
   # Dependabot here raises vulnerability alerts only
   # (open-pull-requests-limit: 0); Renovate proposes every version bump,
@@ -27,8 +32,9 @@ rules:
 
   # `uses: ./...` for an action or workflow in this repository. GitHub's
   # `uses: $/...` form (July 2026) cannot load a file a previous step
-  # wrote, and counts as pinned. Switched with the commit pins, once
-  # actionlint is checked to accept it. (34)
+  # wrote, and counts as pinned. Off until actionlint accepts it: 1.7.8,
+  # pinned here, and 1.7.12, the newest on 30 October 2026, both refuse
+  # it. (34)
   self-repository:
     disable: true
 
