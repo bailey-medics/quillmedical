@@ -30,10 +30,12 @@ on:
   merge_group:
     types: [checks_requested]
 
+# Read only for every job; the one job that writes says so itself. The
+# pull-requests: write that sat here had no user: the two jobs that comment
+# or read runs carry their own block.
 permissions:
   contents: read
-  pull-requests: write
-  packages: write
+  packages: read # the mirrored images, in GHCR
 
 concurrency:
   # Keyed by event AND action as well as ref, so two runs for the same ref from
@@ -708,6 +710,9 @@ jobs:
   # build arguments must match that workflow.
   heavy_e2e_images:
     if: (github.event_name == 'pull_request' && github.event.pull_request.draft == false) || github.event_name == 'merge_group'
+    permissions:
+      contents: read
+      packages: write # pushes the E2E images the shards pull
     runs-on: ubuntu-26.04
     name: E2E image build
     timeout-minutes: 20

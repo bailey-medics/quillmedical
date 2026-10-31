@@ -33,6 +33,11 @@ on:
         required: true
         type: string
 
+# A called workflow cannot hold more than its caller grants, but saying
+# so here keeps it to reading, whoever calls it.
+permissions:
+  contents: read # checks out Quill's scripts
+
 jobs:
   send:
     name: Send Slack message

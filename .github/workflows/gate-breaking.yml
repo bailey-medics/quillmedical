@@ -51,7 +51,7 @@ on:
 
 permissions:
   contents: read
-  pull-requests: write
+  pull-requests: read # the comment jobs below write, and nothing else does
   # Listing this workflow's runs and their jobs, for the ancestor wait in the
   # decide jobs. Deliberately read-only: the branch-mutex design considered
   # first would have needed `contents: write` to create lock refs.
@@ -362,6 +362,10 @@ jobs:
     # record too - so result != 'skipped' is the only thing stopping it
     # posting an all-clear when detection never ran.
     if: ${{ !cancelled() && needs.api_schema_diff.result != 'skipped' }}
+    permissions:
+      contents: read
+      pull-requests: write # posts or updates the gate's comment
+      actions: read
     runs-on: ubuntu-26.04
     # Generous, because this job now waits for every ancestor commit's decide
     # job before posting (see the wait step below).
@@ -596,6 +600,10 @@ jobs:
   db_destructive_migration_comment:
     name: Destructive-migration PR comment
     needs: db_destructive_migration_check
+    permissions:
+      contents: read
+      pull-requests: write # posts or updates the gate's comment
+      actions: read
     runs-on: ubuntu-26.04
     # See api_breaking_change_comment.
     timeout-minutes: 15
