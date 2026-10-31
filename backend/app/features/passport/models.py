@@ -21,7 +21,8 @@ answer:
 
 Tables:
 
-- ``Passport`` - the pointer to one holder's repository.
+- ``Passport`` - the pointer to one holder's repository, and how they
+  like its home page laid out.
 - ``PassportSignOffRequest`` - an open ask, closed when resolved.
 - ``PassportAssessorInvite`` - an outside assessor being brought in.
 - ``PassportLogbookConfirmationRequest`` - an ask that a supervisor
@@ -59,6 +60,35 @@ REQUEST_STATUSES: tuple[str, ...] = (
     "declined",
     "withdrawn",
 )
+
+#: How the holder's passport home page lays out the record. Validated by
+#: :func:`validate_passport_landing_view` rather than a database enum, as
+#: ``PLATFORM_ROLES`` is, so a third view needs no migration.
+PASSPORT_LANDING_VIEWS: tuple[str, ...] = ("by_competency", "by_record")
+
+#: The view a passport opens in until its holder chooses otherwise.
+DEFAULT_PASSPORT_LANDING_VIEW = "by_competency"
+
+
+def validate_passport_landing_view(value: str) -> str:
+    """Return the landing view unchanged, or raise naming the known ones.
+
+    Args:
+        value: The landing view to check.
+
+    Returns:
+        The same value.
+
+    Raises:
+        ValueError: If it is not a known landing view.
+    """
+    if value not in PASSPORT_LANDING_VIEWS:
+        known = ", ".join(PASSPORT_LANDING_VIEWS)
+        raise ValueError(
+            f"Unknown passport landing view {value!r}. Known: {known}"
+        )
+
+    return value
 
 
 class Passport(Base):
@@ -101,6 +131,19 @@ class Passport(Base):
     #: instead.
     storage_generation: Mapped[int | None] = mapped_column(
         Integer, nullable=True
+    )
+
+    #: How the holder's home page lays out the record, one of
+    #: ``PASSPORT_LANDING_VIEWS``. Kept here and not in the repository:
+    #: the repository is the career record, exported and hashed with its
+    #: whole history, and how somebody likes their page laid out is none
+    #: of those things. The server default gives every existing passport
+    #: the By competency view too.
+    landing_view: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+        default=DEFAULT_PASSPORT_LANDING_VIEW,
+        server_default=DEFAULT_PASSPORT_LANDING_VIEW,
     )
 
     __table_args__ = (

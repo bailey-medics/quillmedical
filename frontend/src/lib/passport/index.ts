@@ -50,6 +50,7 @@ export {
   revokeAssessorMembership,
   saveAppraisalPeriods,
   setPassportFrameworks,
+  setPassportLandingView,
   signOff,
   withdrawSignOff,
 } from "./api";
@@ -102,7 +103,9 @@ export type {
   SignOffStatus,
   Supervision,
   AppraisalPeriod,
+  LandingView,
 } from "./types";
+export { LANDING_VIEWS, landingViewOf } from "./landingView";
 
 export {
   describeLength,

@@ -24,10 +24,12 @@ from sqlalchemy.orm import Session
 
 from app.features.passport import locking
 from app.features.passport.models import (
+    PASSPORT_LANDING_VIEWS,
     REQUEST_STATUSES,
     Passport,
     PassportAssessorInvite,
     PassportSignOffRequest,
+    validate_passport_landing_view,
 )
 from app.models import Base, User
 
@@ -82,7 +84,8 @@ class TestWhatTheDatabaseDoesNotHold:
             assert forbidden not in tables
 
     def test_the_passport_row_holds_no_record_content(self) -> None:
-        """Only where the repository is, and where it was."""
+        """Only where the repository is, where it was, and how its holder
+        likes the home page laid out, which is not part of the record."""
         columns = {column.name for column in inspect(Passport).columns}
 
         assert columns == {
@@ -91,6 +94,7 @@ class TestWhatTheDatabaseDoesNotHold:
             "created_at",
             "head_commit",
             "storage_generation",
+            "landing_view",
         }
 
 
@@ -117,6 +121,29 @@ class TestPassport:
 
         assert passport.head_commit is None
         assert passport.storage_generation is None
+
+    def test_a_new_passport_opens_by_competency(
+        self, db_session: Session
+    ) -> None:
+        user = _user(db_session, "holder3@example.nhs.uk")
+
+        passport = Passport(id=PASSPORT_ID, user_id=user.id)
+        db_session.add(passport)
+        db_session.flush()
+
+        assert passport.landing_view == "by_competency"
+
+
+class TestValidatePassportLandingView:
+    @pytest.mark.parametrize("view", PASSPORT_LANDING_VIEWS)
+    def test_a_known_view_is_returned_unchanged(self, view: str) -> None:
+        assert validate_passport_landing_view(view) == view
+
+    def test_an_unknown_view_is_refused_naming_the_known_ones(
+        self,
+    ) -> None:
+        with pytest.raises(ValueError, match="by_competency, by_record"):
+            validate_passport_landing_view("by_colour")
 
 
 class TestSignOffRequest:

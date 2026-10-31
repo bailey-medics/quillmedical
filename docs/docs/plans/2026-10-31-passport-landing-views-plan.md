@@ -152,7 +152,7 @@ there, before anything is stored or routed.
 
 ## Phase 2: Store which view a holder wants
 
-- [ ] Add `landing_view` to the `passport` table in
+- [x] Add `landing_view` to the `passport` table in
       `backend/app/features/passport/models.py`: a non-null `String`,
       server default `by_competency`, so every existing passport opens in
       the new view as well as every new one. The vocabulary is
@@ -169,21 +169,36 @@ there, before anything is stored or routed.
       holds things about the record that are not the record, such as
       `head_commit`.
 
-- [ ] Return `landing_view` on the passport in `PassportDetail`
+- [x] Return `landing_view` on the passport in `PassportDetail`
       (`backend/app/features/passport/schemas.py`) and accept it on the
       route that saves the holder's frameworks, or a sibling `PATCH` if
       that route writes to the repository. Additive only: a client that
       does not send it changes nothing, and one that does not read it
       sees the field ignored. Refuse an unknown value with 422.
 
-- [ ] Tests beside each module: the default on a new and an existing
+      Built as `PUT /api/passport/{passport_id}/landing-view`, because
+      `PUT /{passport_id}/frameworks` commits to the repository. A `PUT` of
+      a sub-resource rather than a `PATCH`, to match its siblings
+      `frameworks` and `appraisal-periods`. It sits behind
+      `_require_holder`, not `_require_writer`, so a holder whose
+      `passport_write` has lapsed can still choose, as Phase 4 asks. It
+      does stay behind the passport feature gate like every write: a
+      holder who belongs nowhere the passport is switched on can read
+      their passport in whichever view they last chose, and cannot
+      change it.
+
+- [x] Tests beside each module: the default on a new and an existing
       passport, saving each value, refusing an unknown one, and that
       changing it writes no commit to the repository.
 
-- [ ] Add `landing_view` to `Passport` in
+- [x] Add `landing_view` to `Passport` in
       `frontend/src/lib/passport/types.ts`, optional, read as
       `by_competency` when absent so an older response still lands
       somewhere sensible.
+
+      `landingViewOf` in `lib/passport/landingView.ts` does the reading,
+      and `setPassportLandingView` in `lib/passport/api.ts` saves it, for
+      the switch in Phase 4.
 
 ## Phase 3: One competency's page
 
