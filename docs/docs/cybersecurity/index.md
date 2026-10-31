@@ -273,6 +273,7 @@ Static analysis tools examine the source code without running it, catching poten
 - **Ruff** - Python linting including security-relevant checks (E, F, W, I, UP, B). Pre-commit hook.
 - **mypy --strict** - type safety, catching type confusion and null safety issues. Pre-commit hook and CI, run from `backend/` so that it reads the project's configuration and sees the real libraries.
 - **ESLint, Prettier and stylelint** - over every frontend source file. Pre-commit hook and CI.
+- **zizmor** - security checks on the GitHub Actions workflows themselves, which none of the above reads: a branch name or pull request field pasted into a shell command, a write permission granted to every job in a workflow, secrets handed to a reusable workflow in bulk, and an action referenced by a tag that can be moved. Every action is pinned by commit, with its version as a comment, and Renovate keeps the pins current. The settings, and the reason for each audit left off, are in `.github/zizmor.yml`. Pre-commit hook offline, and the `Shell and workflow lint` job in CI online, where it also looks up actions with known advisories. `just check-workflows` runs it over every workflow.
 
 ### Proving the checks are live
 
