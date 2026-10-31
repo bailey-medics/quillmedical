@@ -221,7 +221,8 @@ def seed() -> None:
 
         # 5e. A passport place and a safety place, each with somebody's
         # data in it, that nobody in teaching may reach, for
-        # e2e/tests/leaks/other-features.spec.ts.
+        # e2e/tests/leaks/other-features.spec.ts. The passport place has
+        # its passport admin too, for the journeys in e2e/tests/passport/.
         seed_other_feature_places(db, admin)
 
         db.commit()
@@ -575,8 +576,34 @@ def seed_other_feature_places(db: Session, enabled_by: User) -> None:
                 db.flush()
                 appoint(db, post, member, appointed_by=enabled_by)
 
+    seed_passport_admin(db)
+
     db.flush()
     print("Seeded the passport and safety places")
+
+
+#: The passport admin of "CI Passport Hospital", who makes every holder
+#: and assessor the passport journeys act on. Never the operator: a
+#: superadmin should do the least setting up there is, and the journeys
+#: then run through the passport admin's own limits. See Phase 6 of
+#: docs/docs/plans/2026-10-31-passport-landing-views-plan.md.
+PASSPORT_ADMIN = "ci_passport_admin"
+
+
+def seed_passport_admin(db: Session) -> None:
+    """Seed the passport admin of the passport organisation.
+
+    A member of the organisation itself, so the people they may make
+    reach everything beneath it, "CI Passport Centre" included: a scoped
+    manager administers the organisations they belong to and the places
+    under them.
+    """
+    organisation = _ensure_org_unit(
+        db, OTHER_FEATURE_PLACES[0][0], "organisation", None
+    )
+    admin = _ensure_user(db, PASSPORT_ADMIN, "passport_admin")
+
+    add_org_unit_member(db, organisation.id, admin.id, "staff")
 
 
 #: The learners whose attempt has run out of time, one per browser project,
