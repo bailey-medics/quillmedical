@@ -123,3 +123,4 @@
 - [E2E Shards](2026-10-27-e2e-shards-plan.md)
 - [Claude Security Plugin](2026-10-30-claude-security-plugin-plan.md)
 - [VS Code Tunnel](2026-10-31-vscode-tunnel-plan.md)
+- [Passport Landing Views](2026-10-31-passport-landing-views-plan.md)
