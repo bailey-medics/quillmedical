@@ -93,6 +93,27 @@ describe("PassportCompetencyDetail", () => {
     expect(onAddEntry).toHaveBeenCalledOnce();
   });
 
+  it("puts each add button above its own table", () => {
+    renderWithMantine(
+      <PassportCompetencyDetail
+        competency={competency}
+        signOffs={prescribePalliativeSignOffs}
+        logbook={prescribePalliativeLogbook}
+        canWrite
+      />,
+    );
+
+    const follows = Node.DOCUMENT_POSITION_FOLLOWING;
+    const ask = screen.getByRole("button", { name: "Ask for a sign-off" });
+    const signOffs = screen.getByRole("heading", { name: "Sign-offs" });
+    const add = screen.getByRole("button", { name: "Add an entry" });
+    const logbook = screen.getByRole("heading", { name: "Logbook" });
+
+    expect(ask.compareDocumentPosition(signOffs) & follows).toBeTruthy();
+    expect(signOffs.compareDocumentPosition(add) & follows).toBeTruthy();
+    expect(add.compareDocumentPosition(logbook) & follows).toBeTruthy();
+  });
+
   it("offers no add buttons on a read-only passport", () => {
     renderWithMantine(
       <PassportCompetencyDetail

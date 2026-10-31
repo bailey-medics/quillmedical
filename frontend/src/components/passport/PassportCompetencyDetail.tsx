@@ -67,7 +67,8 @@ export interface PassportCompetencyDetailProps {
 /**
  * PassportCompetencyDetail
  *
- * Renders the competency's name, then its sign-offs, then its logbook.
+ * Renders the competency's name, then its sign-offs, then its logbook,
+ * each with its add button above it.
  */
 export default function PassportCompetencyDetail({
   competency,
@@ -88,6 +89,11 @@ export default function PassportCompetencyDetail({
       </Stack>
 
       <Stack gap="sm">
+        {canWrite && (
+          <Group justify="flex-end">
+            <AddButton label="Ask for a sign-off" onClick={onAskForSignOff} />
+          </Group>
+        )}
         {signOffs.length > 0 ? (
           <SignOffList
             title="Sign-offs"
@@ -104,24 +110,19 @@ export default function PassportCompetencyDetail({
             </Stack>
           </BaseCard>
         )}
-        {canWrite && (
-          <Group justify="flex-end">
-            <AddButton label="Ask for a sign-off" onClick={onAskForSignOff} />
-          </Group>
-        )}
       </Stack>
 
       <Stack gap="sm">
-        <LogbookTable
-          logbook={logbook}
-          competencyName="Logbook"
-          onSelect={onSelectEntry}
-        />
         {canWrite && (
           <Group justify="flex-end">
             <AddButton label="Add an entry" onClick={onAddEntry} />
           </Group>
         )}
+        <LogbookTable
+          logbook={logbook}
+          competencyName="Logbook"
+          onSelect={onSelectEntry}
+        />
       </Stack>
     </Stack>
   );
