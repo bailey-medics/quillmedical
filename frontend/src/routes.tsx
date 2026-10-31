@@ -198,6 +198,13 @@ export const routes: RouteObject[] = [
             handle: { safeForReload: true },
           },
           {
+            // One competency's sign-offs and logbook, opened from a row
+            // of the By competency view.
+            path: "/passport/competencies/:competencyId",
+            lazy: lazyFrom(loadPassport, "PassportCompetencyPage"),
+            handle: { safeForReload: true },
+          },
+          {
             path: "/passport/sign-offs",
             lazy: lazyFrom(loadPassport, "PassportSignOffsPage"),
             handle: { safeForReload: true },
