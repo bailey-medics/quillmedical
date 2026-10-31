@@ -1,0 +1,243 @@
+/**
+ * The holder's own record, for a passport holder.
+ *
+ * Phase 6 of docs/docs/plans/2026-10-31-passport-landing-views-plan.md,
+ * stories 1 to 12. Each test makes its own holder through the passport
+ * admin, so nothing it records is seen by another test, a retry or the
+ * other browser.
+ */
+
+import type { Locator, Page } from "@playwright/test";
+import { test, expect } from "../../fixtures/axe";
+import { read } from "../../fixtures/api";
+import { waitForEmail } from "../../fixtures/mail";
+import {
+  FRAMEWORK_NAMES,
+  HOLDER_FRAMEWORKS,
+  makeAssessor,
+  makeHolder,
+} from "../../fixtures/passport";
+import { signIn } from "../../fixtures/signIn";
+
+/**
+ * A competency in the Gloucestershire radiotherapy record with no levels
+ * and no scopes, so a sign-off of it asks for nothing beyond the
+ * assessor and the date.
+ */
+const REFER_PALLIATIVE = {
+  id: "ghnft_radiotherapy_record_refer_palliative",
+  name: "Refer patients for palliative radiotherapy unsupervised",
+};
+
+/** A day in the past, as the date fields are typed. */
+const A_DAY_LAST_MONTH = "1 October 2026";
+
+/** The row of the landing page's tables naming *competency*. */
+function rowOf(page: Page, competency: string): Locator {
+  return page.getByRole("row").filter({ hasText: competency });
+}
+
+/** Type a date into the date field labelled *label*, and leave it. */
+async function fillDate(page: Page, label: string, day: string): Promise<void> {
+  const field = page.getByRole("textbox", { name: label });
+
+  await field.fill(day);
+  await field.press("Tab");
+}
+
+/** Open *competency*'s page from its row on the landing page. */
+async function openCompetency(page: Page, competency: string): Promise<void> {
+  await page.goto("/passport");
+  await rowOf(page, competency).click();
+  await expect(
+    page.getByRole("heading", { level: 1, name: competency }),
+  ).toBeVisible();
+}
+
+/** From a competency's page, ask *email* to sign it off. */
+async function askForSignOff(page: Page, email: string): Promise<void> {
+  await page.getByRole("button", { name: "Ask for a sign-off" }).click();
+  await page.getByLabel(/Who should assess this/).fill(email);
+  await fillDate(page, "Observed on", A_DAY_LAST_MONTH);
+  await page.getByRole("button", { name: "Request sign-off" }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Send request" })
+    .click();
+  await expect(page.getByRole("heading", { name: "Sign-offs" })).toBeVisible();
+}
+
+test.describe("Holding a passport", () => {
+  test.use({ storageState: { cookies: [], origins: [] } });
+  test.describe.configure({ timeout: 120_000 });
+
+  test("1. a holder with no passport chooses frameworks and creates one", async ({
+    page,
+    browser,
+  }, testInfo) => {
+    const holder = await makeHolder(browser, testInfo.project.name, {
+      passport: false,
+    });
+
+    await signIn(page, holder.username);
+    await page.goto("/passport");
+    await expect(
+      page.getByText("You do not have a passport yet"),
+    ).toBeVisible();
+
+    // Nothing can be recorded with no framework, so none is no passport.
+    const create = page.getByRole("button", { name: "Create my passport" });
+    await expect(create).toBeDisabled();
+
+    await page
+      .getByRole("combobox", { name: /Frameworks you work to/ })
+      .click();
+    await page
+      .getByRole("option", { name: new RegExp(FRAMEWORK_NAMES.clinical) })
+      .click();
+    await page.keyboard.press("Escape");
+    await create.click();
+
+    await expect(
+      page.getByRole("heading", { name: FRAMEWORK_NAMES.clinical }),
+    ).toBeVisible();
+  });
+
+  test("2. a passport opens By competency, a table for each framework", async ({
+    page,
+    browser,
+  }, testInfo) => {
+    const holder = await makeHolder(browser, testInfo.project.name);
+
+    await signIn(page, holder.username);
+    await page.goto("/passport");
+
+    for (const id of HOLDER_FRAMEWORKS) {
+      const name = FRAMEWORK_NAMES[id as keyof typeof FRAMEWORK_NAMES];
+      const table = page
+        .getByTestId("competency-framework-table")
+        .filter({ has: page.getByRole("heading", { name }) });
+      await expect(table).toBeVisible();
+
+      // A new passport: every item in the framework is there, and none
+      // has been asked for.
+      const rows = table
+        .getByRole("row")
+        .filter({ hasNot: page.getByRole("columnheader") });
+      expect(await rows.count()).toBeGreaterThan(0);
+      await expect(rows.filter({ hasNotText: "Not asked" })).toHaveCount(0);
+    }
+
+    // The cards for what belongs to no one competency, and none for
+    // sign-offs or the logbook, which the tables stand in for.
+    await expect(page.getByRole("button", { name: "Open CPD" })).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Open sign-offs" }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByRole("button", { name: "Open logbook" }),
+    ).toHaveCount(0);
+  });
+
+  test("3. a holder opens a competency from its row and adds a logbook entry there", async ({
+    page,
+    browser,
+  }, testInfo) => {
+    const holder = await makeHolder(browser, testInfo.project.name);
+
+    await signIn(page, holder.username);
+    await openCompetency(page, REFER_PALLIATIVE.name);
+
+    // The form is opened with the competency already chosen, so it asks
+    // only about the procedure.
+    await page.getByRole("button", { name: "Add an entry" }).click();
+    await expect(page.getByPlaceholder("Search competencies")).toHaveCount(0);
+    await fillDate(page, "Performed on", A_DAY_LAST_MONTH);
+    await page.getByRole("textbox", { name: "Setting" }).fill("Day unit");
+    await page.getByRole("button", { name: "Add entry" }).click();
+
+    await expect(page.getByText("1 entry")).toBeVisible();
+
+    await page.goto("/passport");
+    await expect(rowOf(page, REFER_PALLIATIVE.name)).toContainText("1 entry");
+  });
+
+  test("4. a holder asks for a sign-off from a competency's page", async ({
+    page,
+    browser,
+  }, testInfo) => {
+    const holder = await makeHolder(browser, testInfo.project.name);
+    const assessor = await makeAssessor(browser, testInfo.project.name);
+
+    await signIn(page, holder.username);
+    await openCompetency(page, REFER_PALLIATIVE.name);
+    await askForSignOff(page, assessor.email);
+
+    await page.goto("/passport");
+    await expect(rowOf(page, REFER_PALLIATIVE.name)).toContainText("Requested");
+
+    const email = await waitForEmail(assessor.email);
+    expect(email.subject).toBe(
+      `Person ${holder.username} has asked you to assess a competency`,
+    );
+  });
+
+  test("5. a holder withdraws a request still waiting", async ({
+    page,
+    browser,
+  }, testInfo) => {
+    const holder = await makeHolder(browser, testInfo.project.name);
+    const assessor = await makeAssessor(browser, testInfo.project.name);
+
+    await signIn(page, holder.username);
+    await openCompetency(page, REFER_PALLIATIVE.name);
+    await askForSignOff(page, assessor.email);
+
+    // The request, from the competency's own list of sign-offs.
+    await page.getByText("Requested").first().click();
+    await page.getByRole("button", { name: "Withdraw request" }).click();
+    await page
+      .getByRole("dialog", { name: "Withdraw this request" })
+      .getByRole("button", { name: "Withdraw", exact: true })
+      .click();
+    await expect(page).toHaveURL(/\/passport\/sign-offs$/);
+
+    await page.goto("/passport");
+    await expect(rowOf(page, REFER_PALLIATIVE.name)).toContainText("Not asked");
+  });
+
+  test("6. a holder switches to By record in Settings, and back", async ({
+    page,
+    browser,
+  }, testInfo) => {
+    const holder = await makeHolder(browser, testInfo.project.name);
+
+    await signIn(page, holder.username);
+
+    await page.goto("/settings");
+    await page.getByRole("radio", { name: "By record" }).check();
+    await expect
+      .poll(async () => {
+        const me = await read<{ passport: { landing_view: string } }>(
+          page,
+          "/passport/me",
+        );
+        return me.passport.landing_view;
+      })
+      .toBe("by_record");
+
+    await page.goto("/passport");
+    await expect(
+      page.getByRole("button", { name: "Open sign-offs" }),
+    ).toBeVisible();
+    await expect(page.getByText("Records")).toBeVisible();
+    await expect(page.getByTestId("competency-framework-table")).toHaveCount(0);
+
+    await page.goto("/settings");
+    await page.getByRole("radio", { name: "By competency" }).check();
+    await page.goto("/passport");
+    await expect(
+      page.getByRole("heading", { name: FRAMEWORK_NAMES.clinical }),
+    ).toBeVisible();
+  });
+});
