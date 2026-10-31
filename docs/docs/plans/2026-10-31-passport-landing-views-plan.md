@@ -527,21 +527,30 @@ people who act on it, then what must not leak.
 
 `tests/passport/leaks.spec.ts`.
 
-- [ ] 22. As Quill, I want one holder unable to open another's passport, so
+- [x] 22. As Quill, I want one holder unable to open another's passport, so
       that a record is read by its holder alone.
       Tested: `GET /passport/{id}` for another holder is a 404, and their
       sign-off and logbook addresses show the 404 page.
-- [ ] 23. As Quill, I want an AS to reach only the sign-off they were
+- [x] 23. As Quill, I want an AS to reach only the sign-off they were
       asked about, so that being an assessor opens nothing else of the
       holder's.
       Tested: the AS opens that sign-off and gets 404 for the holder's
       passport, logbook and reflections, by address and at the API.
-- [ ] 24. As Quill, I want a PA to see only the members of their own
+- [x] 24. As Quill, I want a PA to see only the members of their own
       places, so that running the passport at one trust shows nothing of
       another.
       Tested against a second passport organisation, seeded beside the
       first as teaching's Phase 10 did: its members are not listed, and
       their pages and the API refuse.
+
+      Built in `tests/passport/leaks.spec.ts`, with "CI Second Passport
+      Hospital", its own passport admin and a member seeded beside the
+      first. Departed from the plan: the refusals are checked at the API
+      alone, not by address too, because every holder page opens the
+      signed-in holder's own passport, so no address could show another
+      holder's record. Each refusal has a control beside it, the holder
+      or the passport admin reading the same thing with a 200, so a 404
+      is the guard working and not a mistyped path.
 
 ### On a phone, and for everyone
 
