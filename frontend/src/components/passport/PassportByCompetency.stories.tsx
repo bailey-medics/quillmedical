@@ -58,8 +58,3 @@ export const NothingRecorded: Story = {
 export const NoFrameworks: Story = {
   args: { frameworks: [] },
 };
-
-/** To decide: with a signed count under the framework's name. */
-export const WithSignedCount: Story = {
-  args: { showSignedCount: true },
-};

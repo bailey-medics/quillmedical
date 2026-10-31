@@ -1,8 +1,11 @@
 /**
  * CompetencyFrameworkTable Storybook Stories
  *
- * The variants marked "to decide" are the open questions in the passport
- * landing views plan, drawn side by side so they can be judged by eye.
+ * One framework's table, as the By competency view of the passport draws
+ * it. The choices settled at the Phase 1 review of the passport landing
+ * views plan are built in: no signed count, a declined sign-off reads as
+ * not asked, and a scoped competency has a row for each site with a
+ * sign-off.
  */
 
 import type { Meta, StoryObj } from "@storybook/react-vite";
@@ -10,7 +13,8 @@ import { Box, Stack } from "@mantine/core";
 import { fn } from "storybook/test";
 import CompetencyFrameworkTable from "./CompetencyFrameworkTable";
 import {
-  antiemeticsCompetency,
+  breastCompetency,
+  lungCompetency,
   oncologyCompetencies,
   oncologyFrameworks,
 } from "./fixtures";
@@ -68,63 +72,33 @@ export const Phone: Story = {
   ),
 };
 
-/** To decide: a signed count under the framework's name, or none. */
-export const SignedCountToDecide: Story = {
-  render: (args) => (
-    <Stack gap="lg">
-      <Stack gap="sm">
-        <CompetencyFrameworkTable {...args} showSignedCount />
-        <StoryNote>With a count under the name.</StoryNote>
-      </Stack>
-      <Stack gap="sm">
-        <CompetencyFrameworkTable {...args} />
-        <StoryNote>Without one, as built by default.</StoryNote>
-      </Stack>
-    </Stack>
-  ),
-};
-
-/** To decide: a declined latest sign-off as not asked, or as declined. */
-export const DeclinedToDecide: Story = {
-  args: { framework: sact },
-  render: (args) => (
-    <Stack gap="lg">
-      <Stack gap="sm">
-        <CompetencyFrameworkTable {...args} />
-        <StoryNote>
-          Declined shown as not asked, as built by default. See the antiemetic
-          requirements row.
-        </StoryNote>
-      </Stack>
-      <Stack gap="sm">
-        <CompetencyFrameworkTable {...args} showDeclined />
-        <StoryNote>Declined as a state of its own.</StoryNote>
-      </Stack>
-    </Stack>
-  ),
-};
-
-/** To decide: a competency signed off one tumour site at a time. */
-export const ScopesToDecide: Story = {
+/**
+ * A competency signed off one tumour site at a time: a row for each site
+ * that is signed off or requested, and none for a site with nothing asked.
+ */
+export const ScopedCompetency: Story = {
   args: {
     framework: sact,
-    competencies: oncologyCompetencies.filter(
-      (state) => state.id !== antiemeticsCompetency.id,
-    ),
+    competencies: [
+      lungCompetency,
+      { ...breastCompetency, status: "requested", signed_on: null },
+      {
+        ...lungCompetency,
+        scope: { id: "colorectal", name: "Colorectal" },
+        status: "requested",
+        sign_off: null,
+        logbook_entries: 4,
+      },
+    ],
   },
   render: (args) => (
-    <Stack gap="lg">
-      <Stack gap="sm">
-        <CompetencyFrameworkTable {...args} />
-        <StoryNote>
-          One row, at its strongest scope, as built by default. See review and
-          prescribe systemic anti-cancer therapy.
-        </StoryNote>
-      </Stack>
-      <Stack gap="sm">
-        <CompetencyFrameworkTable {...args} rowPerScope />
-        <StoryNote>A row for each tumour site.</StoryNote>
-      </Stack>
+    <Stack gap="sm">
+      <CompetencyFrameworkTable {...args} />
+      <StoryNote>
+        Review and prescribe systemic anti-cancer therapy is signed off for lung
+        and requested for breast. Colorectal has logbook entries and no
+        sign-off, so it has no row.
+      </StoryNote>
     </Stack>
   ),
 };

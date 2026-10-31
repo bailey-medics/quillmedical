@@ -11,6 +11,9 @@
  * working to a framework wants to see what is still to do, not only what is
  * done.
  *
+ * **No "3 of 7 signed off" count under the name**, as agreed at review:
+ * `CompetencySummary` was built without totals, and that decision stands.
+ *
  * **The logbook count has its own column**, never sitting inside the
  * sign-off cell. Beside a status it would read as part of the sign-off,
  * which is why `CompetencyRow` leaves it off its sign-off lists.
@@ -33,7 +36,6 @@ import { BodyText, Heading } from "@/components/typography";
 import {
   frameworkRows,
   logbookLabel,
-  type CompetencyTableOptions,
   type CompetencyTableRow,
 } from "@lib/passport/competencyTable";
 import type { CompetencyState, FrameworkRef } from "@lib/passport";
@@ -60,18 +62,13 @@ const columns: Column<CompetencyTableRow>[] = [
   },
 ];
 
-export interface CompetencyFrameworkTableProps extends CompetencyTableOptions {
+export interface CompetencyFrameworkTableProps {
   /** The framework this table shows */
   framework: FrameworkRef;
   /** Every competency the passport holds evidence for, in any framework */
   competencies: CompetencyState[];
   /** Called with a competency's id when its row is chosen */
   onSelect?: (competencyId: string) => void;
-  /**
-   * Show "3 of 7 signed off" under the framework's name. Off by default:
-   * whether a count belongs here is still to be decided.
-   */
-  showSignedCount?: boolean;
 }
 
 /**
@@ -83,27 +80,13 @@ export default function CompetencyFrameworkTable({
   framework,
   competencies,
   onSelect,
-  showSignedCount = false,
-  showDeclined = false,
-  rowPerScope = false,
 }: CompetencyFrameworkTableProps) {
-  const rows = frameworkRows(framework.id, competencies, {
-    showDeclined,
-    rowPerScope,
-  });
-  const signed = rows.filter((row) => row.standing === "signed_off").length;
+  const rows = frameworkRows(framework.id, competencies);
 
   return (
     <BaseCard data-testid="competency-framework-table">
       <Stack gap="md">
-        <Stack gap="xs">
-          <Heading>{framework.name}</Heading>
-          {showSignedCount && (
-            <BodyText>
-              {signed} of {rows.length} signed off
-            </BodyText>
-          )}
-        </Stack>
+        <Heading>{framework.name}</Heading>
         <DataTable
           data={rows}
           columns={columns}

@@ -83,12 +83,6 @@ export interface PassportByCompetencyProps {
   onSelectCompetency?: (competencyId: string) => void;
   /** Called with a section's path when its card is chosen */
   onOpen?: (path: string) => void;
-  /** Passed to each table. See `CompetencyFrameworkTable`. */
-  showSignedCount?: boolean;
-  /** Passed to each table. See `CompetencyFrameworkTable`. */
-  showDeclined?: boolean;
-  /** Passed to each table. See `CompetencyFrameworkTable`. */
-  rowPerScope?: boolean;
 }
 
 /**
@@ -101,9 +95,6 @@ export default function PassportByCompetency({
   competencies,
   onSelectCompetency,
   onOpen,
-  showSignedCount = false,
-  showDeclined = false,
-  rowPerScope = false,
 }: PassportByCompetencyProps) {
   const twoColumns = useMediaQuery(
     `(min-width: ${layoutTokens.actionCardTwoColumnMinWidth})`,
@@ -117,9 +108,6 @@ export default function PassportByCompetency({
           framework={framework}
           competencies={competencies}
           onSelect={onSelectCompetency}
-          showSignedCount={showSignedCount}
-          showDeclined={showDeclined}
-          rowPerScope={rowPerScope}
         />
       ))}
 
