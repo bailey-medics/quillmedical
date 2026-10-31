@@ -188,6 +188,13 @@ because a logbook entry has no sign-off folder to name.
 These are the only concessions to the database, and deliberately not a
 projection: nothing reads them to learn what a passport contains.
 
+The `passport` row also holds `landing_view`, how the holder likes their home
+page laid out: `by_competency` (the default) or `by_record`. It is set through
+`PUT /api/passport/{passport_id}/landing-view`, by the holder alone and on a
+read-only passport too, and it writes no commit. It lives on the row rather than
+in the repository because it is a preference about showing the record, not part
+of the record, so it is neither exported nor hashed.
+
 ## Authorisation
 
 Two independent questions, and passing the first says nothing about the second.

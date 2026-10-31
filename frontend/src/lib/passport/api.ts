@@ -49,6 +49,7 @@ import type {
   EvidenceUpload,
   InboxItem,
   InvitePreview,
+  LandingView,
   Logbook,
   LogbookEntryInput,
   Passport,
@@ -110,6 +111,7 @@ export const PASSPORT_PATHS = [
   "/passport/{passport_id}/sign-offs/{signoff_id}/sign-off",
   "/passport/{passport_id}/sign-offs/{signoff_id}/withdraw",
   "/passport/{passport_id}/frameworks",
+  "/passport/{passport_id}/landing-view",
 ] as const;
 
 /**
@@ -152,6 +154,21 @@ export function setPassportFrameworks(
 ): Promise<Passport> {
   return api.put<Passport>(`/passport/${segment(passportId)}/frameworks`, {
     frameworks,
+  });
+}
+
+/**
+ * Chooses how the passport home page lays out the record.
+ *
+ * The holder alone, and allowed on a read-only passport: it changes how
+ * the record is shown and never the record, so nothing is committed.
+ */
+export function setPassportLandingView(
+  passportId: string,
+  landingView: LandingView,
+): Promise<Passport> {
+  return api.put<Passport>(`/passport/${segment(passportId)}/landing-view`, {
+    landing_view: landingView,
   });
 }
 
