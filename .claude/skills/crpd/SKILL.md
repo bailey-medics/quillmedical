@@ -622,47 +622,112 @@ to start a stack anywhere but the tip of `origin/main`, and says to run
    Anything else is someone's writing: show it, and ask before replacing it.
 
 9. **Write the title and the body.** The title takes the stack key form -
-   `Passport: what this branch does`, as "The stack key" sets out. The
-   body's job is to make the change quickly clear: where this branch
-   sits, what it does, what you chose, and what might be risky.
+   `Passport: what this branch does`, as "The stack key" sets out.
 
-   **The reader could work most of this out from the diff. The point is
-   that they should not have to.** A good description is the short,
-   accurate account that saves them reconstructing it - so summarising
-   what the change does is the job, not a thing to avoid. What to avoid
-   is *transcribing*: a file list, a count of lines or tests, a walk
-   through the diff in order. Those cost the reader time and tell them
-   what the diff already shows plainly.
+   **The reader is the person who ran the overnight stack, reading the
+   next morning, probably on a phone, deciding in twenty seconds whether
+   to merge after a skim, read every line, or push back.** Every rule
+   below follows from that sentence, and where a rule and the sentence
+   disagree, the sentence wins.
 
-   Say what the change does in the fewest words that stay true, and
-   spend the rest on what the diff genuinely does not carry - why this
-   way and not another, what could go wrong, where this sits in the
-   stack.
+   The reader could work most of this out from the diff. The point is
+   that they should not have to. Summarising what the change does is the
+   job; *transcribing* it is not. A file list, a count of lines or tests,
+   or a walk through the diff in order costs the reader time and tells
+   them what the diff already shows.
 
-   **Open with one orienting line, then three level-two sections.** The
-   opening is not a restatement of the title: it is the context a reader
-   needs before the first bullet makes any sense at all.
+   **The body is a triage block, an opening, then three level-two
+   sections.** This is pull request #2263 written that way:
 
    ```markdown
-   Staff can now be taken off a ward without leaving them in charge of it.
+   **Size:** large. 20 files, a migration, two new emails.
+   **Look hardest at:** where the change link is checked in `backend/app/security.py`.
+   **Check for me:** that signing somebody out after they confirm is acceptable.
 
-   ## LLM decisions
+   Changing your email address now needs confirming. Quill sends a link to
+   the new address and does nothing until it is clicked. It also tells the
+   old address that a change was asked for.
 
-   - One sentence carrying the whole point. A second only if the first
-     genuinely needs it.
+   ## Decisions to check
+
+   - **The current password is optional for now.** You chose expand then
+     contract before the run. Until then somebody with a stolen cookie but
+     no password can start a change, but cannot finish it.
+   - **The confirm link reuses the `/verify-email` page instead of a new
+     one.** A new page would have duplicated the token-in-URL handling. Its
+     own signing salt means a verification link cannot be used as a change
+     link.
+   - **A password change cancels a pending link.** The link carries
+     `token_version`, which a password change bumps. So the account page
+     saves the password first and the email second. My reading; the plan
+     is silent.
 
    ## Risks
 
-   - None found. …or one bullet per risk.
+   - **A mistyped new address keeps the old one.** No link arrives,
+     nothing changes. That is the safe failure.
+   - **Confirming signs the person out.** They must sign in again.
 
    ## What has changed
 
-   - One sentence naming what is different now.
+   - **`users.pending_email` holds the new address** until it is
+     confirmed (migration `772b1a92d9dd`).
+   - **Two new emails**, `email_change_confirm` and `email_change_notice`,
+     each with a Storybook render.
+   - **The account page asks for the current password** before an email
+     change, and says to check the new inbox.
+
+   <!-- crp:pr-summary -->
    ```
+
+   A one-file wording change is the same shape, much shorter:
+
+   ```markdown
+   **Size:** tiny. One guide file, wording only. Merge if it reads well.
+   **Look hardest at:** step 3 of `frontend/src/guides/content/add-a-delegate-by-hand.md`.
+   **Check for me:** nothing in particular.
+
+   The "Add a delegate by hand" guide now says a delegate can be found by
+   username as well as by email address.
+
+   ## Risks
+
+   - None found. Only guide wording changes.
+
+   ## What has changed
+
+   - **Step 3 names both ways to find somebody**, which is what the Add
+     staff page's lookup accepts.
+
+   <!-- crp:pr-summary -->
+   ```
+
+   ### The triage block
+
+   Three lines, first in the body, each a bold label and one plain
+   sentence. Saying what feedback the author wants is the strongest single
+   predictor of a pull request merging (Pirouzkhah, Wurzel Gonçalves and
+   Bacchelli, arXiv 2602.14611), and these lines are where that is said.
+
+   - **`Size`** - `tiny`, `small`, `medium` or `large`, then what makes it
+     so in a few words: the file count, a migration, a new email, a
+     security boundary, clinical data. A migration, a security boundary or
+     clinical data makes it `large` whatever the line count. A `tiny`
+     change may add "Merge if it reads well."
+   - **`Look hardest at`** - one place, named well enough to open: a file
+     path and a function or component, and what to look for there. It is
+     where you are least sure, or where a mistake would hurt most. One
+     place, not a list.
+   - **`Check for me`** - the one thing the reader must agree with before
+     merging, written as a request. "Nothing in particular" is allowed for
+     a `tiny` change.
+
+   There is no review-time line: the Size line carries what the reader
+   triages on.
 
    ### The opening
 
-   - **Line one: one sentence, what is true now that was not true
+   - **Two or three short sentences: what is true now that was not true
      before.** In terms of what someone using the thing would see. Never
      a paraphrase of the title, and never a sentence that only parses if
      you already know the answer.
@@ -670,139 +735,110 @@ to start a stack anywhere but the tip of `origin/main`, and says to run
      `https://github.com/…/blob/main/…` URL.** GitHub does not resolve a
      relative path in a pull request body.
 
-   ### Name things by their real names
+   ### Sentences
+
+   Language models over-produce four things that make prose slow for a
+   person to read: inanimate subjects doing human verbs, dropped "that"
+   and "which", stacked nouns, and rare word pairings (Clark, Martin and
+   Mahowald, arXiv 2610.29162). All four come from reaching for the
+   shorter of two phrasings, so **never trade a plain sentence for a
+   shorter one**.
+
+   - **The subject is a person or a named thing in the code.** "Quill
+     sends a link", "`decode_token` refuses the token", "the user clicks".
+     Never an abstraction doing a human verb: not "the old address hears
+     of it", "a second change stops an older link", "the page asks".
+   - **Keep the small words**: that, which, because, so, but, instead of.
+     They show how one fact leads to the next. Cutting them saves two
+     words and costs a re-read.
+   - **One fact a sentence, around fifteen words.** Two short sentences
+     beat one with a comma in the middle.
+   - **Concrete before abstract.** "Somebody with a stolen cookie but no
+     password", not "a session alone".
+   - **No stacked nouns.** "The seed the guide screenshots run against",
+     not "the guide screenshot seed".
+   - **Spell out an abbreviation the first time**, unless it is an
+     identifier the code uses. Mark is dyslexic.
+   - **No pointing at context the reader does not have.** "Fix 3a", "as
+     asked", "as a human chose before the run" each point at something
+     that was in the conversation and is not in the reader's head the next
+     morning. Say the thing - "you chose this before the run", "the plan's
+     Phase 3" - or leave it out.
+   - **No aphorisms.** A neat, balanced line states a conclusion whose
+     premise the reader has not been given:
+
+     > ✗ "Whose tree a place goes into is checked on the move, not only
+     > on the create."
+     >
+     > ✓ "Moving an `org_unit` now checks its new parent is in the same
+     > organisation. Creating one already did."
+
+   **There is no word count.** Length follows the change: a one-file
+   wording fix is a handful of lines, and a twenty-file security change is
+   as long as it needs to be. A little repetition is fine. A sentence that
+   only parses on the second read is not.
+
+   ### Bullets: a bold lead, then the plain detail
+
+   **Every bullet opens with its claim in bold, five to eight words, then
+   one or two plain sentences giving the reason or the consequence.** The
+   reader skims the bold column and dips into the plain text only where
+   they want to, as they do with every `## TL;DR`.
+
+   - **The bold and the plain text never say the same thing.** A bold
+     headline that the sentence then repeats is wasted, and so is a
+     conclusion in bold with its premise left out.
+   - **One idea per bullet.** Two bullets on the same idea are one bullet;
+     one bullet carrying two ideas is two.
+   - **No sentence that restates another**, however short it is.
+
+   ### Names
 
    **Use the vocabulary of the plan and of the code, not a private
-   synonym for it.** If the plan calls it an `org_unit`, call it an
-   `org_unit`. If the route is `/api/sites`, write `/api/sites`. Domain
-   nouns, table names, route paths and file paths are what the reader
-   already has in their head, and swapping them for a gentler word - "a
-   place", "the surface", "the address being retired" - does not make the
-   sentence simpler, it makes the reader translate it back before they
-   can use it.
+   synonym for it.** If the plan calls it an `org_unit`, write `org_unit`;
+   if the route is `/api/sites`, write `/api/sites`. A gentler word is
+   worse than jargon because it can be wrong: "place" for `org_unit` cost
+   a review, since the plan says the tree is governance, not geography.
+   Leave out the *incidental* - a local variable, a private helper - which
+   only the diff needs.
 
-   What to leave out is the *incidental*: a local variable, a private
-   helper, an enum member, a count of lines. Those exist only inside the
-   diff and the diff already carries them.
-
-   **A gentler synonym is worse than jargon, because it can be wrong.**
-   "Place" for `org_unit` cost a review: the plan's own naming section
-   says the tree is governance and not geography, so a reader who met
-   "place" reasonably asked whether it meant an address, a ward or a bed.
-   The real name carries the meaning the plan settled on; a substitute
-   carries whatever the reader supplies.
-
-   ### Introduce a name the first time you use it
-
-   **Every name gets three or four words saying what it is, on its first
-   appearance, inline.** Not a glossary, not a preamble - a comma and a
-   short phrase:
-
-   > ✓ "`org_unit`, a node in the governance tree: a trust, a hospital
-   > or a ward"
-   >
-   > ✓ "`place_ids`, the new field naming which `org_unit`s a user
-   > belongs to"
-
-   After that first mention, use the bare name. Repeating the gloss is
-   padding.
+   **Give every name three or four words saying what it is, the first
+   time it appears:** "`org_unit`, a node in the governance tree: a trust,
+   a hospital or a ward". Bare after that.
 
    **Never point at something with a bare noun phrase.** "The new list",
-   "the form", "the surface", "both vocabularies", "the older fields",
-   "that gate" - each one asks the reader to work out which thing is
-   meant, and only the diff can tell them. Name it, or describe it well
-   enough to be found:
+   "the form", "that gate" ask the reader to guess which thing is meant.
 
    > ✗ "The new list is added beside the old ones."
    >
    > ✓ "`place_ids` is added beside `organisation_ids` and `site_ids`."
-   >
-   > ✗ "An admin saving the form now changes only the places they
-   > administer."
-   >
-   > ✓ "An admin saving the add-or-edit-user form now changes only the
-   > `org_unit`s they administer."
 
-   **This applies to the branch below as much as to the code.** A reader
-   arrives at one pull request in a stack, not at all of them in order,
-   so a phrase that only parses if you read the one underneath - "the
-   expand you chose", "the two older lists" - needs naming here too, in
-   the same few words.
-
-   The test: **a reader who knows the product, but has not read this
-   diff, the branch below it, or the plan.** If a sentence leaves them
-   guessing what a noun refers to, it is not finished.
-
-   ### Say it straight
-
-   **Write for a sixteen-year-old: short words, short sentences.** That
-   means plain, not clever. The commonest failure here is the aphorism -
-   a neat, balanced line that states a conclusion whose premise the
-   reader has not been given:
-
-   > ✗ "Whose tree a place goes into is checked on the move, not only on
-   > the create."
-   >
-   > ✓ "Moving an `org_unit` now checks its new parent is in the same
-   > organisation. Creating one already did."
-
-   > ✗ "The shapes stay while the answers stop."
-   >
-   > ✓ "The retired `/api/sites` routes still accept the request bodies
-   > they always did, so an old client gets '410, this has moved' rather
-   > than 'your request is malformed'."
-
-   Two tests before a bullet goes in:
-
-   - Subject, verb, object: name who or what does the thing.
-   - Could someone who has read only the plan summary understand it on one
-     pass? If it needs the diff to parse, rewrite it.
+   This holds for the branch below too. A reader arrives at one pull
+   request in a stack, not at all of them in order.
 
    ### Punctuation and spelling
 
    **No em dashes.** Not in the opening, not in a bullet, not in a
    heading. A comma, a colon, a full stop or a pair of brackets does the
-   same job and reads plainly. A sentence reaching for an em dash is
-   usually one clause too long, so the honest fix is to split it.
+   same job. A sentence reaching for an em dash is usually one clause too
+   long, so the honest fix is to split it.
 
-   **British English throughout**, as `CLAUDE.md` requires of everything
-   in this repository: organisation, behaviour, recognise, licence as the
-   noun. Identifiers, route paths and library names keep whatever
-   spelling the code gives them.
+   **British English throughout**, as `CLAUDE.md` requires: organisation,
+   behaviour, recognise, licence as the noun. Identifiers, route paths and
+   library names keep whatever spelling the code gives them.
 
-   ### One idea per bullet, and no bold
+   ### The sections
 
-   **Never open a bullet with a bold phrase.** Bold on the front of every
-   bullet marks nothing, because everything is marked; it reads as a
-   headline over a sentence that then repeats it, and it tempts you into
-   putting the punchline in bold and the premise in the plain text that
-   follows.
-
-   **One idea per bullet, and no sentence that restates another.** Do not
-   count sentences. A bullet that needs four short ones to introduce a
-   name, give the reason and state the consequence is doing its job;
-   squeezing those into one produces the clause-stacked sentence this
-   section exists to prevent.
-
-   What to cut is repetition, not length. Two bullets on the same idea
-   are one bullet. One bullet carrying two ideas is two bullets. A second
-   sentence that says the first again in other words is deleted, however
-   short it is.
-
-   Bold is for the rare word inside a sentence that genuinely must not be
-   missed - "this **deletes** the rows" - and loses that power the moment
-   it becomes the house style.
-
-   Each section:
-
-   - **`## LLM decisions`** - the choices you made that a human might have
-     made differently. This is where a clinician's expertise is the
-     strongest lever: a wrong decision here means the whole pull request
-     needs a closer read, so it comes first. Include **departures from the
-     plan** - say so plainly, leading with "Departed from the plan:" - and
-     **assumptions**, where the plan was silent and you picked a reading.
-     Following the plan is not a decision. Omit the section when there
-     genuinely were none.
+   - **`## Decisions to check`** - the choices you made that a human might
+     have made differently. A wrong one means the whole pull request needs
+     a closer read, so it comes first. Each bullet takes one shape: what
+     was chosen, what it was chosen instead of, and why. Then, where the
+     choice is not certain, one of two fixed words, so they can be scanned
+     for: `my reading` (the plan was silent and you picked a reading) or
+     `a guess`. No word means you are sure. Do not hedge with "may",
+     "should" or "I believe". A departure from the plan opens with
+     "Departed from the plan:". Following the plan is not a decision. Omit
+     the section when there genuinely were none.
 
    - **`## Risks`** - security, data leaks, patient safety, anything that
      could go wrong beyond the code being incorrect. **Always present**,
@@ -812,11 +848,11 @@ to start a stack anywhere but the tip of `origin/main`, and says to run
      is not well calibrated.
 
    - **`## What has changed`** - what is different now, in terms of what a
-     user of the thing would see. Not a file list and not a commit list:
-     the diff already carries those, and repeating them is the most common
-     way this section becomes noise. **Counting is not describing** -
+     user of the thing would see. **Always present**, never collapsed, and
+     one bullet when one is all there is. Not a file list and not a commit
+     list: the diff already carries those. **Counting is not describing** -
      "sixteen tests" tells the reader nothing on its own; say what the
-     tests pin down, and let the diff do the counting.
+     tests pin down.
 
    ### Closing
 
@@ -824,14 +860,6 @@ to start a stack anywhere but the tip of `origin/main`, and says to run
    it. **No attribution footer anywhere in the body**, no "Generated by",
    no session link, no robot emoji: if a tool appends one, strip it
    before the body is posted and say that you did.
-
-   **No hard word limit, and fewer words is still better.** Aim at
-   250-odd, with about 30 in the opening, but never buy the count by
-   dropping a gloss or an explanation - a short description the reader
-   cannot follow has saved nothing. Cut in this order: the "What has
-   changed" section where it has drifted into describing the diff, then
-   any bullet whose second sentence restates its first. Never cut the
-   opening or a first-use gloss; those are what make the rest readable.
 
    ```bash
    gh pr edit <number> \
@@ -858,7 +886,8 @@ to start a stack anywhere but the tip of `origin/main`, and says to run
 One short block:
 
 - The branch created, and its position in the stack (`just stack-log`).
-- The pull request URL, and one line on what the description now says.
+- The pull request URL, and under it the description's three triage
+  lines: Size, Look hardest at, Check for me.
 - Whether it was left a draft or marked ready.
 - The commit message and the title used, since the name, the message and
   the title were all chosen for you.
