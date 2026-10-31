@@ -4,6 +4,7 @@
 
 import { describe, it, expect, vi } from "vitest";
 import { screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { renderWithRouter } from "@test/test-utils";
 import PassportFrameworksCard from "./PassportFrameworksCard";
 import type { FrameworkOption } from "@lib/passport/frameworks";
@@ -26,6 +27,8 @@ function renderCard(
       options={options}
       value={["clinical"]}
       onChange={vi.fn()}
+      landingView="by_competency"
+      onLandingViewChange={vi.fn()}
       {...props}
     />,
   );
@@ -80,6 +83,38 @@ describe("PassportFrameworksCard", () => {
 
     expect(
       screen.getByText("Your frameworks could not be saved."),
+    ).toBeInTheDocument();
+  });
+  it("shows which view the passport home page opens in", () => {
+    renderCard({ landingView: "by_record" });
+
+    expect(screen.getByRole("radio", { name: "By record" })).toBeChecked();
+    expect(
+      screen.getByRole("radio", { name: "By competency" }),
+    ).not.toBeChecked();
+  });
+
+  it("calls back with the view chosen", async () => {
+    const onLandingViewChange =
+      vi.fn<(value: "by_competency" | "by_record") => void>();
+    renderCard({ onLandingViewChange });
+
+    await userEvent.click(screen.getByRole("radio", { name: "By record" }));
+
+    expect(onLandingViewChange).toHaveBeenCalledWith("by_record");
+  });
+
+  it("keeps the home page choice open on a read-only passport", () => {
+    renderCard({ disabled: true });
+
+    expect(screen.getByRole("radio", { name: "By record" })).toBeEnabled();
+  });
+
+  it("says when the choice could not be saved", () => {
+    renderCard({ landingViewError: "Your choice could not be saved." });
+
+    expect(
+      screen.getByText("Your choice could not be saved."),
     ).toBeInTheDocument();
   });
 });

@@ -1,7 +1,14 @@
 /**
  * Passport Page
  *
- * The holder's own passport: every competency they hold evidence for.
+ * The holder's own passport, in one of two views, chosen under Clinician
+ * passport in Settings and stored on the passport as `landing_view`:
+ *
+ * - **By competency**, the default: a table for each framework the holder
+ *   works to, each row opening that competency's page, then cards for
+ *   CPD, certificates, reflections and download. `PassportByCompetency`.
+ * - **By record**: a card for each kind of record, then every record
+ *   newest first. The page as it was first built.
  *
  * Thin composition, as the plan asks - the components carry the
  * judgements about what may and may not be shown, and this page fetches
@@ -19,6 +26,7 @@ import PageHeader from "@/components/page-header";
 import ActionCard from "@/components/action-card";
 import AddButton from "@/components/button/AddButton";
 import FrameworkField from "@/components/passport/FrameworkField";
+import PassportByCompetency from "@/components/passport/PassportByCompetency";
 import PassportRecordTable from "@/components/passport/PassportRecordTable";
 import StateMessage from "@/components/message-cards/StateMessage";
 import ErrorState from "@/components/error-state/ErrorState";
@@ -44,11 +52,15 @@ import {
 } from "@lib/passport";
 import type { PassportRecord } from "@lib/passport";
 import { entitlementWarning } from "@lib/passport/entitlementWarning";
+// Direct, not through the barrel, so page tests that mock the API
+// client still get the real helper.
+import { landingViewOf } from "@lib/passport/landingView";
 import { useFrameworkChoices } from "@lib/passport/useFrameworkChoices";
 import type { PassportDetail } from "@lib/passport";
 
 /**
- * The rest of the passport, which nothing else links to.
+ * The By record view's cards: the rest of the passport, which nothing
+ * else links to.
  *
  * The side navigation has one Passport entry and it points here, so
  * without these a holder could not reach their own logbook or CPD
@@ -101,6 +113,17 @@ const SECTIONS = [
     label: "Open download",
     to: "/passport/download",
   },
+];
+
+/**
+ * One key for each card below the By competency view's tables, for the
+ * loading skeleton: CPD, certificates, reflections and download.
+ */
+const BY_COMPETENCY_CARD_KEYS = [
+  "cpd",
+  "certificates",
+  "reflections",
+  "download",
 ];
 
 /**
@@ -202,10 +225,15 @@ export function Component() {
   // The records are fetched kind by kind, from the routes each section
   // page already uses, and flattened here. The passport's own
   // competencies name the logbook entries, which carry only an id.
+  //
+  // Only for the By record view, which is the one that lists them. The
+  // By competency view is drawn from the passport alone, so a holder on
+  // it is spared five requests whose answers would never be shown.
   const passportId = passport?.passport.passport_id ?? null;
   const competencies = passport?.competencies;
+  const view = passport ? landingViewOf(passport.passport) : null;
   useEffect(() => {
-    if (passportId === null) return;
+    if (passportId === null || view !== "by_record") return;
     let cancelled = false;
 
     Promise.all([
@@ -237,7 +265,7 @@ export function Component() {
     return () => {
       cancelled = true;
     };
-  }, [passportId, competencies]);
+  }, [passportId, competencies, view]);
 
   const handleCreate = () => {
     if (frameworks.length === 0) return;
@@ -271,18 +299,28 @@ export function Component() {
   // request: an assessor with a queue and no passport sees their
   // button immediately rather than after a round trip.
   //
-  // The skeleton is shaped like the action cards it stands in for, so
-  // the page settles rather than changes shape. A skeleton replaced by
-  // something of a different size reads as a flicker of its own, which
-  // is why `CompetencySummary` has none.
+  // The skeleton is shaped like the view it stands in for, so the page
+  // settles rather than changes shape. A skeleton replaced by something
+  // of a different size reads as a flicker of its own, which is why
+  // `CompetencySummary` has none.
+  //
+  // Which view is not known until the passport arrives, because the
+  // choice comes with it. So the skeleton is the default view's shape,
+  // a framework table above the four cards, which is what nearly every
+  // holder will see.
   if (loading) {
     return (
       <Stack gap="lg">
         <PassportHeader />
+        <Skeleton
+          height={layoutTokens.actionCardSkeletonHeight}
+          radius="md"
+          data-testid="framework-table-skeleton"
+        />
         <SimpleGrid cols={twoColumns ? 2 : 1}>
-          {SECTIONS.map((section) => (
+          {BY_COMPETENCY_CARD_KEYS.map((key) => (
             <Skeleton
-              key={section.to}
+              key={key}
               height={layoutTokens.actionCardSkeletonHeight}
               radius="md"
             />
@@ -356,6 +394,48 @@ export function Component() {
           }
         />
       )}
+      {view === "by_competency" && passport && (
+        <PassportByCompetency
+          frameworks={passport.passport.frameworks ?? []}
+          competencies={passport.competencies}
+          onSelectCompetency={(competencyId) =>
+            navigate(
+              `/passport/competencies/${encodeURIComponent(competencyId)}`,
+            )
+          }
+          onOpen={(path) => navigate(path)}
+        />
+      )}
+
+      {view === "by_record" && (
+        <ByRecord
+          twoColumns={twoColumns === true}
+          records={records}
+          recordsFailed={recordsFailed}
+          onOpen={(path) => navigate(path)}
+        />
+      )}
+    </Stack>
+  );
+}
+
+/**
+ * The By record view: a card for each kind of record, then every record
+ * newest first. The passport page as it was first built.
+ */
+function ByRecord({
+  twoColumns,
+  records,
+  recordsFailed,
+  onOpen,
+}: {
+  twoColumns: boolean;
+  records: PassportRecord[] | null;
+  recordsFailed: boolean;
+  onOpen: (path: string) => void;
+}) {
+  return (
+    <>
       {/* The ways in come first, and the list of records after.
           Somebody opening their passport has usually come to record
           something or to chase a sign-off, so a long list on top would
@@ -368,7 +448,7 @@ export function Component() {
             title={section.title}
             subtitle={section.subtitle}
             buttonLabel={section.label}
-            onClick={() => navigate(section.to)}
+            onClick={() => onOpen(section.to)}
           />
         ))}
       </SimpleGrid>
@@ -383,9 +463,9 @@ export function Component() {
         <PassportRecordTable
           records={records ?? []}
           isLoading={records === null}
-          onSelect={(record) => navigate(record.href)}
+          onSelect={(record) => onOpen(record.href)}
         />
       )}
-    </Stack>
+    </>
   );
 }

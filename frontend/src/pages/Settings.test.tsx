@@ -9,7 +9,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithRouter } from "@/test/test-utils";
-import { fetchMyPassport, setPassportFrameworks } from "@lib/passport";
+import {
+  fetchMyPassport,
+  setPassportFrameworks,
+  setPassportLandingView,
+} from "@lib/passport";
 import { hasOptedOut, setOptedOut } from "@/lib/page-views/optOut";
 import type { FrameworkOption } from "@lib/passport/frameworks";
 import { api } from "@/lib/api";
@@ -61,6 +65,7 @@ vi.mock("@lib/passport/useFrameworkChoices", () => ({
 vi.mock("@lib/passport", () => ({
   fetchMyPassport: vi.fn(),
   setPassportFrameworks: vi.fn(),
+  setPassportLandingView: vi.fn(),
 }));
 
 const FRAMEWORKS: FrameworkOption[] = [
@@ -309,6 +314,7 @@ describe("the clinician passport card", () => {
   beforeEach(() => {
     vi.mocked(fetchMyPassport).mockReset();
     vi.mocked(setPassportFrameworks).mockReset();
+    vi.mocked(setPassportLandingView).mockReset();
     authUser.enabled_features = ["passport"];
     authUser.competencies = ["assess_clinician_passport", "passport_write"];
   });
@@ -423,6 +429,61 @@ describe("the clinician passport card", () => {
 
     await screen.findByRole("heading", { name: "Clinician passport" });
     expect(frameworksField()).toBeDisabled();
+  });
+
+  it("opens the passport By competency when the holder has not chosen", async () => {
+    vi.mocked(fetchMyPassport).mockResolvedValue(detail);
+    renderWithRouter(<Settings />);
+
+    expect(
+      await screen.findByRole("radio", { name: "By competency" }),
+    ).toBeChecked();
+  });
+
+  it("saves the passport home page choice as soon as it is made", async () => {
+    const user = userEvent.setup();
+    vi.mocked(fetchMyPassport).mockResolvedValue(detail);
+    vi.mocked(setPassportLandingView).mockResolvedValue({
+      ...detail.passport,
+      landing_view: "by_record",
+    });
+    renderWithRouter(<Settings />);
+
+    await user.click(await screen.findByRole("radio", { name: "By record" }));
+
+    expect(setPassportLandingView).toHaveBeenCalledWith(
+      "3f2a8c1e",
+      "by_record",
+    );
+    expect(screen.getByRole("radio", { name: "By record" })).toBeChecked();
+  });
+
+  it("puts the choice back when it could not be saved", async () => {
+    const user = userEvent.setup();
+    vi.mocked(fetchMyPassport).mockResolvedValue(detail);
+    vi.mocked(setPassportLandingView).mockRejectedValue(new Error("network"));
+    renderWithRouter(<Settings />);
+
+    await user.click(await screen.findByRole("radio", { name: "By record" }));
+
+    expect(
+      await screen.findByText(
+        "Your choice could not be saved. Please try again.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "By competency" })).toBeChecked();
+  });
+
+  it("keeps the home page choice open while the passport is read-only", async () => {
+    vi.mocked(fetchMyPassport).mockResolvedValue({
+      ...detail,
+      entitlement: { can_write: false },
+    });
+    renderWithRouter(<Settings />);
+
+    expect(
+      await screen.findByRole("radio", { name: "By record" }),
+    ).toBeEnabled();
   });
 });
 
