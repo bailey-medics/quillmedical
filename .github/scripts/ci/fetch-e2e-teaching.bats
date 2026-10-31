@@ -102,6 +102,23 @@ setup() {
   [ "$(stat -c '%a' "$DEST/modules/chest-xray/module.yaml")" = "666" ]
 }
 
+@test "leaves alone, without failing, what another user wrote there" {
+  # On a Linux host the stack's backend writes its uploads as its own
+  # user, and a chmod of those failed every run after the first. Here
+  # `id` says the caller is somebody else, so nothing in the checkout is
+  # theirs.
+  fetch_commit "file://$SOURCE_REPO" "$FIRST_SHA" "$DEST"
+  chmod -R go-w "$DEST"
+  mkdir -p "$BATS_TEST_TMPDIR/bin"
+  printf '#!/bin/sh\necho 64999\n' >"$BATS_TEST_TMPDIR/bin/id"
+  chmod +x "$BATS_TEST_TMPDIR/bin/id"
+
+  PATH="$BATS_TEST_TMPDIR/bin:$PATH" run open_for_uploads "$DEST"
+
+  [ "$status" -eq 0 ]
+  [ "$(stat -c '%a' "$DEST/modules/chest-xray/module.yaml")" = "644" ]
+}
+
 @test "opening a checkout for uploads leaves git seeing no change" {
   fetch_commit "file://$SOURCE_REPO" "$FIRST_SHA" "$DEST"
 

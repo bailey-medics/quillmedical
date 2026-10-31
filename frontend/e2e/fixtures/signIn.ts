@@ -30,6 +30,12 @@ export const PEOPLE = {
   teachingAdmin: "educator",
   /** The teaching admin of the second teaching organisation. */
   secondTeachingAdmin: "educator_second",
+  /**
+   * A `passport_admin` at "CI Passport Hospital", holding
+   * `manage_passport`. Makes every holder and assessor the passport
+   * journeys use, never the operator.
+   */
+  passportAdmin: "ci_passport_admin",
 } as const;
 
 /** What the seed calls its places. */
@@ -50,6 +56,10 @@ export const PLACES = {
   otherOrganisation: "CI Other Hospital",
   /** A site inside that one. */
   otherSite: "CI Other Centre",
+  /** The organisation that runs the passport, with its passport admin. */
+  passportOrganisation: "CI Passport Hospital",
+  /** A site inside it, where the passport journeys' people work. */
+  passportSite: "CI Passport Centre",
 } as const;
 
 /** One of the four teaching sites the seed makes. */
