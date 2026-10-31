@@ -15,6 +15,7 @@ export { Component as CpdDateRangesPage } from "../settings/CpdDateRangesPage";
 export { Component as PassportAcceptInvitePage } from "./PassportAcceptInvitePage";
 export { Component as PassportCertificatePage } from "./PassportCertificatePage";
 export { Component as PassportCertificatesPage } from "./PassportCertificatesPage";
+export { Component as PassportCompetencyPage } from "./PassportCompetencyPage";
 export { Component as PassportCpdEntryPage } from "./PassportCpdEntryPage";
 export { Component as PassportCpdPage } from "./PassportCpdPage";
 export { Component as PassportDownloadPage } from "./PassportDownloadPage";

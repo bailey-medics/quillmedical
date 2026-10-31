@@ -1208,6 +1208,25 @@ describe("SideNavContent Component", () => {
       );
     });
 
+    it("hangs Competency straight under Passport while one is open", async () => {
+      // The passport page is the list of competencies, so there is no
+      // page between one competency and Passport.
+      renderWithAuth(<SideNavContent />, "passport_holder", {
+        initialRoute: "/passport/competencies/perform_bronchoscopy",
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText("Passport")).toBeInTheDocument();
+      });
+
+      const child = screen.getByText("Competency").closest("a");
+      expect(child).toHaveAttribute(
+        "href",
+        "/passport/competencies/perform_bronchoscopy",
+      );
+      expect(child).toHaveAttribute("data-active", "true");
+    });
+
     it("hangs Confirm entry under Passport while a logbook entry is confirmed", async () => {
       renderWithAuth(<SideNavContent />, "passport_holder", {
         initialRoute: "/passport/logbook-confirmation/7",

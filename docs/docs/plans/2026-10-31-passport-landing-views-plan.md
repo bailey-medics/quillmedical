@@ -202,7 +202,7 @@ there, before anything is stored or routed.
 
 ## Phase 3: One competency's page
 
-- [ ] Add `PassportCompetencyPage` at `/passport/competencies/:competencyId`,
+- [x] Add `PassportCompetencyPage` at `/passport/competencies/:competencyId`,
       exported from `pages/passport/passportChunk.ts` and routed with
       `lazyFrom(loadPassport, "PassportCompetencyPage")`. It fetches and
       renders `PassportCompetencyDetail` from Phase 1, reading through
@@ -210,15 +210,33 @@ there, before anything is stored or routed.
       existing logbook fetch. No new backend route unless one of them
       cannot answer for a single competency.
 
-- [ ] Wire the buttons: **Ask for a sign-off** opens the existing request
+      Built with no new backend route, but not from
+      `GET /competencies/{competency_id}`: that carries only the latest
+      sign-off, and the page lists them all. It reads `fetchSignOffs`,
+      every sign-off in the passport, kept to this competency, and
+      `fetchLogbook` for the competency's entries. The name comes from
+      the catalogue, so a competency with nothing recorded yet still
+      has a page, and an id that is not an assessable competency is
+      "not found" without fetching anything.
+
+- [x] Wire the buttons: **Ask for a sign-off** opens the existing request
       flow with this competency already chosen, and **Add an entry**
       opens the logbook entry form the same way. Each sign-off opens its
       existing sign-off page, and each entry opens
       `/passport/logbook/:competencyId/:stem`.
 
-- [ ] Give the Passport side navigation entry a child link for this
+      Both forms open in place of the competency's tables, under its
+      name, and Cancel or a saved request returns to them. A refused
+      request keeps the form open with the server's reason above it, as
+      on the Sign-offs page.
+
+- [x] Give the Passport side navigation entry a child link for this
       page, shown only while it is open, in `SideNavContent.tsx`, as
       `.claude/rules/pages.md` requires. `navCoverage.test.tsx` checks it.
+
+      Done in `featureNavItems.ts`, where the passport's children are
+      built: "Competency" hangs straight under Passport, because the
+      passport page itself is the list of competencies.
 
 ## Phase 4: The landing page chooses its view
 
