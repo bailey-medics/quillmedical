@@ -349,7 +349,7 @@ against `compose.ci.yml`, as `just e2e` does. Written in the order to
 build them: the people first, then the holder's own record, then the
 people who act on it, then what must not leak.
 
-- [ ] Give the fixtures passport people, in `frontend/e2e/fixtures/people.ts`.
+- [x] Give the fixtures passport people, in `frontend/e2e/fixtures/people.ts`.
       `seed_ci.py` already seeds "CI Passport Hospital" and "CI Passport
       Centre" with the passport feature on (`seed_other_feature_places`)
       and `ci_passport`, a `passport_delegate` holding a passport. Add a
@@ -368,33 +368,44 @@ people who act on it, then what must not leak.
       `clinical` and `ghnft_radiotherapy_record`, so both the general
       table and the Gloucestershire one are drawn.
 
+      Built: `seed_passport_admin` in `seed_ci.py`, and
+      `frontend/e2e/fixtures/passport.ts`. Found on the way: a sign-off
+      request refuses an assessor address on a reserved name such as
+      `.test`, as registration does, so passport people are given an
+      `example.com` address (`passportEmailOf`). Also found: on a Linux
+      host every end-to-end run after the first stopped before starting
+      the stack, because the backend writes uploaded videos into
+      `.e2e-teaching/` as its own user and `fetch-e2e-teaching.sh` then
+      failed to `chmod` them. It now opens only what the caller owns,
+      with a bats case for a file somebody else wrote.
+
 ### The holder's own record
 
 `tests/passport/holding-a-passport.spec.ts`, each for a PH.
 
-- [ ] 1. As a PH with no passport, I want to choose my frameworks and
+- [x] 1. As a PH with no passport, I want to choose my frameworks and
       create one, so that I can start recording.
       Tested: "Create my passport" is disabled until a framework is
       chosen, and afterwards the page shows a table for each framework.
-- [ ] 2. As a PH, I want my passport to open By competency, with a table
+- [x] 2. As a PH, I want my passport to open By competency, with a table
       for each framework I work to, so that I see where I stand on each
       competency at once.
       Tested: a row for every assessable item in the framework file, all
       "Not asked" on a new passport, and no Sign-offs or Logbook card.
-- [ ] 3. As a PH, I want to open a competency from its row and add a
+- [x] 3. As a PH, I want to open a competency from its row and add a
       logbook entry there, so that I record a procedure against the
       competency I was looking at.
       Tested: the form opens with the competency chosen, the entry is
       saved, and back on the landing page the row's logbook count is 1.
-- [ ] 4. As a PH, I want to ask for a sign-off from a competency's page,
+- [x] 4. As a PH, I want to ask for a sign-off from a competency's page,
       naming an AS by email, so that an assessor I know can judge me.
       Tested: the row reads "Requested" afterwards, and the AS is sent the
       captured email.
-- [ ] 5. As a PH, I want to withdraw a request still waiting, so that I
+- [x] 5. As a PH, I want to withdraw a request still waiting, so that I
       can take back one sent to the wrong person.
       Tested: the row goes back to "Not asked", and the AS's inbox no
       longer lists it.
-- [ ] 6. As a PH, I want to switch my passport to By record in Settings
+- [x] 6. As a PH, I want to switch my passport to By record in Settings
       and back, so that I can see it the way I prefer.
       Tested: the landing page shows the six cards and the Records table
       after the switch, and the tables again after switching back. The

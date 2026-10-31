@@ -62,11 +62,16 @@ fetch_commit() {
 # can save an upload beside the content. Files that are executable stay
 # so and no others become so, which leaves git seeing no change.
 #
+# Only what this user owns is opened. On a Linux host the backend writes
+# its uploads as its own user, and a second run cannot chmod those, so a
+# plain `chmod -R` stopped every run after the first. They are the
+# backend's already, so it can still write them.
+#
 # Args: <dest>
 open_for_uploads() {
   local dest="$1"
 
-  chmod -R a+rwX "$dest"
+  find "$dest" -user "$(id -u)" -exec chmod a+rwX {} +
   log "Open for uploads"
 }
 
