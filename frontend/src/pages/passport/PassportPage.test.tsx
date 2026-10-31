@@ -9,6 +9,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithRouter } from "@/test/test-utils";
+import { frameworkItems } from "@lib/passport/frameworks";
 import type { FrameworkOption } from "@lib/passport/frameworks";
 import { Component as PassportPage } from "./PassportPage";
 import {
@@ -153,6 +154,21 @@ const detail = {
   competencies,
 };
 
+/** The same passport, with its holder's choice of the By record view. */
+const byRecord = {
+  ...detail,
+  passport: { ...detail.passport, landing_view: "by_record" as const },
+};
+
+/**
+ * Waits for the passport to have loaded, in either view. The CPD card
+ * is in both: under the tables in By competency, among the cards in By
+ * record.
+ */
+async function loadedEitherView(): Promise<void> {
+  await screen.findByRole("button", { name: "Open CPD" });
+}
+
 describe("PassportPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -195,7 +211,7 @@ describe("PassportPage", () => {
       });
       renderWithRouter(<PassportPage />);
 
-      await screen.findByText("Records");
+      await loadedEitherView();
       expect(screen.queryByText(/read-only/)).not.toBeInTheDocument();
     });
 
@@ -204,13 +220,13 @@ describe("PassportPage", () => {
       fetchMyPassport.mockResolvedValue(detail);
       renderWithRouter(<PassportPage />);
 
-      await screen.findByText("Records");
+      await loadedEitherView();
       expect(screen.queryByText(/read-only/)).not.toBeInTheDocument();
     });
   });
 
-  it("lists every record, newest first, of every kind", async () => {
-    fetchMyPassport.mockResolvedValue(detail);
+  it("By record: lists every record, newest first, of every kind", async () => {
+    fetchMyPassport.mockResolvedValue(byRecord);
     serveRecords();
     renderWithRouter(<PassportPage />);
 
@@ -225,9 +241,9 @@ describe("PassportPage", () => {
     expect(fetchReflections).toHaveBeenCalledWith("3f2a8c1e");
   });
 
-  it("opens a record's own page from its row", async () => {
+  it("By record: opens a record's own page from its row", async () => {
     const user = userEvent.setup();
-    fetchMyPassport.mockResolvedValue(detail);
+    fetchMyPassport.mockResolvedValue(byRecord);
     serveRecords();
     renderWithRouter(<PassportPage />);
 
@@ -238,8 +254,8 @@ describe("PassportPage", () => {
     );
   });
 
-  it("names a logbook entry by its competency", async () => {
-    fetchMyPassport.mockResolvedValue(detail);
+  it("By record: names a logbook entry by its competency", async () => {
+    fetchMyPassport.mockResolvedValue(byRecord);
     serveRecords();
     renderWithRouter(<PassportPage />);
 
@@ -250,9 +266,9 @@ describe("PassportPage", () => {
     expect(row).toHaveTextContent("Perform bronchoscopy");
   });
 
-  it("no longer groups the record by competency", async () => {
+  it("By record: no longer groups the record by competency", async () => {
     // The list of competencies was replaced by the records table.
-    fetchMyPassport.mockResolvedValue(detail);
+    fetchMyPassport.mockResolvedValue(byRecord);
     renderWithRouter(<PassportPage />);
 
     await screen.findByText("Records");
@@ -261,8 +277,8 @@ describe("PassportPage", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("says so when the records cannot be loaded", async () => {
-    fetchMyPassport.mockResolvedValue(detail);
+  it("By record: says so when the records cannot be loaded", async () => {
+    fetchMyPassport.mockResolvedValue(byRecord);
     fetchAllCpd.mockRejectedValue(new Error("network"));
     renderWithRouter(<PassportPage />);
 
@@ -293,7 +309,7 @@ describe("PassportPage", () => {
     renderWithRouter(<PassportPage />);
 
     // The ways in belong to a passport that is known to exist.
-    expect(screen.queryByText("Open logbook")).not.toBeInTheDocument();
+    expect(screen.queryByText("Open CPD")).not.toBeInTheDocument();
     // And so does the offer to start one, to a passport known not to.
     expect(
       screen.queryByText("You do not have a passport yet"),
@@ -301,7 +317,7 @@ describe("PassportPage", () => {
 
     resolve(detail);
 
-    expect(await screen.findByText("Open logbook")).toBeInTheDocument();
+    expect(await screen.findByText("Open CPD")).toBeInTheDocument();
   });
 
   it("stands the action cards in with skeletons while loading", () => {
@@ -327,12 +343,12 @@ describe("PassportPage", () => {
     ).toBeInTheDocument();
   });
 
-  it("leads to the rest of the passport", async () => {
+  it("By record: leads to the rest of the passport", async () => {
     // The side navigation has one Passport entry and it points here, so
     // these cards are the only route to every other passport page.
     // Without them those pages are addressable only by typing the URL,
     // which is how they sat for a fortnight.
-    fetchMyPassport.mockResolvedValue(detail);
+    fetchMyPassport.mockResolvedValue(byRecord);
     renderWithRouter(<PassportPage />);
 
     for (const name of [
@@ -347,8 +363,8 @@ describe("PassportPage", () => {
     }
   });
 
-  it("offers a way into each section", async () => {
-    fetchMyPassport.mockResolvedValue(detail);
+  it("By record: offers a way into each section", async () => {
+    fetchMyPassport.mockResolvedValue(byRecord);
     renderWithRouter(<PassportPage />);
 
     for (const label of [
@@ -372,7 +388,7 @@ describe("PassportPage", () => {
     fetchMyPassport.mockResolvedValue(detail);
     renderWithRouter(<PassportPage />);
 
-    expect(await screen.findByText("Records")).toBeInTheDocument();
+    await loadedEitherView();
     expect(
       screen.queryByRole("button", { name: /sign-off requests for me/i }),
     ).not.toBeInTheDocument();
@@ -448,7 +464,7 @@ describe("PassportPage", () => {
     );
 
     expect(createPassport).toHaveBeenCalledWith(["oncology"]);
-    expect(await screen.findByText("Records")).toBeInTheDocument();
+    await loadedEitherView();
   });
 
   it("offers the frameworks in the order the API gives", async () => {
@@ -501,7 +517,7 @@ describe("PassportPage", () => {
     fetchMyPassport.mockResolvedValue(detail);
     renderWithRouter(<PassportPage />);
 
-    await screen.findByText("Records");
+    await loadedEitherView();
     expect(
       screen.queryByText("Choose the frameworks you work to"),
     ).not.toBeInTheDocument();
@@ -536,5 +552,87 @@ describe("PassportPage", () => {
 
     expect(screen.queryByText("Records")).not.toBeInTheDocument();
     expect(fetchSignOffs).not.toHaveBeenCalled();
+  });
+  describe("By competency, the default", () => {
+    it("shows a table for each framework the holder works to", async () => {
+      fetchMyPassport.mockResolvedValue(detail);
+      renderWithRouter(<PassportPage />);
+
+      expect(
+        await screen.findByRole("heading", { name: "General clinical skills" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByTestId("competency-framework-table"),
+      ).toBeInTheDocument();
+      expect(screen.queryByText("Records")).not.toBeInTheDocument();
+    });
+
+    it("fetches no records, which only the By record view lists", async () => {
+      fetchMyPassport.mockResolvedValue(detail);
+      renderWithRouter(<PassportPage />);
+
+      await loadedEitherView();
+      expect(fetchSignOffs).not.toHaveBeenCalled();
+      expect(fetchWholeLogbook).not.toHaveBeenCalled();
+    });
+
+    it("opens a competency's own page from its row", async () => {
+      const user = userEvent.setup();
+      const [first] = frameworkItems("clinical");
+      fetchMyPassport.mockResolvedValue(detail);
+      renderWithRouter(<PassportPage />);
+
+      await user.click(await screen.findByText(first.display_name));
+
+      expect(navigate).toHaveBeenCalledWith(
+        `/passport/competencies/${first.id}`,
+      );
+    });
+
+    it("keeps the cards for what belongs to no one competency", async () => {
+      fetchMyPassport.mockResolvedValue(detail);
+      renderWithRouter(<PassportPage />);
+
+      for (const label of [
+        "Open CPD",
+        "Open certificates",
+        "Open reflections",
+        "Open download",
+      ]) {
+        expect(
+          await screen.findByRole("button", { name: label }),
+        ).toBeInTheDocument();
+      }
+      expect(
+        screen.queryByRole("button", { name: "Open logbook" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("shows only the cards and the warning when no framework is chosen", async () => {
+      fetchMyPassport.mockResolvedValue({
+        ...detail,
+        passport: { ...detail.passport, frameworks: [] },
+      });
+      renderWithRouter(<PassportPage />);
+
+      expect(
+        await screen.findByText("Choose the frameworks you work to"),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByTestId("competency-framework-table"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Open CPD" }),
+      ).toBeInTheDocument();
+    });
+
+    it("shapes the loading skeleton like the default view", () => {
+      fetchMyPassport.mockReturnValue(new Promise(() => {}));
+      renderWithRouter(<PassportPage />);
+
+      expect(
+        screen.getByTestId("framework-table-skeleton"),
+      ).toBeInTheDocument();
+    });
   });
 });

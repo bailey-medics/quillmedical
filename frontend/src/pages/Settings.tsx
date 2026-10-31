@@ -33,7 +33,15 @@ import { appFeatureFlags } from "@/lib/featureFlags";
 import { useHasFeature } from "@/lib/features";
 import { useHasCompetency } from "@/lib/cbac/hooks";
 import PassportFrameworksCard from "@/components/passport/PassportFrameworksCard";
-import { fetchMyPassport, setPassportFrameworks } from "@lib/passport";
+import {
+  fetchMyPassport,
+  setPassportFrameworks,
+  setPassportLandingView,
+} from "@lib/passport";
+import type { LandingView } from "@lib/passport";
+// Direct, not through the barrel, so tests that mock the API client
+// still get the real helper.
+import { landingViewOf } from "@lib/passport/landingView";
 import { useFrameworkChoices } from "@lib/passport/useFrameworkChoices";
 import { hasOptedOut, setOptedOut } from "@/lib/page-views/optOut";
 import { useInstallRoute } from "@lib/pwa/useInstallRoute";
@@ -145,8 +153,12 @@ export default function Settings() {
     id: string;
     frameworks: string[];
     canWrite: boolean;
+    landingView: LandingView;
   } | null>(null);
   const [frameworksError, setFrameworksError] = useState<string | undefined>();
+  const [landingViewError, setLandingViewError] = useState<
+    string | undefined
+  >();
   // Fetched only once the card is showing, for somebody with a passport.
   const frameworkOptions = useFrameworkChoices(passport !== null);
 
@@ -161,6 +173,7 @@ export default function Settings() {
           id: detail.passport.passport_id,
           frameworks: (detail.passport.frameworks ?? []).map((f) => f.id),
           canWrite: detail.entitlement?.can_write !== false,
+          landingView: landingViewOf(detail.passport),
         });
       })
       .catch(() => {
@@ -188,6 +201,22 @@ export default function Settings() {
       setFrameworksError(
         "Your frameworks could not be saved. Please try again.",
       );
+    });
+  }
+
+  function saveLandingView(next: LandingView) {
+    if (passport === null) return;
+    const previous = passport.landingView;
+
+    // Shown at once and put back on failure, as the frameworks are.
+    setPassport({ ...passport, landingView: next });
+    setLandingViewError(undefined);
+
+    setPassportLandingView(passport.id, next).catch(() => {
+      setPassport((current) =>
+        current ? { ...current, landingView: previous } : current,
+      );
+      setLandingViewError("Your choice could not be saved. Please try again.");
     });
   }
 
@@ -374,6 +403,9 @@ export default function Settings() {
             onChange={saveFrameworks}
             disabled={!passport.canWrite}
             error={frameworksError}
+            landingView={passport.landingView}
+            onLandingViewChange={saveLandingView}
+            landingViewError={landingViewError}
           />
         )}
       </SimpleGrid>
