@@ -344,7 +344,9 @@ jobs:
       cancel-in-progress: true
     steps:
       - name: Breaking change approved
-        run: echo "Breaking API change approved by ${{ github.actor }} for commit ${{ github.event.pull_request.head.sha }}."
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: echo "Breaking API change approved by $GITHUB_ACTOR for commit $HEAD_SHA."
 
   # ---------- Does this PR still need telling about its breaking changes? ----------
   # Records the finding on the PR. Blocks nothing - api_breaking_change_gate
@@ -472,9 +474,11 @@ jobs:
 
       - name: Write destructive migration summary
         if: steps.detect.outputs.destructive == 'true'
+        env:
+          REPORT: ${{ steps.detect.outputs.report }}
         run: |
           bash .github/scripts/ci/write-destructive-migrations-summary.sh \
-            "${{ steps.detect.outputs.report }}"
+            "$REPORT"
 
       # Hashed here rather than downstream so the change-set identity is
       # produced by the job that owns the detection, mirroring how
@@ -482,9 +486,11 @@ jobs:
       - name: Compute destructive change-set hash
         id: hash
         if: steps.detect.outputs.destructive == 'true'
+        env:
+          REPORT: ${{ steps.detect.outputs.report }}
         run: |
           bash .github/scripts/ci/compute-destructive-migration-hash.sh \
-            "${{ steps.detect.outputs.report }}"
+            "$REPORT"
 
       # See api_schema_diff: what this pull request itself changes, which the
       # gate reuses an earlier approval for while it stays the same.
@@ -572,12 +578,16 @@ jobs:
       cancel-in-progress: true
     steps:
       - name: Destructive migration approved
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          # The report quotes the pull request's own migrations, so it is
+          # read from the environment: pasted into the script, a line in it
+          # reading REPORT would have ended the heredoc and run the rest.
+          REPORT: ${{ needs.db_destructive_migration_check.outputs.report }}
         run: |
-          echo "Destructive DB migration approved by ${{ github.actor }} for commit ${{ github.event.pull_request.head.sha }}."
+          echo "Destructive DB migration approved by $GITHUB_ACTOR for commit $HEAD_SHA."
           echo "Approved migrations:"
-          cat <<'REPORT'
-          ${{ needs.db_destructive_migration_check.outputs.report }}
-          REPORT
+          printf '%s\n' "$REPORT"
 
   # ---------- Does this PR still need telling about its destructive migrations? ----------
   # Records the finding on the PR. Blocks nothing - db_destructive_migration_gate

@@ -453,9 +453,11 @@ jobs:
           fetch-depth: 0
       - name: Compare against the base branch
         id: detect
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
         run: |
           bash .github/scripts/ci/detect-teaching-tooling-changes.sh \
-            "origin/${{ github.event.pull_request.base.ref }}"
+            "origin/$BASE_REF"
 
 
   teaching_content_sweep:
@@ -1133,7 +1135,7 @@ jobs:
         id: report
         env:
           GH_TOKEN: ${{ github.token }}
-        run: bash .github/scripts/ci/report-queue-failure.sh "${{ github.repository }}" "${{ github.run_id }}" "${{ github.ref }}"
+        run: bash .github/scripts/ci/report-queue-failure.sh "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID" "$GITHUB_REF"
 
   queue_failure_notify:
     name: Notify why the merge queue run failed

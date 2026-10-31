@@ -396,18 +396,30 @@ anything, and each step is a unit of its own.
     introduced in July 2026: it cannot load a file a previous step
     wrote, and counts as pinned. It belongs with the commit pins, below.
 
-- [ ] **Fix the template injections (8).** `auto-pr.yml`,
-      `teaching-pipeline.yml`, `ci.yml`, `gate-breaking.yml` and
-      `merged-outside-main.yml` paste a value such as
-      `github.ref_name` or `github.event.pull_request.base.ref` straight
-      into a `run:` block, so a branch named to contain shell would run
-      as shell, in a job holding `GH_TOKEN`. Only collaborators can push
-      here, but `teaching-pipeline.yml` is called from the teaching
-      repositories, where content authors push, and `CLAUDE.md` already
-      treats them as less trusted. Each value moves into the step's
-      `env:` and the script reads it as a quoted variable, which is
-      zizmor's own fix. The scripts' bats tests are unchanged, since the
-      scripts take the same arguments.
+- [x] **Fix the template injections (8, and one more).**
+      `auto-pr.yml`, `teaching-pipeline.yml`, `ci.yml`,
+      `gate-breaking.yml` and `merged-outside-main.yml` pasted a value
+      such as `github.ref_name` or `github.event.pull_request.base.ref`
+      straight into a `run:` block, so a branch named to contain shell
+      would run as shell, in a job holding `GH_TOKEN`. Only
+      collaborators can push here, but `teaching-pipeline.yml` is called
+      from the teaching repositories, where content authors push, and
+      `CLAUDE.md` already treats them as less trusted. Where the runner
+      already sets the value as an environment variable
+      (`GITHUB_REF_NAME`, `GITHUB_REF`, `GITHUB_REPOSITORY`,
+      `GITHUB_RUN_ID`, `GITHUB_ACTOR`) the script reads that; the event
+      fields go into the step's `env:`. The scripts take the same
+      arguments, so their bats tests are unchanged.
+
+      Found while fixing them: the destructive-migration gate in
+      `gate-breaking.yml` pasted `outputs.report`, which quotes the pull
+      request's own migrations, into a `cat <<'REPORT'` heredoc, and into
+      two script calls. A migration with a line reading `REPORT` would
+      have ended the heredoc and run what followed. zizmor rates a step
+      output only informational, below `--min-severity=low`, so the other
+      34 informational expansions were read by hand: they are SHAs,
+      versions, GitHub usernames and registry names, none of which a pull
+      request writes. The report moved into `env:` too.
 
 - [ ] **Narrow the permissions (16).** `ci.yml`, for one, grants
       `pull-requests: write` and `packages: write` to every job at the
