@@ -133,6 +133,16 @@ repos:
         files: ^(audit/ledger\.tsv|scripts/audit-stamp\.py)$
         pass_filenames: false
 
+      # The repository is public, so an address on a home network or a
+      # tailnet must not reach it. CI runs the patterns; a developer's
+      # machine also refuses the literals in local/home-details-denylist.
+      # See .claude/rules/home-details.md.
+      - id: check-home-details
+        name: check for home and dev set-up details
+        entry: scripts/check-home-details.sh
+        language: system
+        types: [text]
+
       - id: check-api-schema-coverage
         name: check API schema coverage
         entry: env -u VIRTUAL_ENV poetry -C backend run python3 scripts/check_api_schema_coverage.py --all --dev
