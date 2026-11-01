@@ -2,7 +2,7 @@
 #
 # Builds the public_pages Vite workspace once and syncs it to the app
 # project's landing bucket, which serves the apex quill-medical.com domain.
-# The bucket name is derived from the project id as `<project>-landing`, so
+# The bucket name is derived from the project id as `<project>-landing-uk`, so
 # changing the secret changes the target.
 name: Deploy public site
 
