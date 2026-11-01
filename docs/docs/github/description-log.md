@@ -20,6 +20,13 @@ Each entry has four lines:
 The plan behind this file is
 [readable pull request descriptions](../plans/2026-10-31-readable-pull-request-descriptions-plan.md).
 
+## #2323 Tmux: more worktrees and shells
+
+- **Scores** - 84. Attempt 1 posted.
+- **Rules** - `.claude/skills/crpd/SKILL.md` as of #2302.
+- **Verdict** - not yet given.
+- **Changed** - nothing yet.
+
 ## #2302 Descriptions: rewrite to the score, and keep a log
 
 - **Scores** - 81. Attempt 1 posted.
