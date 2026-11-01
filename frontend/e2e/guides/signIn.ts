@@ -7,7 +7,8 @@
  * is and not what their username happens to be.
  */
 
-import { expect, type Page } from "@playwright/test";
+import type { Page } from "@playwright/test";
+import { signIn as signInOnTheForm } from "../fixtures/signIn";
 
 /** The seeded accounts. Each password is the username followed by `123`. */
 export const PEOPLE = {
@@ -42,31 +43,7 @@ export async function signIn(
   page: Page,
   username: (typeof PEOPLE)[keyof typeof PEOPLE],
 ): Promise<void> {
-  // The login route is rate-limited, and the specs sign in one after
-  // another, so a refusal is waited out and tried again.
-  for (let attempt = 1; attempt <= 3; attempt += 1) {
-    await page.goto("/login");
-    await page.getByLabel("Username").fill(username);
-    await page
-      .getByRole("textbox", { name: "Password" })
-      .fill(`${username}123`);
-
-    const answered = page.waitForResponse(
-      (response) =>
-        response.url().includes("/api/auth/login") &&
-        response.request().method() === "POST",
-    );
-    await page.getByRole("button", { name: "Sign in" }).click();
-    const status = (await answered).status();
-
-    if (status === 200) {
-      await expect(page).not.toHaveURL(/\/login/, { timeout: 30_000 });
-      return;
-    }
-    if (status !== 429) {
-      throw new Error(`Signing in as ${username} answered ${status}`);
-    }
-    await page.waitForTimeout(2_000 * attempt);
-  }
-  throw new Error(`Signing in as ${username} was refused three times`);
+  // The same form and the same waiting-out of the rate limit as the
+  // end-to-end tests.
+  await signInOnTheForm(page, username);
 }
