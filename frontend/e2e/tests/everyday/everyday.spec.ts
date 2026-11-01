@@ -35,11 +35,17 @@ async function expectNotFound(page: Page, address: string): Promise<void> {
 
 /** Send feedback from the menu. */
 async function sendFeedback(page: Page, message: string): Promise<void> {
-  await page
-    .getByRole("complementary")
-    .getByRole("button", { name: "Feedback" })
-    .click();
   const dialog = page.getByRole("dialog", { name: "Send feedback" });
+
+  // Pressed again until the dialog opens: WebKit drops a click that lands
+  // while the page is still settling after sign-in.
+  await expect(async () => {
+    await page
+      .getByRole("complementary")
+      .getByRole("button", { name: "Feedback" })
+      .click();
+    await expect(dialog).toBeVisible({ timeout: 2_000 });
+  }).toPass({ timeout: 20_000 });
   await dialog.getByRole("combobox", { name: "What is it about?" }).click();
   await page.getByRole("option").first().click();
   await dialog.getByRole("textbox", { name: "Message" }).fill(message);
