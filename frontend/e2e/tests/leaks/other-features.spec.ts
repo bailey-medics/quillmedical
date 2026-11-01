@@ -7,14 +7,18 @@
  * each with a site and a member who has something there: a passport, and
  * the clinical safety officer post. What somebody may do depends on what
  * they hold and where they belong, not on what a place is for, so the same
- * checks run against each place. Changing them through the API is the
- * backend's to check; this is what a teaching admin and a delegate can
- * open.
+ * checks run against each place. Everything is done and checked on
+ * screen: the ids are found by the operator on the admin lists, and the
+ * API's refusals are the backend's to check.
  */
 
 import type { Browser, Page } from "@playwright/test";
 import { test, expect } from "../../fixtures/axe";
-import { orgUnitId, read } from "../../fixtures/api";
+import {
+  expectNotOpened,
+  idsOnScreen,
+  type PlaceIds,
+} from "../../fixtures/places";
 import { makeLearnerAt } from "../../fixtures/people";
 import {
   PEOPLE,
@@ -44,46 +48,38 @@ const PLACES = [
 
 type Place = (typeof PLACES)[number];
 
-/** The ids of *place*, as the operator, who reaches everything, sees them. */
-async function idsOf(
-  browser: Browser,
-  place: Place,
-): Promise<{ organisation: number; site: number; member: number }> {
+/** The ids of *place*, found on screen by the operator, who reaches everything. */
+async function idsOf(browser: Browser, place: Place): Promise<PlaceIds> {
   const context = await browser.newContext({
     storageState: { cookies: [], origins: [] },
   });
   const page = await context.newPage();
   await signIn(page, PEOPLE.superuser);
 
-  const organisation = await orgUnitId(page, place.organisation);
-  const site = await orgUnitId(page, place.site);
-  const users = await read<{ users: { id: number; username: string }[] }>(
+  const ids = await idsOnScreen(
     page,
-    "/users",
+    place.organisation,
+    place.site,
+    place.member,
   );
-  const member = users.users.find((user) => user.username === place.member);
-  expect(member, `${place.member} is on the operator's list`).toBeDefined();
   await context.close();
 
-  return { organisation, site, member: member?.id ?? 0 };
+  return ids;
 }
 
 /**
- * Open *address* and check none of it shows: the API behind it refuses
- * with a 403 or a 404, and the name it would have shown is not a heading.
+ * Check *name* is not on the admin list at *address*, once the list has
+ * shown *ours*, so its absence is not a list still loading.
  */
-async function expectNotOpened(
+async function expectNotListed(
   page: Page,
   address: string,
-  api: string,
+  ours: string,
   name: string,
 ): Promise<void> {
-  const answered = page.waitForResponse(
-    (response) => new URL(response.url()).pathname === api,
-  );
   await page.goto(address);
-  expect([403, 404], api).toContain((await answered).status());
-  await expect(page.getByRole("heading", { level: 1, name })).toHaveCount(0);
+  await expect(page.getByText(ours, { exact: true }).first()).toBeVisible();
+  await expect(page.getByText(name, { exact: true })).toHaveCount(0);
 }
 
 for (const place of PLACES) {
@@ -94,34 +90,32 @@ for (const place of PLACES) {
     const ids = await idsOf(browser, place);
     await signIn(page, PEOPLE.teachingAdmin);
 
-    // Not in their list of places, which is what the menu shows.
-    const listed = await read<{ org_units: { name: string }[] }>(
+    // Not on their lists of organisations and sites, beside their own.
+    // The backend's own tests are manage_teaching_org_unit_routes_test.py's
+    // `test_lists_only_the_org_units_they_belong_to` and
+    // `test_cannot_open_another_org_unit`, and admin_user_route_scoping_test.py's
+    // `test_cannot_read_them`.
+    await expectNotListed(
       page,
-      "/org-units",
+      "/admin/organisations",
+      TEACHING_SITES.centre.organisation,
+      place.organisation,
     );
-    const names = listed.org_units.map((unit) => unit.name);
-    expect(names).not.toContain(place.organisation);
-    expect(names).not.toContain(place.site);
+    await expectNotListed(
+      page,
+      "/admin/sites",
+      TEACHING_SITES.centre.site,
+      place.site,
+    );
 
     // Nor by address.
     await expectNotOpened(
       page,
       `/admin/organisations/${ids.organisation}`,
-      `/api/org-units/${ids.organisation}`,
       place.organisation,
     );
-    await expectNotOpened(
-      page,
-      `/admin/sites/${ids.site}`,
-      `/api/org-units/${ids.site}`,
-      place.site,
-    );
-    await expectNotOpened(
-      page,
-      `/admin/users/${ids.member}`,
-      `/api/users/${ids.member}`,
-      place.member,
-    );
+    await expectNotOpened(page, `/admin/sites/${ids.site}`, place.site);
+    await expectNotOpened(page, `/admin/users/${ids.person}`, place.member);
   });
 
   test(`a teaching delegate sees nothing of the ${place.feature} place`, async ({
@@ -152,7 +146,7 @@ for (const place of PLACES) {
     for (const address of [
       `/admin/organisations/${ids.organisation}`,
       `/admin/sites/${ids.site}`,
-      `/admin/users/${ids.member}`,
+      `/admin/users/${ids.person}`,
     ]) {
       await page.goto(address);
       await expect(page.getByText("404 - Page not found")).toBeVisible();

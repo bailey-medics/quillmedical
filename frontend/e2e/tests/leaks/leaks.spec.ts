@@ -13,8 +13,9 @@
 
 import { type Browser, type Page } from "@playwright/test";
 import { test, expect } from "../../fixtures/axe";
-import { emailOf, orgUnitId, read } from "../../fixtures/api";
-import { MODULE_ID } from "../../fixtures/answers";
+import { expectNotOpened, idsOnScreen } from "../../fixtures/places";
+import { searchRow } from "../../fixtures/tables";
+import { emailOf } from "../../fixtures/userForm";
 import { sitTheAssessment } from "../../fixtures/assessment";
 import { waitForEmail, waitForEmailMatching } from "../../fixtures/mail";
 import { asTeachingAdminOf, makeLearnerAt } from "../../fixtures/people";
@@ -33,6 +34,25 @@ test.describe.configure({ timeout: 180_000 });
 /** The address `seed_ci.py` gives a seeded lead. */
 function seededEmailOf(username: string): string {
   return `${username}@ci.local`;
+}
+
+/**
+ * On the list at *address*, search for *ours* and see it, then search
+ * for *theirs* and see nothing, so the absence is a search that worked.
+ */
+async function expectOursNotTheirs(
+  page: Page,
+  address: string,
+  ours: string,
+  theirs: string,
+): Promise<void> {
+  await page.goto(address);
+  await searchRow(page, ours);
+  await expect(page.getByText(ours, { exact: true }).first()).toBeVisible();
+
+  await page.getByRole("textbox", { name: "Search" }).fill(theirs);
+  await expect(page.getByText(ours, { exact: true })).toHaveCount(0);
+  await expect(page.getByText(theirs, { exact: true })).toHaveCount(0);
 }
 
 /** Sign a learner in, in a context of their own, and hand back the page. */
@@ -120,27 +140,13 @@ test("a teaching admin sees only their own organisation's delegates and sites", 
   const context = await asTeachingAdminOf(browser, TEACHING_SITES.centre);
   const page = await context.newPage();
 
-  // The API: our delegate is listed, theirs is not.
-  const delegates = await read<{ name: string; site_name: string | null }[]>(
-    page,
-    "/teaching/admin/delegates",
-  );
-  const names = delegates.map((delegate) => delegate.name);
-  expect(names).toContain(`Learner ${ours}`);
-  expect(names).not.toContain(`Learner ${theirs}`);
-  expect(
-    delegates.filter((delegate) =>
-      [TEACHING_SITES.secondCentre.site, TEACHING_SITES.secondAnnexe.site].some(
-        (site) => site === delegate.site_name,
-      ),
-    ),
-  ).toEqual([]);
-
-  // The users list: the same.
-  const users = await read<{ users: { username: string }[] }>(page, "/users");
-  const usernames = users.users.map((user) => user.username);
-  expect(usernames).toContain(ours);
-  expect(usernames).not.toContain(theirs);
+  // The users list: ours is there, theirs is not. All delegates lists
+  // only delegates with results, so neither new learner is on it yet.
+  // The backend's own tests are listing_test.py's
+  // `test_a_teaching_admin_reaches_where_they_belong_and_beneath` and,
+  // for All delegates, list_delegates_lists_everyone_test.py's
+  // `test_a_member_of_another_organisation_is_not_listed`.
+  await expectOursNotTheirs(page, "/admin/users", ours, theirs);
 
   // The filter on All delegates offers our sites and not theirs.
   await page.goto("/admin/teaching/all-delegates");
@@ -181,55 +187,46 @@ test("a teaching admin cannot open the other organisation, its sites or its peop
     TEACHING_SITES.secondCentre,
   );
 
-  // Their ids, as their own teaching admin sees them.
+  // Their ids, as their own teaching admin finds them on screen.
   const second = await asTeachingAdminOf(browser, TEACHING_SITES.secondCentre);
-  const secondPage = await second.newPage();
-  const organisationId = await orgUnitId(
-    secondPage,
+  const ids = await idsOnScreen(
+    await second.newPage(),
     TEACHING_SITES.secondCentre.organisation,
+    TEACHING_SITES.secondCentre.site,
+    theirs,
   );
-  const siteId = await orgUnitId(secondPage, TEACHING_SITES.secondCentre.site);
-  const listed = await read<{ users: { id: number; username: string }[] }>(
-    secondPage,
-    "/users",
-  );
-  const personId = listed.users.find((user) => user.username === theirs)?.id;
-  expect(personId, `${theirs} is on their own admin's list`).toBeDefined();
   await second.close();
 
   const context = await asTeachingAdminOf(browser, TEACHING_SITES.centre);
   const page = await context.newPage();
 
-  // Not in the menu's list of organisations.
-  const visible = await read<{ org_units: { name: string }[] }>(
+  // Not on their list of organisations, beside their own.
+  await page.goto("/admin/organisations");
+  await expect(
+    page.getByText(TEACHING_SITES.centre.organisation, { exact: true }).first(),
+  ).toBeVisible();
+  await expect(
+    page.getByText(TEACHING_SITES.secondCentre.organisation, { exact: true }),
+  ).toHaveCount(0);
+
+  // Nor by address. The backend's own tests are
+  // manage_teaching_org_unit_routes_test.py's `test_cannot_open_another_org_unit`
+  // and admin_user_route_scoping_test.py's `test_cannot_read_them`.
+  await expectNotOpened(
     page,
-    "/org-units",
-  );
-  expect(visible.org_units.map((unit) => unit.name)).not.toContain(
+    `/admin/organisations/${ids.organisation}`,
     TEACHING_SITES.secondCentre.organisation,
   );
-
-  // Not by address, and the API refuses each.
-  for (const [address, api, name] of [
-    [
-      `/admin/organisations/${organisationId}`,
-      `/api/org-units/${organisationId}`,
-      TEACHING_SITES.secondCentre.organisation,
-    ],
-    [
-      `/admin/sites/${siteId}`,
-      `/api/org-units/${siteId}`,
-      TEACHING_SITES.secondCentre.site,
-    ],
-    [`/admin/users/${personId}`, `/api/users/${personId}`, `Learner ${theirs}`],
-  ] as const) {
-    const answered = page.waitForResponse(
-      (response) => new URL(response.url()).pathname === api,
-    );
-    await page.goto(address);
-    expect((await answered).status(), api).toBeGreaterThanOrEqual(400);
-    await expect(page.getByRole("heading", { level: 1, name })).toHaveCount(0);
-  }
+  await expectNotOpened(
+    page,
+    `/admin/sites/${ids.site}`,
+    TEACHING_SITES.secondCentre.site,
+  );
+  await expectNotOpened(
+    page,
+    `/admin/users/${ids.person}`,
+    `Learner ${theirs}`,
+  );
 
   await context.close();
 });
@@ -244,8 +241,6 @@ test("a delegate sees the one module, and not another organisation's results", a
     TEACHING_SITES.centre,
   );
   const result = new URL(ourPage.url()).pathname;
-  const assessmentId = /\/assessment\/(\d+)\//.exec(result)?.[1];
-  expect(assessmentId, result).toBeDefined();
   await ourPage.context().close();
 
   const theirs = freshUsername("leak_snoop", testInfo.project.name);
@@ -261,11 +256,9 @@ test("a delegate sees the one module, and not another organisation's results", a
   await page.goto("/teaching");
   await expect(page.getByRole("link", { name: "View module" })).toHaveCount(1);
 
-  // Somebody else's result, at the other organisation, is refused.
-  const refused = await page.request.get(
-    `/api/teaching/assessments/${assessmentId}`,
-  );
-  expect(refused.status()).toBeGreaterThanOrEqual(400);
+  // Somebody else's result, at the other organisation, shows nothing.
+  // The backend's own test is attempts_test.py's
+  // `test_another_persons_attempt_is_refused_as_one_that_does_not_exist_is`.
   await page.goto(result);
   await expect(
     page.getByRole("heading", { level: 1, name: "Passed" }),
@@ -275,21 +268,34 @@ test("a delegate sees the one module, and not another organisation's results", a
 });
 
 test("a clinical lead is offered only at their own organisation's sites", async ({
-  page,
+  browser,
 }) => {
-  // One lead at each organisation, the module open at both. The check
-  // is rate-limited to ten a minute, shared with the registering
-  // journeys, so not all four.
+  // Signed out: registering is for somebody without an account.
+  const context = await browser.newContext({
+    storageState: { cookies: [], origins: [] },
+  });
+  const page = await context.newPage();
+
+  // One lead at each organisation, the module open at both. Registering
+  // names the site the lead's address belongs to. The check is
+  // rate-limited to ten a minute, shared with the registering journeys,
+  // so not all four. The backend's own tests are
+  // validate_clinical_lead_test.py's `test_lead_at_unlinked_site` and
+  // `test_a_site_under_an_organisation_not_offering_is_left_out`.
   for (const at of [TEACHING_SITES.annexe, TEACHING_SITES.secondCentre]) {
-    const checked = await page.request.post(
-      "/api/teaching/public/validate-clinical-lead",
-      { data: { email: seededEmailOf(at.lead), bank_id: MODULE_ID } },
-    );
-    expect(checked.status()).toBe(200);
-    expect(await checked.json(), at.lead).toMatchObject({
-      valid: true,
-      site_name: at.site,
-      sites: [{ site_name: at.site }],
-    });
+    await page.goto("/register");
+    await page.getByRole("combobox", { name: "Teaching module" }).click();
+    await page.getByRole("option").first().click();
+    await page
+      .getByRole("textbox", { name: "Clinical lead email address" })
+      .fill(seededEmailOf(at.lead));
+    await page.getByRole("button", { name: "Continue" }).click();
+
+    await expect(
+      page.getByRole("heading", { name: `Joining ${at.site}` }),
+      at.lead,
+    ).toBeVisible();
   }
+
+  await context.close();
 });

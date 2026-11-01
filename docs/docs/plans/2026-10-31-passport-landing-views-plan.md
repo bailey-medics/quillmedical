@@ -995,6 +995,25 @@ it; the rest of the suite follows.
         and `test_wrong_bank_id` make the refusal. The first of those now
         also checks that no account was made, which the end-to-end test
         used to check by signing in. All 108 tests pass.
+      - [x] **The leaks specs, on screen.** An outsider is shown a place or
+        a person only by address, and that address now comes from where
+        its owner opened it on the admin lists (`idsOnScreen` in the new
+        `fixtures/places.ts`), never from the API. A refused page is
+        checked by what it says, "404 - Page not found", "Error loading
+        site" or "Error loading user", through `expectNotOpened`, never by
+        the server's answer code. Lists are checked by searching for our
+        person and seeing them, then for theirs and seeing nobody. The
+        clinical lead check registers on screen, signed out, and reads the
+        "Joining" heading for the lead's own site. A certificate's
+        download and an outsider's results by question are checked on the
+        result pages; the direct certificate address is the backend's to
+        refuse, because nobody who cannot open a result has a link to it.
+        Each refusal names its backend test beside it. All Delegates was
+        dropped from the list check, because it lists only delegates with
+        results. Two fixes to the form helpers came with it: `nextUntil`
+        now waits until the step has drawn Next or the finishing button
+        before choosing, because Chromium was asked too soon and pressed a
+        Next that was not there. All 24 leaks tests pass, in 45 seconds.
 
 - [x] **Ask Mark about outside jobs before touching them.**
       `fixtures/mediaJobs.ts` posts to `/api/ci/teaching/*` as the video
