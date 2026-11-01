@@ -289,35 +289,12 @@ resource "google_compute_url_map" "https" {
 }
 
 # ---------- Landing page: GCS bucket + backend bucket ----------
-resource "google_storage_bucket" "landing" {
-  count    = var.landing_domain != null ? 1 : 0
-  project  = var.project_id
-  name     = "${var.project_id}-landing"
-  location = "EU"
-
-  website {
-    main_page_suffix = "index.html"
-    not_found_page   = "not-found.html"
-  }
-
-  uniform_bucket_level_access = true
-  force_destroy               = true
-}
-
-resource "google_storage_bucket_iam_member" "landing_public" {
-  count  = var.landing_domain != null ? 1 : 0
-  bucket = google_storage_bucket.landing[0].name
-  role   = "roles/storage.objectViewer"
-  member = "allUsers"
-}
-
-# The same site in London. A bucket's location is fixed when it is made, so
-# the `EU` one above cannot be moved, only replaced; changing its location in
-# place would delete it and leave the site serving 404s until the next deploy.
-# The deploy fills it alongside the old one, the backend bucket below now
-# serves it, and the old one is removed next - see
-# docs/docs/plans/2026-11-01-landing-bucket-uk-plan.md. The name differs
-# because bucket names are global and the old one still holds its own.
+# In London, like every other bucket in the project. It replaced a bucket
+# in the `EU` multi-region: a bucket's location is fixed when it is made, so
+# the site was moved by filling this one, serving from it, then removing the
+# old one - see docs/docs/plans/2026-11-01-landing-bucket-uk-plan.md. The
+# `-uk` name stays because bucket names are global, and the old name could
+# only be reused by moving the site a second time.
 resource "google_storage_bucket" "landing_uk" {
   count    = var.landing_domain != null ? 1 : 0
   project  = var.project_id
@@ -346,10 +323,6 @@ resource "google_compute_backend_bucket" "landing" {
   name        = "quill-landing-${var.environment}"
   bucket_name = google_storage_bucket.landing_uk[0].name
   enable_cdn  = true
-
-  # Served from the London bucket. `bucket_name` is updated in place on a
-  # backend bucket, so the switch has no gap; the `EU` bucket is still filled
-  # by the deploy until it is removed.
 
   # Security headers for the marketing site.
   #

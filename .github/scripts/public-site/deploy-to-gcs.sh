@@ -1,13 +1,6 @@
 #!/usr/bin/env bash
-# Syncs the built public site to the app project's GCS landing buckets,
-# setting per-file-type cache headers.
-#
-# There are two buckets while the site moves from the EU multi-region to
-# London (docs/docs/plans/2026-11-01-landing-bucket-uk-plan.md): the old
-# `<project>-landing`, which the load balancer still serves, and the new
-# `<project>-landing-uk`. Each gets the same passes, so the new one is a
-# complete copy, cache headers and all, before the load balancer is moved
-# onto it.
+# Syncs the built public site to the app project's GCS landing bucket,
+# `<project>-landing-uk` in London, setting per-file-type cache headers.
 #
 # Usage: deploy-to-gcs.sh <gcp-project-id>
 #
@@ -165,8 +158,7 @@ main() {
     exit 1
   fi
 
-  local -a buckets=("${project_id}-landing" "${project_id}-landing-uk")
-  local bucket
+  local bucket="${project_id}-landing-uk"
 
   # Guard: never mirror-delete on a broken/empty build.
   if [ ! -f public-site/index.html ]; then
@@ -176,9 +168,7 @@ main() {
 
   make_clean_urls "public-site"
 
-  for bucket in "${buckets[@]}"; do
-    sync_to_bucket "public-site" "$bucket"
-  done
+  sync_to_bucket "public-site" "$bucket"
 }
 
 main "$@"

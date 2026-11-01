@@ -102,9 +102,9 @@ make_site() {
   [ "$status" -eq 0 ]
   grep -q "setmeta" "$CALLS"
   grep -q "Content-Type:text/html" "$CALLS"
-  grep -q "Cache-Control:no-cache .*gs://my-project-landing/about" "$CALLS"
-  grep -q "gs://my-project-landing/pricing" "$CALLS"
-  run ! grep -q "gs://my-project-landing/index\b" "$CALLS"
+  grep -q "Cache-Control:no-cache .*gs://my-project-landing-uk/about" "$CALLS"
+  grep -q "gs://my-project-landing-uk/pricing" "$CALLS"
+  run ! grep -q "gs://my-project-landing-uk/index\b" "$CALLS"
 }
 
 @test "renames before the sync, so mirror-delete does the rest" {
@@ -146,7 +146,7 @@ make_site() {
   run bash "$SCRIPT" my-project
 
   [ "$status" -eq 0 ]
-  grep -q "Cache-Control:public, max-age=86400 rsync -r -d public-site/email/ gs://my-project-landing/email/" "$CALLS"
+  grep -q "Cache-Control:public, max-age=86400 rsync -r -d public-site/email/ gs://my-project-landing-uk/email/" "$CALLS"
 }
 
 @test "skips the email pass when the build has no email images" {
@@ -155,12 +155,12 @@ make_site() {
   run bash "$SCRIPT" my-project
 
   [ "$status" -eq 0 ]
-  run ! grep -q "gs://my-project-landing/email/" "$CALLS"
+  run ! grep -q "gs://my-project-landing-uk/email/" "$CALLS"
 }
 
-@test "uploads every pass to both the EU and the London bucket" {
-  # The London bucket must be a full copy, with the same cache headers,
-  # before the load balancer is moved onto it.
+@test "uploads every pass to the London bucket and nowhere else" {
+  # The EU bucket the site moved from is gone, so a pass aimed at it would
+  # fail the deploy.
   make_site about
   mkdir -p public-site/email
   echo "png" > public-site/email/quill-wordmark.png
@@ -168,24 +168,9 @@ make_site() {
   run bash "$SCRIPT" my-project
 
   [ "$status" -eq 0 ]
-  local bucket
-  for bucket in my-project-landing my-project-landing-uk; do
-    grep -q "immutable rsync -r -d -x .* public-site/assets/ gs://${bucket}/assets/$" "$CALLS"
-    grep -q "max-age=86400 rsync -r -d public-site/email/ gs://${bucket}/email/$" "$CALLS"
-    grep -q "max-age=2592000 rsync -d -x .* public-site/ gs://${bucket}/$" "$CALLS"
-    grep -q "Cache-Control:no-cache rsync -d -x .* public-site/ gs://${bucket}/$" "$CALLS"
-    grep -q "setmeta .* gs://${bucket}/about$" "$CALLS"
-  done
-  [[ "$output" == *"Deployment to gs://my-project-landing/ complete"* ]]
-  [[ "$output" == *"Deployment to gs://my-project-landing-uk/ complete"* ]]
-}
-
-@test "renames the pages once, not once for each bucket" {
-  # A second rename would find no .html pages left and report none.
-  make_site about pricing
-
-  run bash "$SCRIPT" my-project
-
-  [ "$status" -eq 0 ]
-  [ "$(grep -c "Renamed 2 pages to clean URLs" <<< "$output")" -eq 1 ]
+  grep -q "immutable rsync -r -d -x .* public-site/assets/ gs://my-project-landing-uk/assets/$" "$CALLS"
+  grep -q "max-age=86400 rsync -r -d public-site/email/ gs://my-project-landing-uk/email/$" "$CALLS"
+  grep -q "max-age=2592000 rsync -d -x .* public-site/ gs://my-project-landing-uk/$" "$CALLS"
+  grep -q "Cache-Control:no-cache rsync -d -x .* public-site/ gs://my-project-landing-uk/$" "$CALLS"
+  run ! grep -q "gs://my-project-landing/" "$CALLS"
 }

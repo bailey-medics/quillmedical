@@ -126,7 +126,9 @@ deleted data survives in backups.
 ### Object storage
 
 Nine buckets, with materially different protection. All are in
-`europe-west2` except the landing site, which is in the `EU` multi-region.
+`europe-west2`. The landing site was the one exception, in the `EU`
+multi-region, until the
+[landing bucket UK plan](2026-11-01-landing-bucket-uk-plan.md) moved it.
 
 - **Clinician passports** (`quill-passports-app`) - versioned,
   `force_destroy = false`, `public_access_prevention` enforced, and
@@ -160,7 +162,7 @@ Nine buckets, with materially different protection. All are in
   `-guide-assets-private`) - added since. Not versioned, and remade by the
   screenshot workflow after each merge, so they need no backup.
 
-- **Landing site** (`quill-medical-app-landing`) - rebuilt by CI from the
+- **Landing site** (`quill-medical-app-landing-uk`) - rebuilt by CI from the
   repository, so it needs no backup.
 
 - **Terraform state** (`quill-medical-app-terraform-state`) - see
