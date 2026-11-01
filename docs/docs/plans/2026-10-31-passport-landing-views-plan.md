@@ -928,7 +928,7 @@ it; the rest of the suite follows.
       `docs/docs/conventions/index.md` and the header of
       `frontend/e2e/fixtures/api.ts` say "no API calls, no exceptions".
 
-- [ ] **Move the rest of the suite across.** Eighteen other specs and
+- [x] **Move the rest of the suite across.** Eighteen other specs and
       fixtures call the API, found with a search for `fixtures/api` and
       `page.request` on 1 November 2026: the getting-in, leaks, settings,
       everyday, edges, teaching-admin and taking-a-module specs,
@@ -1087,6 +1087,18 @@ it; the rest of the suite follows.
         minute, then try again.", with a unit test that fails without it.
         Only the two outside job reports in the video gate now reach the
         server.
+      - [x] **The PDF pages spec makes its passport on screen.** It used to
+        answer three of Quill's requests in the browser with made-up data,
+        because the stack seeded no passport. Each test now makes a holder
+        with `makeHolder`, records a certificate with the PDF attached,
+        and reports the file clean as the scan job would, then opens the
+        certificate. The PDFs are fixed files that every holder uploads,
+        and the scan stand-in finds a file by its bytes, so `taggedPdf` in
+        `fixtures/scanJob.ts` gives each holder a copy with a comment after
+        the end of the file, where it moves nothing the PDF's index points
+        at. The browser is still told it has no PDF viewer, so pdf.js
+        draws the pages in every engine. With that, every spec follows the
+        rule, and `.claude/rules/e2e.md` and its Copilot source say so.
 
 - [x] **Ask Mark about outside jobs before touching them.**
       `fixtures/mediaJobs.ts` posts to `/api/ci/teaching/*` as the video
