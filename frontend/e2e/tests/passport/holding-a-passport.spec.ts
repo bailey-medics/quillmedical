@@ -300,6 +300,64 @@ test.describe("Holding a passport", () => {
     await expect(page.getByText("This file could not be shown")).toHaveCount(0);
   });
 
+  test("28. a certificate's file is refused, and the holder is told why", async ({
+    page,
+    browser,
+  }, testInfo) => {
+    // The page refuses a type the passport does not take before sending
+    // it. The backend refuses a file that is not what it claims, or a PDF
+    // that runs something, and the page shows its reason. The backend's
+    // own tests are router_test.py's
+    // `test_bytes_that_do_not_match_the_claimed_type_are_refused` and
+    // `test_a_pdf_with_active_content_is_refused`.
+    const holder = await makeHolder(browser, testInfo.project.name);
+    const input = page.locator('input[type="file"]');
+
+    await signIn(page, holder.username);
+    await page.goto("/passport/certificates");
+    await page.getByRole("button", { name: "Record a certificate" }).click();
+
+    const refusals: [
+      { name: string; mimeType: string; buffer: Buffer },
+      string,
+    ][] = [
+      [
+        {
+          name: "notes.txt",
+          mimeType: "text/plain",
+          buffer: Buffer.from("Not a certificate"),
+        },
+        "That file cannot be attached. Use a PDF, JPEG, PNG, HEIC or WebP.",
+      ],
+      [
+        {
+          name: "certificate.pdf",
+          mimeType: "application/pdf",
+          buffer: Buffer.from("This is plain text with a .pdf name"),
+        },
+        "That file is not a real PDF",
+      ],
+      [
+        {
+          name: "scripted.pdf",
+          mimeType: "application/pdf",
+          buffer: Buffer.from(
+            "%PDF-1.4\n1 0 obj<</Type/Catalog/OpenAction 2 0 R>>endobj\n" +
+              "2 0 obj<</S/JavaScript/JS(app.alert(1))>>endobj\n" +
+              "trailer<</Root 1 0 R>>\n%%EOF\n",
+          ),
+        },
+        "That PDF contains active content",
+      ],
+    ];
+
+    for (const [file, reason] of refusals) {
+      await input.setInputFiles(file);
+      await expect(page.getByText(reason)).toBeVisible();
+      await expect(page.getByText(`Attached: ${file.name}`)).toHaveCount(0);
+    }
+  });
+
   test("10. a holder writes a reflection and reads it back", async ({
     page,
     browser,
