@@ -1,124 +1,19 @@
-import { test as setup, expect, type Page } from "@playwright/test";
+/**
+ * Signs in once as `educator`, the seeded teaching admin, and saves the
+ * session every browser project starts with.
+ *
+ * Through the login form, as a person does, and waiting out the rate
+ * limit by what the page says: see `signIn` in `fixtures/signIn.ts`.
+ */
+
+import { test as setup } from "@playwright/test";
+import { PEOPLE, signIn } from "./fixtures/signIn";
 
 const authFile = "e2e/.auth/user.json";
 setup.setTimeout(120_000);
 
-async function loginWithRateLimitRetry(page: Page): Promise<void> {
-  const submitLoginFromUi = async (): Promise<number | null> => {
-    const usernameInput = page.getByLabel("Username");
-    const passwordInput = page.getByRole("textbox", { name: "Password" });
-
-    await expect(usernameInput).toBeVisible();
-    await expect(passwordInput).toBeVisible();
-
-    for (let attempt = 1; attempt <= 3; attempt += 1) {
-      await usernameInput.fill("educator");
-      await passwordInput.fill("educator123");
-
-      const valuesReady = await Promise.all([
-        usernameInput.inputValue(),
-        passwordInput.inputValue(),
-      ]).then(
-        ([usernameValue, passwordValue]) =>
-          usernameValue === "educator" && passwordValue === "educator123",
-      );
-
-      if (valuesReady) {
-        break;
-      }
-
-      if (attempt === 3) {
-        throw new Error(
-          "Setup login fields did not retain values before submit",
-        );
-      }
-
-      await page.waitForTimeout(250 * attempt);
-    }
-
-    const waitForLoginResponse = async (): Promise<number | null> =>
-      page
-        .waitForResponse(
-          (response) =>
-            response.url().includes("/api/auth/login") &&
-            response.request().method() === "POST",
-          { timeout: 10_000 },
-        )
-        .then((response) => response.status())
-        .catch(() => null);
-
-    let responsePromise = waitForLoginResponse();
-    await passwordInput.press("Enter");
-    let status = await responsePromise;
-
-    if (status !== null) {
-      return status;
-    }
-
-    responsePromise = waitForLoginResponse();
-    await page
-      .locator("form")
-      .first()
-      .evaluate((el) => {
-        (el as HTMLFormElement).requestSubmit();
-      });
-    status = await responsePromise;
-
-    if (status !== null) {
-      return status;
-    }
-    return null;
-  };
-
-  const maxAttempts = 3;
-  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-    await page.goto("/login");
-    const status = await submitLoginFromUi();
-
-    if (status === null && attempt < maxAttempts) {
-      await page.waitForTimeout(1_000 * attempt);
-      continue;
-    }
-
-    if (status === null) {
-      throw new Error(`No setup login response received on attempt ${attempt}`);
-    }
-
-    if (status === 429 && attempt < maxAttempts) {
-      await page.waitForTimeout(1_000 * attempt);
-      continue;
-    }
-
-    if (status !== 200) {
-      throw new Error(
-        `Setup login returned status ${status} on attempt ${attempt}`,
-      );
-    }
-
-    const isRedirected = await expect
-      .poll(
-        () => {
-          const pathname = new URL(page.url()).pathname;
-          return pathname === "/" || pathname.startsWith("/teaching");
-        },
-        { timeout: 15_000 },
-      )
-      .toBe(true)
-      .then(
-        () => true,
-        () => false,
-      );
-
-    if (isRedirected) {
-      return;
-    }
-
-    throw new Error(`Setup login did not redirect on attempt ${attempt}`);
-  }
-}
-
 setup("authenticate", async ({ page }) => {
-  await loginWithRateLimitRetry(page);
+  await signIn(page, PEOPLE.teachingAdmin);
 
   await page.context().storageState({ path: authFile });
 });
