@@ -34,7 +34,7 @@ enable_ha   = false
 cloud_run_max_instances = 5
 
 lb_domains = ["app.quill-medical.com"]
-# The apex, served from gs://quill-medical-app-landing behind this load
+# The apex, served from gs://quill-medical-app-landing-uk behind this load
 # balancer.
 #
 # The order here is fixed by how Google validates a managed certificate,

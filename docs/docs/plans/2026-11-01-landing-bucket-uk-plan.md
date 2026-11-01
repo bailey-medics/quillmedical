@@ -33,9 +33,9 @@ balancer, with no downtime.
 
 ## Phase 3: Remove the EU bucket
 
-- [ ] Delete `google_storage_bucket.landing` and `landing_public`, and drop the old bucket from `deploy-to-gcs.sh` so it syncs only to `-landing-uk`. Rename the new resources to `landing` with a `moved` block if that reads better, so Terraform does not try to recreate them. With `force_destroy = true` the apply empties and deletes the old bucket; it holds nothing that the deploy cannot rebuild.
+- [x] Delete `google_storage_bucket.landing` and `landing_public`, and drop the old bucket from `deploy-to-gcs.sh` so it syncs only to `-landing-uk`. The new resources keep the names `landing_uk` and `landing_uk_public`. Renaming them to `landing` with a `moved` block in the same apply is not possible: Terraform refuses to move an object onto an address that still has one in state, and the old `landing` is only destroyed by that apply. A rename later would be a fourth pull request for a name only Terraform reads. With `force_destroy = true` the apply empties and deletes the old bucket; it holds nothing that the deploy cannot rebuild.
 
-- [ ] Update the bucket name in `docs/docs/frontend/public-pages.md` (the `{project}-landing` line in the deploy section), and in the disaster recovery plan's object storage section, which says the landing site is the one bucket in the `EU` multi-region. Check with `gcloud storage buckets list --project quill-medical-app` that every bucket now reads `EUROPE-WEST2`.
+- [x] Update the bucket name in `docs/docs/frontend/public-pages.md` (the `{project}-landing` line in the deploy section), and in the disaster recovery plan's object storage section, which says the landing site is the one bucket in the `EU` multi-region. The comments naming the bucket in `public-site.yml` and the app `terraform.tfvars` were updated too. After the apply, check with `gcloud storage buckets list --project quill-medical-app` that every bucket now reads `EUROPE-WEST2`.
 
 ## Decisions
 
