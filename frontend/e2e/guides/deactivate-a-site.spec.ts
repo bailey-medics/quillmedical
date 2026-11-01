@@ -8,7 +8,7 @@
  */
 
 import { test, expect } from "@playwright/test";
-import { orgUnitId, send } from "../fixtures/api";
+import { addSite } from "../fixtures/people";
 import { shot } from "./shot";
 import { PEOPLE, SEEDED, signIn } from "./signIn";
 
@@ -82,16 +82,14 @@ test("deactivate a site", async ({ page }) => {
 
   // The result needs a site really deactivated, so it is one made here
   // with nobody at it, and the seeded site is left alone.
-  const organisationId = await orgUnitId(page, SEEDED.organisation);
-  const created = await send(page, "POST", "/org-units", {
-    name: SPARE_SITE,
-    type: "site",
-    parent_id: organisationId,
-  });
-  expect(created.status()).toBe(200);
-  const spare = (await created.json()) as { id: number };
+  // Made on the sites page, as the teaching admin would.
+  const spareId = await addSite(
+    page.context(),
+    SPARE_SITE,
+    SEEDED.organisation,
+  );
 
-  await page.goto(`/admin/sites/${spare.id}/edit`);
+  await page.goto(`/admin/sites/${spareId}/edit`);
   await page
     .getByRole("button", { name: "Deactivate site", exact: true })
     .click();

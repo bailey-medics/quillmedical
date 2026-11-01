@@ -10,7 +10,7 @@ import { expect, type Page } from "@playwright/test";
 import { searchRow } from "./tables";
 
 /** Open *text* from the list at *listAddress*, and return the id it opens at. */
-async function idFromTheList(
+export async function openFromTheList(
   page: Page,
   listAddress: string,
   text: string,
@@ -43,19 +43,19 @@ export async function idsOnScreen(
   username: string,
 ): Promise<PlaceIds> {
   return {
-    organisation: await idFromTheList(
+    organisation: await openFromTheList(
       page,
       "/admin/organisations",
       organisation,
       /\/admin\/organisations\/(\d+)$/,
     ),
-    site: await idFromTheList(
+    site: await openFromTheList(
       page,
       "/admin/sites",
       site,
       /\/admin\/sites\/(\d+)$/,
     ),
-    person: await idFromTheList(
+    person: await openFromTheList(
       page,
       "/admin/users",
       username,
