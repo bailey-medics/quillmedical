@@ -60,16 +60,15 @@ for (const { who, at } of [
       owner.getByRole("heading", { level: 1, name: "Passed" }),
     ).toBeVisible({ timeout: 10_000 });
     const result = new URL(owner.url()).pathname;
-    const id = /\/assessment\/(\d+)\//.exec(result)?.[1];
-    expect(id, result).toBeDefined();
-
     const questions = result.replace(/\/result$/, "/question-results");
-    const certificate = `/api/teaching/assessments/${id}/certificate`;
 
-    // The owner can open each.
+    // The owner can open each: their certificate downloads, and their
+    // results by question are listed.
+    const downloading = owner.waitForEvent("download");
+    await owner.getByRole("button", { name: "Download certificate" }).click();
+    expect((await downloading).suggestedFilename()).toMatch(/\.pdf$/);
     await owner.goto(questions);
     await expect(owner.getByRole("row")).not.toHaveCount(0);
-    expect((await owner.request.get(certificate)).status()).toBe(200);
     await owner.context().close();
 
     const snoop = await aLearnerAt(
@@ -79,31 +78,23 @@ for (const { who, at } of [
       at,
     );
 
-    // The result page: the API behind it refuses, and nothing of it shows.
-    const refused = snoop.waitForResponse(
-      (response) =>
-        new URL(response.url()).pathname === `/api/teaching/assessments/${id}`,
-    );
+    // The result page and the results by question each say they could
+    // not load, and show nothing of the owner's. The certificate has no
+    // way in without the result page. The backend's own tests are
+    // attempts_test.py's
+    // `test_another_persons_attempt_is_refused_as_one_that_does_not_exist_is`
+    // for the result, and the test of the same name in
+    // teaching_certificate_and_question_results_test.py for the
+    // certificate and the results by question.
     await snoop.goto(result);
-    expect([403, 404]).toContain((await refused).status());
+    await expect(snoop.getByText("Error loading data")).toBeVisible();
     await expect(
       snoop.getByRole("heading", { level: 1, name: "Passed" }),
     ).toHaveCount(0);
 
-    // Results by question: no answer of theirs on the page.
-    const refusedQuestions = snoop.waitForResponse(
-      (response) =>
-        new URL(response.url()).pathname ===
-        `/api/teaching/assessments/${id}/question-results`,
-    );
     await snoop.goto(questions);
-    expect([403, 404]).toContain((await refusedQuestions).status());
+    await expect(snoop.getByText("Error loading data")).toBeVisible();
     await expect(snoop.getByRole("row")).toHaveCount(0);
-
-    // The certificate.
-    expect([403, 404]).toContain(
-      (await snoop.request.get(certificate)).status(),
-    );
 
     await snoop.context().close();
   });

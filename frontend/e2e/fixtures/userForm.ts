@@ -70,7 +70,14 @@ export async function choose(
 export async function nextUntil(page: Page, finish: Locator): Promise<void> {
   const current = page.locator(".mantine-Stepper-step[data-progress]");
 
-  for (let step = 0; step < 8 && !(await finish.isVisible()); step += 1) {
+  for (let step = 0; step < 8; step += 1) {
+    // Wait until the step has drawn one or the other: straight after the
+    // stepper moves, Chromium can be asked before either button is there.
+    await expect(nextButton(page).or(finish).first()).toBeVisible();
+    if (await finish.isVisible()) {
+      return;
+    }
+
     const before = await current.innerText();
     await nextButton(page).click();
     await expect(current).not.toHaveText(before);
