@@ -336,6 +336,8 @@ built again:
   found seeded people carried a failed run's state into the retry.
 - **A refusal is checked at the API as well as on screen.** A hidden
   button proves nothing if the request behind it still succeeds.
+  Overturned by Mark on 1 November 2026: the API half belongs in the
+  backend tests, and Phase 7 takes it out of the end-to-end suite.
 - **Emails are read from the capture folder** (`fixtures/mail.ts`), and a
   person who is sent email is made fresh, because `send_email` refuses an
   eleventh email to one address in an hour.
@@ -469,40 +471,77 @@ people who act on it, then what must not leak.
 
       Stories 13 to 16 are in `tests/passport/assessing.spec.ts`.
 
-- [ ] Found while building story 14: an assessor has no way to decline
-      on screen. `declineSignOff` is in `lib/passport/api.ts` and
-      `POST /sign-offs/{id}/decline` works, but no page calls it, though
-      `SignOffForm` tells an assessor to "Decline if it is not what you
-      assessed". Story 14 declines through the API instead, and a test
-      marked `test.fail()`, "an assessor is offered a way to decline on
-      the sign-off page", fails the suite the day a Decline button
-      appears, so the marker can come off. Building the button is a
-      change to the assessor's page, not a test, and is Mark's to ask
-      for.
-- [ ] 17. As a PA, I want to give `passport_write` to a member of my place,
+- [x] Give an assessor a Decline button on the sign-off page, asked for
+      by Mark on 31 October 2026. Found while building story 14: an
+      assessor had no way to decline on screen. `declineSignOff` is in
+      `lib/passport/api.ts` and `POST /sign-offs/{id}/decline` works, but
+      no page called it, though `SignOffForm` tells an assessor to
+      "Decline if it is not what you assessed".
+
+      In `pages/passport/PassportSignOffPage.tsx`, beneath the form, a
+      "Decline request" `IconTextButton` with an `x` icon, right-aligned
+      as the holder's "Withdraw request" is on their side. It opens a
+      `ConfirmModal`, "Decline this request", with a `TextAreaField` in
+      its `field` slot for the reason, which the route requires
+      (`SignOffDeclineIn.reason`, non-empty). An empty reason keeps the
+      modal open with "Say why you are declining", so nothing is sent.
+      On success the inbox is told (`inboxChanged`), and the assessor goes
+      back to `/inbox`, as after signing; a refusal from the server is
+      shown in its own words. The holder's row then reads Not asked, as
+      decided in Phase 1, and the decline is kept under "Declined" on
+      their Sign-offs page with the reason.
+
+      Built from existing components, with no new one: `IconTextButton`
+      gains an `x` entry in `iconTextButtonIcons.tsx`, and `IconX` is
+      already registered in `appIcons.ts`. Tests: the page's own test for
+      the button, an empty reason, a decline and a refusal; story 14
+      declines on screen rather than through the API, and the
+      `test.fail()` marker comes off its companion test.
+
+      Built as described. The companion test was folded into story 14,
+      which now declines on screen. The sign-off page is on accessibility
+      journey 4, so journey 4 again, for declining, is added to "Not yet
+      run" in `testing-log.md`; the axe scan of the page in story 26 still
+      passes with the button on it.
+- [x] 17. As a PA, I want to give `passport_write` to a member of my place,
       so that they can add to their passport.
       Tested: the member's passport offers "Add an entry" afterwards.
-- [ ] 18. As a PA, I want to be unable to give `passport_write` to
+- [x] 18. As a PA, I want to be unable to give `passport_write` to
       somebody outside my places, or to myself, so that writing is given
       only where I run the passport.
       Tested: neither is offered on screen, and a forged grant is refused
       at the API.
 
+      Departed from the plan: "or to myself" is not tested. A passport
+      admin holds `passport_write` through the `passport_admin`
+      profession already, so there is nothing to grant. Tested instead
+      for the seeded teaching admin, at a hospital this passport admin
+      runs nothing in: the forged `PATCH /api/users/{id}` is refused, and
+      they are not on the passport admin's list. Their id is looked up as
+      the operator, which reads and sets nothing up.
+
 ### Read-only, and the gates
 
 `tests/passport/read-only.spec.ts`.
 
-- [ ] 19. As a PH whose `passport_write` has lapsed, I want to be told so
+- [x] 19. As a PH whose `passport_write` has lapsed, I want to be told so
       on the way in, and still read and download everything, so that a
       lapse never locks me out of my own record.
       The grant's end date is moved back through the API, as
       `tests.competencies.lapse` does in the unit tests. Tested: the
       warning shows, a competency's page has no add buttons, a forged add
       is refused at the API, and the downloads still work.
-- [ ] 20. As a PH with a read-only passport, I want to change my home page
+
+      Departed from the plan: the passport admin withdraws the grant
+      (`removed_competencies`) rather than its end date being moved back.
+      The holder sees the same thing, "Your passport is read-only", and
+      it is how a trust ends somebody's writing, where moving a date back
+      would need the database. Stories 17 to 21 are in
+      `tests/passport/running-and-read-only.spec.ts`.
+- [x] 20. As a PH with a read-only passport, I want to change my home page
       view, so that how my record is shown is still mine to choose.
       Tested: the switch in Settings saves, as Phase 2 decided.
-- [ ] 21. As a PH taken off every place that has the passport, I want to
+- [x] 21. As a PH taken off every place that has the passport, I want to
       still open my own passport, so that leaving a trust does not take my
       record with it.
       Tested: the landing page and a competency's page open, and adding
@@ -512,36 +551,432 @@ people who act on it, then what must not leak.
 
 `tests/passport/leaks.spec.ts`.
 
-- [ ] 22. As Quill, I want one holder unable to open another's passport, so
+- [x] 22. As Quill, I want one holder unable to open another's passport, so
       that a record is read by its holder alone.
       Tested: `GET /passport/{id}` for another holder is a 404, and their
       sign-off and logbook addresses show the 404 page.
-- [ ] 23. As Quill, I want an AS to reach only the sign-off they were
+- [x] 23. As Quill, I want an AS to reach only the sign-off they were
       asked about, so that being an assessor opens nothing else of the
       holder's.
       Tested: the AS opens that sign-off and gets 404 for the holder's
       passport, logbook and reflections, by address and at the API.
-- [ ] 24. As Quill, I want a PA to see only the members of their own
+- [x] 24. As Quill, I want a PA to see only the members of their own
       places, so that running the passport at one trust shows nothing of
       another.
       Tested against a second passport organisation, seeded beside the
       first as teaching's Phase 10 did: its members are not listed, and
       their pages and the API refuse.
 
+      Built in `tests/passport/leaks.spec.ts`, with "CI Second Passport
+      Hospital", its own passport admin and a member seeded beside the
+      first. Departed from the plan: the refusals are checked at the API
+      alone, not by address too, because every holder page opens the
+      signed-in holder's own passport, so no address could show another
+      holder's record. Each refusal has a control beside it, the holder
+      or the passport admin reading the same thing with a 200, so a 404
+      is the guard working and not a mistyped path.
+
 ### On a phone, and for everyone
 
-- [ ] 25. As a PH on a phone, I want to open my passport, open a
+- [x] 25. As a PH on a phone, I want to open my passport, open a
       competency and add a logbook entry, so that I can record a procedure
       where I did it.
       A `*.phone.spec.ts`, run by the `phone` project, as teaching's Phase
       21 is. Tested: the framework tables become cards below `sm`, and the
       side navigation is behind the hamburger.
-- [ ] 26. As Quill, I want every passport page to pass the axe scan, light
+- [x] 26. As Quill, I want every passport page to pass the axe scan, light
       and dark, so that the passport is usable by everybody.
       Run with `fixtures/axe.ts` on the landing page in both views, a
       competency's page, Sign-offs, Logbook, CPD, Certificates,
       Reflections, Download and the assessor's sign-off page, as teaching's
       Phase 11 scans each slide.
+
+      Story 25 is `tests/passport/holding-a-passport.phone.spec.ts`, and
+      story 26 `tests/passport/accessibility.spec.ts`. Every page was
+      scanned with something on it (a logbook entry, a CPD activity, a
+      reflection and a waiting sign-off) and none needed a fix: each of
+      the ten passes in light and dark, in Chromium and WebKit.
+
+## Phase 7: The end-to-end journeys act and check through the screen
+
+Asked for by Mark on 1 November 2026, after reading that story 7 "sets
+up its logbook entry through the API": "The whole point of playwright is
+to test frontend UX matters. API checks are for unit testing and
+integration testing." Phase 6 reached for the API in three ways, and
+each is undone below. One new stacked branch on top of Phase 6, so the
+change is read as one unit rather than folded into six.
+
+The rule for every passport spec from here on: **what a person would do
+is done through the forms and buttons, and what is checked is what a
+person would see.** No `send(...)`, `read(...)` or `page.request` in a
+test body. The one exception is making the user accounts themselves:
+account making is the admin pages' job, walked by their own specs, and
+doing it through the screen in every test would make the suite far
+slower. The passport the account holds is not part of that exception.
+Overturned by Mark on 1 November 2026, and Phase 9 removes it: "It is
+dangerous to give you exceptions for using APIs. So do not do ever. This
+is a E2E test after all." The reason given was also wrong: no spec walked
+a passport admin through the add-user form.
+
+- [x] **Set up through the screen.** Each of these reaches its starting
+      state through the API today, and moves to the page a person would
+      use:
+
+      - **Story 7** makes its logbook entry with `send(...)`. It adds it
+        from the competency's page, as story 3 does.
+      - **Stories 13, 14 and 15** ask for their sign-off through the API
+        in `assessing.spec.ts`. The holder asks from the competency's
+        page, as story 4 does.
+      - **`accessibility.spec.ts`** fills each page with records made by
+        the API. Each is made on its own page: a logbook entry, a CPD
+        activity, a reflection and a sign-off request.
+      - **`leaks.spec.ts`** makes the other holder's logbook entry and
+        reflection through the API. The other holder makes them on screen.
+      - **Stories 19, 20 and 21** give and withdraw `passport_write` with
+        `send(...)` in `running-and-read-only.spec.ts`. The passport admin
+        does it on the admin page, as story 17 does.
+      - **`makeHolder`** in `fixtures/passport.ts` creates the passport
+        with `POST /passport`. It chooses the frameworks on screen, as
+        story 1 does, and story 1 stays the one test that checks that
+        page in detail.
+
+      A shared helper for each (add a logbook entry, ask for a sign-off,
+      give `passport_write`) lives in `fixtures/passport.ts`, so a change
+      to a form is mended in one place.
+
+      Done. `makeHolder` no longer returns a passport id, since nothing on
+      screen needs one. Asking for a sign-off now waits for the form's
+      "already uses Quill" line before going on: it pushes the button
+      down when it lands, and in WebKit the click once went to where the
+      button had been, so no confirm box opened.
+
+- [x] **Check what the person sees.** Each of these checks its result
+      with `read(...)` or `page.request`, and checks the page instead:
+
+      - **Stories 6 and 20** read `landing_view` from `/passport/me`.
+        They open `/passport` and check which view it opens in.
+      - **Story 7** reads the frameworks from `/passport/me`. It checks
+        the framework headings on the landing page, which it already
+        does as well.
+      - **Story 14** lists the sign-offs to find the declined one. The
+        holder opens Sign-offs and sees it marked declined, with the
+        assessor's reason.
+      - **Story 9** fetches the attachment with `page.request`. The holder
+        opens the file from the certificate's page and the download or
+        new tab is checked, as story 11 checks its downloads.
+
+      Done. Story 9 found the certificate's page draws the file itself:
+      page by page where the browser has no PDF viewer, as headless
+      Chromium has not, in a frame where it has. The test checks that one
+      of the two shows and that "This file could not be shown" does not.
+      That the bytes come back unchanged is a backend matter, already
+      `test_a_certificate_sends_its_attachment_to_show_inline`. Settings
+      saves without saying so, so stories 6, 7 and 20 open the landing
+      page until it shows the change (`openUntil`).
+
+- [x] **Security refusals become what the screen shows.** These send a
+      request no screen can make, so they test the API, and the API half
+      belongs in the backend tests:
+
+      - **Story 16** forges a holder's own sign-off. The holder opens their
+        own request and finds no sign-off button.
+      - **Story 18** posts a passport outside the admin's places. The
+        admin finds no such person to choose.
+      - **Stories 22, 23 and 24** fetch another person's records. Each
+        opens the address in the browser and sees "Not found", and the
+        names and records of the other person appear nowhere on the page.
+
+      Before each API check is deleted, find the backend test that makes
+      the same refusal, in `backend/app/features/passport/router_test.py`
+      or `backend/tests/`, and name it in this step. Where none exists,
+      write it in the same branch, so no refusal is left untested.
+
+      Found, and named beside each screen check:
+
+      - **Story 16** - `test_the_holder_cannot_sign_their_own`.
+      - **Story 19** - `test_they_cannot_add_to_their_own_passport`, in
+        `passport_api_contract_test.py`.
+      - **Story 21** - `test_they_cannot_write_to_it`.
+      - **Story 23** - `test_an_assessor_reads_the_sign_off_but_not_the_passport`,
+        which now covers reflections too.
+
+      Missing, and written:
+
+      - **Story 17** - `test_somebody_without_passport_write_cannot_create_one`.
+      - **Story 22** - `test_an_unrelated_user_cannot_read_any_part_of_it`,
+        route by route. Only the passport itself and the logbook were
+        tested before.
+      - **Stories 18 and 24** - `TestSomebodyAtAnotherTrust` in
+        `manage_passport_user_routes_test.py`: not listed, not read, not
+        renamed. Only granting was tested before.
+
+      Story 17 found that a person without `passport_write` is offered
+      "Create my passport", and pressing it says "Your passport could not
+      be created. Please try again", which no retry will mend. Left for a
+      decision: hide the offer, or say why.
+
+- [x] **Say so in the guidance**, so the next spec is written this way:
+      a short rule in `.claude/rules/` beside the other testing rules, and
+      the same in `docs/docs/` where the end-to-end suite is described.
+      That is code under the `implement` rule, so it is built with the
+      rest of this phase, not now.
+
+      Done: `.claude/rules/e2e.md`, its source
+      `.github/instructions/e2e.instructions.md`, a bullet under Testing in
+      `docs/docs/conventions/index.md`, and the header of
+      `fixtures/api.ts`, which said the opposite. Some older teaching
+      specs still use the API, and move across when next touched.
+
+- [x] **27. As Quill, I want a passport admin offered only the passport's
+      professions and competencies, and no platform role, so that a
+      trust's passport admin cannot make anybody more than a passport
+      user.** Asked by Mark on 1 November 2026. On a member's edit page
+      the profession list is exactly the four passport professions,
+      "Held beyond the profession" offers only passport competencies, and
+      no step shows "Platform role". The API's half already refused other
+      competencies and professions; refusing the platform role to a
+      passport admin was tested only for a teaching admin, so
+      `test_create_an_operator` and `test_make_a_delegate_an_operator`
+      were added to `TestWhatAPassportAdminMayNotDo`.
+
+## Phase 8: Upload refusals and the malware scan, end to end
+
+Asked for by Mark on 1 November 2026. Today story 9 uploads one good PDF,
+and nothing in the end-to-end suite sends a bad file or meets a scan.
+The end-to-end stack leaves `UPLOAD_SCAN_JOB` unset, so every upload is
+treated as clean at once and the "checking for malware" state never
+shows. The unit tests cover each half on its own:
+`backend/app/features/passport/router_test.py` has the refusals and
+every scan state, and `CertificateUploader.test.tsx` the messages, but
+against a pretend backend. Neither can see the two halves disagree, for
+instance the page stopping its checks while a scan still runs, or
+reading a state the backend names differently.
+
+The scan job reports its verdict to `/api/ci/uploads/scan-complete`
+with a signed identity token, as the teaching media jobs report to
+`/api/ci/teaching/*`. The end-to-end suite already fakes those jobs:
+`compose.ci.yml` names them with a made-up job, so starting one fails
+quietly and the upload waits, and `fixtures/mediaJobs.ts` signs the
+report the job would have sent. The scan is faked the same way. One new
+stacked branch, on top of Phase 7.
+
+- [x] **A wrong-type file is refused, and the reason reaches the
+      screen.** Needs no scan, so it comes first. A holder adding a
+      certificate chooses a file of a type the passport does not take,
+      and a file whose bytes are not the type its name claims. Each time
+      the uploader shows the backend's reason and nothing is attached.
+
+      Done as story 28 in `holding-a-passport.spec.ts`, with a third
+      case: a PDF that runs JavaScript, which the backend refuses naming
+      the active content. A type the passport does not take is refused by
+      the page before it is sent, and the other two by the backend, whose
+      reason the page shows.
+
+- [x] **Switch the scan on in the end-to-end stack.** Set
+      `UPLOAD_SCAN_JOB` in `compose.ci.yml` to a made-up job name, as
+      `TEACHING_TRANSCODE_JOB` is, and add the scan job's made-up service
+      account to the callers the callback accepts. Add a
+      `reportScan(request, upload, verdict)` helper beside
+      `fixtures/mediaJobs.ts`, reusing its token signing. Find how the
+      test learns which object to report on (the bucket and key the
+      upload was stored under) before writing it, and say here what was
+      found.
+
+      **Found on 1 November 2026, and stopped here for a decision.** The
+      scan cannot be switched on for the passport in the end-to-end stack
+      by configuration alone, for two reasons:
+
+      - **Naming a bucket moves the passport to Cloud Storage.**
+        `_evidence_scan_bucket` in `backend/app/features/passport/router.py`
+        returns `PASSPORT_GCS_BUCKET`, and with no bucket every file reads
+        as clean. But the same setting is what switches
+        `backend/app/passport_storage.py` from disk to Cloud Storage, which
+        the stack does not have.
+      - **An "infected" verdict deletes the file through Cloud Storage.**
+        `delete_object` in `backend/app/features/uploads/scan.py` calls the
+        Google client directly, which fails in the stack for want of
+        credentials, so the callback would answer 500.
+
+      The teaching uploads are in the same position: `UPLOAD_SCAN_JOB` is
+      unset in `compose.ci.yml`, so no upload in the suite has ever been
+      scanned. Two ways forward, for Mark to choose:
+
+      - **A Cloud Storage stand-in in the stack** (recommended). Run a
+        local emulator beside the backend in `compose.ci.yml`, pinned and
+        mirrored on GHCR like the other images, and point the Google client
+        at it. The passport and teaching code then run exactly as in App
+        production, delete included. The cost is one more service in the
+        stack and its image to keep up to date.
+      - **A test-only setting.** Name the scan bucket separately from the
+        storage switch, and have the delete do nothing for a file on disk.
+        Smaller, but it adds a branch to the app that only tests take.
+
+      **Mark chose the Cloud Storage stand-in on 1 November 2026.** The
+      test-only setting would add a path through the app that only tests
+      take, the same kind of shortcut the end-to-end rule forbids. Mark
+      also said, the same day, that a test may post the scan job's
+      verdict itself, as `mediaJobs.ts` does for the teaching jobs (Phase
+      9's last step).
+
+      **Built on 1 November 2026.** `compose.ci.yml` runs
+      `fake-gcs-server` 1.56.1 as `gcs`, pinned to a digest and mirrored
+      as `CI_GCS_IMAGE`, in memory so every run starts empty. The backend
+      gets `PASSPORT_GCS_BUCKET` and `STORAGE_EMULATOR_HOST`, which the
+      Google client honours by talking to the stand-in with no
+      credentials, so no app code changed. `UPLOAD_SCAN_JOB` names a job
+      nothing runs, and `scan-job@quill-ci…` joins the callers the
+      callback accepts.
+
+      - **How the test finds the object to report on.** The key is
+        `passports/<shard of the passport id>/files/sha256/…/<digest>`,
+        and the passport id never shows on screen. So
+        `fixtures/scanJob.ts` asks the stand-in for the object whose name
+        ends in the SHA-256 of the bytes it uploaded, and `uniquePdf` makes
+        those bytes belong to one test. That is the knowledge the real job
+        is handed, taken from the storage service, not from Quill. The
+        stand-in is published on `E2E_GCS_PORT` for this, read back by
+        `just e2e` as the public site's port is.
+      - **Only the passport is scanned.** The teaching uploads are scanned
+        only when teaching keeps its media in a bucket, and the stack keeps
+        teaching on disk, so the teaching video specs needed nothing. That
+        corrects the paragraph above.
+      - **It found a bug in three passport pages.** With passports in a
+        bucket, loading the page takes longer, and "Add an activity",
+        "Write a reflection" and "Record a certificate" could be pressed
+        before the page knew which passport it was on. A save then did
+        nothing and said nothing. Each button now waits for the passport,
+        with a unit test on each page.
+      - **Playwright waits ten seconds, not five.** A save rewrites the
+        passport's repository in the bucket, and with every worker saving
+        at once one took six seconds in a full local run. The default wait
+        is set in `playwright.config.ts`, with the reason.
+      - **The cost.** The passport end-to-end tests take 2.5 minutes for
+        65, against 2.0 minutes for 59 on disk.
+
+- [x] **While the scan runs, the holder is told, and the file attaches
+      once it is clean.** The uploader says it is checking for malware,
+      not that the file is attached. The test reports "clean", and the
+      file attaches without the holder doing anything.
+
+      Done in story 9, which every certificate upload now goes through:
+      "Scanning als-certificate.pdf…", no "Attached", then the report and
+      "Attached: als-certificate.pdf".
+
+- [x] **Malware found: the holder is told, and the file is not
+      attached.** Report "infected". The uploader says so, the
+      certificate cannot be saved naming the file, and the file is
+      nowhere on the page.
+
+      Done as story 30. The certificate is then saved without the file,
+      and its page names no file and draws none.
+
+- [x] **The scan could not check the file: the holder is asked to upload
+      it again.** Report "failed". The uploader asks for the file again,
+      and the certificate cannot be saved naming it.
+
+      Done as story 31.
+
+- [x] **The download bundle leaves out a file that did not scan clean.**
+      A holder with one clean and one infected certificate downloads the
+      full bundle, and only the clean file is in it. Checked by opening
+      the zip the browser saved, as story 11 checks its downloads.
+
+      Done as story 32. A certificate cannot be saved naming a file
+      already found infected, so the second file is attached while still
+      being scanned, as the uploader does after two minutes. The test
+      moves the page's clock on instead of waiting, then reports
+      "infected". `fixtures/zip.ts` reads the names in the saved zip.
+
+## Phase 9: No API in any end-to-end test
+
+Mark, 1 November 2026, after Phase 7 kept making accounts through the API
+as an exception: "It is dangerous to give you exceptions for using APIs.
+So do not do ever. This is a E2E test after all." The rule now has no
+exceptions: an end-to-end test does everything on screen, setup
+included. The passport comes first because Phase 7 has just been through
+it; the rest of the suite follows.
+
+- [x] **The passport admin adds each person on the add-user form.**
+      `makePassportPerson` in `frontend/e2e/fixtures/passport.ts` stops
+      calling `createAccount` and `orgUnitId`. The passport admin opens
+      `/admin/users/new`, fills in the details, chooses the profession and
+      the passport site, and grants `passport_write` where it is wanted.
+      The new person's id, which the edit page needs, is read from the
+      address the form lands on.
+
+      Done as `addOnTheForm`. The id is read by finding the person in the
+      users list and opening their page, by username rather than by
+      table row, because on a phone the list draws cards.
+
+- [x] **29. As a PA, I want to add somebody to the passport, so that they
+      can start their record.** Nothing walked this before: the guide
+      spec `add-somebody-to-the-passport.spec.ts` stops at the first step
+      without saving. The passport admin adds a delegate with
+      `passport_write`, the delegate signs in with the password given,
+      and creates their passport.
+
+- [x] **Measure the cost.** Time `just e2e tests/passport/` before and
+      after, and record both here. A slower suite is accepted; the number
+      is for knowing, not for deciding.
+
+      Before, with accounts made through the API: 55 tests in 1.6
+      minutes, across Chromium, WebKit and the phone. After: 59 tests,
+      the four new ones included, in 2.0 minutes.
+
+- [x] **Take the exception out of the rule.** `.claude/rules/e2e.md`, its
+      source `.github/instructions/e2e.instructions.md`,
+      `docs/docs/conventions/index.md` and the header of
+      `frontend/e2e/fixtures/api.ts` say "no API calls, no exceptions".
+
+- [ ] **Move the rest of the suite across.** Eighteen other specs and
+      fixtures call the API, found with a search for `fixtures/api` and
+      `page.request` on 1 November 2026: the getting-in, leaks, settings,
+      everyday, edges, teaching-admin and taking-a-module specs,
+      `asset-caching.spec.ts`, `pdf-pages.spec.ts` and the guide spec
+      `deactivate-a-site.spec.ts`. One unit for each folder. When none
+      is left, delete `fixtures/api.ts`.
+
+      - [x] **The people every teaching spec makes, on screen.**
+        `fixtures/people.ts` made accounts, sites and clinical leads
+        through the API for the settings, everyday, edges, leaks, guides
+        and taking-a-module specs. It now adds each on the add-user form
+        and the sites pages, as the seeded teaching admin, through
+        `fixtures/userForm.ts`, the form steps `accounts.spec.ts` already
+        drove, moved out so every spec shares them. `makePerson` now
+        places somebody at the organisation and its site, where the API
+        placed them at the site alone, because the form adds a site under
+        its organisation. A learner's clinical lead is added at the
+        organisation, then appointed on the new site's "Add staff" page.
+
+        Setup on screen is slower, so the leaks spec has three minutes, not
+        two. The everyday spec's feedback helper presses Feedback again
+        until its dialog opens, because WebKit dropped the first press
+        right after sign-in. In a full run of 437 tests, 434 passed and the
+        everyday and leaks specs then passed on their own; the third
+        failure was passport story 7, a twenty-second wait for a saved
+        setting under the full run's load.
+      - [ ] **For Mark: `asset-caching.spec.ts` and the decoder check in
+        `pdf-pages.spec.ts`.** Each asks the web server for a file and
+        reads a header: the caching header Caddy sends, and that the PDF
+        decoders are served as scripts. That is not Quill's API, and no
+        screen shows a header, so neither can be done as a person
+        would. Under the rule they wait for Mark: keep them as they are,
+        move them to a check that is not Playwright, or drop them.
+
+- [x] **Ask Mark about outside jobs before touching them.**
+      `fixtures/mediaJobs.ts` posts to `/api/ci/teaching/*` as the video
+      transcoding job would, and Phase 8's scan tests would post as the
+      malware scan job would. No person does either and there is no
+      screen for it: the test stands in for a service outside Quill.
+
+      **Asked on 1 November 2026, and Mark said yes.** A test may post
+      what an outside job would report, because it stands in for a
+      service, not for a person on a screen. That is the only kind of
+      call allowed, and it goes only to the job callback routes. Nothing
+      a person does may be done that way. `.claude/rules/e2e.md` and its
+      Copilot copy need to say so, in the same unit as the scan tests.
+      Done with Phase 8: both now name the job reports as the one call a
+      test may make, and `docs/docs/conventions/index.md` says the same.
 
 ## Decisions
 

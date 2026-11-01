@@ -1,11 +1,12 @@
 /**
  * Call the API as whoever the page is signed in as.
  *
- * For two jobs the screen cannot do. Setting up: a journey about
- * deactivating somebody makes that somebody through the API, so it tests
- * the deactivating and not the user form again. And refusals: a hidden
- * button proves nothing if the request behind it still succeeds, so a
- * refusal journey sends the request too and checks the API says no.
+ * Being retired. An end-to-end test never calls the API, not even to
+ * make an account: it does what a person does on screen and checks what
+ * they see, and the API's half of a refusal is a backend test. The specs
+ * still importing this move across in Phase 9 of
+ * docs/docs/plans/2026-10-31-passport-landing-views-plan.md, and then it
+ * is deleted. See `.claude/rules/e2e.md`.
  *
  * `page.request` shares the page's cookies, so these calls carry the same
  * session. A change also needs the CSRF token, which the app reads from

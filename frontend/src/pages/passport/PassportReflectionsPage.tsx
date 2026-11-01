@@ -98,7 +98,9 @@ export function Component() {
           <AddButton
             label="Write a reflection"
             onClick={() => setWriting(true)}
-            disabled={!canWrite}
+            // Not until the passport is known: a save made before then
+            // would have nowhere to go, and used to do nothing at all.
+            disabled={passportId === null || !canWrite}
           />
         </Group>
       )}

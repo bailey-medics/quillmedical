@@ -77,7 +77,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Use the mirrored images where they exist
-        run: bash .github/scripts/ci/use-mirrored-images.sh "${{ github.repository_owner }}" compose.ci.yml CI_POSTGRES_IMAGE CI_CADDY_IMAGE
+        run: bash .github/scripts/ci/use-mirrored-images.sh "${{ github.repository_owner }}" compose.ci.yml CI_POSTGRES_IMAGE CI_CADDY_IMAGE CI_GCS_IMAGE
 
       # The Python and Node the images build on, from the mirror too. Amazon's
       # public registry refused the Python image with "Data limit exceeded"
