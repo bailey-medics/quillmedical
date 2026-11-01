@@ -95,7 +95,7 @@ export default function LoginPage() {
       }
 
       const message = extractMessage(err) ?? "Login failed";
-      const errObj = err as Error & { error_code?: string };
+      const errObj = err as Error & { error_code?: string; status?: number };
       const code = errObj.error_code;
 
       const invalidCodeRegex = /invalid two[ -]?factor code|invalid code/i;
@@ -103,7 +103,13 @@ export default function LoginPage() {
 
       let errorMessage: string;
 
-      if (code === "email_not_verified") {
+      if (errObj.status === 429) {
+        // The rate limit's answer carries no message of its own, so
+        // without this the page showed the browser's status text, or
+        // "HTTP 429" over HTTP/2.
+        errorMessage =
+          "Too many sign-in attempts. Please wait a minute, then try again.";
+      } else if (code === "email_not_verified") {
         const email = (errObj as unknown as Record<string, unknown>).email as
           string | undefined;
         navigate("/verify-email-pending", { state: { email } });

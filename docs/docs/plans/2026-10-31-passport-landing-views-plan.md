@@ -1068,14 +1068,25 @@ it; the rest of the suite follows.
         The Organisation/site step's Next now waits for that lookup, in
         `UserInfoUpdatePage.tsx`, with a unit test that fails without it.
 
-      - [ ] **Sign in without reading the login answer.** `signIn` in
+      - [x] **Sign in without reading the login answer.** `signIn` in
         `fixtures/signIn.ts`, its copy in `guides/signIn.ts`,
-        `auth.setup.ts` and `login.spec.ts` wait for the login request's
-        answer, to retry when the rate limit refuses it (429). That reads
-        the server, so they should wait for what the login page shows
-        instead: leaving the login page, or the rate limit's message. Found
-        on 1 November 2026 with a search for `waitForResponse`, once
-        `fixtures/api.ts` was gone.
+        `auth.setup.ts` and `login.spec.ts` waited for the login request's
+        answer, to retry when the rate limit refused it (429). Found on 1
+        November 2026 with a search for `waitForResponse`, once
+        `fixtures/api.ts` was gone. They now share `submitSignIn`, which
+        presses Sign in and reads the page: moved on, the rate limit's
+        message, or "Invalid credentials". The guide's sign-in and the
+        setup call `signIn` itself, and the login spec's wrong password is
+        checked by `expectRefusedSignIn`, naming `test_login_wrong_password`.
+
+        That needed an app fix, because the page had no message of its own
+        for the rate limit. Its answer carries none that `api.ts` reads, so
+        the login page showed the browser's status text, "Too Many
+        Requests", or "HTTP 429" over HTTP/2, as App production serves it.
+        `LoginPage.tsx` now says "Too many sign-in attempts. Please wait a
+        minute, then try again.", with a unit test that fails without it.
+        Only the two outside job reports in the video gate now reach the
+        server.
 
 - [x] **Ask Mark about outside jobs before touching them.**
       `fixtures/mediaJobs.ts` posts to `/api/ci/teaching/*` as the video
