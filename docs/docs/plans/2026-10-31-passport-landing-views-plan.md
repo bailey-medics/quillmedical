@@ -613,6 +613,10 @@ test body. The one exception is making the user accounts themselves:
 account making is the admin pages' job, walked by their own specs, and
 doing it through the screen in every test would make the suite far
 slower. The passport the account holds is not part of that exception.
+Overturned by Mark on 1 November 2026, and Phase 9 removes it: "It is
+dangerous to give you exceptions for using APIs. So do not do ever. This
+is a E2E test after all." The reason given was also wrong: no spec walked
+a passport admin through the add-user form.
 
 - [x] **Set up through the screen.** Each of these reaches its starting
       state through the API today, and moves to the page a person would
@@ -807,6 +811,13 @@ stacked branch, on top of Phase 7.
         storage switch, and have the delete do nothing for a file on disk.
         Smaller, but it adds a branch to the app that only tests take.
 
+      **Mark chose the Cloud Storage stand-in on 1 November 2026.** The
+      test-only setting would add a path through the app that only tests
+      take, the same kind of shortcut the end-to-end rule forbids. Mark
+      also said, the same day, that a test may post the scan job's
+      verdict itself, as `mediaJobs.ts` does for the teaching jobs (Phase
+      9's last step).
+
       Every upload in the suite then waits for a verdict, so the existing
       journeys that upload need a "clean" report: story 9, and the
       teaching video specs (`taking-a-module/self-hosted-video.spec.ts`,
@@ -832,6 +843,68 @@ stacked branch, on top of Phase 7.
       A holder with one clean and one infected certificate downloads the
       full bundle, and only the clean file is in it. Checked by opening
       the zip the browser saved, as story 11 checks its downloads.
+
+## Phase 9: No API in any end-to-end test
+
+Mark, 1 November 2026, after Phase 7 kept making accounts through the API
+as an exception: "It is dangerous to give you exceptions for using APIs.
+So do not do ever. This is a E2E test after all." The rule now has no
+exceptions: an end-to-end test does everything on screen, setup
+included. The passport comes first because Phase 7 has just been through
+it; the rest of the suite follows.
+
+- [x] **The passport admin adds each person on the add-user form.**
+      `makePassportPerson` in `frontend/e2e/fixtures/passport.ts` stops
+      calling `createAccount` and `orgUnitId`. The passport admin opens
+      `/admin/users/new`, fills in the details, chooses the profession and
+      the passport site, and grants `passport_write` where it is wanted.
+      The new person's id, which the edit page needs, is read from the
+      address the form lands on.
+
+      Done as `addOnTheForm`. The id is read by finding the person in the
+      users list and opening their page, by username rather than by
+      table row, because on a phone the list draws cards.
+
+- [x] **29. As a PA, I want to add somebody to the passport, so that they
+      can start their record.** Nothing walked this before: the guide
+      spec `add-somebody-to-the-passport.spec.ts` stops at the first step
+      without saving. The passport admin adds a delegate with
+      `passport_write`, the delegate signs in with the password given,
+      and creates their passport.
+
+- [x] **Measure the cost.** Time `just e2e tests/passport/` before and
+      after, and record both here. A slower suite is accepted; the number
+      is for knowing, not for deciding.
+
+      Before, with accounts made through the API: 55 tests in 1.6
+      minutes, across Chromium, WebKit and the phone. After: 59 tests,
+      the four new ones included, in 2.0 minutes.
+
+- [x] **Take the exception out of the rule.** `.claude/rules/e2e.md`, its
+      source `.github/instructions/e2e.instructions.md`,
+      `docs/docs/conventions/index.md` and the header of
+      `frontend/e2e/fixtures/api.ts` say "no API calls, no exceptions".
+
+- [ ] **Move the rest of the suite across.** Eighteen other specs and
+      fixtures call the API, found with a search for `fixtures/api` and
+      `page.request` on 1 November 2026: the getting-in, leaks, settings,
+      everyday, edges, teaching-admin and taking-a-module specs,
+      `asset-caching.spec.ts`, `pdf-pages.spec.ts` and the guide spec
+      `deactivate-a-site.spec.ts`. One unit for each folder. When none
+      is left, delete `fixtures/api.ts`.
+
+- [x] **Ask Mark about outside jobs before touching them.**
+      `fixtures/mediaJobs.ts` posts to `/api/ci/teaching/*` as the video
+      transcoding job would, and Phase 8's scan tests would post as the
+      malware scan job would. No person does either and there is no
+      screen for it: the test stands in for a service outside Quill.
+
+      **Asked on 1 November 2026, and Mark said yes.** A test may post
+      what an outside job would report, because it stands in for a
+      service, not for a person on a screen. That is the only kind of
+      call allowed, and it goes only to the job callback routes. Nothing
+      a person does may be done that way. `.claude/rules/e2e.md` and its
+      Copilot copy need to say so, in the same unit as the scan tests.
 
 ## Decisions
 
