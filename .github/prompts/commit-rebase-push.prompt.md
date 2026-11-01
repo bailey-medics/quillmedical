@@ -264,6 +264,13 @@ nothing in the conversation makes merging part of this command.
    - **Plain sentences, no word count.** The subject is a person or a named
      thing in the code, the small words (that, which, because, so) stay,
      one fact a sentence. Length follows the change.
+   - **Written for a dyslexic reader**, to the British Dyslexia
+     Association's rules: active voice, no double negatives, and any
+     instructions a person must carry out as a numbered list in the order
+     they are done.
+   - **Every bullet ends with a full stop, and bold is the only emphasis.**
+     No italics, no underlining, no block capitals outside a code span, no
+     tables, and no text inside an image.
    - **Where the branch touches clinical data, patient records,
      authentication, authorisation or a database migration**, say so and
      how it is handled, under Risks; a reviewer should not discover it from
