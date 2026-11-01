@@ -12,10 +12,10 @@
  * superadmin should do the least setting up there is. See Phase 6 of
  * docs/docs/plans/2026-10-31-passport-landing-views-plan.md.
  *
- * Only the account itself is made through the API. Making an account is
- * the admin pages' job, walked by their own specs. Everything a holder,
- * an assessor or the passport admin then does, a passport included, is
- * done on screen, as Phase 7 of the same plan sets out.
+ * Nothing here calls the API. The passport admin adds each person on the
+ * add-user form, and everything a holder, an assessor or the passport
+ * admin then does is done on screen, as Phases 7 and 9 of the same plan
+ * set out.
  *
  * Each works at "CI Passport Centre", and their password is their username
  * followed by `123`, so `signIn` needs only the username.
@@ -27,7 +27,6 @@ import {
   type Locator,
   type Page,
 } from "@playwright/test";
-import { createAccount, orgUnitId } from "./api";
 import { PEOPLE, PLACES, freshUsername, signIn } from "./signIn";
 
 /**
@@ -108,13 +107,81 @@ export async function asPassportAdmin(browser: Browser): Promise<Page> {
   return pageAs(browser, PEOPLE.passportAdmin);
 }
 
+/** Click Next on the user form until *target* shows. */
+async function stepTo(page: Page, target: Locator): Promise<void> {
+  const next = page.getByRole("button", { name: "Next", exact: true });
+
+  while (!(await target.isVisible())) {
+    await next.click();
+  }
+}
+
 /**
- * Make somebody at the passport site, as the passport admin.
+ * The id of *username*, found as an admin finds anybody: searching the
+ * users list on *page* and opening their page.
+ */
+async function idFromTheList(page: Page, username: string): Promise<number> {
+  await page.goto("/admin/users");
+  await page.getByRole("button", { name: "Search" }).click();
+  await page.getByPlaceholder(/Search/).fill(username);
+  // The username, not a table row: on a phone the list draws cards.
+  await page.getByText(username, { exact: true }).first().click();
+  await expect(page).toHaveURL(/\/admin\/users\/\d+$/);
+
+  return Number(new URL(page.url()).pathname.split("/").pop());
+}
+
+/**
+ * As the passport admin on *admin*, add somebody at the passport site on
+ * the add-user form, as a trust's passport admin does.
  *
  * A `passport_delegate`, the profession that opens the passport.
  * `writes` grants `passport_write` as well, as a passport admin does for
- * the people they take on.
+ * the people they take on. Returns their id, read from their page in the
+ * users list, for the edit page.
  */
+export async function addOnTheForm(
+  admin: Page,
+  username: string,
+  email: string,
+  writes: boolean,
+): Promise<number> {
+  const site = admin.getByRole("combobox", { name: "Site" });
+  const held = admin.getByRole("combobox", {
+    name: "Held beyond the profession",
+  });
+  const create = admin.getByRole("button", { name: "Create user" });
+
+  await admin.goto("/admin/users/new");
+  await admin.getByLabel("Full name").fill(`Person ${username}`);
+  await admin.getByLabel("Email").fill(email);
+  await admin.getByLabel("Username").fill(username);
+  await admin.getByLabel("Initial password").fill(`${username}123`);
+  await admin.getByRole("combobox", { name: "Base profession" }).click();
+  await admin
+    .getByRole("option", { name: "Passport delegate", exact: true })
+    .click();
+
+  await stepTo(admin, site);
+  await site.click();
+  await admin.getByRole("option", { name: PLACES.passportSite }).click();
+  await admin.keyboard.press("Escape");
+
+  if (writes) {
+    await stepTo(admin, held);
+    await held.click();
+    await admin.getByRole("option", { name: PASSPORT_WRITE }).click();
+    await admin.keyboard.press("Escape");
+  }
+
+  await stepTo(admin, create);
+  await create.click();
+  await expect(admin.getByText("User created")).toBeVisible();
+
+  return idFromTheList(admin, username);
+}
+
+/** Make somebody at the passport site, as the passport admin. */
 async function makePassportPerson(
   browser: Browser,
   prefix: string,
@@ -123,18 +190,10 @@ async function makePassportPerson(
 ): Promise<PassportPerson> {
   const username = freshUsername(prefix, project);
   const email = passportEmailOf(username);
-  const page = await asPassportAdmin(browser);
+  const admin = await asPassportAdmin(browser);
 
-  const id = await createAccount(page, {
-    username,
-    name: `Person ${username}`,
-    email,
-    profession: "passport_delegate",
-    password: `${username}123`,
-    orgUnitIds: [await orgUnitId(page, PLACES.passportSite)],
-    competencies: writes ? ["passport_write"] : [],
-  });
-  await page.context().close();
+  const id = await addOnTheForm(admin, username, email, writes);
+  await admin.context().close();
 
   return { id, username, email };
 }
@@ -347,15 +406,6 @@ export async function openUntil(
   }).toPass({ timeout: 20_000 });
 }
 
-/** Click Next on the user form until *target* shows. */
-async function stepTo(page: Page, target: Locator): Promise<void> {
-  const next = page.getByRole("button", { name: "Next", exact: true });
-
-  while (!(await target.isVisible())) {
-    await next.click();
-  }
-}
-
 /**
  * As the passport admin, open *userId*'s edit page, do *change* on the
  * step that shows *field*, and save, as story 17 does.
@@ -422,16 +472,7 @@ export async function userIdFromTheList(
   username: string,
 ): Promise<number> {
   const page = await pageAs(browser, PEOPLE.superuser);
-
-  await page.goto("/admin/users");
-  await page.getByRole("button", { name: "Search" }).click();
-  await page.getByPlaceholder(/Search/).fill(username);
-  await page
-    .getByRole("row")
-    .filter({ has: page.getByRole("cell", { name: username, exact: true }) })
-    .click();
-  await expect(page).toHaveURL(/\/admin\/users\/\d+$/);
-  const id = Number(new URL(page.url()).pathname.split("/").pop());
+  const id = await idFromTheList(page, username);
   await page.context().close();
 
   return id;

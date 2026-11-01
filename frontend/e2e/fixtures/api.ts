@@ -1,11 +1,12 @@
 /**
  * Call the API as whoever the page is signed in as.
  *
- * For making the user accounts a journey acts on, and for little else.
- * An end-to-end test does what a person does on screen and checks what
- * they see; the API's half of a refusal is a backend test. Some older
- * teaching specs still set up or check through these, and move across
- * when next touched. See `.claude/rules/e2e.md`.
+ * Being retired. An end-to-end test never calls the API, not even to
+ * make an account: it does what a person does on screen and checks what
+ * they see, and the API's half of a refusal is a backend test. The specs
+ * still importing this move across in Phase 9 of
+ * docs/docs/plans/2026-10-31-passport-landing-views-plan.md, and then it
+ * is deleted. See `.claude/rules/e2e.md`.
  *
  * `page.request` shares the page's cookies, so these calls carry the same
  * session. A change also needs the CSRF token, which the app reads from
