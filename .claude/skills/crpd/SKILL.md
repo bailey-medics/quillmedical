@@ -636,17 +636,17 @@ to start a stack anywhere but the tip of `origin/main`, and says to run
    or a walk through the diff in order costs the reader time and tells
    them what the diff already shows.
 
-   **The body is a triage block, an opening, then three level-two
+   **The body is an opening, a triage block, then three level-two
    sections.** This is pull request #2263 written that way:
 
    ```markdown
-   **Size:** large. 20 files, a migration, two new emails.
-   **Look hardest at:** where the change link is checked in `backend/app/security.py`.
-   **Check for me:** that signing somebody out after they confirm is acceptable.
-
    Changing your email address now needs confirming. Quill sends a link to
    the new address and does nothing until it is clicked. It also tells the
    old address that a change was asked for.
+
+   **Size:** large. 20 files, a migration, two new emails.
+   **Look hardest at:** where the change link is checked in `backend/app/security.py`.
+   **Check for me:** that signing somebody out after they confirm is acceptable.
 
    ## Decisions to check
 
@@ -683,12 +683,12 @@ to start a stack anywhere but the tip of `origin/main`, and says to run
    A one-file wording change is the same shape, much shorter:
 
    ```markdown
+   The "Add a delegate by hand" guide now says a delegate can be found by
+   username as well as by email address.
+
    **Size:** tiny. One guide file, wording only. Merge if it reads well.
    **Look hardest at:** step 3 of `frontend/src/guides/content/add-a-delegate-by-hand.md`.
    **Check for me:** nothing in particular.
-
-   The "Add a delegate by hand" guide now says a delegate can be found by
-   username as well as by email address.
 
    ## Risks
 
@@ -702,12 +702,26 @@ to start a stack anywhere but the tip of `origin/main`, and says to run
    <!-- crp:pr-summary -->
    ```
 
+   ### The opening
+
+   First in the body, so the reader learns what the change is before
+   being told how to review it.
+
+   - **Two or three short sentences: what is true now that was not true
+     before.** In terms of what someone using the thing would see. Never
+     a paraphrase of the title, and never a sentence that only parses if
+     you already know the answer.
+   - **If you do link something - a plan, a document - use a full
+     `https://github.com/…/blob/main/…` URL.** GitHub does not resolve a
+     relative path in a pull request body.
+
    ### The triage block
 
-   Three lines, first in the body, each a bold label and one plain
-   sentence. Saying what feedback the author wants is the strongest single
-   predictor of a pull request merging (Pirouzkhah, Wurzel Gonçalves and
-   Bacchelli, arXiv 2602.14611), and these lines are where that is said.
+   Three lines, after the opening and before the first section, each a
+   bold label and one plain sentence. Saying what feedback the author
+   wants is the strongest single predictor of a pull request merging
+   (Pirouzkhah, Wurzel Gonçalves and Bacchelli, arXiv 2602.14611), and
+   these lines are where that is said.
 
    - **`Size`** - `tiny`, `small`, `medium` or `large`, then what makes it
      so in a few words: the file count, a migration, a new email, a
@@ -724,16 +738,6 @@ to start a stack anywhere but the tip of `origin/main`, and says to run
 
    There is no review-time line: the Size line carries what the reader
    triages on.
-
-   ### The opening
-
-   - **Two or three short sentences: what is true now that was not true
-     before.** In terms of what someone using the thing would see. Never
-     a paraphrase of the title, and never a sentence that only parses if
-     you already know the answer.
-   - **If you do link something - a plan, a document - use a full
-     `https://github.com/…/blob/main/…` URL.** GitHub does not resolve a
-     relative path in a pull request body.
 
    ### Sentences
 

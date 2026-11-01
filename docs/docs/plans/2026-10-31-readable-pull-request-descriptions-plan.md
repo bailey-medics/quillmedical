@@ -463,6 +463,14 @@ skill that is already long, and the shape should settle first.
   already says how big the change is, and that is what the reader triages
   on.
 
+- **The opening comes before the triage block** - Mark's call, 1 November
+  2026, after reading the first descriptions written to the new shape.
+  Phase 1 put the three triage lines first; they now follow the two or
+  three sentences that say what the change is, so the reader learns what
+  they are looking at before being told how to review it. The three
+  sections, the labels and the scoring are unchanged, and the Phase 1 and
+  Phase 2 steps above record the order as it was first built.
+
 - **What has changed stays, not collapsed, in every description** - Mark's
   call, 31 October 2026. The earlier proposal put it in `<details>` or
   dropped it for a tiny change. It stays a plain section with one bullet
