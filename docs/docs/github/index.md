@@ -165,6 +165,10 @@ GitHub Actions secrets for GCP live in the `app` and `app-plan` environments, no
 
 Authentication to GCP uses **Workload Identity Federation** - no long-lived service account keys.
 
+## Pull request descriptions
+
+Every pull request description written by `/crpd` is scored for readability before it is posted, and its scores are recorded beside the reader's verdict in the [description log](description-log.md). The log is how the writing rules in `.claude/skills/crpd/SKILL.md` are moved over time.
+
 ## Learnings
 
 ### GitHub Enterprise is required for branch naming enforcement
