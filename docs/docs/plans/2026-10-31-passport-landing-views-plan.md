@@ -1234,7 +1234,7 @@ refusal was the other choice, and was turned down because it still invites
 a press that can only fail. Hiding the Passport page from them was ruled
 out, because an assessor needs the sign-off pages.
 
-- [ ] **Offer creating a passport only to somebody who may write one.**
+- [x] **Offer creating a passport only to somebody who may write one.**
       In `frontend/src/pages/passport/PassportPage.tsx`, the "absent"
       state shows the framework picker and "Create my passport" only when
       the person holds `passport_write`, read with `useHasCompetency`.
@@ -1245,11 +1245,21 @@ out, because an assessor needs the sign-off pages.
       `passport_write`, the message and no button for somebody without it,
       and the Storybook story for each state if the page has stories.
 
-- [ ] **Story 17 checks it on screen.** Somebody without `passport_write`
+      Built as planned, with the message's two sentences as the
+      `StateMessage`'s title and description. The page has no stories.
+      Its tests mock `useHasCompetency`, because the render helpers supply
+      no signed-in user; every existing test holds `passport_write`, and
+      the new one takes it away.
+
+- [x] **Story 17 checks it on screen.** Somebody without `passport_write`
       opens the Passport page and sees the message, with no "Create my
       passport" button. Then the passport admin gives them
       `passport_write` on the edit form, and the offer appears and works,
       as the story already goes on to check.
+
+      After the grant the story opens the Passport page until the offer
+      shows, through `openUntil`, because nothing on the member's page
+      says the grant has landed.
 
 ## Decisions
 

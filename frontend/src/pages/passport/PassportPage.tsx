@@ -56,6 +56,7 @@ import { entitlementWarning } from "@lib/passport/entitlementWarning";
 // client still get the real helper.
 import { landingViewOf } from "@lib/passport/landingView";
 import { useFrameworkChoices } from "@lib/passport/useFrameworkChoices";
+import { useHasCompetency } from "@/lib/cbac/hooks";
 import type { PassportDetail } from "@lib/passport";
 
 /**
@@ -166,6 +167,10 @@ export function Component() {
   // Fetched only once the create step is showing, the one place here
   // that asks the question.
   const frameworkOptions = useFrameworkChoices(absent);
+  // Only somebody who may write a passport is offered one: the backend
+  // refuses anybody else, and a button that can only fail is worse than
+  // none. Most people here without it are assessors.
+  const mayWrite = useHasCompetency("passport_write");
   // Every record in the passport, newest first, once the passport is
   // known. Null while loading; the table shows its own skeleton.
   const [records, setRecords] = useState<PassportRecord[] | null>(null);
@@ -332,6 +337,20 @@ export function Component() {
 
   // A holder without a passport is told what one is before being asked
   // to start it, rather than shown an empty record.
+  if (absent && !mayWrite) {
+    return (
+      <Stack gap="lg">
+        <PassportHeader />
+        <StateMessage
+          colour="update"
+          icon={<IconFileText />}
+          title="You do not have a passport"
+          description="Your passport admin can give you one if you need it."
+        />
+      </Stack>
+    );
+  }
+
   if (absent) {
     return (
       <Stack gap="lg">
