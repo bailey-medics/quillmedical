@@ -12,20 +12,41 @@ import { test, expect } from "../../fixtures/axe";
 import {
   FRAMEWORK_NAMES,
   REFER_PALLIATIVE,
+  addOnTheForm,
   asPassportAdmin,
+  createPassport,
   makeAssessor,
   makeHolder,
   openUntil,
+  passportEmailOf,
   removeFromThePassportSite,
   toggleFrameworks,
   togglePassportWrite,
   userIdFromTheList,
 } from "../../fixtures/passport";
-import { PEOPLE, signIn } from "../../fixtures/signIn";
+import { PEOPLE, freshUsername, signIn } from "../../fixtures/signIn";
 
 test.describe("Running the passport, and a read-only passport", () => {
   test.use({ storageState: { cookies: [], origins: [] } });
   test.describe.configure({ timeout: 120_000 });
+
+  test("29. a passport admin adds somebody to the passport, who starts their record", async ({
+    page,
+    browser,
+  }, testInfo) => {
+    // The first thing a trust does with the passport: its passport admin
+    // adds a person on the add-user form, with writing, and that person
+    // signs in with the password given and creates their passport.
+    const username = freshUsername("ph", testInfo.project.name);
+    const admin = await asPassportAdmin(browser);
+    await addOnTheForm(admin, username, passportEmailOf(username), true);
+    await expect(admin).toHaveURL(/\/admin\/users\/\d+$/);
+    await expect(admin.getByText(username).first()).toBeVisible();
+    await admin.context().close();
+
+    await signIn(page, username);
+    await createPassport(page, ["clinical"]);
+  });
 
   test("17. a passport admin gives passport_write to a member of their place", async ({
     page,
