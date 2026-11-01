@@ -157,3 +157,25 @@ export function freshUsername(prefix: string, project: string): string {
 
   return `${prefix}_${project}_${Date.now()}${random}`;
 }
+
+/**
+ * Try to sign in as *username* with *password*, and check it is refused
+ * as a person sees it: "Invalid credentials", and still on the login page.
+ *
+ * A wrong password, a username nobody has and a deactivated account all
+ * get this same answer, so the reply says nothing about which accounts
+ * exist. The backend's own tests make each refusal.
+ */
+export async function expectRefusedSignIn(
+  page: Page,
+  username: string,
+  password: string,
+): Promise<void> {
+  await page.goto("/login");
+  await page.getByLabel("Username").fill(username);
+  await page.getByRole("textbox", { name: "Password" }).fill(password);
+  await page.getByRole("button", { name: "Sign in" }).click();
+
+  await expect(page.getByText("Invalid credentials")).toBeVisible();
+  await expect(page).toHaveURL(/\/login/);
+}

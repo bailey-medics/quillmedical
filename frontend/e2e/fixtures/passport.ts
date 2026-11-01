@@ -387,24 +387,8 @@ export async function recordCpd(page: Page, title: string): Promise<void> {
   await expect(page.getByText(title)).toBeVisible();
 }
 
-/**
- * Open *address* until *check* passes.
- *
- * Settings saves a change as it is made, and says nothing when it has.
- * So a journey checking what the change did opens the page that shows
- * it, and opens it again until the save has landed, rather than asking
- * the API.
- */
-export async function openUntil(
-  page: Page,
-  address: string,
-  check: () => Promise<void>,
-): Promise<void> {
-  await expect(async () => {
-    await page.goto(address);
-    await check();
-  }).toPass({ timeout: 20_000 });
-}
+/** Open a page until a change shows: shared with the other specs. */
+export { openUntil } from "./screen";
 
 /**
  * As the passport admin, open *userId*'s edit page, do *change* on the

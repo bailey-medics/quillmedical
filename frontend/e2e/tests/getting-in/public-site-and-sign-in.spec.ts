@@ -11,15 +11,18 @@
  * `results_delegate`, both seeded by `backend/scripts/seed_ci.py`.
  */
 
-import type { Page } from "@playwright/test";
 import { test, expect } from "../../fixtures/axe";
-import { createAccount, orgUnitId, send } from "../../fixtures/api";
+import { deactivate, makeAccount } from "../../fixtures/people";
 import {
   LIVE_APP,
   PUBLIC_SITE,
   followIntoTheStack,
 } from "../../fixtures/publicSite";
-import { PLACES, freshUsername, signIn } from "../../fixtures/signIn";
+import {
+  expectRefusedSignIn,
+  freshUsername,
+  signIn,
+} from "../../fixtures/signIn";
 import { atPhoneWidth } from "../../fixtures/phone";
 
 /** The two people this phase is about, by the name each story uses. */
@@ -36,26 +39,6 @@ const PUBLIC_PAGES = [
     heading: /Optical diagnosis accreditation/,
   },
 ] as const;
-
-/** Fill in the login form and return the status the API answered with. */
-async function tryToSignIn(
-  page: Page,
-  username: string,
-  password: string,
-): Promise<number> {
-  await page.goto("/login");
-  await page.getByLabel("Username").fill(username);
-  await page.getByRole("textbox", { name: "Password" }).fill(password);
-
-  const answered = page.waitForResponse(
-    (response) =>
-      response.url().includes("/api/auth/login") &&
-      response.request().method() === "POST",
-  );
-  await page.getByRole("button", { name: "Sign in" }).click();
-
-  return (await answered).status();
-}
 
 test.describe("The public site", () => {
   test.use({ storageState: { cookies: [], origins: [] } });
@@ -116,16 +99,12 @@ test.describe("Signing in without valid credentials", () => {
     test(`${who}'s username with the wrong password is refused`, async ({
       page,
     }) => {
-      expect(await tryToSignIn(page, username, "not-the-password")).toBe(400);
-      await expect(page).toHaveURL(/\/login/);
+      await expectRefusedSignIn(page, username, "not-the-password");
     });
   }
 
   test("a username nobody has is refused", async ({ page }) => {
-    expect(await tryToSignIn(page, "nobody_has_this_name", "anything123")).toBe(
-      400,
-    );
-    await expect(page).toHaveURL(/\/login/);
+    await expectRefusedSignIn(page, "nobody_has_this_name", "anything123");
   });
 });
 
@@ -139,29 +118,20 @@ test.describe("A deactivated account", () => {
 
   for (const { who, profession } of professions) {
     test(`belonging to ${who} cannot sign in`, async ({
-      page,
       browser,
     }, testInfo) => {
       const username = freshUsername("closed", testInfo.project.name);
       const password = `${username}Pass123!`;
 
-      // Made and closed by the seeded teaching admin, through the API.
-      const id = await createAccount(page, {
-        username,
-        name: "Closed Account",
-        profession,
-        orgUnitIds: [await orgUnitId(page, PLACES.organisation)],
-        password,
-      });
-      const closed = await send(page, "POST", `/users/${id}/deactivate`, {});
-      expect(closed.status(), await closed.text()).toBe(200);
+      // Made and closed by the seeded teaching admin, on screen. The
+      // backend's own test is auth_test.py's `test_login_inactive_user`.
+      await makeAccount(browser, { username, profession, password });
+      await deactivate(browser, username);
 
       const theirs = await browser.newContext({
         storageState: { cookies: [], origins: [] },
       });
-      const them = await theirs.newPage();
-      expect(await tryToSignIn(them, username, password)).toBe(400);
-      await expect(them).toHaveURL(/\/login/);
+      await expectRefusedSignIn(await theirs.newPage(), username, password);
       await theirs.close();
     });
   }
