@@ -1,7 +1,5 @@
 # Readable pull request descriptions plan
 
-<!-- cspell:ignore Flesch -->
-
 The descriptions `/crpd` writes cover the right things, decisions, risks and
 what changed, and they are still slow to read. Mark reviews every line of
 this codebase himself, so the description is the first thing read on every
@@ -319,7 +317,7 @@ plus the Report section. The skill is Claude-only, with no copy under
       date from September 2026, and `/sync-copilot-config` is the thing that
       brings them up to date.
 
-- [ ] Score every body before it is posted, with a small script,
+- [x] Score every body before it is posted, with a small script,
       `scripts/readability.py`, tested by `scripts/tests/readability.bats`
       under `just ts` like `audit-stamp.py` beside it. It reads the body on
       standard input, strips code spans, URLs and the three triage labels,
