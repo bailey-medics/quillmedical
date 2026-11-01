@@ -9,7 +9,7 @@
 
 import type { Browser, Page } from "@playwright/test";
 import { test, expect } from "../../fixtures/axe";
-import { emailOf } from "../../fixtures/api";
+import { emailOf } from "../../fixtures/userForm";
 import { waitForEmail } from "../../fixtures/mail";
 import { TEACHING_PEOPLE, makePerson } from "../../fixtures/people";
 import { PEOPLE, signIn } from "../../fixtures/signIn";
