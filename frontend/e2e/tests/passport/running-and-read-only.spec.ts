@@ -53,24 +53,30 @@ test.describe("Running the passport, and a read-only passport", () => {
     page,
     browser,
   }, testInfo) => {
-    // Somebody at the passport site who may not yet write: the page
-    // offers a passport, and refuses to make it. The API's refusal is
-    // router_test.py's
+    // Somebody at the passport site who may not yet write is offered no
+    // passport, and told who can give one (Phase 11). The API's refusal
+    // is router_test.py's
     // `test_somebody_without_passport_write_cannot_create_one`.
     const member = await makeAssessor(browser, testInfo.project.name);
     await signIn(page, member.username);
     await page.goto("/passport");
-    await toggleFrameworks(page, ["clinical"]);
-    await page.getByRole("button", { name: "Create my passport" }).click();
+    await expect(page.getByText("You do not have a passport")).toBeVisible();
     await expect(
-      page.getByText("Your passport could not be created"),
+      page.getByText("Your passport admin can give you one if you need it."),
     ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Create my passport" }),
+    ).toHaveCount(0);
 
     // The passport admin grants it on the member's edit page.
     await togglePassportWrite(browser, member.id);
 
-    // Now they can.
-    await page.goto("/passport");
+    // Now they are offered one, and it is made.
+    await openUntil(page, "/passport", async () => {
+      await expect(
+        page.getByRole("button", { name: "Create my passport" }),
+      ).toBeVisible({ timeout: 3_000 });
+    });
     await toggleFrameworks(page, ["clinical"]);
     await page.getByRole("button", { name: "Create my passport" }).click();
     await expect(

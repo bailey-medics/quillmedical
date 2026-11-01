@@ -5,7 +5,7 @@
  * get wrong: the fetch, the loading state, and the error path.
  */
 
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { describe, expect, it, vi, beforeEach, onTestFinished } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithRouter } from "@/test/test-utils";
@@ -42,6 +42,17 @@ const {
   fetchAllCpd: vi.fn<typeof passportLib.fetchAllCpd>(),
   fetchCertificates: vi.fn<typeof passportLib.fetchCertificates>(),
   fetchReflections: vi.fn<typeof passportLib.fetchReflections>(),
+}));
+
+// Whether the viewer holds passport_write, which decides whether they are
+// offered "Create my passport". Held unless a test says otherwise.
+const { holds } = vi.hoisted(() => ({
+  holds: { passportWrite: true },
+}));
+
+vi.mock("@/lib/cbac/hooks", () => ({
+  useHasCompetency: (competency: string) =>
+    competency === "passport_write" ? holds.passportWrite : false,
 }));
 
 // The framework order comes from the API through this hook; each test
@@ -421,6 +432,31 @@ describe("PassportPage", () => {
     expect(
       screen.getByRole("button", { name: "Create my passport" }),
     ).toBeInTheDocument();
+  });
+
+  it("offers nothing to create without passport_write, and says who gives one", async () => {
+    // Most people here without it are assessors. The button could only
+    // fail: the backend refuses them, and "Please try again" could never
+    // mend it.
+    holds.passportWrite = false;
+    onTestFinished(() => {
+      holds.passportWrite = true;
+    });
+    fetchMyPassport.mockRejectedValue(httpError(404));
+    renderWithRouter(<PassportPage />);
+
+    expect(
+      await screen.findByText("You do not have a passport"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Your passport admin can give you one if you need it."),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Create my passport" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("You do not have a passport yet"),
+    ).not.toBeInTheDocument();
   });
 
   it("does not call a missing passport an error", async () => {
