@@ -122,6 +122,53 @@ describe("UserAdminPage", () => {
     });
   });
 
+  describe("Belonging nowhere", () => {
+    const sentence =
+      "Not at any organisation. They can sign in, change their own details and read their own passport, and nothing more.";
+
+    it("says so when they are at no org_unit", async () => {
+      vi.spyOn(apiLib.api, "get").mockResolvedValue({
+        ...mockUserDetails,
+        org_unit_ids: [],
+      });
+
+      renderWithRouter(<UserAdminPage />, {
+        routePath: "/admin/users/:id",
+        initialRoute: "/admin/users/1",
+      });
+
+      expect(await screen.findByText(sentence)).toBeInTheDocument();
+    });
+
+    it("says nothing when they belong somewhere", async () => {
+      vi.spyOn(apiLib.api, "get").mockResolvedValue({
+        ...mockUserDetails,
+        org_unit_ids: [3],
+      });
+
+      renderWithRouter(<UserAdminPage />, {
+        routePath: "/admin/users/:id",
+        initialRoute: "/admin/users/1",
+      });
+
+      expect(await screen.findByText("test.user")).toBeInTheDocument();
+      expect(screen.queryByText(sentence)).not.toBeInTheDocument();
+    });
+
+    it("says nothing when the answer does not say where they are", async () => {
+      // A backend older than the field: not knowing is not "nowhere".
+      vi.spyOn(apiLib.api, "get").mockResolvedValue(mockUserDetails);
+
+      renderWithRouter(<UserAdminPage />, {
+        routePath: "/admin/users/:id",
+        initialRoute: "/admin/users/1",
+      });
+
+      expect(await screen.findByText("test.user")).toBeInTheDocument();
+      expect(screen.queryByText(sentence)).not.toBeInTheDocument();
+    });
+  });
+
   describe("Platform role badge", () => {
     it("marks an operator", async () => {
       vi.spyOn(apiLib.api, "get").mockResolvedValue({
