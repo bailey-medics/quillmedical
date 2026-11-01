@@ -14,18 +14,18 @@ setup() {
 #!/usr/bin/env bash
 echo "$*" >> "$ASKED"
 [ -z "${GSUTIL_FAILS:-}" ] || exit 1
-echo "gs://quill-medical-app-landing/index.html"
+echo "gs://quill-medical-app-landing-uk/index.html"
 GSUTIL
   chmod +x "${STUB}/gsutil"
   PATH="${STUB}:${PATH}"
 }
 
-@test "lists the landing bucket of the project it is given" {
+@test "lists the London landing bucket of the project it is given" {
   run bash "$SCRIPT" quill-medical-app
 
   [ "$status" -eq 0 ]
-  [ "$(cat "$ASKED")" = "ls gs://quill-medical-app-landing/" ]
-  [[ "$output" == *"gs://quill-medical-app-landing/index.html"* ]]
+  [ "$(cat "$ASKED")" = "ls gs://quill-medical-app-landing-uk/" ]
+  [[ "$output" == *"gs://quill-medical-app-landing-uk/index.html"* ]]
 }
 
 @test "fails with no project given, and asks for nothing" {

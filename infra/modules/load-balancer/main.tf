@@ -311,6 +311,35 @@ resource "google_storage_bucket_iam_member" "landing_public" {
   member = "allUsers"
 }
 
+# The same site in London. A bucket's location is fixed when it is made, so
+# the `EU` one above cannot be moved, only replaced; changing its location in
+# place would delete it and leave the site serving 404s until the next deploy.
+# This one is filled by the deploy alongside the old one, then the backend
+# bucket below is moved onto it, then the old one is removed - see
+# docs/docs/plans/2026-11-01-landing-bucket-uk-plan.md. The name differs
+# because bucket names are global and the old one still holds its own.
+resource "google_storage_bucket" "landing_uk" {
+  count    = var.landing_domain != null ? 1 : 0
+  project  = var.project_id
+  name     = "${var.project_id}-landing-uk"
+  location = "europe-west2"
+
+  website {
+    main_page_suffix = "index.html"
+    not_found_page   = "not-found.html"
+  }
+
+  uniform_bucket_level_access = true
+  force_destroy               = true
+}
+
+resource "google_storage_bucket_iam_member" "landing_uk_public" {
+  count  = var.landing_domain != null ? 1 : 0
+  bucket = google_storage_bucket.landing_uk[0].name
+  role   = "roles/storage.objectViewer"
+  member = "allUsers"
+}
+
 resource "google_compute_backend_bucket" "landing" {
   count       = var.landing_domain != null ? 1 : 0
   project     = var.project_id
