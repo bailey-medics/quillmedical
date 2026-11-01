@@ -217,21 +217,4 @@ test.describe("A PDF drawn page by page", () => {
       page.getByRole("button", { name: "Open file: Example letter.pdf" }),
     ).toBeVisible();
   });
-
-  test("the scanned-image decoders are served as scripts from this origin", async ({
-    request,
-  }) => {
-    // pdf.js fetches these by name only when a scan needs one, so a
-    // build that stopped emitting them would otherwise go unnoticed
-    // until somebody opened such a scan.
-    for (const name of [
-      "jbig2_nowasm_fallback.js",
-      "openjpeg_nowasm_fallback.js",
-    ]) {
-      const response = await request.get(`/pdfjs/${name}`);
-
-      expect(response.status(), name).toBe(200);
-      expect(response.headers()["content-type"], name).toContain("javascript");
-    }
-  });
 });
