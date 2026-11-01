@@ -1,5 +1,7 @@
 # Readable pull request descriptions plan
 
+<!-- cspell:ignore Flesch -->
+
 The descriptions `/crpd` writes cover the right things, decisions, risks and
 what changed, and they are still slow to read. Mark reviews every line of
 this codebase himself, so the description is the first thing read on every
@@ -91,7 +93,7 @@ plus the Report section. The skill is Claude-only, with no copy under
       - **Look hardest at** - one place, named well enough to open: a file
         path and a function or component name, and what to look for there.
         It is where the model's own uncertainty is, or where a mistake would
-        hurt most. One place, not a list; a list belongs in Phase 4's reading
+        hurt most. One place, not a list; a list belongs in Phase 5's reading
         order.
       - **Check for me** - the one thing the reader must agree with before
         merging, written as a request. For a `tiny` change it may be "nothing
@@ -261,14 +263,91 @@ plus the Report section. The skill is Claude-only, with no copy under
       text has no Copilot source: `follow-the-plan-document.prompt.md` does
       not contain it.
 
-## Phase 3: read a week of descriptions against the shape
+## Phase 3: the older British Dyslexia Association writing rules
+
+- [x] Add the writing-style rules from the older edition of the British
+      Dyslexia Association's style guide to step 9 of
+      `.claude/skills/crpd/SKILL.md`, as one short subsection, "Writing for
+      a dyslexic reader", without removing anything Phase 1 wrote. The guide
+      was read on 1 November 2026 from a copy Wigan Council hosts, because
+      the association's own copies refuse automated reading: the 2023 PDF
+      answers 403 and the 2026 booklet is a viewer with no text. Mark
+      supplied the 2026 edition by hand. The older edition's writing-style
+      section, in full: "Use short, simple sentences in a direct style. Give
+      instructions clearly. Avoid long sentences of explanation. Use active
+      rather than passive voice. Avoid double negatives. Be concise." Step 9
+      already has the short sentences, the bullets, the first-use
+      explanation of a name or an abbreviation, and bold rather than
+      italics. What it lacks, each becoming one line:
+
+      - **Active voice** - "Quill sends a link", never "a link is sent".
+        The sentence-shape rule already names the subject; this says the
+        subject does the verb.
+      - **No double negatives** - "a job that is not excluded does not
+        fail" becomes "every job the check covers passes". Security
+        write-ups breed these.
+      - **Instructions in a numbered list, in the order they are done,
+        separate from the explanation** - the guide's "give instructions
+        clearly" and "avoid long sentences of explanation". The "Before
+        merging, and after" list in #2291 is the example: it was the part of
+        that description Mark acted on.
+      - **No italics, no underlining, no block capitals outside a code
+        span** - the guide says underlining and italics "make the text
+        appear to run together" and block capitals are "much harder to
+        read". Phase 1 brought bold back; this closes the other three.
+      - **A full stop at the end of every bullet** - from the guide's
+        text-reader section: "put semi-colons, commas, or full stops after
+        bullet points to make a pause". A text-to-speech reader pauses on
+        punctuation and runs on without it.
+      - **No tables, and no text inside an image** - the guide: "text
+        readers may have difficulty with tables" and "avoid text in images.
+        Listeners cannot hear it. Repeat in the main text." Phase 5 wants
+        screenshots embedded for guide and Storybook changes; each needs a
+        sentence beside it saying what it shows, so this is a condition on
+        that step, not a bar to it.
+
+- [x] Carry the shape rules into the Copilot short form in
+      `.github/prompts/commit-rebase-push.prompt.md`, and into the two
+      Claude copies that hold the same text, `.claude/skills/nst-crp/SKILL.md`
+      and `.claude/skills/nst-crpf/SKILL.md`, as Phase 2 did. The short form
+      gets two bullets: the three writing rules in one line, and the full
+      stop on each bullet with the ban on italics, underlining, capitals,
+      tables and text in images. This step moved ahead of the readability
+      script because it depends only on the rules above, and the two belong
+      in one pull request. Phase 2 did not update `.claude/sync-manifest.json`
+      when it mirrored the text, and nor does this: the manifest's hashes
+      date from September 2026, and `/sync-copilot-config` is the thing that
+      brings them up to date.
+
+- [ ] Score every body before it is posted, with a small script,
+      `scripts/readability.py`, tested by `scripts/tests/readability.bats`
+      under `just ts` like `audit-stamp.py` beside it. It reads the body on
+      standard input, strips code spans, URLs and the three triage labels,
+      and prints the Flesch reading ease and the Flesch-Kincaid grade. The
+      stripping matters: an identifier such as `GCP_DEPLOY_SERVICE_ACCOUNT`
+      counts as six syllables and would sink any score. Pure Python with a
+      vowel-group syllable count, no dependency, and it finishes in
+      milliseconds. The older guide's targets are a reading ease of
+      "approximately 70 to 80" and a grade of "approximately 5.0, by using
+      short sentences, not by dumbing down vocabulary". A body full of real
+      names will sit above grade 5, so step 9 prints the two numbers in the
+      terminal report under the triage lines and never blocks on them. The
+      2026 edition's warning is the reason: measure "comprehension,
+      confidence and usability, not just readability scores". The score is
+      information; Mark's verdict in Phase 4 is the test.
+
+## Phase 4: read a week of descriptions against the shape
 
 - [ ] After the first stacked run under the new step 9, read each
       description against four questions and note what fails: does the Size
       line match the diff; does Look hardest at name a place that can be
       opened; could the bold column alone be read as the summary; is there a
       sentence whose subject is an abstraction. Fix the rule, not the
-      description, when the same failure appears twice. The point of the
+      description, when the same failure appears twice. Note Mark's one-word
+      verdict on each description too, clear or unclear, beside its
+      readability numbers from Phase 3: the 2026 edition of the association's
+      guide puts "involving the people who will actually use your content"
+      above every formatting rule, and here that is one reader. The point of the
       week is to find which of the new rules the model follows without being
       policed and which need a worked example beside them.
 
@@ -278,9 +357,9 @@ plus the Report section. The skill is Claude-only, with no copy under
       and the median bullet should be well under 26 words with the bold lead
       included.
 
-## Phase 4: let GitHub render what words describe
+## Phase 5: let GitHub render what words describe
 
-Deferred until Phase 3 has run, because each of these adds mechanism to a
+Deferred until Phase 4 has run, because each of these adds mechanism to a
 skill that is already long, and the shape should settle first.
 
 - [ ] Make Look hardest at a permalink where it can be: a
@@ -351,3 +430,16 @@ skill that is already long, and the shape should settle first.
   features that earlier work links to reading load rather than timing
   readers. The measurements of this repository's own 30 descriptions carry
   more weight here than any of them, and they point the same way.
+
+- **The older edition's rules, not the 2026 edition's principles** - Mark's
+  call, 1 November 2026: "I like the older BDA rules. Keep them." The 2026
+  edition, published October 2026, replaces the rules with five principles,
+  readable, adaptable, multimodal, testable and future-ready, and says that
+  "individual preference and the ability to customise text are more
+  important than following fixed formatting rules". A pull request body
+  cannot be customised by its writer: GitHub sets the font, the spacing and
+  the colours. What the writer controls is the sentences, and the older
+  edition is the one that says what to do with them. The two editions agree
+  on bullets, bold over italics, no long runs of capitals, plain words and
+  spelt-out abbreviations, so nothing in Phase 3 contradicts the current
+  guide; it only goes further than it.
