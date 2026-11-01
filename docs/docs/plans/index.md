@@ -126,3 +126,4 @@
 - [Readable Pull Request Descriptions](2026-10-31-readable-pull-request-descriptions-plan.md)
 - [Passport Landing Views](2026-10-31-passport-landing-views-plan.md)
 - [Home Details Stay Out of the Repository](2026-11-01-home-details-stay-out-of-the-repository-plan.md)
+- [Landing Bucket UK](2026-11-01-landing-bucket-uk-plan.md)

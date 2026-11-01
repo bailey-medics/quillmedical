@@ -1,6 +1,13 @@
 #!/usr/bin/env bash
-# Syncs the built public site to the teaching project's GCS landing bucket,
+# Syncs the built public site to the app project's GCS landing buckets,
 # setting per-file-type cache headers.
+#
+# There are two buckets while the site moves from the EU multi-region to
+# London (docs/docs/plans/2026-11-01-landing-bucket-uk-plan.md): the old
+# `<project>-landing`, which the load balancer still serves, and the new
+# `<project>-landing-uk`. Each gets the same passes, so the new one is a
+# complete copy, cache headers and all, before the load balancer is moved
+# onto it.
 #
 # Usage: deploy-to-gcs.sh <gcp-project-id>
 #
@@ -117,6 +124,39 @@ set_clean_url_metadata() {
     "${objects[@]}"
 }
 
+# Upload the built site to one bucket: hashed assets, email images, other
+# static files, then HTML, then the clean URLs' metadata.
+sync_to_bucket() {
+  local src="$1"
+  local bucket="$2"
+
+  log "Uploading hashed assets with immutable caching"
+  gsutil -m -h "Cache-Control:public, max-age=31536000, immutable" \
+    rsync -r -d -x '.*\.html$' "${src}/assets/" "gs://${bucket}/assets/"
+
+  # Email images: logos and avatars that sent emails load from here. Synced
+  # on their own because the pass below is not recursive. A day's cache,
+  # not the year the hashed assets get: these names are fixed, so a
+  # replaced logo would otherwise stay stale in inboxes and caches.
+  if [ -d "${src}/email" ]; then
+    log "Uploading email images with a one-day cache"
+    gsutil -m -h "Cache-Control:public, max-age=86400" \
+      rsync -r -d "${src}/email/" "gs://${bucket}/email/"
+  fi
+
+  log "Uploading remaining static files"
+  gsutil -m -h "Cache-Control:public, max-age=2592000" \
+    rsync -d -x '.*\.html$' "${src}/" "gs://${bucket}/"
+
+  log "Uploading HTML files with no-cache"
+  gsutil -m -h "Cache-Control:no-cache" \
+    rsync -d -x '.*(?<!\.html)$' "${src}/" "gs://${bucket}/"
+
+  set_clean_url_metadata "$src" "$bucket"
+
+  log "Deployment to gs://${bucket}/ complete"
+}
+
 main() {
   local project_id="${1:-}"
 
@@ -125,7 +165,8 @@ main() {
     exit 1
   fi
 
-  local bucket="${project_id}-landing"
+  local -a buckets=("${project_id}-landing" "${project_id}-landing-uk")
+  local bucket
 
   # Guard: never mirror-delete on a broken/empty build.
   if [ ! -f public-site/index.html ]; then
@@ -135,31 +176,9 @@ main() {
 
   make_clean_urls "public-site"
 
-  log "Uploading hashed assets with immutable caching"
-  gsutil -m -h "Cache-Control:public, max-age=31536000, immutable" \
-    rsync -r -d -x '.*\.html$' public-site/assets/ "gs://${bucket}/assets/"
-
-  # Email images: logos and avatars that sent emails load from here. Synced
-  # on their own because the pass below is not recursive. A day's cache,
-  # not the year the hashed assets get: these names are fixed, so a
-  # replaced logo would otherwise stay stale in inboxes and caches.
-  if [ -d public-site/email ]; then
-    log "Uploading email images with a one-day cache"
-    gsutil -m -h "Cache-Control:public, max-age=86400" \
-      rsync -r -d public-site/email/ "gs://${bucket}/email/"
-  fi
-
-  log "Uploading remaining static files"
-  gsutil -m -h "Cache-Control:public, max-age=2592000" \
-    rsync -d -x '.*\.html$' public-site/ "gs://${bucket}/"
-
-  log "Uploading HTML files with no-cache"
-  gsutil -m -h "Cache-Control:no-cache" \
-    rsync -d -x '.*(?<!\.html)$' public-site/ "gs://${bucket}/"
-
-  set_clean_url_metadata "public-site" "$bucket"
-
-  log "Deployment to gs://${bucket}/ complete"
+  for bucket in "${buckets[@]}"; do
+    sync_to_bucket "public-site" "$bucket"
+  done
 }
 
 main "$@"
