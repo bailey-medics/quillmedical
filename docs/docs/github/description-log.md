@@ -27,6 +27,13 @@ The plan behind this file is
 - **Verdict** - not yet given.
 - **Changed** - nothing yet.
 
+## #2321 Passport: Gloucestershire rows and framework names
+
+- **Scores** - 72. Attempt 1 posted.
+- **Rules** - `.claude/skills/crpd/SKILL.md` as of #2302.
+- **Verdict** - not yet given.
+- **Changed** - nothing yet.
+
 ## #2302 Descriptions: rewrite to the score, and keep a log
 
 - **Scores** - 81. Attempt 1 posted.

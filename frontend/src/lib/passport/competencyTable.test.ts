@@ -47,9 +47,9 @@ describe("frameworkRows", () => {
   it("lists every item in the framework, in the file's order", () => {
     const rows = frameworkRows(radiotherapy.id, []);
 
-    expect(rows).toHaveLength(7);
+    expect(rows).toHaveLength(15);
     expect(rows[0].name).toBe(
-      "Refer patients for palliative radiotherapy unsupervised",
+      "Completed induction training re radiation protection issues related to pre-treatment, CT planning and radiotherapy treatment",
     );
     expect(rows.every((row) => row.standing === "not_asked")).toBe(true);
   });

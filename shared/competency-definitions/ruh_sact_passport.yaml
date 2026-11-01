@@ -39,7 +39,7 @@
 
 framework:
   id: ruh_sact_passport
-  name: "SACT competency passport"
+  name: "SACT competency passport - Royal United Hospitals Bath NHS Foundation Trust"
   publisher: "Royal United Hospitals Bath NHS Foundation Trust"
   version: "Undated"
   specialties:

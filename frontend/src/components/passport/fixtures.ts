@@ -540,11 +540,11 @@ export const passportRecords: PassportRecord[] = collectRecords({
 export const oncologyFrameworks: FrameworkRef[] = [
   {
     id: "ghnft_radiotherapy_record",
-    name: "Clinical oncology registrar record of radiotherapy training and competence",
+    name: "Clinical oncology registrar record of radiotherapy training and competence - Gloucestershire Hospitals NHS Foundation Trust",
   },
   {
     id: "uk_sact_board_2023",
-    name: "Prescriber competencies for reviewing and prescribing SACT",
+    name: "Prescriber competencies for reviewing and prescribing SACT - The UK SACT Board",
   },
 ];
 
