@@ -336,6 +336,8 @@ built again:
   found seeded people carried a failed run's state into the retry.
 - **A refusal is checked at the API as well as on screen.** A hidden
   button proves nothing if the request behind it still succeeds.
+  Overturned by Mark on 1 November 2026: the API half belongs in the
+  backend tests, and Phase 7 takes it out of the end-to-end suite.
 - **Emails are read from the capture folder** (`fixtures/mail.ts`), and a
   person who is sent email is made fresh, because `send_email` refuses an
   eleventh email to one address in an hour.
@@ -594,6 +596,207 @@ people who act on it, then what must not leak.
       scanned with something on it (a logbook entry, a CPD activity, a
       reflection and a waiting sign-off) and none needed a fix: each of
       the ten passes in light and dark, in Chromium and WebKit.
+
+## Phase 7: The end-to-end journeys act and check through the screen
+
+Asked for by Mark on 1 November 2026, after reading that story 7 "sets
+up its logbook entry through the API": "The whole point of playwright is
+to test frontend UX matters. API checks are for unit testing and
+integration testing." Phase 6 reached for the API in three ways, and
+each is undone below. One new stacked branch on top of Phase 6, so the
+change is read as one unit rather than folded into six.
+
+The rule for every passport spec from here on: **what a person would do
+is done through the forms and buttons, and what is checked is what a
+person would see.** No `send(...)`, `read(...)` or `page.request` in a
+test body. The one exception is making the user accounts themselves:
+account making is the admin pages' job, walked by their own specs, and
+doing it through the screen in every test would make the suite far
+slower. The passport the account holds is not part of that exception.
+
+- [x] **Set up through the screen.** Each of these reaches its starting
+      state through the API today, and moves to the page a person would
+      use:
+
+      - **Story 7** makes its logbook entry with `send(...)`. It adds it
+        from the competency's page, as story 3 does.
+      - **Stories 13, 14 and 15** ask for their sign-off through the API
+        in `assessing.spec.ts`. The holder asks from the competency's
+        page, as story 4 does.
+      - **`accessibility.spec.ts`** fills each page with records made by
+        the API. Each is made on its own page: a logbook entry, a CPD
+        activity, a reflection and a sign-off request.
+      - **`leaks.spec.ts`** makes the other holder's logbook entry and
+        reflection through the API. The other holder makes them on screen.
+      - **Stories 19, 20 and 21** give and withdraw `passport_write` with
+        `send(...)` in `running-and-read-only.spec.ts`. The passport admin
+        does it on the admin page, as story 17 does.
+      - **`makeHolder`** in `fixtures/passport.ts` creates the passport
+        with `POST /passport`. It chooses the frameworks on screen, as
+        story 1 does, and story 1 stays the one test that checks that
+        page in detail.
+
+      A shared helper for each (add a logbook entry, ask for a sign-off,
+      give `passport_write`) lives in `fixtures/passport.ts`, so a change
+      to a form is mended in one place.
+
+      Done. `makeHolder` no longer returns a passport id, since nothing on
+      screen needs one. Asking for a sign-off now waits for the form's
+      "already uses Quill" line before going on: it pushes the button
+      down when it lands, and in WebKit the click once went to where the
+      button had been, so no confirm box opened.
+
+- [x] **Check what the person sees.** Each of these checks its result
+      with `read(...)` or `page.request`, and checks the page instead:
+
+      - **Stories 6 and 20** read `landing_view` from `/passport/me`.
+        They open `/passport` and check which view it opens in.
+      - **Story 7** reads the frameworks from `/passport/me`. It checks
+        the framework headings on the landing page, which it already
+        does as well.
+      - **Story 14** lists the sign-offs to find the declined one. The
+        holder opens Sign-offs and sees it marked declined, with the
+        assessor's reason.
+      - **Story 9** fetches the attachment with `page.request`. The holder
+        opens the file from the certificate's page and the download or
+        new tab is checked, as story 11 checks its downloads.
+
+      Done. Story 9 found the certificate's page draws the file itself:
+      page by page where the browser has no PDF viewer, as headless
+      Chromium has not, in a frame where it has. The test checks that one
+      of the two shows and that "This file could not be shown" does not.
+      That the bytes come back unchanged is a backend matter, already
+      `test_a_certificate_sends_its_attachment_to_show_inline`. Settings
+      saves without saying so, so stories 6, 7 and 20 open the landing
+      page until it shows the change (`openUntil`).
+
+- [x] **Security refusals become what the screen shows.** These send a
+      request no screen can make, so they test the API, and the API half
+      belongs in the backend tests:
+
+      - **Story 16** forges a holder's own sign-off. The holder opens their
+        own request and finds no sign-off button.
+      - **Story 18** posts a passport outside the admin's places. The
+        admin finds no such person to choose.
+      - **Stories 22, 23 and 24** fetch another person's records. Each
+        opens the address in the browser and sees "Not found", and the
+        names and records of the other person appear nowhere on the page.
+
+      Before each API check is deleted, find the backend test that makes
+      the same refusal, in `backend/app/features/passport/router_test.py`
+      or `backend/tests/`, and name it in this step. Where none exists,
+      write it in the same branch, so no refusal is left untested.
+
+      Found, and named beside each screen check:
+
+      - **Story 16** - `test_the_holder_cannot_sign_their_own`.
+      - **Story 19** - `test_they_cannot_add_to_their_own_passport`, in
+        `passport_api_contract_test.py`.
+      - **Story 21** - `test_they_cannot_write_to_it`.
+      - **Story 23** - `test_an_assessor_reads_the_sign_off_but_not_the_passport`,
+        which now covers reflections too.
+
+      Missing, and written:
+
+      - **Story 17** - `test_somebody_without_passport_write_cannot_create_one`.
+      - **Story 22** - `test_an_unrelated_user_cannot_read_any_part_of_it`,
+        route by route. Only the passport itself and the logbook were
+        tested before.
+      - **Stories 18 and 24** - `TestSomebodyAtAnotherTrust` in
+        `manage_passport_user_routes_test.py`: not listed, not read, not
+        renamed. Only granting was tested before.
+
+      Story 17 found that a person without `passport_write` is offered
+      "Create my passport", and pressing it says "Your passport could not
+      be created. Please try again", which no retry will mend. Left for a
+      decision: hide the offer, or say why.
+
+- [x] **Say so in the guidance**, so the next spec is written this way:
+      a short rule in `.claude/rules/` beside the other testing rules, and
+      the same in `docs/docs/` where the end-to-end suite is described.
+      That is code under the `implement` rule, so it is built with the
+      rest of this phase, not now.
+
+      Done: `.claude/rules/e2e.md`, its source
+      `.github/instructions/e2e.instructions.md`, a bullet under Testing in
+      `docs/docs/conventions/index.md`, and the header of
+      `fixtures/api.ts`, which said the opposite. Some older teaching
+      specs still use the API, and move across when next touched.
+
+- [x] **27. As Quill, I want a passport admin offered only the passport's
+      professions and competencies, and no platform role, so that a
+      trust's passport admin cannot make anybody more than a passport
+      user.** Asked by Mark on 1 November 2026. On a member's edit page
+      the profession list is exactly the four passport professions,
+      "Held beyond the profession" offers only passport competencies, and
+      no step shows "Platform role". The API's half already refused other
+      competencies and professions; refusing the platform role to a
+      passport admin was tested only for a teaching admin, so
+      `test_create_an_operator` and `test_make_a_delegate_an_operator`
+      were added to `TestWhatAPassportAdminMayNotDo`.
+
+## Phase 8: Upload refusals and the malware scan, end to end
+
+Asked for by Mark on 1 November 2026. Today story 9 uploads one good PDF,
+and nothing in the end-to-end suite sends a bad file or meets a scan.
+The end-to-end stack leaves `UPLOAD_SCAN_JOB` unset, so every upload is
+treated as clean at once and the "checking for malware" state never
+shows. The unit tests cover each half on its own:
+`backend/app/features/passport/router_test.py` has the refusals and
+every scan state, and `CertificateUploader.test.tsx` the messages, but
+against a pretend backend. Neither can see the two halves disagree, for
+instance the page stopping its checks while a scan still runs, or
+reading a state the backend names differently.
+
+The scan job reports its verdict to `/api/ci/uploads/scan-complete`
+with a signed identity token, as the teaching media jobs report to
+`/api/ci/teaching/*`. The end-to-end suite already fakes those jobs:
+`compose.ci.yml` names them with a made-up job, so starting one fails
+quietly and the upload waits, and `fixtures/mediaJobs.ts` signs the
+report the job would have sent. The scan is faked the same way. One new
+stacked branch, on top of Phase 7.
+
+- [ ] **A wrong-type file is refused, and the reason reaches the
+      screen.** Needs no scan, so it comes first. A holder adding a
+      certificate chooses a file of a type the passport does not take,
+      and a file whose bytes are not the type its name claims. Each time
+      the uploader shows the backend's reason and nothing is attached.
+
+- [ ] **Switch the scan on in the end-to-end stack.** Set
+      `UPLOAD_SCAN_JOB` in `compose.ci.yml` to a made-up job name, as
+      `TEACHING_TRANSCODE_JOB` is, and add the scan job's made-up service
+      account to the callers the callback accepts. Add a
+      `reportScan(request, upload, verdict)` helper beside
+      `fixtures/mediaJobs.ts`, reusing its token signing. Find how the
+      test learns which object to report on (the bucket and key the
+      upload was stored under) before writing it, and say here what was
+      found.
+
+      Every upload in the suite then waits for a verdict, so the existing
+      journeys that upload need a "clean" report: story 9, and the
+      teaching video specs (`taking-a-module/self-hosted-video.spec.ts`,
+      `teaching-admin/video-gate.gate.spec.ts`), which upload a lecture.
+      That is closer to App production than an upload that is never
+      checked.
+
+- [ ] **While the scan runs, the holder is told, and the file attaches
+      once it is clean.** The uploader says it is checking for malware,
+      not that the file is attached. The test reports "clean", and the
+      file attaches without the holder doing anything.
+
+- [ ] **Malware found: the holder is told, and the file is not
+      attached.** Report "infected". The uploader says so, the
+      certificate cannot be saved naming the file, and the file is
+      nowhere on the page.
+
+- [ ] **The scan could not check the file: the holder is asked to upload
+      it again.** Report "failed". The uploader asks for the file again,
+      and the certificate cannot be saved naming it.
+
+- [ ] **The download bundle leaves out a file that did not scan clean.**
+      A holder with one clean and one infected certificate downloads the
+      full bundle, and only the clean file is in it. Checked by opening
+      the zip the browser saved, as story 11 checks its downloads.
 
 ## Decisions
 
