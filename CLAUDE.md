@@ -681,6 +681,15 @@ the tests reads lives there, so a missing folder breaks nothing.
 - **To browse it from another worktree's window**, add the folder with
   "File, Add Folder to Workspace", or open the path `just lp` prints.
 
+### Never publish the details of the home or dev set-up
+
+The repository is public, so no address on the home network or the
+tailnet, tailnet name, device hostname, router, Wi-Fi name or location
+goes into anything committed or posted. A plan writes
+`<the box's LAN address>` instead. The `check-home-details` pre-commit
+hook enforces the patterns, and `local/home-details-denylist` holds this
+machine's literals. The full rule is `.claude/rules/home-details.md`.
+
 ### Name the environments "App production" and "EHR production"
 
 There are two productions, named by product:
