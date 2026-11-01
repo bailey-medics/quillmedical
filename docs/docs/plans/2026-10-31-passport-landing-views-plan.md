@@ -1134,7 +1134,7 @@ decision: keep the state, and make it a real one that is named and seen,
 because it mirrors real life. People leave a trust and still own their
 passport.
 
-- [ ] **Say what belonging nowhere means, and pin it with backend
+- [x] **Say what belonging nowhere means, and pin it with backend
       tests.** Somebody in no org_unit may sign in, change their own
       settings, and read and download their own passport. Every feature
       gate refuses them anything more, because a feature is switched on
@@ -1146,7 +1146,21 @@ passport.
       state, not an error, and code must not assume everybody belongs
       somewhere.
 
-- [ ] **Operators can see who belongs nowhere.** Only an operator can
+      The passport's half was already pinned, by
+      `TestAnOwnerWhoBelongsNowhereThePassportIsOn` in
+      `app/features/passport/router_test.py`: they read and export their
+      own passport, are told it is read only, and cannot write to it,
+      reach the assessor inbox or read anybody else's. Nothing named the
+      rest, so `backend/tests/belonging_nowhere_test.py` now does, with
+      `test_user`, who belongs nowhere: they sign in, `/auth/me` names no
+      feature, they change their own name, and a feature switched on
+      somewhere else does not reach them. The bullet is in both files.
+      `/sync-copilot-config` was not run in `apply` mode: twelve Copilot
+      files have drifted since its last run in October, nearly all for
+      reasons outside this plan, so the one bullet was merged into
+      `CLAUDE.md` by hand and the manifest left for a full sync.
+
+- [x] **Operators can see who belongs nowhere.** Only an operator can
       reach somebody in no org_unit, because a limited admin reaches
       people only through an org_unit they share. The users list already
       returns each person's organisations and sites, so no backend change
@@ -1154,6 +1168,17 @@ passport.
       organisation", for empty lists, and `UserAdminPage.tsx` says "Not at
       any organisation" where it would list their places. Unit tests for
       both.
+
+      The user's page listed no places at all, and its answer carries only
+      `org_unit_ids`, so it does not list them now either. When that list
+      is empty, the Account information card says "Not at any
+      organisation. They can sign in, change their own details and read
+      their own passport, and nothing more." When the field is missing,
+      from an older backend, it says nothing, because not knowing is not
+      belonging nowhere. The filter sits in a group of its own,
+      "Belonging", and counts somebody at a site alone as belonging. Built
+      in the same unit as the step above, which was too small to review
+      on its own.
 
 - [ ] **A limited admin is told before removing somebody's last place
       within their reach.** The Review step of the user form

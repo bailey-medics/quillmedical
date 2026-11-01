@@ -74,7 +74,7 @@ export default function AdminUsersPage() {
 
   // No dependency: this used to read `users` to collect the distinct
   // permission levels for a filter group, and that filter went with the
-  // column it read. What is left is a fixed pair of options.
+  // column it read. What is left is fixed.
   const filterOptions = useMemo(() => {
     return [
       {
@@ -84,6 +84,12 @@ export default function AdminUsersPage() {
           { value: "status:inactive", label: "Inactive" },
         ],
       },
+      // Somebody who has left every place still has an account. Only an
+      // operator reaches them, and this is how they are found.
+      {
+        group: "Belonging",
+        items: [{ value: "place:none", label: "Not at any organisation" }],
+      },
     ];
   }, []);
 
@@ -92,11 +98,18 @@ export default function AdminUsersPage() {
       .filter((f) => f.startsWith("status:"))
       .map((f) => f.slice(7));
 
+    const onlyNowhere = filters.includes("place:none");
+
     return (user: User) => {
       if (statusFilters.length > 0) {
         const userStatus = user.is_active ? "active" : "inactive";
         if (!statusFilters.includes(userStatus)) return false;
       }
+
+      if (onlyNowhere) {
+        return user.organisations.length === 0 && user.sites.length === 0;
+      }
+
       return true;
     };
   }, []);

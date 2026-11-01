@@ -337,6 +337,11 @@ position in the tree.** An organisation is a node whose type says
   membership reaches the organisation and its sites, site membership reaches
   the organisations that site is linked to. `get_member_org_unit_ids` versus
   `get_reachable_org_unit_ids` in `backend/app/organisations.py`.
+- **Belonging nowhere is a state, not an error.** Somebody who has left
+  every org_unit still signs in, changes their own details, and reads and
+  downloads their own passport; no feature reaches them, because a feature
+  is switched on at an org_unit. Code must not assume everybody belongs
+  somewhere. See `backend/tests/belonging_nowhere_test.py`.
 - **API**: `/api/org-units` (`backend/app/org_units/router.py`)
 - **Admin pages**: `pages/admin/organisations/`, `pages/admin/sites/`
 - See `docs/docs/plans/2026-09-11-site-tree-unification-plan.md`.
