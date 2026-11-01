@@ -324,6 +324,24 @@ resource "google_compute_backend_bucket" "landing" {
   bucket_name = google_storage_bucket.landing_uk[0].name
   enable_cdn  = true
 
+  # The CDN obeys each object's own Cache-Control, which
+  # `.github/scripts/public-site/deploy-to-gcs.sh` sets per file type: a
+  # year for hashed assets, a day for email images, 30 days for other static
+  # files and no-cache for HTML. That script is then the one place cache
+  # lifetimes are decided.
+  #
+  # This is not a default to tidy away. Without it Cloud CDN uses
+  # CACHE_ALL_STATIC with a client TTL of an hour, and cuts the year-long
+  # max-age on hashed assets down to `max-age=3600` on the way to the
+  # browser.
+  #
+  # In this mode a response with no Cache-Control is not cached at all,
+  # which is safe because the deploy gives every object one. The TTL fields
+  # (`client_ttl`, `default_ttl`, `max_ttl`) must be left unset alongside it.
+  cdn_policy {
+    cache_mode = "USE_ORIGIN_HEADERS"
+  }
+
   # Security headers for the marketing site.
   #
   # They have to be set here rather than in `caddy/prod/Caddyfile`, which

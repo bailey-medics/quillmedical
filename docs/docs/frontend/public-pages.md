@@ -184,7 +184,7 @@ The `public-site.yml` workflow triggers on pushes to `main` that change:
 The GCS landing bucket sits behind the Global HTTPS Load Balancer (managed by Terraform):
 
 - **SSL** - Google-managed certificate covering `quill-medical.com` and `www.quill-medical.com`
-- **CDN** - Enabled on the backend bucket for edge caching
+- **CDN** - Enabled on the backend bucket for edge caching. Its `cache_mode` is `USE_ORIGIN_HEADERS`, so it obeys the `Cache-Control` the deploy sets in the cache strategy above. Under Cloud CDN's default mode it would cap every browser cache at an hour
 - **404 page** - The bucket's website configuration serves `not-found.html` for missing paths
 - **Cloud Armor** - not applied to this site. The rate limit (500 req/min per IP) is attached to the application's two backend services, and the landing bucket carries no policy
 
