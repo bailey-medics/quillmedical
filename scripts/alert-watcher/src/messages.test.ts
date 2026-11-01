@@ -73,6 +73,20 @@ describe("classify", () => {
     assert.equal(classify(botPost({ text: "*:white_check_mark: Deployed to teaching*" }), OPTIONS), undefined);
   });
 
+  it("ignores a success post with another emoji before the tick, as the pentest posts it", () => {
+    const subject = "Monthly security pentest passed*\n\n*Action:* View Run";
+
+    for (const emoji of [":closed_lock_with_key: :white_check_mark:", "🔐 ✅"]) {
+      assert.equal(classify(botPost({ text: `*${emoji} ${subject}` }), OPTIONS), undefined);
+    }
+  });
+
+  it("still reads a failure with an emoji before it as an alert", () => {
+    const alert = classify(botPost({ text: "*:closed_lock_with_key: :x: Monthly security pentest failed*" }), OPTIONS);
+
+    assert.equal(alert?.kind, "other");
+  });
+
   it("reads a Cloud Monitoring alert by its subject, fingerprinted by subject and day", () => {
     const alert = classify(googlePost("Backend error: app.auth web [500 POST login]"), OPTIONS);
 
@@ -103,6 +117,17 @@ describe("classify", () => {
 
   it("ignores the retention decision", () => {
     assert.equal(classify(googlePost("Training records are awaiting a decision"), OPTIONS), undefined);
+  });
+
+  it("ignores the reminder to apply the GitHub rulesets, with either form of its emoji", () => {
+    const subject = "GitHub rulesets changed - manual terraform apply required";
+    const body = "Files under `infra/github/` were merged to main. *Action required:* `just terraform-github`";
+
+    for (const emoji of [":warning:", "⚠️"]) {
+      assert.equal(classify(botPost({ text: `*${emoji} ${subject}*\n\n${body}` }), OPTIONS), undefined);
+    }
+
+    assert.equal(classify(botPost({ text: `*${subject}*\n\n${body}` }), OPTIONS)?.kind, "other");
   });
 
   it("reads the Google Cloud incident policy as an incident, and its resolution as closing", () => {
