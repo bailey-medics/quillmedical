@@ -1333,6 +1333,79 @@ describe("UserInfoUpdatePage", () => {
       );
     }, 30000);
 
+    it("waits on Organisation/site until it knows whether to offer it", async () => {
+      // Without the wait, somebody quick reached Review before the lookup
+      // answered, and the step then appeared where Review had been.
+      viewAs("standard", ["manage_teaching"]);
+      let answer: () => void = () => undefined;
+      const held = new Promise<void>((resolve) => {
+        answer = resolve;
+      });
+      const get = vi.mocked(apiModule.api.get);
+      const usual = get.getMockImplementation();
+      onTestFinished(() => {
+        get.mockImplementation(usual!);
+      });
+      get.mockImplementation(async (url: string) => {
+        if (url === "/org-units") return { org_units: PLACES };
+        if (url === "/teaching/admin/org-units/1/modules") {
+          await held;
+
+          return {
+            organisation_id: 1,
+            organisation_name: "Test Org",
+            modules: [
+              { question_bank_id: "colonoscopy", title: "Colonoscopy" },
+            ],
+          };
+        }
+
+        return {};
+      });
+      const user = userEvent.setup();
+      renderWithRouter(<UserInfoUpdatePage />);
+
+      await user.type(screen.getByLabelText(/full name/i), "Dr Jane Smith");
+      await user.type(
+        screen.getByLabelText(/email/i),
+        "jane.smith@example.com",
+      );
+      await user.type(screen.getByLabelText(/username/i), "janesmith");
+      await user.type(
+        screen.getByLabelText(/initial password/i),
+        "password123",
+      );
+      await user.click(
+        screen.getByRole("combobox", { name: /base profession/i }),
+      );
+      await user.keyboard("{ArrowDown}");
+      await user.keyboard("{Enter}");
+      await user.click(screen.getByRole("button", { name: /^next$/i }));
+      await user.click(
+        await screen.findByRole("combobox", { name: /^organisation/i }),
+      );
+      await user.click(await screen.findByRole("option", { name: "Test Org" }));
+      await user.click(screen.getByRole("button", { name: /^next$/i }));
+
+      // Still on Organisation/site while the lookup is out.
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      expect(
+        screen.queryByRole("heading", { name: "Competency configuration" }),
+      ).toBeNull();
+
+      answer();
+      await screen.findByRole("heading", { name: "Competency configuration" });
+
+      // Competencies → Practice → Enrolment, offered in its place.
+      await user.click(screen.getByRole("button", { name: /^next$/i }));
+      await user.click(screen.getByRole("button", { name: /^next$/i }));
+      expect(
+        await screen.findByRole("checkbox", {
+          name: "Colonoscopy at Test Org",
+        }),
+      ).toBeInTheDocument();
+    }, 30000);
+
     it("is not offered where the organisation serves nothing", async () => {
       viewAs("standard", ["manage_teaching"]);
       const user = userEvent.setup();

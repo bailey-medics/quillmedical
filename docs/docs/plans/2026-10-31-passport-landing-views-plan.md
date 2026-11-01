@@ -1028,6 +1028,54 @@ it; the rest of the suite follows.
         the end. The everyday and module specs take `emailOf` from
         `fixtures/userForm.ts` instead of `fixtures/api.ts`. 29 edges
         tests and 68 module and everyday tests pass.
+      - [x] **The teaching-admin specs and the guide, on screen, and
+        `fixtures/api.ts` deleted.** Every account the accounts and places
+        specs act on is made on the add-user form by `makeAccount`, which
+        now takes where somebody belongs (the organisation, its site, or
+        both), because the form lets an admin choose a site alone. The
+        deactivating-a-site spec makes its site on the sites page
+        (`addSite`, now exported, with the organisation as a choice), its
+        three people with `makeAtSites`, and names the clinical lead on
+        the site's edit page. An account is checked open or closed by
+        what its admin page offers, "Deactivate" or "Reactivate", and the
+        lead's address by registering on screen, signed out: "Joining" the
+        site before, "Clinical lead not found" after. The places refusals
+        are the missing button and the not-found page; each names its
+        backend test. The accounts spec's move refusal becomes "is offered
+        only their own places", with
+        `test_an_org_unit_outside_the_callers_reach_is_refused_the_same_way`
+        named for the API's half.
+
+        The video gate finds the second organisation's id where the
+        superadmin opens it, deletes earlier uploads in the module's card,
+        and checks the module on the learning page and at its address. Its
+        stand-in transcode job finds the new upload's asset id the way the
+        real job is handed its file: the stack has no bucket, so the
+        backend writes an upload into the module's `learning/` folder, and
+        `newUpload` in `fixtures/mediaJobs.ts` waits for a new file there.
+        The video's 720p rendition is read off the page's video element.
+        The guide spec makes its spare site with `addSite`. It still
+        changes two answers in the browser with `page.route`, to put
+        believable numbers in its pictures: that is photography, not a
+        check, and it is left.
+
+        One app fix came with it. The add-user form decides whether to
+        offer the Enrolment step by asking, for each place chosen, which
+        modules its organisation serves, and it did not wait for the
+        answer. Somebody quick, or a slow server, reached Review first, and
+        the Enrolment step then appeared where Review had been: the rename
+        test in Chromium was left on Enrolment, looking for "Create user".
+        The Organisation/site step's Next now waits for that lookup, in
+        `UserInfoUpdatePage.tsx`, with a unit test that fails without it.
+
+      - [ ] **Sign in without reading the login answer.** `signIn` in
+        `fixtures/signIn.ts`, its copy in `guides/signIn.ts`,
+        `auth.setup.ts` and `login.spec.ts` wait for the login request's
+        answer, to retry when the rate limit refuses it (429). That reads
+        the server, so they should wait for what the login page shows
+        instead: leaving the login page, or the rate limit's message. Found
+        on 1 November 2026 with a search for `waitForResponse`, once
+        `fixtures/api.ts` was gone.
 
 - [x] **Ask Mark about outside jobs before touching them.**
       `fixtures/mediaJobs.ts` posts to `/api/ci/teaching/*` as the video
