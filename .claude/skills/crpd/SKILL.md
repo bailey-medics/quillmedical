@@ -900,6 +900,22 @@ to start a stack anywhere but the tip of `origin/main`, and says to run
    `--body-file` rather than `--body`: the body holds backticks, quotes
    and newlines, and passing it inline leaves them at the shell's mercy.
 
+   **Score the body before posting it**, and carry the two numbers into
+   the report:
+
+   ```bash
+   python3 scripts/readability.py <path to the body>
+   ```
+
+   It prints the Flesch reading ease and the Flesch-Kincaid grade, with
+   code spans, URLs and the triage labels taken out first so that a real
+   name such as `GCP_DEPLOY_SERVICE_ACCOUNT` does not sink the score. The
+   British Dyslexia Association's targets are an ease of 70 to 80 and a
+   grade of about 5, reached by shortening sentences, never by swapping a
+   real name for a softer word. A body full of identifiers will sit above
+   grade 5, so the numbers never block a post: they are information for
+   the reader, and the reader's own verdict is the test.
+
 10. **Mark it ready only if `ready` was given**, and only if step 6 reported
    `isDraft: true`:
 
@@ -918,6 +934,8 @@ One short block:
 - The branch created, and its position in the stack (`just stack-log`).
 - The pull request URL, and under it the description's three triage
   lines: Size, Look hardest at, Check for me.
+- The body's two readability numbers from `scripts/readability.py`, on
+  one line: "Reading ease 72, grade 6.1".
 - Whether it was left a draft or marked ready.
 - The commit message and the title used, since the name, the message and
   the title were all chosen for you.
