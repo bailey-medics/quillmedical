@@ -8,7 +8,7 @@
 
 import type { Page } from "@playwright/test";
 import { test, expect } from "../../fixtures/axe";
-import { read } from "../../fixtures/api";
+import { openUntil } from "../../fixtures/screen";
 import { TEACHING_PEOPLE, makePerson } from "../../fixtures/people";
 import { signIn } from "../../fixtures/signIn";
 import { expectQrCodeHolds } from "../../fixtures/qr";
@@ -73,9 +73,12 @@ for (const { who, kind, profession } of TEACHING_PEOPLE) {
         .fill("Renamed Person");
       await page.getByRole("button", { name: "Save" }).click();
 
-      await expect
-        .poll(async () => (await read<{ name: string }>(page, "/auth/me")).name)
-        .toBe("Renamed Person");
+      // Their account page shows the new name once the save has landed.
+      await openUntil(page, "/settings/account", async () => {
+        await expect(
+          page.getByRole("textbox", { name: "Full name" }),
+        ).toHaveValue("Renamed Person");
+      });
     });
 
     test("turns dark mode on and off", async ({ page, browser }, testInfo) => {
@@ -175,24 +178,20 @@ for (const { who, kind, profession } of TEACHING_PEOPLE) {
       await page.goto("/settings");
       await expect(page.getByRole("switch", { name })).not.toBeChecked();
 
-      // Each change is saved to the account, so a reload shows it. The
-      // switch moves at once and the save follows, so the account is
-      // asked before reloading, or the reload can beat the save.
-      const sentNews = async () =>
-        (await read<{ marketing_emails: boolean }>(page, "/auth/me"))
-          .marketing_emails;
-
+      // Each change is saved to the account, so opening Settings again
+      // shows it. The switch moves at once and the save follows, so the
+      // page is opened until the save has landed.
       await flip(page, name);
       await expect(page.getByRole("switch", { name })).toBeChecked();
-      await expect.poll(sentNews).toBe(true);
-      await page.reload();
-      await expect(page.getByRole("switch", { name })).toBeChecked();
+      await openUntil(page, "/settings", async () => {
+        await expect(page.getByRole("switch", { name })).toBeChecked();
+      });
 
       await flip(page, name);
       await expect(page.getByRole("switch", { name })).not.toBeChecked();
-      await expect.poll(sentNews).toBe(false);
-      await page.reload();
-      await expect(page.getByRole("switch", { name })).not.toBeChecked();
+      await openUntil(page, "/settings", async () => {
+        await expect(page.getByRole("switch", { name })).not.toBeChecked();
+      });
     });
 
     test("sets up two-factor authentication and signs in with it", async ({
@@ -268,15 +267,15 @@ for (const { who, kind, profession } of TEACHING_PEOPLE) {
 
       // The same code a second time is refused (RFC 6238 section 5.2),
       // so somebody who saw it typed cannot use it too.
+      // The backend's own test is totp_test.py's
+      // `test_the_same_code_is_refused_the_second_time`.
       await page.context().clearCookies();
-      const refused = page.waitForResponse(
-        (response) =>
-          response.url().includes("/api/auth/login") &&
-          response.request().method() === "POST" &&
-          response.request().postData()?.includes("totp_code") === true,
-      );
       await signInWithCode(page, username, signInCode);
-      expect((await refused).status()).toBe(400);
+      await expect(
+        page.getByText(
+          "Wrong code entered, please try entering your 6-digit authenticator code again",
+        ),
+      ).toBeVisible();
       await expect(page).toHaveURL(/\/login/);
     });
 

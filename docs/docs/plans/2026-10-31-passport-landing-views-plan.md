@@ -980,6 +980,22 @@ it; the rest of the suite follows.
         the unit that moves the rest of that spec should make the passport
         on screen instead.
 
+      - [x] **Getting in and settings, on screen.** A refused sign-in is
+        checked as a person sees it, "Invalid credentials" on the login
+        page, by `expectRefusedSignIn` in `fixtures/signIn.ts`, never by
+        the server's answer code. Accounts with their own password or
+        address are made on the form by `makeAccount`, and closed on the
+        user's admin page by `deactivate`, both in `fixtures/people.ts`.
+        Settings opens the page again until a saved change shows, through
+        `openUntil`, which moved to `fixtures/screen.ts` with thirty
+        seconds instead of twenty, after passport story 7 ran out once
+        under load. The test that registered for a module the lead does
+        not serve is gone: no screen offers such a module, and the
+        backend tests `test_a_lead_is_not_recognised_for_a_module_not_open_to_registration`
+        and `test_wrong_bank_id` make the refusal. The first of those now
+        also checks that no account was made, which the end-to-end test
+        used to check by signing in. All 108 tests pass.
+
 - [x] **Ask Mark about outside jobs before touching them.**
       `fixtures/mediaJobs.ts` posts to `/api/ci/teaching/*` as the video
       transcoding job would, and Phase 8's scan tests would post as the

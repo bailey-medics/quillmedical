@@ -228,19 +228,12 @@ test.describe("Registering", () => {
     await page.goto("/login");
     await page.getByLabel("Username").fill(username);
     await page.getByRole("textbox", { name: "Password" }).fill(password);
-    const answered = page.waitForResponse(
-      (response) =>
-        response.url().includes("/api/auth/login") &&
-        response.request().method() === "POST",
-    );
     await page.getByRole("button", { name: "Sign in" }).click();
 
-    const response = await answered;
-    expect(response.status()).toBe(403);
-    expect(await response.json()).toMatchObject({
-      detail: { error_code: "email_not_verified" },
-    });
-    await expect(page).not.toHaveURL(/\/teaching/);
+    // Sent to the page that asks them to confirm, not into the app. The
+    // backend's own test is email_verification_test.py's
+    // `test_login_rejects_unverified_user`.
+    await expect(page).toHaveURL(/\/verify-email-pending/);
     await expect(page.getByText(/verify|confirm/i).first()).toBeVisible();
   });
 });
@@ -258,36 +251,9 @@ test.describe("Registering with the wrong details", () => {
     );
   });
 
-  test("a module the lead does not serve is refused", async ({
-    page,
-  }, testInfo) => {
-    const username = freshUsername("wrong_module", testInfo.project.name);
-
-    // Only modules open to registration are offered, so a wrong one can
-    // only be asked for by hand. The lead is right; the module is not.
-    const checked = await page.request.post(
-      "/api/teaching/public/validate-clinical-lead",
-      { data: { email: CLINICAL_LEAD, bank_id: "not-a-module" } },
-    );
-    expect(checked.status()).toBe(200);
-    expect(await checked.json()).toMatchObject({ valid: false });
-
-    const registered = await page.request.post("/api/auth/register", {
-      data: {
-        username,
-        email: emailOf(username),
-        password: `${username}Pass123!`,
-        teaching_module_id: "not-a-module",
-        clinical_lead_email: CLINICAL_LEAD,
-        marketing_opt_out: true,
-      },
-    });
-    expect(registered.status()).toBeGreaterThanOrEqual(400);
-
-    // And no account was made: signing in as them is a stranger's refusal.
-    const signedIn = await page.request.post("/api/auth/login", {
-      data: { username, password: `${username}Pass123!` },
-    });
-    expect(signedIn.status()).toBe(400);
-  });
+  // A module the lead does not serve cannot be chosen on screen: only
+  // modules open to registration are offered. The refusal of one asked
+  // for by hand is a backend test: register_test.py's
+  // `test_a_lead_is_not_recognised_for_a_module_not_open_to_registration`
+  // and validate_clinical_lead_test.py's `test_wrong_bank_id`.
 });
