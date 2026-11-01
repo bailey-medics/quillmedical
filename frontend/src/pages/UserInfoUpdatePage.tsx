@@ -1060,6 +1060,11 @@ export default function UserInfoUpdatePage() {
   const [teachingOrganisations, setTeachingOrganisations] = useState<
     TeachingOrganisation[]
   >([]);
+  // The lookup for the places chosen now, so leaving the Organisation/site
+  // step can wait for it. Without the wait, the Enrolment step could
+  // appear after somebody had already moved past where it goes, and take
+  // the place of the step they were on.
+  const enrolmentLookup = useRef<Promise<void>>(Promise.resolve());
   // Enrolments as the server holds them, to say what an edit takes off.
   const [savedEnrolments, setSavedEnrolments] =
     useState<EnrolmentByOrganisation>({});
@@ -1293,7 +1298,7 @@ export default function UserInfoUpdatePage() {
         ),
       );
     }
-    void load();
+    enrolmentLookup.current = load();
     return () => {
       active = false;
     };
@@ -1495,6 +1500,13 @@ export default function UserInfoUpdatePage() {
           organisations={organisations}
         />
       ),
+      // Whether there is an Enrolment step depends on the places chosen
+      // here, so Next waits until that is known.
+      validate: async () => {
+        await enrolmentLookup.current;
+
+        return true;
+      },
     },
     {
       label: "Competencies",

@@ -8,15 +8,17 @@
  * signed in as, who is staff at "CI Teaching Hospital" and its site "CI
  * Teaching Centre".
  *
- * A refusal is checked at the API as well as on the screen: a hidden
- * button proves nothing if the request behind it still succeeds. Sites
- * and accounts a test changes are made by that test, named for the
+ * A refusal is checked as the teaching admin meets it: the button is not
+ * there and the address is not found. The API's half of each refusal is
+ * a backend test, named beside it: see `.claude/rules/e2e.md`. Sites and
+ * accounts a test changes are made by that test, on screen, named for the
  * browser project and the time, so the two browsers never meet.
  */
 
 import type { Page } from "@playwright/test";
 import { test, expect } from "../../fixtures/axe";
-import { createAccount, orgUnitId, send } from "../../fixtures/api";
+import { addSite, makeAccount } from "../../fixtures/people";
+import { openFromTheList } from "../../fixtures/places";
 import { PLACES, freshUsername } from "../../fixtures/signIn";
 import { searchRow } from "../../fixtures/tables";
 
@@ -25,14 +27,29 @@ const TAKE_MODULES = "Take Teaching Modules";
 
 test.describe.configure({ timeout: 120_000 });
 
-/** Open the teaching organisation's page. */
-async function openOrganisation(page: Page): Promise<void> {
-  await page.goto(
-    `/admin/organisations/${await orgUnitId(page, PLACES.organisation)}`,
+/** Open the teaching organisation's page from the list, and return its id. */
+async function openOrganisation(page: Page): Promise<number> {
+  const id = await openFromTheList(
+    page,
+    "/admin/organisations",
+    PLACES.organisation,
+    /\/admin\/organisations\/(\d+)$/,
   );
   await expect(
     page.getByRole("heading", { name: PLACES.organisation, level: 1 }),
   ).toBeVisible();
+
+  return id;
+}
+
+/** Open the teaching site's page from the list, and return its id. */
+async function openSite(page: Page): Promise<number> {
+  return openFromTheList(
+    page,
+    "/admin/sites",
+    PLACES.site,
+    /\/admin\/sites\/(\d+)$/,
+  );
 }
 
 /** The card holding one of a page's tables, by its heading. */
@@ -41,18 +58,6 @@ function card(page: Page, heading: string) {
     .locator("div")
     .filter({ has: page.getByRole("heading", { name: heading, level: 2 }) })
     .last();
-}
-
-/** Make a site inside the teaching organisation, through the API. */
-async function createSite(page: Page, name: string): Promise<number> {
-  const response = await send(page, "POST", "/org-units", {
-    name,
-    type: "site",
-    parent_id: await orgUnitId(page, PLACES.organisation),
-  });
-  expect(response.status(), await response.text()).toBe(200);
-
-  return ((await response.json()) as { id: number }).id;
 }
 
 /** Find somebody on an add-staff page; the lookup chooses them. */
@@ -77,38 +82,31 @@ test.describe("A teaching admin and the organisation", () => {
       page.getByRole("button", { name: /add organisation/i }),
     ).toHaveCount(0);
 
+    // The backend test `test_cannot_create_an_organisation` refuses the
+    // request behind the page.
     await page.goto("/admin/organisations/new");
     await expect(page.getByRole("heading", { name: NOT_FOUND })).toBeVisible();
-
-    const refused = await send(page, "POST", "/org-units", {
-      name: "A trust of their own",
-      type: "teaching_establishment",
-    });
-    expect(refused.status()).toBe(403);
   });
 
   test("cannot change the organisation's details", async ({ page }) => {
-    const id = await orgUnitId(page, PLACES.organisation);
-
-    await openOrganisation(page);
+    const id = await openOrganisation(page);
     await expect(page.getByLabel("Edit organisation")).toHaveCount(0);
 
+    // The backend test `test_cannot_edit_their_own_organisation` refuses
+    // the request behind the page.
     await page.goto(`/admin/organisations/${id}/edit`);
     await expect(page.getByRole("heading", { name: NOT_FOUND })).toBeVisible();
-
-    const refused = await send(page, "PUT", `/org-units/${id}`, {
-      name: "Renamed by a teaching admin",
-    });
-    expect(refused.status()).toBe(403);
   });
 
-  test("adds staff to the organisation", async ({ page }, testInfo) => {
+  test("adds staff to the organisation", async ({
+    page,
+    browser,
+  }, testInfo) => {
     const username = freshUsername("org_staff", testInfo.project.name);
-    await createAccount(page, {
+    await makeAccount(browser, {
       username,
-      name: "New Org Staff",
       profession: "teaching_delegate",
-      orgUnitIds: [await orgUnitId(page, PLACES.site)],
+      at: "site",
     });
 
     await openOrganisation(page);
@@ -124,13 +122,15 @@ test.describe("A teaching admin and the organisation", () => {
     ).toBeVisible();
   });
 
-  test("removes staff from the organisation", async ({ page }, testInfo) => {
+  test("removes staff from the organisation", async ({
+    page,
+    browser,
+  }, testInfo) => {
     const username = freshUsername("org_leaver", testInfo.project.name);
-    await createAccount(page, {
+    await makeAccount(browser, {
       username,
-      name: "Leaving Org Staff",
       profession: "teaching_delegate",
-      orgUnitIds: [await orgUnitId(page, PLACES.organisation)],
+      at: "organisation",
     });
 
     await openOrganisation(page);
@@ -168,20 +168,15 @@ test.describe("A teaching admin and the organisation", () => {
 
   // Deleting a site would leave its people belonging nowhere, so a
   // teaching admin deactivates one from its edit page instead (Phase 15).
-  test("is not offered deleting a site, and the API refuses it", async ({
-    page,
-  }, testInfo) => {
+  test("is not offered deleting a site", async ({ page }, testInfo) => {
     const name = freshUsername("Kept site", testInfo.project.name);
-    const id = await createSite(page, name);
+    await addSite(page.context(), name);
 
+    // The backend test `test_a_teaching_admin_cannot_delete_a_site_of_their_trust`
+    // refuses the request a delete would send.
     await openOrganisation(page);
     await expect(await searchRow(card(page, "Sites"), name)).toBeVisible();
     await expect(page.getByLabel(`Actions for ${name}`)).toHaveCount(0);
-
-    const refused = await send(page, "DELETE", `/org-units/${id}`);
-    expect(refused.status()).toBe(403);
-    const kept = await page.request.get(`/api/org-units/${id}`);
-    expect(kept.status()).toBe(200);
   });
 });
 
@@ -205,7 +200,7 @@ test.describe("A teaching admin and the sites", () => {
   test("edits a site", async ({ page }, testInfo) => {
     const name = freshUsername("Before edit", testInfo.project.name);
     const renamed = name.replace("Before edit", "After edit");
-    const id = await createSite(page, name);
+    const id = await addSite(page.context(), name);
 
     await page.goto(`/admin/sites/${id}`);
     await page.getByRole("button", { name: "Edit site" }).click();
@@ -220,17 +215,15 @@ test.describe("A teaching admin and the sites", () => {
     await expect(page.getByText("Floor 2")).toBeVisible();
   });
 
-  test("adds staff to a site", async ({ page }, testInfo) => {
+  test("adds staff to a site", async ({ page, browser }, testInfo) => {
     const username = freshUsername("site_staff", testInfo.project.name);
-    await createAccount(page, {
+    await makeAccount(browser, {
       username,
-      name: "New Site Staff",
       profession: "teaching_delegate",
-      orgUnitIds: [await orgUnitId(page, PLACES.organisation)],
+      at: "organisation",
     });
-    const siteId = await orgUnitId(page, PLACES.site);
 
-    await page.goto(`/admin/sites/${siteId}`);
+    const siteId = await openSite(page);
     await page.getByRole("button", { name: "Add staff" }).click();
     await findAndPick(page, username);
     // Staff, not the first option: that names them clinical lead.
@@ -244,17 +237,15 @@ test.describe("A teaching admin and the sites", () => {
     await expect(await searchRow(page, username)).toBeVisible();
   });
 
-  test("removes staff from a site", async ({ page }, testInfo) => {
+  test("removes staff from a site", async ({ page, browser }, testInfo) => {
     const username = freshUsername("site_leaver", testInfo.project.name);
-    const siteId = await orgUnitId(page, PLACES.site);
-    await createAccount(page, {
+    await makeAccount(browser, {
       username,
-      name: "Leaving Site Staff",
       profession: "teaching_delegate",
-      orgUnitIds: [siteId],
+      at: "site",
     });
 
-    await page.goto(`/admin/sites/${siteId}`);
+    await openSite(page);
     await searchRow(page, username);
     await page.getByLabel(`Actions for ${username}`).click();
     await page.getByText("Remove from site").click();
@@ -274,17 +265,16 @@ test.describe("A teaching admin and the sites", () => {
 
   test("opens somebody at a site and switches their practice off and on", async ({
     page,
+    browser,
   }, testInfo) => {
     const username = freshUsername("site_practice", testInfo.project.name);
-    const siteId = await orgUnitId(page, PLACES.site);
-    await createAccount(page, {
+    await makeAccount(browser, {
       username,
-      name: "Practising Delegate",
       profession: "teaching_delegate",
-      orgUnitIds: [siteId],
+      at: "site",
     });
 
-    await page.goto(`/admin/sites/${siteId}`);
+    await openSite(page);
     await (await searchRow(page, username)).click();
     await expect(page).toHaveURL(/\/admin\/sites\/\d+\/members\/\d+$/);
 
@@ -321,17 +311,16 @@ test.describe("A teaching admin and the sites", () => {
 
   test("opens somebody at a site and enrols them on a module and off again", async ({
     page,
+    browser,
   }, testInfo) => {
     const username = freshUsername("site_enrol", testInfo.project.name);
-    const siteId = await orgUnitId(page, PLACES.site);
-    await createAccount(page, {
+    await makeAccount(browser, {
       username,
-      name: "Enrolling Delegate",
       profession: "teaching_delegate",
-      orgUnitIds: [siteId],
+      at: "site",
     });
 
-    await page.goto(`/admin/sites/${siteId}`);
+    await openSite(page);
     await (await searchRow(page, username)).click();
     await expect(page).toHaveURL(/\/admin\/sites\/\d+\/members\/\d+$/);
 

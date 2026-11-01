@@ -12,6 +12,10 @@
  * person to read; only then do the teaching admin and a delegate there
  * see the module, and its video play.
  *
+ * Nothing here calls the API but the two jobs' reports, the one call a
+ * test may make (`.claude/rules/e2e.md`): what a person sees is checked on
+ * the learning page and the module's own address.
+ *
  * Its own Playwright project, `video-gate`, which every browser project
  * waits for: the module is missing at CI Second Hospital until this has
  * run, and the leak tests expect it there.
@@ -20,14 +24,16 @@
 import type { Browser, Page } from "@playwright/test";
 import { test, expect } from "../../fixtures/axe";
 import { MODULE_ID } from "../../fixtures/answers";
-import { read, send } from "../../fixtures/api";
 import { knownSlides } from "../../fixtures/learning";
 import {
   LUNGS_VIDEO,
   finishTranscode,
   finishWithNoSpeech,
+  newUpload,
+  uploadsOnDisk,
 } from "../../fixtures/mediaJobs";
 import { asTeachingAdminOf, makeLearnerAt } from "../../fixtures/people";
+import { openFromTheList } from "../../fixtures/places";
 import {
   PEOPLE,
   PLACES,
@@ -40,15 +46,11 @@ import { cardTitled } from "../../fixtures/tables";
 test.use({ storageState: { cookies: [], origins: [] } });
 test.describe.configure({ timeout: 240_000 });
 
-/** A module's video at one organisation, as its admin card reads it. */
-interface Media {
-  references: {
-    key: string;
-    asset: {
-      asset_id: string;
-    } | null;
-  }[];
-}
+/** The module's title, as `module.yaml` gives it. */
+const MODULE_TITLE = "Chest X-ray Interpretation";
+
+/** The name the uploaded video is shown by in its card. */
+const UPLOADED = "lungs-video.mp4";
 
 /** A page signed in as *username*, in a context of its own. */
 async function signedIn(browser: Browser, username: string): Promise<Page> {
@@ -61,10 +63,20 @@ async function signedIn(browser: Browser, username: string): Promise<Page> {
   return page;
 }
 
-/** Whether the module is listed for, and opens for, the person on *page*. */
+/**
+ * Whether the module is listed on the learning page for the person on
+ * *page*, and opens at its own address.
+ */
 async function expectModule(page: Page, shown: boolean): Promise<void> {
-  const listed = await read<{ module_id: string }[]>(page, "/teaching/modules");
-  expect(listed.map((row) => row.module_id).includes(MODULE_ID)).toBe(shown);
+  await page.goto("/teaching/learn");
+  // The heading is drawn once the list has loaded: a skeleton stands in
+  // for both until then.
+  await expect(
+    page.getByRole("heading", { name: "Learning materials" }),
+  ).toBeVisible();
+  await expect(page.getByText(MODULE_TITLE, { exact: true })).toHaveCount(
+    shown ? 1 : 0,
+  );
 
   await page.goto(`/teaching/${MODULE_ID}`);
 
@@ -82,29 +94,25 @@ test("the module is hidden at an organisation until its video is uploaded, trans
   browser,
 }, testInfo) => {
   await signIn(page, PEOPLE.operator);
-  // From the module's own list of organisations: the org_unit list is
-  // scoped to where the caller belongs, and this one is not theirs.
-  const running = await read<
-    { org_unit_id: number; organisation_name: string }[]
-  >(page, `/teaching/admin/banks/${MODULE_ID}/organisations`);
-  const second = running.find(
-    (row) => row.organisation_name === PLACES.secondOrganisation,
-  )?.org_unit_id;
-  if (second === undefined) {
-    throw new Error(`${PLACES.secondOrganisation} does not run the module`);
-  }
-  const media = `/teaching/admin/modules/${MODULE_ID}/media?org_unit_id=${second}`;
 
   // From nothing uploaded, so a retry after an upload starts where the
-  // first try did.
-  for (const reference of (await read<Media>(page, media)).references) {
-    if (reference.asset === null) continue;
-    const removed = await send(
-      page,
-      "DELETE",
-      `/teaching/admin/modules/${MODULE_ID}/media/${reference.asset.asset_id}?org_unit_id=${second}`,
-    );
-    expect(removed.ok(), await removed.text()).toBe(true);
+  // first try did. Deleted in the organisation's card, as the superadmin
+  // would.
+  await page.goto(`/admin/teaching/modules/${MODULE_ID}`);
+  const card = cardTitled(page, `Videos for ${PLACES.secondOrganisation}`);
+  await expect(card).toBeVisible();
+  const actions = card.getByLabel(`Actions for ${UPLOADED}`);
+
+  for (let left = await actions.count(); left > 0; left -= 1) {
+    await actions.first().click();
+    await page.getByRole("menuitem", { name: "Delete" }).click();
+    const confirm = page
+      .getByRole("dialog")
+      .filter({ hasText: "Delete this video?" });
+    await expect(confirm).toBeVisible();
+    await confirm.getByRole("button", { name: "Delete" }).click();
+    await expect(confirm).toBeHidden();
+    await expect(actions).toHaveCount(left - 1);
   }
 
   // A teaching admin and a delegate there see no module, and its address
@@ -123,29 +131,24 @@ test("the module is hidden at an organisation until its video is uploaded, trans
   await expectModule(tdPage, false);
   await expectModule(taPage, false);
 
-  // The superadmin uploads the video in that organisation's card.
+  // The organisation's id, from where its teaching admin opens it: the
+  // job reports name the organisation by it. The superadmin's own list
+  // shows only the places they belong to.
+  const second = await openFromTheList(
+    taPage,
+    "/admin/organisations",
+    PLACES.secondOrganisation,
+    /\/admin\/organisations\/(\d+)$/,
+  );
+
+  // The superadmin uploads the video in that organisation's card. It is
+  // recorded once the card offers actions for it, and the transcode job is
+  // handed the file the upload wrote.
+  const before = uploadsOnDisk();
   await page.goto(`/admin/teaching/modules/${MODULE_ID}`);
-  const card = cardTitled(page, `Videos for ${PLACES.secondOrganisation}`);
   await card.locator('input[type="file"]').setInputFiles(LUNGS_VIDEO);
-  await expect(card.getByText("lungs-video.mp4")).toBeVisible({
-    timeout: 30_000,
-  });
-  let assetId = "";
-  await expect
-    .poll(
-      async () => {
-        assetId =
-          (await read<Media>(page, media)).references[0]?.asset?.asset_id ?? "";
-        return assetId;
-      },
-      {
-        // The name shows as soon as the file starts going up; the upload
-        // is recorded once it has all arrived, which on a busy runner
-        // takes longer than the default five seconds.
-        timeout: 30_000,
-      },
-    )
-    .not.toBe("");
+  await expect(actions).toBeVisible({ timeout: 30_000 });
+  const assetId = await newUpload(before);
   const upload = { orgId: second, assetId };
 
   // Still hidden: there is no rendition until the transcode finishes.
@@ -172,14 +175,17 @@ test("the module is hidden at an organisation until its video is uploaded, trans
   const index = knownSlides().findIndex(
     (slide) => slide.title === "Lungs in motion",
   );
-  const fetched = tdPage.waitForResponse((response) =>
-    response.url().includes(`${assetId}-720p.mp4`),
-  );
   await tdPage.goto(`/teaching/learn/${MODULE_ID}/slide/${index}`);
-  expect([200, 206]).toContain((await fetched).status());
-  await expect(
-    tdPage.getByRole("main").getByRole("group", { name: "Media player" }),
-  ).toBeVisible();
+  const player = tdPage
+    .getByRole("main")
+    .getByRole("group", { name: "Media player" });
+  await expect(player).toBeVisible();
+  const video = player.locator("video");
+  await expect
+    .poll(() =>
+      video.evaluate((element: HTMLVideoElement) => element.currentSrc),
+    )
+    .toMatch(new RegExp(`${assetId}-720p\\.mp4$`));
 
   await tdPage.context().close();
   await taPage.context().close();

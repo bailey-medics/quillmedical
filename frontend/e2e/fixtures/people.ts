@@ -62,6 +62,13 @@ interface Placing {
   organisation: string;
   /** A site of that organisation, or none for the organisation alone. */
   site?: string;
+  /**
+   * Whether they belong to the organisation itself as well as the site.
+   * Defaults to yes; the form lets an admin choose the site alone.
+   */
+  joinsOrganisation?: boolean;
+  /** Further sites of the same organisation, chosen after *site*. */
+  moreSites?: string[];
   /** Practising "Take Teaching Modules" at the site, and enrolled. */
   takesModule?: boolean;
   /** Defaults to the username followed by `123`. */
@@ -93,10 +100,16 @@ async function addOnTheForm(
     password: placing.password ?? `${username}123`,
     email: placing.email,
   });
-  await choose(page, /^Organisation/, placing.organisation);
+  if (placing.joinsOrganisation ?? true) {
+    await choose(page, /^Organisation/, placing.organisation);
+  }
 
   if (placing.site !== undefined) {
     await choose(page, /^Site/, `${placing.organisation} - ${placing.site}`);
+  }
+
+  for (const site of placing.moreSites ?? []) {
+    await choose(page, /^Site/, `${placing.organisation} - ${site}`);
   }
 
   if (placing.takesModule && placing.site !== undefined) {
@@ -155,11 +168,16 @@ export interface OwnAccount {
    * forgot password refuses an address at `.test`.
    */
   email?: string;
+  /**
+   * Where they belong: the teaching organisation, its site, or both, which
+   * is the default.
+   */
+  at?: "organisation" | "site" | "both";
 }
 
 /**
  * Make *account* on the add-user form, as the seeded teaching admin, at
- * the teaching organisation and its site.
+ * the teaching organisation, its site, or both.
  */
 export async function makeAccount(
   browser: Browser,
@@ -176,11 +194,37 @@ export async function makeAccount(
     account.profession,
     {
       organisation: PLACES.organisation,
-      site: PLACES.site,
+      site: account.at === "organisation" ? undefined : PLACES.site,
+      joinsOrganisation: account.at !== "site",
       password: account.password,
       email: account.email,
     },
   );
+  await context.close();
+}
+
+/**
+ * Make *username* on the add-user form, as the seeded teaching admin, at
+ * *sites* of the teaching organisation and not the organisation itself.
+ * Their password is their username followed by `123`.
+ */
+export async function makeAtSites(
+  browser: Browser,
+  username: string,
+  profession: string,
+  sites: [string, ...string[]],
+): Promise<void> {
+  const context = await browser.newContext({
+    storageState: TEACHING_ADMIN_STATE,
+  });
+  const [site, ...moreSites] = sites;
+
+  await addOnTheForm(context, username, `Person ${username}`, profession, {
+    organisation: PLACES.organisation,
+    site,
+    moreSites,
+    joinsOrganisation: false,
+  });
   await context.close();
 }
 
@@ -234,16 +278,21 @@ export async function reactivate(
 }
 
 /**
- * Add a site to the seeded teaching organisation, on the sites page, and
- * return its id, read from the address its page opens at.
+ * Add a site to *organisation*, the seeded teaching one unless another is
+ * named, on the sites page, and return its id, read from the address its
+ * page opens at.
  */
-async function addSite(context: BrowserContext, name: string): Promise<number> {
+export async function addSite(
+  context: BrowserContext,
+  name: string,
+  organisation: string = PLACES.organisation,
+): Promise<number> {
   const page = await context.newPage();
 
   await page.goto("/admin/sites");
   await page.getByRole("button", { name: "Add site" }).click();
   await page.getByRole("combobox", { name: "Organisation" }).click();
-  await page.getByRole("option", { name: PLACES.organisation }).click();
+  await page.getByRole("option", { name: organisation }).click();
   await page.getByRole("textbox", { name: "Name" }).fill(name);
   await page.getByRole("combobox", { name: "Type" }).click();
   await page.getByRole("option", { name: "Site", exact: true }).click();
