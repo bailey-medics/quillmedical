@@ -12,6 +12,12 @@ export default defineConfig({
   // cleanly.
   workers: process.env.CI ? 2 : undefined,
   reporter: "html",
+  // Ten seconds for a page to show what a test waits for, not the default
+  // five. Passports are kept in a bucket, as in App production
+  // (compose.ci.yml's `gcs` stand-in), so each save downloads and uploads
+  // the passport's repository. With every worker saving at once, a save
+  // took up to six seconds in a full local run on 1 November 2026.
+  expect: { timeout: 10_000 },
   use: {
     // CI drives the compose.ci.yml stack on port 80. `just e2e` runs the same
     // stack on whatever free port Docker picked and passes it in here.

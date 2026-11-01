@@ -44,7 +44,12 @@ services:
       # (.github/scripts/ci/prepare-e2e-job-key.sh) rather than by Google,
       # and e2e/fixtures/mediaJobs.ts signs them. Allowed only in testing.
       TEACHING_JOB_CALLBACK_AUDIENCE: https://quill-ci.invalid
-      TEACHING_JOB_CALLBACK_CALLERS: transcode-job@quill-ci.iam.gserviceaccount.com,caption-job@quill-ci.iam.gserviceaccount.com
+      TEACHING_JOB_CALLBACK_CALLERS: transcode-job@quill-ci.iam.gserviceaccount.com,caption-job@quill-ci.iam.gserviceaccount.com,scan-job@quill-ci.iam.gserviceaccount.com
+      # The malware scan, as in App production: every passport file is
+      # held back until the scan says it is clean. Names a job nothing
+      # runs, like the media jobs above; e2e/fixtures/scanJob.ts reports
+      # the verdict the job would have sent.
+      UPLOAD_SCAN_JOB: projects/ci/locations/none/jobs/scan
       TEACHING_JOB_CALLBACK_TEST_KEY_FILE: /e2e-job-key/public.pem
       # Starting one of those jobs asks Google for credentials, which
       # first looks for a metadata server. Pointed at a closed port, the
@@ -56,10 +61,13 @@ services:
       # the link in an invite. Made writable by
       # .github/scripts/ci/prepare-e2e-mail.sh before the stack starts.
       EMAIL_CAPTURE_DIR: /e2e-mail
-      # Where a passport's repository is kept. The default, /data/passports,
-      # does not exist in the prod image this stack runs, so the first
-      # passport made here failed with "Permission denied".
-      PASSPORT_LOCAL_ROOT: /tmp/passports
+      # Passports live in a bucket, as in App production, held by the
+      # `gcs` stand-in below. The bucket is what the malware scan is asked
+      # about, and an infected file is deleted from it, so the scan cannot
+      # be tested with passports on disk. The Google client talks to the
+      # stand-in, with no credentials, when STORAGE_EMULATOR_HOST is set.
+      PASSPORT_GCS_BUCKET: quill-ci-passports
+      STORAGE_EMULATOR_HOST: http://gcs:4443
       # Required by push_send.py (imported unconditionally at startup)
       VAPID_PRIVATE: ci-placeholder-vapid-key-not-real
     volumes:
@@ -81,6 +89,8 @@ services:
       - "8000"
     depends_on:
       postgres-core:
+        condition: service_healthy
+      gcs:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
@@ -148,6 +158,30 @@ services:
       - /var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U core_user -d quill_core"]
+      interval: 3s
+      timeout: 2s
+      retries: 10
+    networks:
+      - ci
+
+  # A stand-in for Cloud Storage, holding the passports' bucket, so the
+  # passport stores, scans and deletes files exactly as in App production.
+  # In memory, so every run starts empty. Its port, E2E_GCS_PORT, default
+  # 4443 for CI, lets a test find the key of a file it uploaded, which the
+  # real scan job is told and the page never shows: see
+  # e2e/fixtures/scanJob.ts. Pinned and mirrored as postgres-core is.
+  gcs:
+    image: ${CI_GCS_IMAGE:-docker.io/fsouza/fake-gcs-server:1.56.1@sha256:797ce226d62f947c009dc40246b30cfb456b8473d8241407f9d6f2c04e4d69ef}
+    # The bucket is made by giving the stand-in a folder of that name to
+    # load at start.
+    entrypoint:
+      - sh
+      - -c
+      - mkdir -p /data/quill-ci-passports && exec /bin/fake-gcs-server -data /data -backend memory -scheme http -port 4443 -external-url http://gcs:4443
+    ports:
+      - "${E2E_GCS_PORT:-4443}:4443"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:4443/storage/v1/b/quill-ci-passports"]
       interval: 3s
       timeout: 2s
       retries: 10

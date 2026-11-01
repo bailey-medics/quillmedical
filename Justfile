@@ -102,8 +102,10 @@ _e2e-run *ARGS:
     trap 'just _e2e-down' EXIT
     base_url=$(just _e2e-up)
     public_url=$(just _e2e-public-url)
+    gcs_url=$(just _e2e-gcs-url)
     echo "End-to-end stack is up at ${base_url}, public site at ${public_url}" >&2
-    cd frontend && E2E_BASE_URL="${base_url}" E2E_PUBLIC_URL="${public_url}" npx playwright test {{ARGS}}
+    cd frontend && E2E_BASE_URL="${base_url}" E2E_PUBLIC_URL="${public_url}" \
+        E2E_GCS_URL="${gcs_url}" npx playwright test {{ARGS}}
 
 
 # The address of the public site in this worktree's end-to-end stack.
@@ -111,6 +113,15 @@ _e2e-public-url:
     #!/usr/bin/env bash
     set -euo pipefail
     port=$(docker compose -p "$(just _e2e-project)" -f compose.ci.yml port public 8081 | sed 's/.*://')
+    echo "http://localhost:${port}"
+
+
+# The address of the Cloud Storage stand-in in this worktree's end-to-end
+# stack, where e2e/fixtures/scanJob.ts finds the file it reports on.
+_e2e-gcs-url:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    port=$(docker compose -p "$(just _e2e-project)" -f compose.ci.yml port gcs 4443 | sed 's/.*://')
     echo "http://localhost:${port}"
 
 
@@ -134,7 +145,7 @@ _e2e-up:
 
     # The key pair the tests stand in for the video jobs with
     .github/scripts/ci/prepare-e2e-job-key.sh >&2
-    E2E_PORT=0 E2E_PUBLIC_PORT=0 ${compose} up --build --wait --wait-timeout 120 >&2
+    E2E_PORT=0 E2E_PUBLIC_PORT=0 E2E_GCS_PORT=0 ${compose} up --build --wait --wait-timeout 120 >&2
 
     # The prod image does not migrate on start-up, so the fresh database
     # needs the schema applied before it is seeded - as in ci.yml.

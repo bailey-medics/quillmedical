@@ -28,17 +28,23 @@ integration tests, which are faster and say exactly which route broke.
   check out of a spec, find the backend test that makes the same refusal,
   and name it in a comment beside the screen check. Where none exists,
   write it in the same change.
-- **No exceptions, setup included.** The people a journey acts on are
+- **No exceptions for anything a person does, setup included.** The people a journey acts on are
   added by an admin on the add-user form, as `addOnTheForm` in
   `fixtures/passport.ts` does. A shortcut through the API, however
   quick, is how a part of the app goes untested: making accounts that
   way hid that nothing walked a passport admin through the form.
+- **The one thing that is not a person: an outside job's report.** No
+  person reports a malware scan or a finished video, and there is no
+  screen for it. A test plays that job's part and posts what it would
+  report, to the job callback routes under `/api/ci/` only, signed as
+  the job: `fixtures/scanJob.ts` and `fixtures/mediaJobs.ts`. Mark
+  agreed this on 1 November 2026. It never covers anything a person
+  does.
 
-The passport specs follow this throughout; see Phases 7 and 9 of
+The passport specs follow this throughout; see Phases 7 to 9 of
 `docs/docs/plans/2026-10-31-passport-landing-views-plan.md`. Other specs
-still use the API, and Phase 9 moves them across. If something truly
-cannot be done on screen, such as standing in for a job outside Quill,
-ask a person rather than deciding.
+still use the API, and Phase 9 moves them across. If anything else
+seems impossible on screen, ask a person rather than deciding.
 
 Testing the API is the backend unit and integration tests' job. An
 end-to-end test never does it.
