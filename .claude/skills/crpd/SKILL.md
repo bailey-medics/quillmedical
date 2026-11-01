@@ -891,32 +891,100 @@ to start a stack anywhere but the tip of `origin/main`, and says to run
    no session link, no robot emoji: if a tool appends one, strip it
    before the body is posted and say that you did.
 
+   ### Score it, and rewrite up to twice
+
+   Write the body to a file in the scratchpad, `attempt-1.md`, and score
+   it before anything reaches GitHub:
+
+   ```bash
+   python3 scripts/readability.py --longest <path to attempt-1.md>
+   ```
+
+   It prints the Flesch reading ease and the Flesch-Kincaid grade, with
+   code spans, URLs and the triage labels taken out first so that a real
+   name such as `GCP_DEPLOY_SERVICE_ACCOUNT` does not sink the score, and
+   under them the five longest sentences with their word counts. The
+   British Dyslexia Association's targets are an ease of 70 to 80 and a
+   grade of about 5, reached by shortening sentences, never by swapping a
+   real name for a softer word.
+
+   The score informs a rewrite. It never blocks a post.
+
+   - **An ease of 70 or above posts as it is.** Stop here.
+   - **Under 70, rewrite once, aimed at the longest sentences.** Split
+     each one the script listed, break a bullet that stacks clauses into
+     two bullets, and swap a long word that is not a name for a short
+     one. Never change a name, a fact or a bold lead: a body that reaches
+     70 by calling `GCP_DEPLOY_SERVICE_ACCOUNT` "the account" has lost
+     what the reader needed. Write the result to `attempt-2.md` and score
+     it the same way.
+   - **Still under 70, rewrite once more, then stop.** `attempt-3.md` is
+     the last. Three is the ceiling because every pass costs a reading of
+     the whole body, and a body full of identifiers will not reach 70 on
+     any pass.
+   - **Post the attempt with the highest ease**, whichever number it
+     carries. The others stay in the scratchpad.
+
+   Only the chosen attempt reaches GitHub, in one edit, so a reader
+   watching the pull request never sees a draft replaced and gets one
+   notification rather than three:
+
    ```bash
    gh pr edit <number> \
      --title "Passport: what this branch does" \
-     --body-file <path to the body>
+     --body-file <path to the chosen attempt>
    ```
 
    `--body-file` rather than `--body`: the body holds backticks, quotes
    and newlines, and passing it inline leaves them at the shell's mercy.
 
-   **Score the body before posting it**, and carry the two numbers into
-   the report:
+   Keep every attempt's ease, in order, for step 10 and the report.
 
-   ```bash
-   python3 scripts/readability.py <path to the body>
-   ```
+10. **Write the description's entry in the log, and land it in this
+    pull request.** `docs/docs/github/description-log.md` keeps every
+    description's scores beside the reader's verdict on it, newest first,
+    so the rules can be moved by what the reader actually said. Add a new
+    entry at the top, under the heading that opens the list:
 
-   It prints the Flesch reading ease and the Flesch-Kincaid grade, with
-   code spans, URLs and the triage labels taken out first so that a real
-   name such as `GCP_DEPLOY_SERVICE_ACCOUNT` does not sink the score. The
-   British Dyslexia Association's targets are an ease of 70 to 80 and a
-   grade of about 5, reached by shortening sentences, never by swapping a
-   real name for a softer word. A body full of identifiers will sit above
-   grade 5, so the numbers never block a post: they are information for
-   the reader, and the reader's own verdict is the test.
+    ```markdown
+    ## #2299 Descriptions: score the body for readability
 
-10. **Mark it ready only if `ready` was given**, and only if step 6 reported
+    - **Scores** - 58, 66, 72. Attempt 3 posted.
+    - **Rules** - `.claude/skills/crpd/SKILL.md` as of #2299.
+    - **Verdict** - not yet given.
+    - **Changed** - nothing yet.
+    ```
+
+    - **The heading** is the pull request number and its title, as step 9
+      set it.
+    - **Scores** lists every attempt's ease in order, then which attempt
+      was posted. One attempt reads "72. Attempt 1 posted."
+    - **Rules** names the pull request that last changed
+      `.claude/skills/crpd/SKILL.md`, from `gh pr list --state merged
+      --search "<path>"` or the stack itself when that change is in it. A
+      pull request number outlives a rebase; a commit sha does not.
+    - **Verdict** and **Changed** are left as written. The verdict is the
+      reader's, in their own words, added when they give it; Changed later
+      names the rule that moved because of it and links the pull request
+      that moved it.
+
+    Then fold the entry into this branch and push again:
+
+    ```bash
+    just stack-update
+    just stack-submit
+    ```
+
+    The second push is the price of the entry landing in the pull request
+    it describes rather than trailing into the next one. `stack-update`
+    amends the branch's one commit, so the pull request still holds a
+    single commit, and `stack-submit` pushes the stack as step 5 did.
+
+    This is the one place a run may amend and push a second time, and it
+    ends with it: the authorisation in "The authorisation ends with the
+    run" is unchanged.
+
+11. **Mark it ready only if `ready` was given**, and only if step 6 reported
    `isDraft: true`:
 
    ```bash
@@ -934,8 +1002,9 @@ One short block:
 - The branch created, and its position in the stack (`just stack-log`).
 - The pull request URL, and under it the description's three triage
   lines: Size, Look hardest at, Check for me.
-- The body's two readability numbers from `scripts/readability.py`, on
-  one line: "Reading ease 72, grade 6.1".
+- The log entry's Scores line, as written in step 10: "Scores - 58, 66,
+  72. Attempt 3 posted." After an unattended run the terminal is read
+  before the log is.
 - Whether it was left a draft or marked ready.
 - The commit message and the title used, since the name, the message and
   the title were all chosen for you.
