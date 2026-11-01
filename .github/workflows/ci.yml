@@ -911,6 +911,22 @@ jobs:
         # TODO: will need to change this if/when we use factories to seed data instead of a script.
         run: docker compose -f compose.ci.yml exec -T backend python scripts/seed_ci.py
 
+      # What the web server tells a browser about the app's files: how long
+      # each may be kept, and that the PDF decoders are scripts. Headers no
+      # person sees, so a pytest integration test rather than Playwright
+      # (backend/tests/served_files_test.py). One leg is enough, because
+      # every leg serves the same build.
+      - name: Set up Python
+        if: matrix.shard == 1
+        uses: ./.github/actions/setup-python
+
+      - name: Check the served files
+        if: matrix.shard == 1
+        working-directory: backend
+        env:
+          E2E_BASE_URL: http://localhost
+        run: poetry run pytest -q -p no:cacheprovider -m integration tests/served_files_test.py
+
       - name: Set up frontend
         uses: ./.github/actions/setup-frontend
 

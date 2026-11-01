@@ -955,13 +955,30 @@ it; the rest of the suite follows.
         everyday and leaks specs then passed on their own; the third
         failure was passport story 7, a twenty-second wait for a saved
         setting under the full run's load.
-      - [ ] **For Mark: `asset-caching.spec.ts` and the decoder check in
-        `pdf-pages.spec.ts`.** Each asks the web server for a file and
-        reads a header: the caching header Caddy sends, and that the PDF
-        decoders are served as scripts. That is not Quill's API, and no
-        screen shows a header, so neither can be done as a person
-        would. Under the rule they wait for Mark: keep them as they are,
-        move them to a check that is not Playwright, or drop them.
+      - [x] **The two header checks become an integration test.**
+        `asset-caching.spec.ts` and the decoder check in `pdf-pages.spec.ts`
+        ask the web server for a file and read a header: the caching
+        header Caddy sends, and that the PDF decoders are served as
+        scripts. No person sees a header, so neither can be done as a
+        person would. Mark's decision, 1 November 2026: move them out of
+        Playwright into an integration test. They become a pytest file
+        marked `integration`, which asks the running end-to-end stack for
+        the files. It reads the stack's address from `E2E_BASE_URL` and is
+        skipped when that is not set, so `just ub` never needs a stack.
+        `just e2e` runs it once the stack is up, before Playwright, and so
+        does the end-to-end job in `ci.yml`. The two Playwright checks are
+        then deleted.
+
+        Built as `backend/tests/served_files_test.py`, six checks using
+        Python's own `urllib`, so it needs nothing new. `just e2e` runs it
+        in the shared backend dev image, joined to the stack's network
+        (`_e2e-served-files`). In CI only the first of the three legs sets
+        up Python and runs it, because every leg serves the same build.
+        `pdf-pages.spec.ts` also answers three of Quill's API requests in
+        the browser with made-up data, because the stack seeds no passport.
+        That is not calling the API, but it is not the real app either, so
+        the unit that moves the rest of that spec should make the passport
+        on screen instead.
 
 - [x] **Ask Mark about outside jobs before touching them.**
       `fixtures/mediaJobs.ts` posts to `/api/ci/teaching/*` as the video
@@ -977,6 +994,65 @@ it; the rest of the suite follows.
       Copilot copy need to say so, in the same unit as the scan tests.
       Done with Phase 8: both now name the job reports as the one call a
       test may make, and `docs/docs/conventions/index.md` says the same.
+
+## Phase 10: Belonging to no org_unit, as a state of its own
+
+Found on 1 November 2026, from story 21. A passport admin unticked a
+holder's only site, the save went through, and the holder then belonged
+to no org_unit, an org_unit being a node in the governance tree: a
+trust, a site or a ward. The holder could still sign in and read their
+passport, and writing was refused. But nothing said this had happened,
+and the passport admin could no longer see or edit the holder to undo
+it.
+
+Quill refuses this state in one place only. A limited admin creating an
+account must name an org_unit (`NoPlaceChosen` in
+`backend/app/users/create.py`), but an edit may empty anybody's
+membership (`settle_membership` in `backend/app/users/membership.py`
+says so), and an operator may create an account in none. Mark's
+decision: keep the state, and make it a real one that is named and seen,
+because it mirrors real life. People leave a trust and still own their
+passport.
+
+- [ ] **Say what belonging nowhere means, and pin it with backend
+      tests.** Somebody in no org_unit may sign in, change their own
+      settings, and read and download their own passport. Every feature
+      gate refuses them anything more, because a feature is switched on
+      at an org_unit (`backend/app/features/gating.py`). Find the backend
+      tests that already cover each of these for somebody in no org_unit,
+      and write any that are missing, in `backend/tests/`. Add a bullet
+      to "Org units" in `.github/copilot-instructions.md`, then sync it
+      to `CLAUDE.md` with `/sync-copilot-config`: belonging nowhere is a
+      state, not an error, and code must not assume everybody belongs
+      somewhere.
+
+- [ ] **Operators can see who belongs nowhere.** Only an operator can
+      reach somebody in no org_unit, because a limited admin reaches
+      people only through an org_unit they share. The users list already
+      returns each person's organisations and sites, so no backend change
+      is needed. `AdminUsersPage.tsx` gains a filter option, "Not at any
+      organisation", for empty lists, and `UserAdminPage.tsx` says "Not at
+      any organisation" where it would list their places. Unit tests for
+      both.
+
+- [ ] **A limited admin is told before removing somebody's last place
+      within their reach.** The Review step of the user form
+      (`UserInfoUpdatePage.tsx`) is the form's confirmation, so the
+      warning goes there. When the save would leave the person in none of
+      the org_units the admin reaches, it says: "They will leave your
+      organisation, and you will no longer be able to see or edit them."
+      For an operator emptying somebody's membership altogether, it says
+      they will belong to no organisation, and what they can still do.
+      Use an existing warning component; if none fits, stop and ask, as
+      `.claude/rules/components.md` requires. Unit tests for both
+      wordings, and for no warning when a place remains.
+
+- [ ] **Story 21 checks the whole journey on screen.** The passport admin
+      unticks the holder's only site and sees the warning on the Review
+      step, then saves. The holder still opens and downloads their
+      passport, and is offered no way to add to it. The operator finds
+      the holder with the "Not at any organisation" filter. The passport
+      admin no longer finds them in the users list.
 
 ## Decisions
 
@@ -1031,3 +1107,12 @@ it; the rest of the suite follows.
   means every journey runs through the passport admin's own limits, and
   a change that pushed account making back onto the operator would fail
   the suite.
+
+- **Belonging to no org_unit is a state of its own, not a shared
+  holding org_unit** - Mark, 1 November 2026, in Phase 10. Mark first
+  suggested one org_unit with no features for everybody removed from a
+  trust. Sharing an org_unit is how Quill says two people work together:
+  messaging, the "Add staff" lookup, the people lists and admin reach
+  all ask it. Pooling everybody removed from any trust into one would
+  make strangers colleagues, and every one of those checks would need an
+  exception that a new feature could forget.
