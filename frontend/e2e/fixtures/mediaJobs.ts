@@ -54,6 +54,46 @@ const LEARNING = path.join(
 /** The content's own copy of the video, which the admin uploads. */
 export const LUNGS_VIDEO = path.join(LEARNING, "lungs-video.mp4");
 
+/** An upload's own file in the learning folder: its asset id, then `.mp4`. */
+const UPLOAD_FILE = /^([0-9a-f]{32})\.mp4$/;
+
+/**
+ * The asset ids of the uploads in the learning folder, as the transcode
+ * job finds the file it is given. The stack has no bucket, so an upload is
+ * written there by the backend.
+ */
+export function uploadsOnDisk(): Set<string> {
+  const found = new Set<string>();
+
+  for (const name of fs.readdirSync(LEARNING)) {
+    const match = UPLOAD_FILE.exec(name);
+    if (match?.[1] !== undefined) {
+      found.add(match[1]);
+    }
+  }
+
+  return found;
+}
+
+/** Wait until an upload not among *before* is on disk, and return its id. */
+export async function newUpload(before: Set<string>): Promise<string> {
+  let assetId = "";
+
+  await expect
+    .poll(
+      () => {
+        assetId = [...uploadsOnDisk()].find((id) => !before.has(id)) ?? "";
+        return assetId;
+      },
+      // The upload is written once all of it has arrived, which on a busy
+      // runner takes longer than the default five seconds.
+      { timeout: 30_000 },
+    )
+    .not.toBe("");
+
+  return assetId;
+}
+
 /** One upload, as the callbacks address it. */
 export interface Upload {
   /** The organisation's media prefix: for an org_unit made since, its id. */
