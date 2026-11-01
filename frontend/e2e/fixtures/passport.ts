@@ -399,6 +399,7 @@ export async function editAsPassportAdmin(
   userId: number,
   field: string,
   change: (admin: Page, field: Locator) => Promise<void>,
+  beforeSaving?: (admin: Page) => Promise<void>,
 ): Promise<void> {
   const admin = await asPassportAdmin(browser);
   const target = admin.getByRole("combobox", { name: field });
@@ -408,6 +409,7 @@ export async function editAsPassportAdmin(
   await stepTo(admin, target);
   await change(admin, target);
   await stepTo(admin, save);
+  await beforeSaving?.(admin);
   await save.click();
   await expect(admin.getByText("User updated")).toBeVisible();
 
@@ -434,16 +436,32 @@ export async function togglePassportWrite(
   );
 }
 
-/** Take *userId* off the passport site, their one place. */
+/**
+ * Take *userId* off the passport site, their one place. The Review step
+ * warns first that the passport admin will no longer see them.
+ */
 export async function removeFromThePassportSite(
   browser: Browser,
   userId: number,
 ): Promise<void> {
-  await editAsPassportAdmin(browser, userId, "Site", async (admin, field) => {
-    await field.click();
-    await admin.getByRole("option", { name: PLACES.passportSite }).click();
-    await admin.keyboard.press("Escape");
-  });
+  await editAsPassportAdmin(
+    browser,
+    userId,
+    "Site",
+    async (admin, field) => {
+      await field.click();
+      await admin.getByRole("option", { name: PLACES.passportSite }).click();
+      await admin.keyboard.press("Escape");
+    },
+    async (admin) => {
+      await expect(
+        admin.getByText("They will leave your organisation"),
+      ).toBeVisible();
+      await expect(
+        admin.getByText("You will no longer be able to see or edit them."),
+      ).toBeVisible();
+    },
+  );
 }
 
 /**
