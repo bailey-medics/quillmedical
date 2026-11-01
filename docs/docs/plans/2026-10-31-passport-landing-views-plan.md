@@ -712,8 +712,8 @@ a passport admin through the add-user form.
 
       Story 17 found that a person without `passport_write` is offered
       "Create my passport", and pressing it says "Your passport could not
-      be created. Please try again", which no retry will mend. Left for a
-      decision: hide the offer, or say why.
+      be created. Please try again", which no retry will mend. Mark
+      decided on 1 November 2026 to hide the offer: Phase 11.
 
 - [x] **Say so in the guidance**, so the next spec is written this way:
       a short rule in `.claude/rules/` beside the other testing rules, and
@@ -1010,10 +1010,24 @@ it; the rest of the suite follows.
         refuse, because nobody who cannot open a result has a link to it.
         Each refusal names its backend test beside it. All Delegates was
         dropped from the list check, because it lists only delegates with
-        results. Two fixes to the form helpers came with it: `nextUntil`
+        results. One fix to the form helpers came with it: `nextUntil`
         now waits until the step has drawn Next or the finishing button
         before choosing, because Chromium was asked too soon and pressed a
         Next that was not there. All 24 leaks tests pass, in 45 seconds.
+      - [x] **The edges, the self-hosted video, and the last borrowed
+        address.** In the edges specs, staying signed in past the access
+        token is checked by the page opening signed in, a changed password
+        by the old one being refused on screen, and the unsubscribe link
+        on an account made, closed and reopened on screen, through
+        `makeAccount`, `deactivate` and `reactivate` in
+        `fixtures/people.ts`. Its last check opens Settings until the
+        saved choice shows: it failed once in a full run, because the
+        account was reopened before the unsubscribe had saved. The video
+        spec reads where the video came from off the page's own video
+        element, not from the requests behind it, and still plays it to
+        the end. The everyday and module specs take `emailOf` from
+        `fixtures/userForm.ts` instead of `fixtures/api.ts`. 29 edges
+        tests and 68 module and everyday tests pass.
 
 - [x] **Ask Mark about outside jobs before touching them.**
       `fixtures/mediaJobs.ts` posts to `/api/ci/teaching/*` as the video
@@ -1088,6 +1102,38 @@ passport.
       passport, and is offered no way to add to it. The operator finds
       the holder with the "Not at any organisation" filter. The passport
       admin no longer finds them in the users list.
+
+## Phase 11: No "Create my passport" without passport_write
+
+Found by story 17 in Phase 7. A person with no passport opens the Passport
+page and is offered the framework picker and "Create my passport",
+whatever they hold. The backend refuses anybody without `passport_write`
+(`test_somebody_without_passport_write_cannot_create_one`), and the page
+then says "Your passport could not be created. Please try again", which no
+retry will mend. Most of the people who meet it are assessors: they use the
+passport pages to sign others off, and hold no `passport_write`.
+
+Mark's decision, 1 November 2026: do not offer it. Saying why after the
+refusal was the other choice, and was turned down because it still invites
+a press that can only fail. Hiding the Passport page from them was ruled
+out, because an assessor needs the sign-off pages.
+
+- [ ] **Offer creating a passport only to somebody who may write one.**
+      In `frontend/src/pages/passport/PassportPage.tsx`, the "absent"
+      state shows the framework picker and "Create my passport" only when
+      the person holds `passport_write`, read with `useHasCompetency`.
+      Without it, the page shows a message in place of both: "You do not
+      have a passport. Your passport admin can give you one if you need
+      it." Use the `StateMessage` already on that page. Unit tests in
+      `PassportPage.test.tsx`: the offer for somebody holding
+      `passport_write`, the message and no button for somebody without it,
+      and the Storybook story for each state if the page has stories.
+
+- [ ] **Story 17 checks it on screen.** Somebody without `passport_write`
+      opens the Passport page and sees the message, with no "Create my
+      passport" button. Then the passport admin gives them
+      `passport_write` on the edit form, and the offer appears and works,
+      as the story already goes on to check.
 
 ## Decisions
 

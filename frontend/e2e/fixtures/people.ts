@@ -185,13 +185,15 @@ export async function makeAccount(
 }
 
 /**
- * Deactivate *username* on their admin page, as the seeded teaching admin
- * does, and confirm it.
+ * Close or reopen *username*'s account on their admin page, as the seeded
+ * teaching admin does, and confirm it.
  */
-export async function deactivate(
+async function setActive(
   browser: Browser,
   username: string,
+  active: boolean,
 ): Promise<void> {
+  const button = active ? "Reactivate" : "Deactivate";
   const context = await browser.newContext({
     storageState: TEACHING_ADMIN_STATE,
   });
@@ -202,17 +204,33 @@ export async function deactivate(
   // By their username's text, not a table row: a phone shows cards.
   await page.getByText(username, { exact: true }).first().click();
   await expect(page).toHaveURL(/\/admin\/users\/\d+$/);
-  await page.getByRole("button", { name: "Deactivate" }).click();
+  await page.getByRole("button", { name: button, exact: true }).click();
 
-  const dialog = page
-    .getByRole("dialog")
-    .filter({ hasText: "no longer be able to log in" });
+  const dialog = page.getByRole("dialog").filter({
+    hasText: active ? "be able to log in again" : "no longer be able to log in",
+  });
   // Waited for, so the click does not land while it is still opening:
   // WebKit drops a click on a modal mid-transition.
   await expect(dialog).toBeVisible();
-  await dialog.getByRole("button", { name: "Deactivate user" }).click();
+  await dialog.getByRole("button", { name: `${button} user` }).click();
   await expect(page).toHaveURL(/\/admin\/users$/, { timeout: 30_000 });
   await context.close();
+}
+
+/** Deactivate *username* on their admin page, as the teaching admin does. */
+export async function deactivate(
+  browser: Browser,
+  username: string,
+): Promise<void> {
+  await setActive(browser, username, false);
+}
+
+/** Reactivate *username* on their admin page, as the teaching admin does. */
+export async function reactivate(
+  browser: Browser,
+  username: string,
+): Promise<void> {
+  await setActive(browser, username, true);
 }
 
 /**
