@@ -11,14 +11,24 @@
  * this the one place the two meet before production.
  *
  * The page is a passport certificate, where the fault was first seen.
- * The stack seeds no passport, so the three API answers the page needs
- * are supplied here. Everything else is real: the app, its worker, its
- * policy and the PDF bytes.
+ * Each test makes a holder on screen, records the certificate with the
+ * PDF attached, and reports the file clean as the malware scan job would
+ * (`fixtures/scanJob.ts`), so everything is real: the app, its worker,
+ * its policy, the passport and the PDF bytes.
  */
 
-import { expect, test, type Page } from "@playwright/test";
+import {
+  expect,
+  test,
+  type APIRequestContext,
+  type Browser,
+  type Page,
+} from "@playwright/test";
 import path from "path";
 import { fileURLToPath } from "url";
+import { A_DAY_LAST_MONTH, fillDate, makeHolder } from "../fixtures/passport";
+import { SCAN_SHOWN, reportScan, taggedPdf } from "../fixtures/scanJob";
+import { signIn } from "../fixtures/signIn";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
@@ -28,21 +38,34 @@ const THREE_PAGES = path.join(
 );
 const EMBEDDED_FONT = path.join(here, "../fixtures/embedded-font-letter.pdf");
 
-const PASSPORT_ID = "e2e-passport";
-const CERTIFICATE = "2026-10-01-example";
-const ATTACHMENT = "0123456789abcdef";
+/** The name the PDF is uploaded under, and shown by. */
+const FILE_NAME = "Example letter.pdf";
+
+/** The certificate it is attached to. */
+const CERTIFICATE = "Example certificate";
 
 interface PolicyWindow {
   policyRefusals: string[];
 }
 
+/** What each test makes its holder with. */
+interface Holding {
+  page: Page;
+  browser: Browser;
+  request: APIRequestContext;
+  project: string;
+}
+
 /**
- * Opens the certificate page as somebody holding a passport with one
- * certificate, whose attached file is the PDF at `pdfPath`. The browser
- * is made to report no PDF viewer, as Chrome on Android does, so the
- * pages are drawn with pdf.js in every engine these tests run in.
+ * Open the certificate page as a new holder, whose one certificate has
+ * the PDF at `pdfPath` attached. The browser is made to report no PDF
+ * viewer, as Chrome on Android does, so the pages are drawn with pdf.js
+ * in every engine these tests run in.
  */
-async function openCertificate(page: Page, pdfPath: string): Promise<void> {
+async function openCertificate(
+  { page, browser, request, project }: Holding,
+  pdfPath: string,
+): Promise<void> {
   await page.addInitScript(() => {
     const refusals: string[] = [];
     (window as unknown as PolicyWindow).policyRefusals = refusals;
@@ -55,76 +78,33 @@ async function openCertificate(page: Page, pdfPath: string): Promise<void> {
     });
   });
 
-  // The signed-in user as they are, plus what the passport's gates ask.
-  await page.route("**/api/auth/me", async (route) => {
-    const response = await route.fetch();
-    const user = (await response.json()) as {
-      enabled_features?: string[];
-      competencies?: string[];
-    };
-    await route.fulfill({
-      response,
-      json: {
-        ...user,
-        owns_passport: true,
-        enabled_features: [...(user.enabled_features ?? []), "passport"],
-        competencies: [
-          ...(user.competencies ?? []),
-          "assess_clinician_passport",
-        ],
-      },
-    });
+  const holder = await makeHolder(browser, project);
+  // Bytes of this holder's own, so the scan report finds their file.
+  const pdf = taggedPdf(pdfPath, holder.username);
+
+  await signIn(page, holder.username);
+  await page.goto("/passport/certificates");
+  await page.getByRole("button", { name: "Record a certificate" }).click();
+  await page.locator('input[type="file"]').setInputFiles({
+    name: FILE_NAME,
+    mimeType: "application/pdf",
+    buffer: pdf,
   });
-
-  await page.route("**/api/passport/me", (route) =>
-    route.fulfill({
-      json: {
-        passport: {
-          passport_id: PASSPORT_ID,
-          holder_user_id: "1",
-          holder_name: "Example Holder",
-          registrations: [],
-          specialties: [],
-          created_at: "2026-10-01",
-          head_commit: null,
-        },
-        competencies: [],
-        entitlement: null,
-      },
-    }),
+  await expect(page.getByText(`Scanning ${FILE_NAME}`)).toBeVisible(SCAN_SHOWN);
+  await reportScan(request, pdf, "clean");
+  await expect(page.getByText(`Attached: ${FILE_NAME}`)).toBeVisible(
+    SCAN_SHOWN,
   );
 
-  await page.route(`**/api/passport/${PASSPORT_ID}/certificates`, (route) =>
-    route.fulfill({
-      json: [
-        {
-          name: CERTIFICATE,
-          id: CERTIFICATE,
-          title: "Example certificate",
-          issuer: "Example College",
-          awarded_on: "2026-10-01",
-          expires_on: null,
-          competencies: [],
-          description: null,
-          attachments: [
-            {
-              hash: ATTACHMENT,
-              filename: "Example letter.pdf",
-              size_bytes: 1024,
-              media_type: "application/pdf",
-            },
-          ],
-        },
-      ],
-    }),
-  );
+  await page.getByRole("textbox", { name: "What is it?" }).fill(CERTIFICATE);
+  await page
+    .getByRole("textbox", { name: "Who issued it?" })
+    .fill("Example College");
+  await fillDate(page, "Awarded on", A_DAY_LAST_MONTH);
+  await page.getByRole("button", { name: "Record certificate" }).click();
 
-  await page.route(
-    `**/api/passport/${PASSPORT_ID}/certificates/${CERTIFICATE}/attachments/${ATTACHMENT}`,
-    (route) => route.fulfill({ path: pdfPath, contentType: "application/pdf" }),
-  );
-
-  await page.goto(`/passport/certificates/${CERTIFICATE}`);
+  await page.getByText(CERTIFICATE).first().click();
+  await expect(page).toHaveURL(/\/passport\/certificates\/[^/]+$/);
 }
 
 /** How many dark pixels a drawn page holds. A blank page holds none. */
@@ -161,23 +141,25 @@ function policyErrors(consoleErrors: string[]): string[] {
 }
 
 test.describe("A PDF drawn page by page", () => {
-  // A service worker would answer the app's requests itself, and the
-  // answers supplied above would never be asked for.
-  test.use({ serviceWorkers: "block" });
+  test.use({ storageState: { cookies: [], origins: [] } });
+  test.describe.configure({ timeout: 120_000 });
 
   test("every page of a longer PDF is drawn, and the policy refuses nothing", async ({
     page,
-  }) => {
+    browser,
+    request,
+  }, testInfo) => {
     const consoleErrors: string[] = [];
     page.on("console", (message) => {
       if (message.type() === "error") consoleErrors.push(message.text());
     });
 
-    await openCertificate(page, THREE_PAGES);
+    await openCertificate(
+      { page, browser, request, project: testInfo.project.name },
+      THREE_PAGES,
+    );
 
-    await expect(
-      page.getByRole("heading", { name: "Example letter.pdf" }),
-    ).toBeVisible();
+    await expect(page.getByRole("heading", { name: FILE_NAME })).toBeVisible();
     await expect(page.getByRole("img", { name: /^Page \d of 3$/ })).toHaveCount(
       3,
     );
@@ -191,13 +173,18 @@ test.describe("A PDF drawn page by page", () => {
 
   test("a PDF that carries its own font is drawn, and the policy refuses nothing", async ({
     page,
-  }) => {
+    browser,
+    request,
+  }, testInfo) => {
     const consoleErrors: string[] = [];
     page.on("console", (message) => {
       if (message.type() === "error") consoleErrors.push(message.text());
     });
 
-    await openCertificate(page, EMBEDDED_FONT);
+    await openCertificate(
+      { page, browser, request, project: testInfo.project.name },
+      EMBEDDED_FONT,
+    );
 
     await expect(page.getByRole("img", { name: /^Page \d of 2$/ })).toHaveCount(
       2,
@@ -210,11 +197,18 @@ test.describe("A PDF drawn page by page", () => {
     expect(policyErrors(consoleErrors)).toEqual([]);
   });
 
-  test("the file itself can still be opened", async ({ page }) => {
-    await openCertificate(page, THREE_PAGES);
+  test("the file itself can still be opened", async ({
+    page,
+    browser,
+    request,
+  }, testInfo) => {
+    await openCertificate(
+      { page, browser, request, project: testInfo.project.name },
+      THREE_PAGES,
+    );
 
     await expect(
-      page.getByRole("button", { name: "Open file: Example letter.pdf" }),
+      page.getByRole("button", { name: `Open file: ${FILE_NAME}` }),
     ).toBeVisible();
   });
 });

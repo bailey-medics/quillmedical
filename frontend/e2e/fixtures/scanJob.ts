@@ -17,6 +17,7 @@
  */
 
 import crypto from "node:crypto";
+import fs from "node:fs";
 import { expect, type APIRequestContext } from "@playwright/test";
 import { identityToken } from "./mediaJobs";
 
@@ -59,6 +60,17 @@ export function uniquePdf(tag: string): Buffer {
       "3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 200 200]>>endobj\n" +
       "trailer<</Root 1 0 R>>\n%%EOF\n",
   );
+}
+
+/**
+ * A copy of the PDF at *pdfPath* that no other test uploads.
+ *
+ * The *tag* goes in a comment after the end of the file, where it moves
+ * nothing the file's own index points at, so the copy draws exactly as
+ * the original does.
+ */
+export function taggedPdf(pdfPath: string, tag: string): Buffer {
+  return Buffer.concat([fs.readFileSync(pdfPath), Buffer.from(`\n%${tag}\n`)]);
 }
 
 /** The SHA-256 of *bytes*, which names the file in storage and in a zip. */

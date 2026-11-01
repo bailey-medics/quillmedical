@@ -42,9 +42,9 @@ integration tests, which are faster and say exactly which route broke.
   agreed this on 1 November 2026. It never covers anything a person
   does.
 
-The passport specs follow this throughout; see Phases 7 to 9 of
-`docs/docs/plans/2026-10-31-passport-landing-views-plan.md`. Other specs
-still use the API, and Phase 9 moves them across. If anything else
+Every spec follows this, since Phase 9 of
+`docs/docs/plans/2026-10-31-passport-landing-views-plan.md` moved the
+last of them across on 1 November 2026. If anything else
 seems impossible on screen, ask a person rather than deciding.
 
 Testing the API is the backend unit and integration tests' job. An
