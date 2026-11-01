@@ -1180,7 +1180,7 @@ passport.
       in the same unit as the step above, which was too small to review
       on its own.
 
-- [ ] **A limited admin is told before removing somebody's last place
+- [x] **A limited admin is told before removing somebody's last place
       within their reach.** The Review step of the user form
       (`UserInfoUpdatePage.tsx`) is the form's confirmation, so the
       warning goes there. When the save would leave the person in none of
@@ -1192,12 +1192,32 @@ passport.
       `.claude/rules/components.md` requires. Unit tests for both
       wordings, and for no warning when a place remains.
 
-- [ ] **Story 21 checks the whole journey on screen.** The passport admin
+      Built with `ResultMessage`'s "warning" variant, from
+      `components/message-cards/`: a coloured card with a title and a line
+      beneath, so the sentence is split across the two. "They will leave
+      your organisation", then "You will no longer be able to see or edit
+      them." For an operator, "They will belong to no organisation", then
+      "They can still sign in, change their own details and read their own
+      passport, and nothing more." Only on an edit: the form compares the
+      places the person had when it opened with the places chosen now.
+      For anybody but an operator, "reach" is the places the form offers
+      them, which are the ones they administer; an operator's list is not
+      everybody's, so for them the warning is for an empty membership
+      only.
+
+- [x] **Story 21 checks the whole journey on screen.** The passport admin
       unticks the holder's only site and sees the warning on the Review
       step, then saves. The holder still opens and downloads their
       passport, and is offered no way to add to it. The operator finds
       the holder with the "Not at any organisation" filter. The passport
       admin no longer finds them in the users list.
+
+      `removeFromThePassportSite` in `fixtures/passport.ts` checks the
+      warning before it saves, through a new `beforeSaving` step on
+      `editAsPassportAdmin`. Story 21 then has the holder download their
+      passport as a PDF, the operator find them with the filter, and the
+      passport admin's search say "No users found". The 16 tests of
+      `running-and-read-only.spec.ts` pass.
 
 ## Phase 11: No "Create my passport" without passport_write
 

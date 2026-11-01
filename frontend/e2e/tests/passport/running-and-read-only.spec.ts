@@ -25,6 +25,7 @@ import {
   userIdFromTheList,
 } from "../../fixtures/passport";
 import { PEOPLE, freshUsername, signIn } from "../../fixtures/signIn";
+import { searchRow } from "../../fixtures/tables";
 
 test.describe("Running the passport, and a read-only passport", () => {
   test.use({ storageState: { cookies: [], origins: [] } });
@@ -208,6 +209,9 @@ test.describe("Running the passport, and a read-only passport", () => {
     page,
     browser,
   }, testInfo) => {
+    // Belonging to no org_unit is a state of its own (Phase 10). The
+    // passport admin is warned on the Review step before saving, inside
+    // `removeFromThePassportSite`.
     const holder = await makeHolder(browser, testInfo.project.name);
     await removeFromThePassportSite(browser, holder.id);
 
@@ -229,5 +233,37 @@ test.describe("Running the passport, and a read-only passport", () => {
     await expect(
       page.getByRole("button", { name: "Add an entry" }),
     ).toHaveCount(0);
+
+    // They still take their passport with them.
+    await page.goto("/passport/download");
+    const download = page.waitForEvent("download");
+    await page.getByRole("button", { name: "PDF" }).click();
+    expect((await download).suggestedFilename()).toMatch(/\.pdf$/);
+
+    // The operator finds them among the people at no organisation.
+    const operator = await browser.newContext({
+      storageState: { cookies: [], origins: [] },
+    });
+    const operatorPage = await operator.newPage();
+    await signIn(operatorPage, PEOPLE.superuser);
+    await operatorPage.goto("/admin/users");
+    await operatorPage.getByLabel("Filter users").click();
+    await operatorPage.getByRole("combobox").click();
+    await operatorPage
+      .getByRole("option", { name: "Not at any organisation" })
+      .click();
+    await operatorPage.keyboard.press("Escape");
+    await searchRow(operatorPage, holder.username);
+    await expect(
+      operatorPage.getByText(holder.username, { exact: true }).first(),
+    ).toBeVisible();
+    await operator.close();
+
+    // The passport admin no longer finds them at all.
+    const admin = await asPassportAdmin(browser);
+    await admin.goto("/admin/users");
+    await searchRow(admin, holder.username);
+    await expect(admin.getByText("No users found")).toBeVisible();
+    await admin.context().close();
   });
 });
