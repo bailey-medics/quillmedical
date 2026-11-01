@@ -17,17 +17,27 @@ list and emphasis marks. Each bullet and each heading counts as a sentence
 of its own, since a reader stops at the end of it whether or not it carries
 a full stop.
 
+A score under 70 is a reason to rewrite, and the rewrite should go where
+the words are. `--longest` prints the five longest sentences with their
+word counts under the scores, so the writer splits those rather than
+touching every line.
+
 Usage:
     python3 scripts/readability.py < body.md
     python3 scripts/readability.py body.md
+    python3 scripts/readability.py --longest body.md
 """
 
 from __future__ import annotations
 
+import argparse
 import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
+
+#: How many sentences `--longest` prints.
+LONGEST_SHOWN = 5
 
 #: The three lines that open every body. Their labels are scaffolding, not
 #: prose, so they are removed and the sentence after each is kept.
@@ -113,6 +123,38 @@ def count_sentences(text: str) -> int:
     return total
 
 
+def sentences(text: str) -> list[str]:
+    """Split stripped prose into its sentences, in the order they appear.
+
+    The same rule as `count_sentences`: a sentence ends at a full stop,
+    question mark or exclamation mark, or at the end of a line.
+    """
+    found: list[str] = []
+
+    for line in text.splitlines():
+        for piece in SENTENCE_END.split(line):
+            cleaned = " ".join(piece.split())
+            if WORD.search(cleaned):
+                found.append(cleaned)
+
+    return found
+
+
+def longest_sentences(text: str, shown: int = LONGEST_SHOWN) -> list[str]:
+    """The `shown` longest sentences by word count, longest first.
+
+    A tie keeps the order of the body, so two sentences of equal length
+    are listed as the reader meets them.
+    """
+    by_length = sorted(
+        sentences(text),
+        key=lambda sentence: len(WORD.findall(sentence)),
+        reverse=True,
+    )
+
+    return by_length[:shown]
+
+
 def score(body: str) -> Scores | None:
     """Score a body, or return None when it holds no words to score."""
     text = strip_markup(body)
@@ -136,9 +178,41 @@ def report(scores: Scores) -> str:
     )
 
 
+def report_longest(text: str) -> str:
+    lines = ["Longest sentences:"]
+
+    for sentence in longest_sentences(text):
+        words = len(WORD.findall(sentence))
+        lines.append(f"  {words} words: {sentence}")
+
+    return "\n".join(lines)
+
+
+def parse_args(argv: list[str]) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        prog="readability.py",
+        description="Score a pull request body in the two Flesch numbers.",
+    )
+    parser.add_argument(
+        "body",
+        nargs="?",
+        default="-",
+        help="the markdown body to score; '-' or omitted reads stdin",
+    )
+    parser.add_argument(
+        "--longest",
+        action="store_true",
+        help=f"also list the {LONGEST_SHOWN} longest sentences",
+    )
+
+    return parser.parse_args(argv[1:])
+
+
 def main(argv: list[str]) -> int:
-    if len(argv) > 1 and argv[1] != "-":
-        body = Path(argv[1]).read_text(encoding="utf-8")
+    args = parse_args(argv)
+
+    if args.body != "-":
+        body = Path(args.body).read_text(encoding="utf-8")
     else:
         body = sys.stdin.read()
 
@@ -149,6 +223,10 @@ def main(argv: list[str]) -> int:
         return 2
 
     print(report(scores))
+
+    if args.longest:
+        print()
+        print(report_longest(strip_markup(body)))
 
     return 0
 

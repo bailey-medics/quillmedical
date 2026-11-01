@@ -91,6 +91,7 @@ nav:
       - Monitoring and alerting: infrastructure/monitoring.md
   - GitHub:
       - Overview: github/index.md
+      - Description log: github/description-log.md
   - CI/CD:
       - Pipeline overview: cicd/index.md
       - Stacked branches: cicd/stacked-branches.md

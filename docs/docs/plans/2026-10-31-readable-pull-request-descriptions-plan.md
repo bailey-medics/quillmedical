@@ -334,20 +334,96 @@ plus the Report section. The skill is Claude-only, with no copy under
       confidence and usability, not just readability scores". The score is
       information; Mark's verdict in Phase 4 is the test.
 
-## Phase 4: read a week of descriptions against the shape
+- [x] Let the score inform a rewrite, up to twice, and post the best of the
+      three attempts. Mark set the shape on 1 November 2026: "The score
+      should not block, but it should inform and allow for 2 rewrites and
+      you accept the best score of the 3 attempts if you fail after three."
+      In step 9 of `.claude/skills/crpd/SKILL.md`, the "Score the body"
+      paragraph becomes a loop:
+
+      - **Score the first draft.** A reading ease of 70 or above posts as it
+        is.
+      - **Under 70, rewrite once, aimed at the longest sentences.** The
+        script gains a `--longest` option that prints the five longest
+        sentences with their word counts, so the rewrite goes where the
+        words are rather than everywhere. A rewrite splits sentences, breaks
+        a clause-stacked bullet into two, and swaps a long word that is not
+        a name for a short one. It never changes a name, a fact or a bold
+        lead, because the older edition of the association's guide says the
+        grade is reached "by using short sentences, not by dumbing down
+        vocabulary".
+      - **Score again, rewrite once more if still under 70, then stop.** The
+        attempt with the highest ease is the one posted, whatever its
+        number. Three is the ceiling because each pass costs a reading of
+        the whole body, and a body full of identifiers will not reach 70 on
+        any pass.
+      - **Every attempt is a file in the scratchpad, and only the chosen
+        one reaches GitHub**, in a single `gh pr edit` at the end. A reader
+        watching the pull request never sees a draft replaced, and gets one
+        notification, not three.
+
+- [x] Keep a running log of every description's scores and Mark's verdict
+      on it, in a tracked file, `docs/docs/github/description-log.md`,
+      linked from `docs/docs/github/index.md`. Mark chose a tracked file over
+      a GitHub issue on 1 November 2026, so the log lives with the rules it
+      measures and travels in git. Newest entry first, no tables, one entry
+      per pull request in this shape:
+
+      ```markdown
+      ## #2299 Descriptions: score the body for readability
+
+      - **Scores** - 58, 66, 72. Attempt 3 posted.
+      - **Rules** - `.claude/skills/crpd/SKILL.md` at `a3c42d36`.
+      - **Verdict** - clear. "Read it on the phone in one go."
+      - **Changed** - nothing yet.
+      ```
+
+      `/crpd` writes the Scores and Rules lines as the last act of its run,
+      then folds the entry into the branch with `just stack-update` and
+      pushes again with `just stack-submit`, so the entry lands in the pull
+      request it describes rather than trailing into the next one. That is
+      a second push per unit, and it is the price of the entry being in the
+      right pull request. The Verdict line is Mark's, in his own words,
+      added when he gives it in chat or in a review, and it reaches `main`
+      with whatever unit is next landed; he may also write it himself. The
+      Changed line names the rule that moved because of that verdict and
+      links the pull request that moved it, so the log reads as the history
+      of how the descriptions improved. Phase 4 reads this log, and the
+      `/crpd` Report repeats the entry's Scores line so the terminal shows
+      it after an unattended run. The script's bats file gains a test for
+      `--longest`, and a new `scripts/tests/description-log.bats` is not
+      needed: the entry is prose the skill writes, not a script.
+
+      Built on 1 November 2026 with one change to the shape above: the
+      Rules line names the pull request that last changed the skill file,
+      "as of #2298", not a commit sha. `stack-submit` rebases every branch
+      on each push, so the sha a description was written under is gone
+      before its pull request merges; a pull request number is not. The
+      page is in the `GitHub` section of the docs navigation, and the
+      first two entries, #2298 and #2299, were written by hand from the
+      scores their runs printed. The skill's `allowed-tools` list was not
+      widened to `just stack-update` and `scripts/readability.py`: the
+      editing tool refused that change as self-modification, so the two
+      commands will prompt until a person adds them.
+
+## Phase 4: read the log each week and move the rules
 
 - [ ] After the first stacked run under the new step 9, read each
       description against four questions and note what fails: does the Size
       line match the diff; does Look hardest at name a place that can be
       opened; could the bold column alone be read as the summary; is there a
       sentence whose subject is an abstraction. Fix the rule, not the
-      description, when the same failure appears twice. Note Mark's one-word
-      verdict on each description too, clear or unclear, beside its
-      readability numbers from Phase 3: the 2026 edition of the association's
-      guide puts "involving the people who will actually use your content"
-      above every formatting rule, and here that is one reader. The point of the
-      week is to find which of the new rules the model follows without being
-      policed and which need a worked example beside them.
+      description, when the same failure appears twice. Mark's verdict on
+      each description goes on the Verdict line of its entry in
+      `docs/docs/github/description-log.md`, beside the scores Phase 3
+      recorded, and every rule that moves because of a verdict is named on
+      that entry's Changed line: the 2026 edition of the association's guide
+      puts "involving the people who will actually use your content" above
+      every formatting rule, and here that is one reader. This is an
+      iterative process with no end date. The first week finds which of the
+      new rules the model follows without being policed and which need a
+      worked example beside them; every week after that reads the new
+      entries the same way.
 
 - [ ] Re-measure, the same way as the 31 October 2026 baseline: description
       words against lines changed over the next 30 merged pull requests, and
@@ -441,3 +517,15 @@ skill that is already long, and the shape should settle first.
   on bullets, bold over italics, no long runs of capitals, plain words and
   spelt-out abbreviations, so nothing in Phase 3 contradicts the current
   guide; it only goes further than it.
+
+- **The score informs, and never blocks** - Mark's call, 1 November 2026.
+  Up to two rewrites, the best of three posted whatever it scores. A hard
+  gate would either hold a description hostage to its identifiers or push
+  the writer to swap real names for softer words, which is the failure the
+  "Names" rules exist to stop.
+
+- **The log is a tracked file, not a GitHub issue** - Mark's call, 1
+  November 2026. An issue needs no commit, which is why it was offered; a
+  file keeps the scores, the verdicts and the rule changes in one place in
+  git, beside the rules themselves, and `just stack-update` puts each entry
+  in its own pull request at the cost of a second push.
