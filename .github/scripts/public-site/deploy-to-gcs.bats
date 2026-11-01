@@ -157,3 +157,35 @@ make_site() {
   [ "$status" -eq 0 ]
   run ! grep -q "gs://my-project-landing/email/" "$CALLS"
 }
+
+@test "uploads every pass to both the EU and the London bucket" {
+  # The London bucket must be a full copy, with the same cache headers,
+  # before the load balancer is moved onto it.
+  make_site about
+  mkdir -p public-site/email
+  echo "png" > public-site/email/quill-wordmark.png
+
+  run bash "$SCRIPT" my-project
+
+  [ "$status" -eq 0 ]
+  local bucket
+  for bucket in my-project-landing my-project-landing-uk; do
+    grep -q "immutable rsync -r -d -x .* public-site/assets/ gs://${bucket}/assets/$" "$CALLS"
+    grep -q "max-age=86400 rsync -r -d public-site/email/ gs://${bucket}/email/$" "$CALLS"
+    grep -q "max-age=2592000 rsync -d -x .* public-site/ gs://${bucket}/$" "$CALLS"
+    grep -q "Cache-Control:no-cache rsync -d -x .* public-site/ gs://${bucket}/$" "$CALLS"
+    grep -q "setmeta .* gs://${bucket}/about$" "$CALLS"
+  done
+  [[ "$output" == *"Deployment to gs://my-project-landing/ complete"* ]]
+  [[ "$output" == *"Deployment to gs://my-project-landing-uk/ complete"* ]]
+}
+
+@test "renames the pages once, not once for each bucket" {
+  # A second rename would find no .html pages left and report none.
+  make_site about pricing
+
+  run bash "$SCRIPT" my-project
+
+  [ "$status" -eq 0 ]
+  [ "$(grep -c "Renamed 2 pages to clean URLs" <<< "$output")" -eq 1 ]
+}
