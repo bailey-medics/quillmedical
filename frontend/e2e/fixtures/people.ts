@@ -64,6 +64,10 @@ interface Placing {
   site?: string;
   /** Practising "Take Teaching Modules" at the site, and enrolled. */
   takesModule?: boolean;
+  /** Defaults to the username followed by `123`. */
+  password?: string;
+  /** Defaults to `emailOf(username)`, at a domain that receives no mail. */
+  email?: string;
 }
 
 /**
@@ -86,7 +90,8 @@ async function addOnTheForm(
     username,
     name,
     profession: professionName(profession),
-    password: `${username}123`,
+    password: placing.password ?? `${username}123`,
+    email: placing.email,
   });
   await choose(page, /^Organisation/, placing.organisation);
 
@@ -137,6 +142,77 @@ export async function makePerson(
   await context.close();
 
   return username;
+}
+
+/** An account a journey needs details of its own for. */
+export interface OwnAccount {
+  username: string;
+  /** Its id, as the profession list names it: `teaching_delegate`. */
+  profession: string;
+  password?: string;
+  /**
+   * An address that can receive mail, for a journey that is emailed:
+   * forgot password refuses an address at `.test`.
+   */
+  email?: string;
+}
+
+/**
+ * Make *account* on the add-user form, as the seeded teaching admin, at
+ * the teaching organisation and its site.
+ */
+export async function makeAccount(
+  browser: Browser,
+  account: OwnAccount,
+): Promise<void> {
+  const context = await browser.newContext({
+    storageState: TEACHING_ADMIN_STATE,
+  });
+
+  await addOnTheForm(
+    context,
+    account.username,
+    `Person ${account.username}`,
+    account.profession,
+    {
+      organisation: PLACES.organisation,
+      site: PLACES.site,
+      password: account.password,
+      email: account.email,
+    },
+  );
+  await context.close();
+}
+
+/**
+ * Deactivate *username* on their admin page, as the seeded teaching admin
+ * does, and confirm it.
+ */
+export async function deactivate(
+  browser: Browser,
+  username: string,
+): Promise<void> {
+  const context = await browser.newContext({
+    storageState: TEACHING_ADMIN_STATE,
+  });
+  const page = await context.newPage();
+
+  await page.goto("/admin/users");
+  await searchRow(page, username);
+  // By their username's text, not a table row: a phone shows cards.
+  await page.getByText(username, { exact: true }).first().click();
+  await expect(page).toHaveURL(/\/admin\/users\/\d+$/);
+  await page.getByRole("button", { name: "Deactivate" }).click();
+
+  const dialog = page
+    .getByRole("dialog")
+    .filter({ hasText: "no longer be able to log in" });
+  // Waited for, so the click does not land while it is still opening:
+  // WebKit drops a click on a modal mid-transition.
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole("button", { name: "Deactivate user" }).click();
+  await expect(page).toHaveURL(/\/admin\/users$/, { timeout: 30_000 });
+  await context.close();
 }
 
 /**
