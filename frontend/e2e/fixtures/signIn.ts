@@ -104,11 +104,54 @@ export const TEACHING_SITES = {
   },
 } as const satisfies Record<string, TeachingSite>;
 
+/** What the login page says when the rate limit refuses a sign-in. */
+export const TOO_MANY_SIGN_INS =
+  "Too many sign-in attempts. Please wait a minute, then try again.";
+
+/** What signing in came to, as the login page shows it. */
+export type SignInOutcome = "signed in" | "too many" | "invalid credentials";
+
+/**
+ * Press Sign in on the filled login form, and wait for what the page
+ * shows: the page it moves on to, the rate limit's message, or "Invalid
+ * credentials". Read off the page, never the server's answer: see
+ * `.claude/rules/e2e.md`.
+ */
+export async function submitSignIn(page: Page): Promise<SignInOutcome> {
+  let outcome: SignInOutcome | null = null;
+
+  await page.getByRole("button", { name: "Sign in" }).click();
+
+  // A success leaves the login page by a full navigation, so the address
+  // changes only once the session is set.
+  await expect
+    .poll(
+      async () => {
+        if (!new URL(page.url()).pathname.startsWith("/login")) {
+          outcome = "signed in";
+        } else if (await page.getByText(TOO_MANY_SIGN_INS).isVisible()) {
+          outcome = "too many";
+        } else if (await page.getByText("Invalid credentials").isVisible()) {
+          outcome = "invalid credentials";
+        }
+
+        return outcome;
+      },
+      {
+        timeout: 30_000,
+        message: "The login page neither moved on nor said why not",
+      },
+    )
+    .not.toBeNull();
+
+  return outcome ?? "invalid credentials";
+}
+
 /**
  * Sign in through the login form as one of the seeded people.
  *
  * The login route is rate-limited and the browser projects sign in side
- * by side, so a refusal is waited out and tried again.
+ * by side, so a refusal by the limit is waited out and tried again.
  */
 export async function signIn(
   page: Page,
@@ -120,21 +163,13 @@ export async function signIn(
     await page.getByLabel("Username").fill(username);
     await page.getByRole("textbox", { name: "Password" }).fill(password);
 
-    const answered = page.waitForResponse(
-      (response) =>
-        response.url().includes("/api/auth/login") &&
-        response.request().method() === "POST",
-    );
-    await page.getByRole("button", { name: "Sign in" }).click();
-    const status = (await answered).status();
-
-    if (status === 200) {
-      await expect(page).not.toHaveURL(/\/login/, { timeout: 30_000 });
+    const outcome = await submitSignIn(page);
+    if (outcome === "signed in") {
       return;
     }
 
-    if (status !== 429) {
-      throw new Error(`Signing in as ${username} answered ${status}`);
+    if (outcome !== "too many") {
+      throw new Error(`Signing in as ${username} was refused: ${outcome}`);
     }
 
     await page.waitForTimeout(2_000 * attempt);

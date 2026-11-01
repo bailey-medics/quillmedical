@@ -1,7 +1,8 @@
 /**
  * LoginPage tests
  *
- * What the page says when signing in is refused at the two-factor step.
+ * What the page says when signing in is refused: at the two-factor
+ * step, and by the rate limit.
  */
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -73,5 +74,23 @@ describe("LoginPage", () => {
     expect(
       screen.queryByText("Enter the 6-digit authenticator code"),
     ).not.toBeInTheDocument();
+  });
+
+  it("says to wait a minute when the rate limit refuses a sign-in", async () => {
+    // The limit's answer has no message of its own, so the page used to
+    // show the browser's status text, or "HTTP 429" over HTTP/2.
+    login.mockRejectedValue(
+      Object.assign(new Error("HTTP 429"), { status: 429 }),
+    );
+    renderWithRouter(<LoginPage />);
+
+    await signIn();
+
+    expect(
+      await screen.findByText(
+        "Too many sign-in attempts. Please wait a minute, then try again.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("HTTP 429")).not.toBeInTheDocument();
   });
 });
