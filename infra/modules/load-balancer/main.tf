@@ -314,8 +314,8 @@ resource "google_storage_bucket_iam_member" "landing_public" {
 # The same site in London. A bucket's location is fixed when it is made, so
 # the `EU` one above cannot be moved, only replaced; changing its location in
 # place would delete it and leave the site serving 404s until the next deploy.
-# This one is filled by the deploy alongside the old one, then the backend
-# bucket below is moved onto it, then the old one is removed - see
+# The deploy fills it alongside the old one, the backend bucket below now
+# serves it, and the old one is removed next - see
 # docs/docs/plans/2026-11-01-landing-bucket-uk-plan.md. The name differs
 # because bucket names are global and the old one still holds its own.
 resource "google_storage_bucket" "landing_uk" {
@@ -344,8 +344,12 @@ resource "google_compute_backend_bucket" "landing" {
   count       = var.landing_domain != null ? 1 : 0
   project     = var.project_id
   name        = "quill-landing-${var.environment}"
-  bucket_name = google_storage_bucket.landing[0].name
+  bucket_name = google_storage_bucket.landing_uk[0].name
   enable_cdn  = true
+
+  # Served from the London bucket. `bucket_name` is updated in place on a
+  # backend bucket, so the switch has no gap; the `EU` bucket is still filled
+  # by the deploy until it is removed.
 
   # Security headers for the marketing site.
   #

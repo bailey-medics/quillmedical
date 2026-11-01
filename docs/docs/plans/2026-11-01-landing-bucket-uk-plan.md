@@ -27,7 +27,7 @@ balancer, with no downtime.
 
 ## Phase 2: Serve from the London bucket
 
-- [ ] Change `bucket_name` on `google_compute_backend_bucket.landing` to the new bucket, in its own pull request. This is an in-place update of the backend bucket, not a replacement, so the load balancer switches with no gap; confirm the plan in the pull request says `update in-place` and not `must be replaced`. The cached copies at Google's edge are the same files, so no cache invalidation is needed.
+- [x] Change `bucket_name` on `google_compute_backend_bucket.landing` to the new bucket, in its own pull request. This is an in-place update of the backend bucket, not a replacement, so the load balancer switches with no gap; confirm the plan in the pull request says `update in-place` and not `must be replaced`. The cached copies at Google's edge are the same files, so no cache invalidation is needed.
 
 - [ ] After the apply, check `https://quill-medical.com` and a deep page load, and that the security headers set on the backend bucket are still there (`curl -sI https://quill-medical.com`).
 
