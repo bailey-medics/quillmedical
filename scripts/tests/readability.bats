@@ -96,6 +96,34 @@ EOF
     [[ "${lines[2]}" == *" in 3 sentences" ]]
 }
 
+@test "--longest lists the longest sentences first, with their word counts" {
+    cat > "$BODY" <<'EOF'
+Quill sends a link. The user clicks it and the page opens on the new address.
+
+- **Nothing else moves**, so the old link still works.
+EOF
+
+    run python3 "$SCRIPT" --longest "$BODY"
+
+    [ "$status" -eq 0 ]
+    [ "${lines[2]}" = "25 words in 3 sentences" ]
+    [ "${lines[3]}" = "Longest sentences:" ]
+    [ "${lines[4]}" = "  12 words: The user clicks it and the page opens on the new address" ]
+    [ "${lines[5]}" = "  9 words: Nothing else moves, so the old link still works" ]
+    [ "${lines[6]}" = "  4 words: Quill sends a link" ]
+}
+
+@test "--longest stops at five sentences" {
+    printf 'One a. Two b c. Three d e f. Four g h i j. Five k l m n o. Six p q r s t u.\n' > "$BODY"
+
+    run python3 "$SCRIPT" --longest "$BODY"
+
+    [ "$status" -eq 0 ]
+    [ "${#lines[@]}" -eq 9 ]
+    [[ "${lines[4]}" == "  7 words: Six "* ]]
+    [[ "${lines[8]}" == "  3 words: Two "* ]]
+}
+
 @test "a body with no words is refused" {
     printf '```\ncode only\n```\n' > "$BODY"
 
