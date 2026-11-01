@@ -415,6 +415,38 @@ def test_a_framework_written_from_a_form_is_passport_only() -> None:
     assert "perform_cannulation" not in PASSPORT_ONLY_COMPETENCY_IDS
 
 
+def test_the_gloucestershire_record_carries_every_signed_line() -> None:
+    """All fifteen lines the trainer signs, in the paper sheet's order.
+
+    Its twelve numbered rows, then its three acquaintances. The exams,
+    courses and RCR registration are entries too, because on paper the
+    trainer signs them, and a certificate is self-declared.
+    """
+    prefix = "ghnft_radiotherapy_record_"
+    expected = [
+        "induction_in_radiation_protection",
+        "registered_with_rcr",
+        "year_of_supervised_pre_treatment_planning",
+        "part_1_frcr_course",
+        "passed_part_1_frcr",
+        "refer_palliative",
+        "plan_and_prescribe_palliative",
+        "post_part_1_training_slide_deck",
+        "passed_final_frcr",
+        "refer_radical",
+        "plan_and_prescribe_radical",
+        "post_part_2_review",
+        "acquaintance_with_pinnacle",
+        "acquaintance_with_aria",
+        "acquaintance_with_referral_and_consent",
+    ]
+
+    items = framework_competencies("ghnft_radiotherapy_record")
+
+    assert [c.id for c in items] == [prefix + e for e in expected]
+    assert all(c.id in PASSPORT_ONLY_COMPETENCY_IDS for c in items)
+
+
 def test_the_real_passport_only_ids_are_refused_as_grants() -> None:
     with pytest.raises(ValueError, match="granted to nobody"):
         validate_competency_ids(["ruh_sact_passport_ctcae_grading"])

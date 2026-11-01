@@ -13,23 +13,22 @@
 #
 # HOW THE DOCUMENT IS LAID OUT HERE
 #
-#   * Four of its rows ask "Do you feel confident to ... unsupervised?"
-#     and are signed by the trainee and the trainer. Each is an entry
-#     here, in the sheet's own words, signed off or not. The sheet does
-#     not use the RCR entrustment scale, so these carry no levels: the
-#     holder asking for the sign-off is their saying they feel confident,
-#     and the trainer signing is the countersignature.
-#   * Its three "acquaintance" sign-offs follow.
+#   * Every line the trainer signs is an entry here, in the sheet's own
+#     words and in the sheet's order: its twelve numbered rows, then its
+#     three "acquaintance" sign-offs. Fifteen in all.
+#   * Four of the rows ask "Do you feel confident to ... unsupervised?".
+#     The sheet does not use the RCR entrustment scale, so these carry no
+#     levels: the holder asking for the sign-off is their saying they feel
+#     confident, and the trainer signing is the countersignature.
+#   * The rows that are exams, courses, reviews or the RCR registration
+#     are entries too, not only certificates or a profile registration,
+#     because the trainer signs them on paper and a certificate is
+#     self-declared. A certificate can be attached as the evidence.
 #
-# WHAT IS LEFT OUT, AND WHERE IT GOES
-#
-#   * Registration with the RCR is a registration in the holder's profile.
-#   * The induction, the Part 1 FRCR course, passing Part 1 and Final
-#     FRCR, the post Part 1 slide deck and the post Part 2 review are
-#     certificates: courses and qualifications the holder claims.
-#   * "Completed one year in a post with regular supervised pre-treatment
-#     planning sessions" is time served, not something assessed. It has no
-#     entry.
+# This file first held seven of the fifteen lines, and the other eight
+# were added on 1 November 2026. That was the same pilot copied in full,
+# not a new edition, and every change was an addition, so the first
+# seven ids kept their meaning.
 #
 # `passport_only` because these are rows on a form, recorded in a
 # clinician passport and granted to nobody as a permission.
@@ -38,7 +37,7 @@
 
 framework:
   id: ghnft_radiotherapy_record
-  name: "Clinical oncology registrar record of radiotherapy training and competence"
+  name: "Clinical oncology registrar record of radiotherapy training and competence - Gloucestershire Hospitals NHS Foundation Trust"
   publisher: "Gloucestershire Hospitals NHS Foundation Trust"
   version: "Pilot"
   specialties:
@@ -46,6 +45,26 @@ framework:
   passport_only: true
 
 competencies:
+  - id: ghnft_radiotherapy_record_induction_in_radiation_protection
+    display_name: "Completed induction training re radiation protection issues related to pre-treatment, CT planning and radiotherapy treatment"
+    assessable: true
+
+  - id: ghnft_radiotherapy_record_registered_with_rcr
+    display_name: "Registered with RCR"
+    assessable: true
+
+  - id: ghnft_radiotherapy_record_year_of_supervised_pre_treatment_planning
+    display_name: "Completed one year in a post with regular supervised pre-treatment planning sessions"
+    assessable: true
+
+  - id: ghnft_radiotherapy_record_part_1_frcr_course
+    display_name: "Completed recognised Part 1 FRCR course"
+    assessable: true
+
+  - id: ghnft_radiotherapy_record_passed_part_1_frcr
+    display_name: "Passed Part 1 FRCR"
+    assessable: true
+
   - id: ghnft_radiotherapy_record_refer_palliative
     display_name: "Refer patients for palliative radiotherapy unsupervised"
     assessable: true
@@ -54,12 +73,24 @@ competencies:
     display_name: "Plan and prescribe palliative radiotherapy unsupervised"
     assessable: true
 
+  - id: ghnft_radiotherapy_record_post_part_1_training_slide_deck
+    display_name: "Completed post Part 1 training slide deck"
+    assessable: true
+
+  - id: ghnft_radiotherapy_record_passed_final_frcr
+    display_name: "Passed Final FRCR"
+    assessable: true
+
   - id: ghnft_radiotherapy_record_refer_radical
     display_name: "Refer patients for radical radiotherapy unsupervised"
     assessable: true
 
   - id: ghnft_radiotherapy_record_plan_and_prescribe_radical
     display_name: "Plan and prescribe radical radiotherapy unsupervised"
+    assessable: true
+
+  - id: ghnft_radiotherapy_record_post_part_2_review
+    display_name: "Completed post Part 2 review"
     assessable: true
 
   - id: ghnft_radiotherapy_record_acquaintance_with_pinnacle

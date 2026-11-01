@@ -723,7 +723,9 @@ def _passport_out(row: Passport, profile: Profile) -> PassportOut:
             for registration in profile.registrations
         ],
         frameworks=[
-            FrameworkOut(id=framework.id, name=framework.name)
+            FrameworkOut(
+                id=framework.id, name=frameworks.current_name(framework)
+            )
             for framework in profile.frameworks
         ],
         created_at=row.created_at.date(),

@@ -82,7 +82,7 @@ describe("CompetencyPicker", () => {
       ).toBeInTheDocument();
       expect(
         screen.getByText(
-          "Prescriber competencies for reviewing and prescribing SACT",
+          "Prescriber competencies for reviewing and prescribing SACT - The UK SACT Board",
         ),
       ).toBeInTheDocument();
       expect(

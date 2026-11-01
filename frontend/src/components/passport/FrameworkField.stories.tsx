@@ -17,7 +17,7 @@ const options: FrameworkOption[] = [
   },
   {
     id: "uk_sact_board_2023",
-    name: "Prescriber competencies for reviewing and prescribing SACT",
+    name: "Prescriber competencies for reviewing and prescribing SACT - The UK SACT Board",
     publisher: "UK SACT Board",
     version: "November 2023",
     specialties: ["oncology", "haematology"],

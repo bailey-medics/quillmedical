@@ -245,6 +245,16 @@ class TestChoosing:
 
         assert profile.frameworks == []
 
+    def test_a_stored_framework_is_called_by_its_name_today(self) -> None:
+        stored = schemas.FrameworkRef(id=GENERAL, name="Its old name")
+
+        assert frameworks.current_name(stored) == "General clinical skills"
+
+    def test_a_framework_no_longer_held_keeps_its_stored_name(self) -> None:
+        stored = schemas.FrameworkRef(id="withdrawn", name="A withdrawn one")
+
+        assert frameworks.current_name(stored) == "A withdrawn one"
+
 
 @pytest.fixture
 def passport_store(tmp_path: Path) -> Iterator[LocalPassportStore]:
@@ -343,13 +353,35 @@ class TestTheHoldersRoutes:
             {"id": GENERAL, "name": "General clinical skills"},
             {
                 "id": ONCOLOGY,
-                "name": "Prescriber competencies for reviewing and prescribing SACT",
+                "name": "Prescriber competencies for reviewing and prescribing SACT - The UK SACT Board",
             },
         ]
         again = holder_client.get("/api/passport/me").json()
         assert [f["id"] for f in again["passport"]["frameworks"]] == [
             GENERAL,
             ONCOLOGY,
+        ]
+
+    def test_a_renamed_framework_shows_its_new_name(
+        self, holder_client: TestClient, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A passport made before a rename still reads the name today."""
+        holder_client.post("/api/passport", json={"frameworks": [ONCOLOGY]})
+        renamed = next(f for f in FRAMEWORKS if f.id == ONCOLOGY).model_copy(
+            update={"name": "A renamed framework"}
+        )
+        monkeypatch.setattr(
+            frameworks,
+            "get_framework",
+            lambda framework_id: (
+                renamed if framework_id == ONCOLOGY else None
+            ),
+        )
+
+        passport = holder_client.get("/api/passport/me").json()["passport"]
+
+        assert passport["frameworks"] == [
+            {"id": ONCOLOGY, "name": "A renamed framework"}
         ]
 
     def test_an_unknown_framework_is_a_400(
