@@ -59,6 +59,7 @@ import { useAuth } from "@/auth/AuthContext";
 import PlatformRoleBadge, {
   type PlatformRole,
 } from "@/components/badge/PlatformRoleBadge";
+import { ResultMessage } from "@/components/message-cards";
 import ErrorState from "@/components/error-state/ErrorState";
 import {
   orgUnits,
@@ -108,6 +109,56 @@ function seenOrganisations(options: OrgOption[]): OrgOption[] {
 function siteLabel(org: OrgOption, site: { name: string }): string {
   return org.unseen ? site.name : `${org.name} - ${site.name}`;
 }
+
+/** What the Review step warns about where somebody is being taken from. */
+type LeavingWarning = "leaves your places" | "belongs nowhere";
+
+/**
+ * Whether saving takes somebody out of every place, as the viewer sees
+ * it. Belonging nowhere is a state of its own, not an error, so the save
+ * is allowed; the viewer is told first.
+ *
+ * An operator is warned when the save empties the person's membership
+ * altogether. Anybody else is warned when it leaves the person in none of
+ * the org_units offered to them here, the ones they reach, while the
+ * person was in at least one before: they will then no longer see or
+ * edit them.
+ */
+function leavingWarning(
+  saved: readonly string[],
+  chosen: readonly string[],
+  offered: readonly OrgOption[],
+  isOperator: boolean,
+): LeavingWarning | null {
+  if (saved.length === 0) return null;
+
+  if (isOperator) {
+    return chosen.length === 0 ? "belongs nowhere" : null;
+  }
+
+  const reached = new Set(
+    offered.flatMap((org) => [
+      ...(org.unseen ? [] : [String(org.id)]),
+      ...org.sites.map((site) => String(site.id)),
+    ]),
+  );
+  const wasHere = saved.some((id) => reached.has(id));
+  const staysHere = chosen.some((id) => reached.has(id));
+
+  return wasHere && !staysHere ? "leaves your places" : null;
+}
+
+/** The words for each warning: a title, then what it means. */
+const LEAVING_WORDS: Record<LeavingWarning, [string, string]> = {
+  "leaves your places": [
+    "They will leave your organisation",
+    "You will no longer be able to see or edit them.",
+  ],
+  "belongs nowhere": [
+    "They will belong to no organisation",
+    "They can still sign in, change their own details and read their own passport, and nothing more.",
+  ],
+};
 
 /**
  * User form data state
@@ -693,6 +744,7 @@ function Step4Review({
   practice,
   enrolment,
   showPlatformRole,
+  leaving,
 }: Pick<StepContentProps, never> & {
   formData: UserFormData;
   organisations: OrgOption[];
@@ -712,6 +764,8 @@ function Step4Review({
   };
   /** Whether the viewer was offered the Platform role step */
   showPlatformRole: boolean;
+  /** Said before anything else, when the save takes them out of places */
+  leaving?: LeavingWarning | null;
 }) {
   const profession = formData.baseProfession
     ? getBaseProfessionDetails(formData.baseProfession)
@@ -730,6 +784,14 @@ function Step4Review({
     <Stack gap="md">
       <Heading>Review</Heading>
       <BodyText>Review the user details before submitting.</BodyText>
+
+      {leaving && (
+        <ResultMessage
+          variant="warning"
+          title={LEAVING_WORDS[leaving][0]}
+          subtitle={LEAVING_WORDS[leaving][1]}
+        />
+      )}
 
       <BaseCard>
         <Stack gap="sm">
@@ -1068,6 +1130,8 @@ export default function UserInfoUpdatePage() {
   // Enrolments as the server holds them, to say what an edit takes off.
   const [savedEnrolments, setSavedEnrolments] =
     useState<EnrolmentByOrganisation>({});
+  // Where they belonged before this edit, to warn when it takes them out.
+  const [savedOrgUnitIds, setSavedOrgUnitIds] = useState<string[]>([]);
 
   // A new user may arrive already half described: the add-staff page
   // sends somebody here when a lookup finds no account for an address,
@@ -1161,6 +1225,9 @@ export default function UserInfoUpdatePage() {
           practising,
           enrolments,
         });
+        setSavedOrgUnitIds(
+          (data.org_unit_ids ?? data.place_ids ?? []).map(String),
+        );
       } catch (error) {
         console.error("Failed to fetch user:", error);
         setLoadError(
@@ -1598,6 +1665,12 @@ export default function UserInfoUpdatePage() {
               : undefined
           }
           showPlatformRole={isOperator}
+          leaving={leavingWarning(
+            savedOrgUnitIds,
+            formData.orgUnitIds,
+            organisations,
+            isOperator,
+          )}
         />
       ),
       nextButtonLabel: isEditMode ? "Update user" : "Create user",

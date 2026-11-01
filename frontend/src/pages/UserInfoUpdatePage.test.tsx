@@ -1285,6 +1285,99 @@ describe("UserInfoUpdatePage", () => {
     }, 30000);
   });
 
+  describe("Leaving every place", () => {
+    const AT_TEST_ORG = {
+      name: "Dr Jane Smith",
+      email: "jane.smith@example.com",
+      username: "janesmith",
+      base_profession: "consultant",
+      additional_competencies: [],
+      removed_competencies: [],
+      platform_role: "standard",
+      org_unit_ids: [1],
+      practising: [],
+    };
+
+    /** Open the edit form for user 7, at Test Org, as the viewer set. */
+    async function editAtTestOrg() {
+      onTestFinished(() => window.history.pushState({}, "", "/"));
+      serveAModule(AT_TEST_ORG);
+      const user = userEvent.setup();
+      renderWithRouter(<UserInfoUpdatePage />, {
+        routePath: "/admin/users/:id/edit",
+        initialRoute: "/admin/users/7/edit",
+      });
+      await screen.findByLabelText(/full name/i);
+      await user.click(screen.getByRole("button", { name: /^next$/i }));
+
+      return user;
+    }
+
+    /** Take Test Org off their places, on the Organisation/site step. */
+    async function untickTestOrg(user: ReturnType<typeof userEvent.setup>) {
+      await user.click(
+        await screen.findByRole("combobox", { name: /^organisation/i }),
+      );
+      await user.click(await screen.findByRole("option", { name: "Test Org" }));
+      await user.keyboard("{Escape}");
+    }
+
+    /** Press Next until the Review step shows. */
+    async function nextToReview(user: ReturnType<typeof userEvent.setup>) {
+      for (let step = 0; step < 6; step += 1) {
+        if (screen.queryByRole("heading", { name: "Review" })) return;
+        await user.click(screen.getByRole("button", { name: /^next$/i }));
+      }
+      await screen.findByRole("heading", { name: "Review" });
+    }
+
+    it("warns an admin that they will no longer see somebody they take out of every place of theirs", async () => {
+      viewAs("standard", ["manage_users"]);
+      const user = await editAtTestOrg();
+
+      await untickTestOrg(user);
+      await nextToReview(user);
+
+      expect(
+        await screen.findByText("They will leave your organisation"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText("You will no longer be able to see or edit them."),
+      ).toBeInTheDocument();
+    }, 30000);
+
+    it("tells an operator what somebody in no organisation can still do", async () => {
+      viewAs("superadmin", []);
+      const user = await editAtTestOrg();
+
+      await untickTestOrg(user);
+      await nextToReview(user);
+
+      expect(
+        await screen.findByText("They will belong to no organisation"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          "They can still sign in, change their own details and read their own passport, and nothing more.",
+        ),
+      ).toBeInTheDocument();
+    }, 30000);
+
+    it("says nothing when a place remains", async () => {
+      viewAs("standard", ["manage_users"]);
+      const user = await editAtTestOrg();
+
+      await nextToReview(user);
+
+      expect(
+        screen.queryByText("They will leave your organisation"),
+      ).toBeNull();
+      expect(
+        screen.queryByText("They will belong to no organisation"),
+      ).toBeNull();
+    }, 30000);
+  });
+
   describe("Enrolment", () => {
     it("is offered to a teaching admin where the organisation serves modules", async () => {
       viewAs("standard", ["manage_teaching"]);
