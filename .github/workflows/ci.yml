@@ -872,13 +872,14 @@ jobs:
       - name: Prepare the E2E job key
         run: .github/scripts/ci/prepare-e2e-job-key.sh
 
-      # Before the stack starts: Postgres and Caddy come from this
-      # repository's own copies where it has them, pulled with the login
-      # above, and not from the public registry, which refuses a runner
-      # that asks too often. mirror-images.yml makes the copies.
+      # Before the stack starts: Postgres, Caddy and the Cloud Storage
+      # stand-in come from this repository's own copies where it has them,
+      # pulled with the login above, and not from the public registry,
+      # which refuses a runner that asks too often. mirror-images.yml makes
+      # the copies.
       - name: Use the mirrored images where they exist
         id: mirror
-        run: bash .github/scripts/ci/use-mirrored-images.sh "${{ github.repository_owner }}" compose.ci.yml CI_POSTGRES_IMAGE CI_CADDY_IMAGE
+        run: bash .github/scripts/ci/use-mirrored-images.sh "${{ github.repository_owner }}" compose.ci.yml CI_POSTGRES_IMAGE CI_CADDY_IMAGE CI_GCS_IMAGE
 
       # A matrix job's output is whichever leg wrote it last, so a fallback
       # one leg saw could vanish behind a leg that saw none. Each leg that

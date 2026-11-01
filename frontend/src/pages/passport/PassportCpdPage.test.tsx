@@ -269,4 +269,28 @@ describe("PassportCpdPage", () => {
       await screen.findByText(/Your CPD could not be loaded/),
     ).toBeInTheDocument();
   });
+  it('keeps "Add an activity" shut until the passport has loaded', async () => {
+    // A save made before the passport was known had nowhere to go, and
+    // did nothing, which a slow connection turned into a lost entry.
+    // AddButton disables through aria-disabled, and ignores a click.
+    let arrive: (value: typeof detail) => void = () => {};
+    fetchMyPassport.mockReturnValue(
+      new Promise((resolve) => {
+        arrive = resolve;
+      }),
+    );
+    renderWithRouter(<PassportCpdPage />);
+
+    expect(
+      screen.getByRole("button", { name: "Add an activity" }),
+    ).toHaveAttribute("aria-disabled", "true");
+
+    arrive(detail);
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Add an activity" }),
+      ).not.toHaveAttribute("aria-disabled"),
+    );
+  });
 });

@@ -772,7 +772,7 @@ stacked branch, on top of Phase 7.
       the page before it is sent, and the other two by the backend, whose
       reason the page shows.
 
-- [ ] **Switch the scan on in the end-to-end stack.** Set
+- [x] **Switch the scan on in the end-to-end stack.** Set
       `UPLOAD_SCAN_JOB` in `compose.ci.yml` to a made-up job name, as
       `TEACHING_TRANSCODE_JOB` is, and add the scan job's made-up service
       account to the callers the callback accepts. Add a
@@ -818,31 +818,74 @@ stacked branch, on top of Phase 7.
       verdict itself, as `mediaJobs.ts` does for the teaching jobs (Phase
       9's last step).
 
-      Every upload in the suite then waits for a verdict, so the existing
-      journeys that upload need a "clean" report: story 9, and the
-      teaching video specs (`taking-a-module/self-hosted-video.spec.ts`,
-      `teaching-admin/video-gate.gate.spec.ts`), which upload a lecture.
-      That is closer to App production than an upload that is never
-      checked.
+      **Built on 1 November 2026.** `compose.ci.yml` runs
+      `fake-gcs-server` 1.56.1 as `gcs`, pinned to a digest and mirrored
+      as `CI_GCS_IMAGE`, in memory so every run starts empty. The backend
+      gets `PASSPORT_GCS_BUCKET` and `STORAGE_EMULATOR_HOST`, which the
+      Google client honours by talking to the stand-in with no
+      credentials, so no app code changed. `UPLOAD_SCAN_JOB` names a job
+      nothing runs, and `scan-job@quill-ci…` joins the callers the
+      callback accepts.
 
-- [ ] **While the scan runs, the holder is told, and the file attaches
+      - **How the test finds the object to report on.** The key is
+        `passports/<shard of the passport id>/files/sha256/…/<digest>`,
+        and the passport id never shows on screen. So
+        `fixtures/scanJob.ts` asks the stand-in for the object whose name
+        ends in the SHA-256 of the bytes it uploaded, and `uniquePdf` makes
+        those bytes belong to one test. That is the knowledge the real job
+        is handed, taken from the storage service, not from Quill. The
+        stand-in is published on `E2E_GCS_PORT` for this, read back by
+        `just e2e` as the public site's port is.
+      - **Only the passport is scanned.** The teaching uploads are scanned
+        only when teaching keeps its media in a bucket, and the stack keeps
+        teaching on disk, so the teaching video specs needed nothing. That
+        corrects the paragraph above.
+      - **It found a bug in three passport pages.** With passports in a
+        bucket, loading the page takes longer, and "Add an activity",
+        "Write a reflection" and "Record a certificate" could be pressed
+        before the page knew which passport it was on. A save then did
+        nothing and said nothing. Each button now waits for the passport,
+        with a unit test on each page.
+      - **Playwright waits ten seconds, not five.** A save rewrites the
+        passport's repository in the bucket, and with every worker saving
+        at once one took six seconds in a full local run. The default wait
+        is set in `playwright.config.ts`, with the reason.
+      - **The cost.** The passport end-to-end tests take 2.5 minutes for
+        65, against 2.0 minutes for 59 on disk.
+
+- [x] **While the scan runs, the holder is told, and the file attaches
       once it is clean.** The uploader says it is checking for malware,
       not that the file is attached. The test reports "clean", and the
       file attaches without the holder doing anything.
 
-- [ ] **Malware found: the holder is told, and the file is not
+      Done in story 9, which every certificate upload now goes through:
+      "Scanning als-certificate.pdf…", no "Attached", then the report and
+      "Attached: als-certificate.pdf".
+
+- [x] **Malware found: the holder is told, and the file is not
       attached.** Report "infected". The uploader says so, the
       certificate cannot be saved naming the file, and the file is
       nowhere on the page.
 
-- [ ] **The scan could not check the file: the holder is asked to upload
+      Done as story 30. The certificate is then saved without the file,
+      and its page names no file and draws none.
+
+- [x] **The scan could not check the file: the holder is asked to upload
       it again.** Report "failed". The uploader asks for the file again,
       and the certificate cannot be saved naming it.
 
-- [ ] **The download bundle leaves out a file that did not scan clean.**
+      Done as story 31.
+
+- [x] **The download bundle leaves out a file that did not scan clean.**
       A holder with one clean and one infected certificate downloads the
       full bundle, and only the clean file is in it. Checked by opening
       the zip the browser saved, as story 11 checks its downloads.
+
+      Done as story 32. A certificate cannot be saved naming a file
+      already found infected, so the second file is attached while still
+      being scanned, as the uploader does after two minutes. The test
+      moves the page's clock on instead of waiting, then reports
+      "infected". `fixtures/zip.ts` reads the names in the saved zip.
 
 ## Phase 9: No API in any end-to-end test
 
@@ -905,6 +948,8 @@ it; the rest of the suite follows.
       call allowed, and it goes only to the job callback routes. Nothing
       a person does may be done that way. `.claude/rules/e2e.md` and its
       Copilot copy need to say so, in the same unit as the scan tests.
+      Done with Phase 8: both now name the job reports as the one call a
+      test may make, and `docs/docs/conventions/index.md` says the same.
 
 ## Decisions
 

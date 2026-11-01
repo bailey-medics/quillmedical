@@ -2,11 +2,12 @@
  * The holder's own record, for a passport holder.
  *
  * Phase 6 of docs/docs/plans/2026-10-31-passport-landing-views-plan.md,
- * stories 1 to 12. Each test makes its own holder through the passport
+ * stories 1 to 12, with 28 and 30 to 32 from Phase 8. Each test makes its own holder through the passport
  * admin, so nothing it records is seen by another test, a retry or the
  * other browser. Everything is done and checked on screen (Phase 7).
  */
 
+import type { Page } from "@playwright/test";
 import { test, expect } from "../../fixtures/axe";
 import { linkIn, waitForEmail } from "../../fixtures/mail";
 import {
@@ -25,15 +26,26 @@ import {
   toggleFrameworks,
   writeReflection,
 } from "../../fixtures/passport";
+import {
+  SCAN_SHOWN,
+  digestOf,
+  reportScan,
+  uniquePdf,
+} from "../../fixtures/scanJob";
 import { signIn } from "../../fixtures/signIn";
+import { namesInZip } from "../../fixtures/zip";
 
-/** A one-page PDF, enough to be stored and drawn again. */
-const SMALL_PDF = Buffer.from(
-  "%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n" +
-    "2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n" +
-    "3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 200 200]>>endobj\n" +
-    "trailer<</Root 1 0 R>>\n%%EOF\n",
-);
+/** Fill in the open certificate form as *what*, and record it. */
+async function describeCertificate(page: Page, what: string): Promise<void> {
+  await page.getByRole("textbox", { name: "What is it?" }).fill(what);
+  await page
+    .getByRole("textbox", { name: "Who issued it?" })
+    .fill("Resuscitation Council UK");
+  await fillDate(page, "Awarded on", A_DAY_LAST_MONTH);
+  await page.getByRole("button", { name: "Record certificate" }).click();
+
+  await expect(page.getByText(what).first()).toBeVisible();
+}
 
 test.describe("Holding a passport", () => {
   test.use({ storageState: { cookies: [], origins: [] } });
@@ -262,10 +274,13 @@ test.describe("Holding a passport", () => {
   test("9. a holder adds a certificate with its file and opens the file again", async ({
     page,
     browser,
+    request,
   }, testInfo) => {
-    // `UPLOAD_SCAN_JOB` is unset in the end-to-end stack, so nothing is
-    // scanned and a stored file is served at once.
+    // Every file waits for the malware scan. The holder is told it is
+    // being checked, and it attaches once the scan job reports it clean,
+    // which the test reports as the job would (fixtures/scanJob.ts).
     const holder = await makeHolder(browser, testInfo.project.name);
+    const pdf = uniquePdf(holder.username);
 
     await signIn(page, holder.username);
     await page.goto("/passport/certificates");
@@ -273,9 +288,19 @@ test.describe("Holding a passport", () => {
     await page.locator('input[type="file"]').setInputFiles({
       name: "als-certificate.pdf",
       mimeType: "application/pdf",
-      buffer: SMALL_PDF,
+      buffer: pdf,
     });
-    await expect(page.getByText("als-certificate.pdf").first()).toBeVisible();
+    await expect(page.getByText("Scanning als-certificate.pdf")).toBeVisible(
+      SCAN_SHOWN,
+    );
+    await expect(page.getByText("Attached: als-certificate.pdf")).toHaveCount(
+      0,
+    );
+
+    await reportScan(request, pdf, "clean");
+    await expect(page.getByText("Attached: als-certificate.pdf")).toBeVisible(
+      SCAN_SHOWN,
+    );
     await page
       .getByRole("textbox", { name: "What is it?" })
       .fill("Advanced life support");
@@ -298,6 +323,148 @@ test.describe("Holding a passport", () => {
         .or(page.locator('iframe[title="als-certificate.pdf"]')),
     ).toBeVisible();
     await expect(page.getByText("This file could not be shown")).toHaveCount(0);
+  });
+
+  test("30. malware is found in a certificate's file, and it is not attached", async ({
+    page,
+    browser,
+    request,
+  }, testInfo) => {
+    // The scan job reports "infected". The holder is told what was found
+    // and that the file is gone, and the certificate is saved without it.
+    // The backend's own tests are router_test.py's
+    // `test_saving_a_record_naming_a_file_with_malware_says_why` and
+    // `test_a_file_the_scan_found_malware_in_is_gone`.
+    const holder = await makeHolder(browser, testInfo.project.name);
+    const pdf = uniquePdf(holder.username);
+
+    await signIn(page, holder.username);
+    await page.goto("/passport/certificates");
+    await page.getByRole("button", { name: "Record a certificate" }).click();
+    await page.locator('input[type="file"]').setInputFiles({
+      name: "infected.pdf",
+      mimeType: "application/pdf",
+      buffer: pdf,
+    });
+    await expect(page.getByText("Scanning infected.pdf")).toBeVisible(
+      SCAN_SHOWN,
+    );
+
+    await reportScan(request, pdf, "infected", "Eicar-Test-Signature");
+    await expect(page.getByText("Malware found")).toBeVisible(SCAN_SHOWN);
+    await expect(
+      page.getByText(
+        "Malware was found in infected.pdf (Eicar-Test-Signature). It has been deleted and is not attached.",
+      ),
+    ).toBeVisible();
+    await expect(page.getByText("Attached: infected.pdf")).toHaveCount(0);
+
+    await page
+      .getByRole("textbox", { name: "What is it?" })
+      .fill("Basic life support");
+    await page
+      .getByRole("textbox", { name: "Who issued it?" })
+      .fill("Resuscitation Council UK");
+    await fillDate(page, "Awarded on", A_DAY_LAST_MONTH);
+    await page.getByRole("button", { name: "Record certificate" }).click();
+
+    await page.getByText("Basic life support").first().click();
+    await expect(page.getByText("Resuscitation Council UK")).toBeVisible();
+    await expect(page.getByText("infected.pdf")).toHaveCount(0);
+    await expect(
+      page.getByRole("img", { name: /^Page \d+ of \d+$/ }),
+    ).toHaveCount(0);
+  });
+
+  test("31. the scan cannot check a certificate's file, and the holder is asked for it again", async ({
+    page,
+    browser,
+    request,
+  }, testInfo) => {
+    // The scan job reports "failed", as it does for a file it could not
+    // read. The file is not attached, and the holder is asked to upload
+    // it again. The backend's own test is router_test.py's
+    // `test_saving_a_record_naming_a_file_the_scan_could_not_check_says_so`.
+    const holder = await makeHolder(browser, testInfo.project.name);
+    const pdf = uniquePdf(holder.username);
+
+    await signIn(page, holder.username);
+    await page.goto("/passport/certificates");
+    await page.getByRole("button", { name: "Record a certificate" }).click();
+    await page.locator('input[type="file"]').setInputFiles({
+      name: "unreadable.pdf",
+      mimeType: "application/pdf",
+      buffer: pdf,
+    });
+    await expect(page.getByText("Scanning unreadable.pdf")).toBeVisible(
+      SCAN_SHOWN,
+    );
+
+    await reportScan(request, pdf, "failed", "Could not read the file");
+    await expect(page.getByText("Not checked")).toBeVisible(SCAN_SHOWN);
+    await expect(
+      page.getByText(
+        "unreadable.pdf could not be checked for malware, so it is not attached. Upload it again.",
+      ),
+    ).toBeVisible();
+    await expect(page.getByText("Attached: unreadable.pdf")).toHaveCount(0);
+  });
+
+  test("32. the downloaded bundle leaves out a file the scan found malware in", async ({
+    page,
+    browser,
+    request,
+  }, testInfo) => {
+    // A file still being scanned after two minutes is attached anyway, so
+    // a slow scan does not stop a save. The page's clock is moved on
+    // rather than waited out. Here the scan then finds malware in it, and
+    // the bundle the holder downloads holds only the clean file. The
+    // backend's own test is router_test.py's
+    // `test_the_bundle_leaves_out_a_file_not_scanned_clean`.
+    const holder = await makeHolder(browser, testInfo.project.name);
+    const clean = uniquePdf(`${holder.username}-clean`);
+    const infected = uniquePdf(`${holder.username}-infected`);
+    const input = page.locator('input[type="file"]');
+
+    await page.clock.install();
+    await signIn(page, holder.username);
+    await page.goto("/passport/certificates");
+
+    await page.getByRole("button", { name: "Record a certificate" }).click();
+    await input.setInputFiles({
+      name: "clean.pdf",
+      mimeType: "application/pdf",
+      buffer: clean,
+    });
+    await expect(page.getByText("Scanning clean.pdf")).toBeVisible(SCAN_SHOWN);
+    await reportScan(request, clean, "clean");
+    await expect(page.getByText("Attached: clean.pdf")).toBeVisible(SCAN_SHOWN);
+    await describeCertificate(page, "Advanced life support");
+
+    await page.getByRole("button", { name: "Record a certificate" }).click();
+    await input.setInputFiles({
+      name: "later.pdf",
+      mimeType: "application/pdf",
+      buffer: infected,
+    });
+    await expect(page.getByText("Scanning later.pdf")).toBeVisible(SCAN_SHOWN);
+    await page.clock.fastForward("02:05");
+    await expect(
+      page.getByText(
+        "Attached: later.pdf. Still scanning; it will be shown once it passes.",
+      ),
+    ).toBeVisible(SCAN_SHOWN);
+    await describeCertificate(page, "Basic life support");
+    await reportScan(request, infected, "infected", "Eicar-Test-Signature");
+
+    await page.goto("/passport/download");
+    const download = page.waitForEvent("download");
+    await page.getByRole("button", { name: "Full bundle" }).click();
+    const bundle = await download;
+    const names = namesInZip(await bundle.path());
+
+    expect(names.some((name) => name.endsWith(digestOf(clean)))).toBe(true);
+    expect(names.some((name) => name.endsWith(digestOf(infected)))).toBe(false);
   });
 
   test("28. a certificate's file is refused, and the holder is told why", async ({

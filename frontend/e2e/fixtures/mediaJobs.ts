@@ -66,8 +66,11 @@ function base64url(data: string | Buffer): string {
   return Buffer.from(data).toString("base64url");
 }
 
-/** An identity token for *email*, shaped as Google's and signed by the run. */
-function identityToken(email: string): string {
+/**
+ * An identity token for *email*, shaped as Google's and signed by the run.
+ * `scanJob.ts` signs the malware scan's reports with it too.
+ */
+export function identityToken(email: string): string {
   const now = Math.floor(Date.now() / 1000);
   const header = base64url(JSON.stringify({ alg: "RS256", typ: "JWT" }));
   const claims = base64url(
