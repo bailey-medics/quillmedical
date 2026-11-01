@@ -827,6 +827,36 @@ to start a stack anywhere but the tip of `origin/main`, and says to run
    behaviour, recognise, licence as the noun. Identifiers, route paths and
    library names keep whatever spelling the code gives them.
 
+   ### Writing for a dyslexic reader
+
+   The reader is dyslexic, and these are the British Dyslexia Association's
+   writing rules, from its style guide: "Use short, simple sentences in a
+   direct style. Give instructions clearly. Avoid long sentences of
+   explanation. Use active rather than passive voice. Avoid double
+   negatives. Be concise." The sentence rules above already carry the short
+   sentences, the bullets, the first-use explanation of a name and bold in
+   place of italics. These are the rest.
+
+   - **Active voice.** "Quill sends a link", never "a link is sent". The
+     subject names who does the verb, so the sentence says who did it.
+   - **No double negatives.** Not "a job that is not excluded does not
+     fail" but "every job the check covers passes". Security write-ups
+     breed these, so look for them there.
+   - **Instructions a person must carry out go in a numbered list**, in
+     the order they are done, separate from the explanation. The guide
+     says to give instructions clearly and to avoid long sentences of
+     explanation around them. Secrets to set before merging, a command to
+     run afterwards, a setting to change by hand: each is a numbered step.
+   - **No italics, no underlining, no block capitals outside a code
+     span.** The guide says underlining and italics "make the text appear
+     to run together" and block capitals are "much harder to read". Bold
+     is the only emphasis, and only for a word that must not be missed.
+   - **Every bullet ends with a full stop.** A text-to-speech reader
+     pauses on punctuation and runs straight on without it.
+   - **No tables, and no text inside an image.** A text reader stumbles on
+     a table and cannot hear an image. An embedded screenshot needs a
+     sentence beside it saying what it shows.
+
    ### The sections
 
    - **`## Decisions to check`** - the choices you made that a human might
