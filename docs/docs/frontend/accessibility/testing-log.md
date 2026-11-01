@@ -129,6 +129,15 @@ evidence the NHS DTAC's accessibility section (D1) asks for, and the
   screen reader user to it. In Settings, check "Passport home page" is
   announced as one group with its two choices, and that saving one is
   heard.
+- **Journey 4 again, for declining a request** - added on 31 October
+  2026 by the
+  [passport landing views plan](../../plans/2026-10-31-passport-landing-views-plan.md).
+  The sign-off page now has "Decline request" beneath the form. Check it
+  is reached after the form's own buttons, that it opens a dialog named
+  "Decline this request" with focus inside it, that the reason box is
+  announced with its label and that it is required, and that an empty
+  reason is announced as "Say why you are declining" without the dialog
+  closing.
 - **JAWS and Dragon** - deferred to a commissioned audit.
 - **Journeys 1 to 4 on a phone, by touch** - the
   [touch target sizes plan](../../plans/2026-09-28-touch-target-sizes-plan.md)
