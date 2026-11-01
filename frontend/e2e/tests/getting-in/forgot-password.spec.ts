@@ -10,7 +10,7 @@
 
 import type { Page } from "@playwright/test";
 import { test, expect } from "../../fixtures/axe";
-import { createAccount, orgUnitId, send } from "../../fixtures/api";
+import { deactivate, makeAccount } from "../../fixtures/people";
 import {
   emailCount,
   expectNoNewEmail,
@@ -21,7 +21,11 @@ import {
   registerFromTheLoginPage,
   registeringEmailOf,
 } from "../../fixtures/registration";
-import { PLACES, freshUsername, signIn } from "../../fixtures/signIn";
+import {
+  expectRefusedSignIn,
+  freshUsername,
+  signIn,
+} from "../../fixtures/signIn";
 
 test.describe.configure({ timeout: 90_000 });
 
@@ -49,19 +53,6 @@ async function setPasswordFrom(
   await page.getByLabel("Confirm password").fill(password);
   await page.getByTestId("submit-button").click();
   await expect(page).toHaveURL(/\/login/);
-}
-
-/** The status the login API answers a username and password with. */
-async function loginStatus(
-  page: Page,
-  username: string,
-  password: string,
-): Promise<number> {
-  const response = await page.request.post("/api/auth/login", {
-    data: { username, password },
-  });
-
-  return response.status();
 }
 
 test.describe("Forgot password, signed out", () => {
@@ -121,7 +112,6 @@ test.describe("Forgot password, for an account", () => {
 
   for (const { who, profession } of professions) {
     test(`${who} resets their password with the emailed link`, async ({
-      page,
       browser,
     }, testInfo) => {
       const username = freshUsername("resetting", testInfo.project.name);
@@ -129,12 +119,11 @@ test.describe("Forgot password, for an account", () => {
       const oldPassword = `${username}Old123!`;
       const newPassword = `${username}New456!`;
 
-      // Made by the seeded teaching admin, so the address is confirmed.
-      await createAccount(page, {
+      // Made by the seeded teaching admin on the form, so the address is
+      // confirmed.
+      await makeAccount(browser, {
         username,
-        name: "Resetting User",
         profession,
-        orgUnitIds: [await orgUnitId(page, PLACES.site)],
         password: oldPassword,
         email: address,
       });
@@ -154,27 +143,19 @@ test.describe("Forgot password, for an account", () => {
         "Reset password",
       );
 
-      expect(await loginStatus(them, username, oldPassword)).toBe(400);
+      await expectRefusedSignIn(them, username, oldPassword);
       await signIn(them, username, newPassword);
       await theirs.close();
     });
 
     test(`${who} whose account is deactivated is sent nothing`, async ({
-      page,
       browser,
     }, testInfo) => {
       const username = freshUsername("closed_reset", testInfo.project.name);
       const address = registeringEmailOf(username);
 
-      const id = await createAccount(page, {
-        username,
-        name: "Closed Account",
-        profession,
-        orgUnitIds: [await orgUnitId(page, PLACES.site)],
-        email: address,
-      });
-      const closed = await send(page, "POST", `/users/${id}/deactivate`, {});
-      expect(closed.status(), await closed.text()).toBe(200);
+      await makeAccount(browser, { username, profession, email: address });
+      await deactivate(browser, username);
 
       // Closing an account emails them to say so. That one is expected;
       // nothing after it is.

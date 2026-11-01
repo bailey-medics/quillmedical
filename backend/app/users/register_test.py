@@ -542,6 +542,10 @@ def test_a_lead_is_not_recognised_for_a_module_not_open_to_registration(
             db_session, _through_the_link(teaching_module_id="another-module")
         )
 
+    # No account was made, as the end-to-end test used to check by
+    # signing in as them.
+    assert _account(db_session) is None
+
 
 def test_a_lead_at_several_sites_needs_one_chosen(
     db_session: Session, lead: User, second_hospital: OrgUnit
