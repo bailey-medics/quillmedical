@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
-# Lists the contents of the app project's London landing bucket after a
-# deploy, as a lightweight confirmation that files were uploaded. The deploy
-# writes the old EU bucket too while the site moves; the London one is the
-# one checked, because it is the one being filled.
+# Lists the contents of the app project's GCS landing bucket after a
+# deploy, as a lightweight confirmation that files were uploaded.
 #
 # Usage: list-files.sh <gcp-project-id>
 set -euo pipefail

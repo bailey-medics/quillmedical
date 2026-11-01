@@ -168,7 +168,7 @@ The `public-site.yml` workflow triggers on pushes to `main` that change:
 **Pipeline:**
 
 1. **Build** - `yarn workspace public-pages build` → outputs to `frontend/dist/public_pages/`
-2. **Deploy** - syncs to the app project's `{project}-landing` GCS bucket
+2. **Deploy** - syncs to the app project's `{project}-landing-uk` GCS bucket, in London (`europe-west2`)
 
 ### Cache strategy
 
