@@ -46,7 +46,7 @@ export type FrameworkId = (typeof HOLDER_FRAMEWORKS)[number];
 export const FRAMEWORK_NAMES: Record<FrameworkId, string> = {
   clinical: "General clinical skills",
   ghnft_radiotherapy_record:
-    "Clinical oncology registrar record of radiotherapy training and competence",
+    "Clinical oncology registrar record of radiotherapy training and competence - Gloucestershire Hospitals NHS Foundation Trust",
 };
 
 /**

@@ -785,6 +785,57 @@ passport, is sold, and until now no base profession carried it.
       moved them to rows, and it is what led this phase to claim at first
       that existing admins would gain writing on deploy.
 
+## Phase 14: The Gloucestershire record carries every row
+
+Not in the plan as written. Found on 1 November 2026, reading the paper
+form beside `ghnft_radiotherapy_record.yaml`: the form has fifteen lines a
+trainer signs, and the framework held seven of them.
+
+Phase 9 sent the other eight elsewhere: exam passes, courses, induction and
+the two reviews to certificates, RCR registration to the profile, and the
+year in post nowhere. That lost the trainer's signature. On paper the
+trainer signs every row, but a certificate and a registration are both
+self-declared in Quill, and nobody countersigns them. Nothing told the
+registrar the trust expects them either, and the supervisor could not see
+the record as one form.
+
+- [x] **Add the eight rows as entries, in the sheet's own words**, in
+      `ghnft_radiotherapy_record.yaml`: induction on radiation protection,
+      registered with the RCR, one year in post with supervised
+      pre-treatment planning, the Part 1 FRCR course, passed Part 1 FRCR,
+      the post Part 1 training slide deck, passed Final FRCR and the post
+      Part 2 review. Each is a sign-off the trainer countersigns. A
+      certificate can still be attached as its evidence.
+- [x] **Order the entries as the sheet does**, rows 1 to 12 then the three
+      acquaintances, so the record reads in the same order as the paper.
+- [x] **Edit this file rather than start a new one.** The header says a
+      revised edition is a new file. This is not a new edition: it is the
+      same pilot, copied incompletely. Every change is an addition, so the
+      seven ids already in use keep their meaning and any record against
+      them still opens. The header now says so.
+- [x] **Name the trust in the framework's name**, as "Clinical oncology
+      registrar record of radiotherapy training and competence -
+      Gloucestershire Hospitals NHS Foundation Trust", so a list of
+      frameworks shows whose record it is. The pickers already add the
+      publisher in brackets after the name, so there the trust appears
+      twice.
+- [x] **Name the UK SACT Board in its framework's name too**, as
+      "Prescriber competencies for reviewing and prescribing SACT - The UK
+      SACT Board", in `uk_sact_board_2023.yaml`, for the same reason.
+- [x] **And the Bath trust in theirs**, as "SACT competency passport -
+      Royal United Hospitals Bath NHS Foundation Trust", in
+      `ruh_sact_passport.yaml`.
+- [x] **Show a framework by its name today**, with `current_name` in
+      `backend/app/features/passport/frameworks.py`, used where the
+      passport is described in `router.py`. Found when the rename above
+      did not reach the page: a profile stores each framework's name as it
+      read when chosen, and the page showed that stored name, so every
+      passport made before a rename kept the old one. The stored name
+      stays in the profile as the record of what was chosen, and is shown
+      only for a framework the catalogue no longer holds.
+- [x] **Tests**: the catalogue holds all fifteen entries, in the sheet's
+      order, all assessable and all passport only.
+
 ## Decisions
 
 Taken by the product owner on 7 October 2026. Where a decision belongs to

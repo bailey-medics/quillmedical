@@ -434,7 +434,7 @@ describe("OrgFeaturesPage", () => {
       await screen.findByText("Passport frameworks");
       await waitFor(() =>
         expect(pills(container)).toEqual([
-          "Prescriber competencies for reviewing and prescribing SACT (UK SACT Board, November 2023)",
+          "Prescriber competencies for reviewing and prescribing SACT - The UK SACT Board (UK SACT Board, November 2023)",
         ]),
       );
       expect(get).toHaveBeenCalledWith("/org-units/3/passport-frameworks");
@@ -461,7 +461,7 @@ describe("OrgFeaturesPage", () => {
       const { container } = renderPage();
       await waitFor(() =>
         expect(pills(container)).toEqual([
-          "Prescriber competencies for reviewing and prescribing SACT (UK SACT Board, November 2023)",
+          "Prescriber competencies for reviewing and prescribing SACT - The UK SACT Board (UK SACT Board, November 2023)",
         ]),
       );
       // An unsaved switch change, so the form could submit if asked
@@ -491,7 +491,7 @@ describe("OrgFeaturesPage", () => {
       const { container } = renderPage();
       await waitFor(() =>
         expect(pills(container)).toEqual([
-          "Prescriber competencies for reviewing and prescribing SACT (UK SACT Board, November 2023)",
+          "Prescriber competencies for reviewing and prescribing SACT - The UK SACT Board (UK SACT Board, November 2023)",
         ]),
       );
 
@@ -514,7 +514,7 @@ describe("OrgFeaturesPage", () => {
       const { container } = renderPage();
       await waitFor(() =>
         expect(pills(container)).toEqual([
-          "Prescriber competencies for reviewing and prescribing SACT (UK SACT Board, November 2023)",
+          "Prescriber competencies for reviewing and prescribing SACT - The UK SACT Board (UK SACT Board, November 2023)",
         ]),
       );
 
@@ -531,7 +531,7 @@ describe("OrgFeaturesPage", () => {
         ),
       ).toBeInTheDocument();
       expect(pills(container)).toEqual([
-        "Prescriber competencies for reviewing and prescribing SACT (UK SACT Board, November 2023)",
+        "Prescriber competencies for reviewing and prescribing SACT - The UK SACT Board (UK SACT Board, November 2023)",
       ]);
     });
   });
