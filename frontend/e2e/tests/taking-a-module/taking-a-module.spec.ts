@@ -15,7 +15,7 @@
  */
 
 import { test, expect } from "../../fixtures/axe";
-import { emailOf } from "../../fixtures/api";
+import { emailOf } from "../../fixtures/userForm";
 import { MODULE_ID } from "../../fixtures/answers";
 import {
   checkResultsByQuestion,

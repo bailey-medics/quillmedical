@@ -35,28 +35,13 @@ test("plays the self-hosted video to its end", async ({
   await makeLearner(browser, username, "teaching_delegate");
   await signIn(page, username);
 
-  // Granted first, then fetched from where the grant says, on Quill's
-  // own origin: never YouTube.
-  const granted = page.waitForResponse((response) =>
-    response.url().includes(`/teaching/modules/${MODULE_ID}/video-access`),
-  );
   // The 720p rendition the seed wrote as the transcode job would: the
-  // stack runs the jobs' gate, so a transcoded video plays from it.
-  // Watched as a request, and its answer fetched again by the test:
-  // WebKit on Linux hands video to its own media pipeline, and the
-  // response Playwright sees for it there has status 0.
-  const asked = page.waitForRequest((request) =>
-    request.url().endsWith("-720p.mp4"),
-  );
+  // stack runs the jobs' gate, so a transcoded video plays from it. The
+  // video element names where it came from: Quill's own origin, never
+  // YouTube. The grant itself is the backend's to test:
+  // teaching_video_and_media_test.py's
+  // `test_a_learner_is_granted_one_module_at_their_own_organisation`.
   await page.goto(`/teaching/learn/${MODULE_ID}/slide/${index}`);
-  expect((await granted).status()).toBe(200);
-  const address = (await asked).url();
-  expect(new URL(address).origin).toBe(new URL(page.url()).origin);
-  const file = await page.request.get(address, {
-    headers: { Range: "bytes=0-1023" },
-  });
-  expect([200, 206]).toContain(file.status());
-  expect(file.headers()["content-type"]).toContain("video/mp4");
 
   // Quill's player starts it, its clock moves, and it plays to the end.
   const player = page.getByRole("group", { name: "Media player" });
@@ -65,6 +50,11 @@ test("plays the self-hosted video to its end", async ({
     timeout: 15_000,
   });
   const video = player.locator("video");
+  const source = await video.evaluate(
+    (element: HTMLVideoElement) => element.currentSrc,
+  );
+  expect(source).toMatch(/-720p\.mp4$/);
+  expect(new URL(source).origin).toBe(new URL(page.url()).origin);
   await expect
     .poll(
       () => video.evaluate((element: HTMLVideoElement) => element.currentTime),
