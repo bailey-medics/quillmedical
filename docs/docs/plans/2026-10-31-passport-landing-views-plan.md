@@ -936,6 +936,33 @@ it; the rest of the suite follows.
       `deactivate-a-site.spec.ts`. One unit for each folder. When none
       is left, delete `fixtures/api.ts`.
 
+      - [x] **The people every teaching spec makes, on screen.**
+        `fixtures/people.ts` made accounts, sites and clinical leads
+        through the API for the settings, everyday, edges, leaks, guides
+        and taking-a-module specs. It now adds each on the add-user form
+        and the sites pages, as the seeded teaching admin, through
+        `fixtures/userForm.ts`, the form steps `accounts.spec.ts` already
+        drove, moved out so every spec shares them. `makePerson` now
+        places somebody at the organisation and its site, where the API
+        placed them at the site alone, because the form adds a site under
+        its organisation. A learner's clinical lead is added at the
+        organisation, then appointed on the new site's "Add staff" page.
+
+        Setup on screen is slower, so the leaks spec has three minutes, not
+        two. The everyday spec's feedback helper presses Feedback again
+        until its dialog opens, because WebKit dropped the first press
+        right after sign-in. In a full run of 437 tests, 434 passed and the
+        everyday and leaks specs then passed on their own; the third
+        failure was passport story 7, a twenty-second wait for a saved
+        setting under the full run's load.
+      - [ ] **For Mark: `asset-caching.spec.ts` and the decoder check in
+        `pdf-pages.spec.ts`.** Each asks the web server for a file and
+        reads a header: the caching header Caddy sends, and that the PDF
+        decoders are served as scripts. That is not Quill's API, and no
+        screen shows a header, so neither can be done as a person
+        would. Under the rule they wait for Mark: keep them as they are,
+        move them to a check that is not Playwright, or drop them.
+
 - [x] **Ask Mark about outside jobs before touching them.**
       `fixtures/mediaJobs.ts` posts to `/api/ci/teaching/*` as the video
       transcoding job would, and Phase 8's scan tests would post as the
