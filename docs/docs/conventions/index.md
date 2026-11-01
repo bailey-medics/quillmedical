@@ -106,6 +106,11 @@ preference.
 - Storybook runs on the host: `just sb` (dev), `just sbt` (tests).
 - End-to-end tests: `just e2e` brings up a fresh per-worktree `compose.ci.yml` stack on
   a free port, runs Playwright against it and tears it down. It never uses the dev stack.
+- An end-to-end test does what a person does, through the screen, and checks what a
+  person would see: no API calls to set up a step or check a result. A refusal is the
+  missing button or the "Not found" a person meets, and the API's half of it is a backend
+  test. The one exception is making the user accounts a journey acts on. The full rule is
+  in `.claude/rules/e2e.md`.
 - Never run the Storybook tests and `just e2e` at the same time. Both saturate the
   machine and the Storybook runner then times out loading its own pages.
 - Every reusable frontend component must have associated `.stories.tsx` and `.test.tsx`

@@ -255,6 +255,24 @@ class TestCreate:
 
         assert response.status_code == 409
 
+    def test_somebody_without_passport_write_cannot_create_one(
+        self,
+        test_client: TestClient,
+        passport_store: LocalPassportStore,
+        org: OrgUnit,
+        bystander: User,
+    ) -> None:
+        """The feature is on where they work, but writing is not held.
+
+        The end-to-end journey for this shows the page's refusal; this is
+        the API's half of it.
+        """
+        client = _login(test_client, bystander.username)
+
+        response = client.post("/api/passport", json=WORKING_TO)
+
+        assert response.status_code == 403
+
     def test_registrations_are_recorded_as_declared(
         self, holder_client: TestClient
     ) -> None:
@@ -290,6 +308,38 @@ class TestReadAuthorisation:
         response = bystander_client.get(f"/api/passport/{passport_id}")
 
         assert response.status_code == 404
+
+    @pytest.mark.parametrize(
+        "path",
+        [
+            "",
+            "/logbook",
+            "/reflections",
+            "/cpd",
+            "/certificates",
+            "/sign-offs",
+        ],
+    )
+    def test_an_unrelated_user_cannot_read_any_part_of_it(
+        self,
+        test_client: TestClient,
+        passport_store: LocalPassportStore,
+        org: OrgUnit,
+        path: str,
+    ) -> None:
+        """Every part a holder reads, refused to somebody else.
+
+        The end-to-end journey for this (story 22 of the passport landing
+        views plan) checks that nothing of one holder shows on another's
+        pages; this is the API's half, route by route.
+        """
+        holder_client = _login(test_client, "holder")
+        passport_id = _create_passport(holder_client)
+
+        bystander_client = _login(test_client, "bystander")
+        response = bystander_client.get(f"/api/passport/{passport_id}{path}")
+
+        assert response.status_code == 404, f"{path or '/'}: {response.text}"
 
     def test_a_malformed_id_is_not_found(
         self, holder_client: TestClient
@@ -1359,6 +1409,7 @@ class TestSignOff:
             "/logbook",
             "/cpd",
             "/cpd/2026",
+            "/reflections",
         ):
             refused = client.get(f"/api/passport/{passport_id}{path}")
             assert (

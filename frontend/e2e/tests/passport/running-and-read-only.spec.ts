@@ -3,51 +3,25 @@
  *
  * Phase 6 of docs/docs/plans/2026-10-31-passport-landing-views-plan.md,
  * stories 17 to 21. Every change to a person is made by the passport
- * admin, as it would be in a trust, never by the operator.
+ * admin on their admin pages, as it would be in a trust, never by the
+ * operator, and every refusal is checked as the person meets it on
+ * screen (Phase 7).
  */
 
-import type { Browser, Page } from "@playwright/test";
 import { test, expect } from "../../fixtures/axe";
-import { read, send } from "../../fixtures/api";
 import {
+  FRAMEWORK_NAMES,
+  REFER_PALLIATIVE,
   asPassportAdmin,
   makeAssessor,
   makeHolder,
+  openUntil,
+  removeFromThePassportSite,
+  toggleFrameworks,
+  togglePassportWrite,
+  userIdFromTheList,
 } from "../../fixtures/passport";
 import { PEOPLE, signIn } from "../../fixtures/signIn";
-
-/** A competency with no levels and no scopes. */
-const REFER_PALLIATIVE = {
-  id: "ghnft_radiotherapy_record_refer_palliative",
-  name: "Refer patients for palliative radiotherapy unsupervised",
-};
-
-/** How the catalogue names `passport_write` in a picker. */
-const PASSPORT_WRITE = "Hold and Write a Clinician Passport";
-
-/** Change somebody as the passport admin, through the API. */
-async function changeAsPassportAdmin(
-  browser: Browser,
-  userId: number,
-  change: Record<string, unknown>,
-): Promise<number> {
-  const page = await asPassportAdmin(browser);
-  const response = await send(page, "PATCH", `/users/${userId}`, change);
-  const status = response.status();
-  await page.context().close();
-
-  return status;
-}
-
-/** Add a logbook entry through the API, as the page's user. */
-async function addEntry(page: Page, passportId: string | null) {
-  return send(
-    page,
-    "POST",
-    `/passport/${passportId}/logbook/${REFER_PALLIATIVE.id}`,
-    { performed_on: "2026-10-01" },
-  );
-}
 
 test.describe("Running the passport, and a read-only passport", () => {
   test.use({ storageState: { cookies: [], origins: [] } });
@@ -57,73 +31,106 @@ test.describe("Running the passport, and a read-only passport", () => {
     page,
     browser,
   }, testInfo) => {
-    // Somebody at the passport site who may not yet write: they cannot
-    // make a passport.
+    // Somebody at the passport site who may not yet write: the page
+    // offers a passport, and refuses to make it. The API's refusal is
+    // router_test.py's
+    // `test_somebody_without_passport_write_cannot_create_one`.
     const member = await makeAssessor(browser, testInfo.project.name);
     await signIn(page, member.username);
-    const refused = await send(page, "POST", "/passport", {
-      frameworks: ["clinical"],
-    });
-    expect(refused.status()).toBe(403);
+    await page.goto("/passport");
+    await toggleFrameworks(page, ["clinical"]);
+    await page.getByRole("button", { name: "Create my passport" }).click();
+    await expect(
+      page.getByText("Your passport could not be created"),
+    ).toBeVisible();
 
     // The passport admin grants it on the member's edit page.
+    await togglePassportWrite(browser, member.id);
+
+    // Now they can.
+    await page.goto("/passport");
+    await toggleFrameworks(page, ["clinical"]);
+    await page.getByRole("button", { name: "Create my passport" }).click();
+    await expect(
+      page.getByRole("heading", { name: FRAMEWORK_NAMES.clinical }),
+    ).toBeVisible();
+  });
+
+  test("27. a passport admin is offered only the passport's professions and competencies, and no platform role", async ({
+    browser,
+  }, testInfo) => {
+    // What the edit page offers is what the passport admin may give. The
+    // API's half is manage_passport_user_routes_test.py's
+    // `TestWhatAPassportAdminMayNotDo`, `test_create_an_operator` and
+    // `test_make_a_delegate_an_operator` among them.
+    const member = await makeAssessor(browser, testInfo.project.name);
     const admin = await asPassportAdmin(browser);
-    await admin.goto(`/admin/users/${member.id}/edit`);
     const next = admin.getByRole("button", { name: "Next", exact: true });
+    const save = admin.getByRole("button", { name: "Update user" });
+    const profession = admin.getByRole("combobox", { name: "Base profession" });
     const held = admin.getByRole("combobox", {
       name: "Held beyond the profession",
     });
-    while (!(await held.isVisible())) {
-      await next.click();
-    }
-    await held.click();
-    await admin.getByRole("option", { name: PASSPORT_WRITE }).click();
-    await admin.keyboard.press("Escape");
-    const save = admin.getByRole("button", { name: "Update user" });
-    while (!(await save.isVisible())) {
-      await next.click();
-    }
-    await save.click();
-    await expect(admin.getByText("User updated")).toBeVisible();
-    await admin.context().close();
 
-    // Now they can.
-    const made = await send(page, "POST", "/passport", {
-      frameworks: ["clinical"],
-    });
-    expect(made.status(), await made.text()).toBe(201);
+    await admin.goto(`/admin/users/${member.id}/edit`);
+    await expect(profession).toBeVisible();
+    await profession.click();
+    expect((await admin.getByRole("option").allTextContents()).sort()).toEqual([
+      "Passport admin",
+      "Passport clinical lead",
+      "Passport delegate",
+      "Passport external assessor",
+    ]);
+    await admin.keyboard.press("Escape");
+
+    // Every step on the way to saving, and none offers a platform role.
+    while (!(await held.isVisible())) {
+      await expect(admin.getByText("Platform role")).toHaveCount(0);
+      await next.click();
+    }
+    // Beyond the profession: only passport competencies, less any the
+    // profession already gives, as a delegate's gives the sign-off one.
+    await held.click();
+    const offered = await admin.getByRole("option").allTextContents();
+    expect(offered).toContain("Hold and Write a Clinician Passport");
+    for (const option of offered) {
+      expect([
+        "Hold and Write a Clinician Passport",
+        "Manage the Clinician Passport",
+        "Sign Off Clinician Passport Competencies",
+      ]).toContain(option);
+    }
+    await admin.keyboard.press("Escape");
+
+    while (!(await save.isVisible())) {
+      await expect(admin.getByText("Platform role")).toHaveCount(0);
+      await next.click();
+    }
+    await expect(admin.getByText("Platform role")).toHaveCount(0);
+    await admin.context().close();
   });
 
   test("18. a passport admin cannot give passport_write outside their places", async ({
     browser,
   }) => {
     // The seeded teaching admin works at "CI Teaching Hospital", where
-    // this passport admin runs nothing. Their id is read as the
-    // operator, which is a lookup, not setting anything up.
-    const operator = await browser.newContext({
-      storageState: { cookies: [], origins: [] },
-    });
-    const lookup = await operator.newPage();
-    await signIn(lookup, PEOPLE.superuser);
-    const listed = await read<{ users: { id: number; username: string }[] }>(
-      lookup,
-      `/users?search=${PEOPLE.teachingAdmin}`,
-    );
-    const outsider = listed.users.find(
-      (user) => user.username === PEOPLE.teachingAdmin,
-    );
-    expect(outsider).toBeDefined();
-    await operator.close();
+    // this passport admin runs nothing. Their id is found as the operator
+    // finds anybody, which is a lookup, not setting anything up.
+    const outsider = await userIdFromTheList(browser, PEOPLE.teachingAdmin);
 
-    const status = await changeAsPassportAdmin(browser, outsider?.id ?? 0, {
-      additional_competencies: ["passport_write"],
-    });
-    expect([403, 404]).toContain(status);
-
-    // And they are not on the passport admin's list to choose.
+    // They are not on the passport admin's list to choose, and their edit
+    // page shows nothing of them. The API's refusal is
+    // manage_passport_user_routes_test.py's `test_not_to_somebody_at_another_trust`.
     const admin = await asPassportAdmin(browser);
     await admin.goto("/admin/users");
+    await expect(admin.getByRole("heading", { name: "Users" })).toBeVisible();
     await expect(admin.getByText(PEOPLE.teachingAdmin)).toHaveCount(0);
+
+    await admin.goto(`/admin/users/${outsider}/edit`);
+    await expect(admin.getByText("Error loading user")).toBeVisible();
+    await expect(
+      admin.getByRole("combobox", { name: "Held beyond the profession" }),
+    ).toHaveCount(0);
     await admin.context().close();
   });
 
@@ -132,11 +139,7 @@ test.describe("Running the passport, and a read-only passport", () => {
     browser,
   }, testInfo) => {
     const holder = await makeHolder(browser, testInfo.project.name);
-    expect(
-      await changeAsPassportAdmin(browser, holder.id, {
-        removed_competencies: ["passport_write"],
-      }),
-    ).toBe(200);
+    await togglePassportWrite(browser, holder.id);
 
     await signIn(page, holder.username);
     await page.goto("/passport");
@@ -146,10 +149,15 @@ test.describe("Running the passport, and a read-only passport", () => {
     await expect(
       page.getByRole("heading", { level: 1, name: REFER_PALLIATIVE.name }),
     ).toBeVisible();
+    // Nothing offers a way to write. The API's refusal is
+    // passport_api_contract_test.py's
+    // `test_they_cannot_add_to_their_own_passport`.
     await expect(
       page.getByRole("button", { name: "Add an entry" }),
     ).toHaveCount(0);
-    expect((await addEntry(page, holder.passportId)).status()).toBe(403);
+    await expect(
+      page.getByRole("button", { name: "Ask for a sign-off" }),
+    ).toHaveCount(0);
 
     await page.goto("/passport/download");
     const download = page.waitForEvent("download");
@@ -162,22 +170,17 @@ test.describe("Running the passport, and a read-only passport", () => {
     browser,
   }, testInfo) => {
     const holder = await makeHolder(browser, testInfo.project.name);
-    await changeAsPassportAdmin(browser, holder.id, {
-      removed_competencies: ["passport_write"],
-    });
+    await togglePassportWrite(browser, holder.id);
 
     await signIn(page, holder.username);
     await page.goto("/settings");
     await page.getByRole("radio", { name: "By record" }).check();
-    await expect
-      .poll(async () => {
-        const me = await read<{ passport: { landing_view: string } }>(
-          page,
-          "/passport/me",
-        );
-        return me.passport.landing_view;
-      })
-      .toBe("by_record");
+    await openUntil(page, "/passport", async () => {
+      await expect(
+        page.getByRole("button", { name: "Open sign-offs" }),
+      ).toBeVisible({ timeout: 3_000 });
+    });
+    await expect(page.getByText("Your passport is read-only")).toBeVisible();
   });
 
   test("21. a holder taken off every passport place can still open their passport", async ({
@@ -185,9 +188,7 @@ test.describe("Running the passport, and a read-only passport", () => {
     browser,
   }, testInfo) => {
     const holder = await makeHolder(browser, testInfo.project.name);
-    expect(
-      await changeAsPassportAdmin(browser, holder.id, { org_unit_ids: [] }),
-    ).toBe(200);
+    await removeFromThePassportSite(browser, holder.id);
 
     await signIn(page, holder.username);
     await page.goto("/passport");
@@ -202,7 +203,10 @@ test.describe("Running the passport, and a read-only passport", () => {
       page.getByRole("heading", { level: 1, name: REFER_PALLIATIVE.name }),
     ).toBeVisible();
 
-    // Writing stays behind the feature gate.
-    expect((await addEntry(page, holder.passportId)).status()).toBe(403);
+    // Writing stays behind the feature gate: nothing offers it. The API's
+    // refusal is router_test.py's `test_they_cannot_write_to_it`.
+    await expect(
+      page.getByRole("button", { name: "Add an entry" }),
+    ).toHaveCount(0);
   });
 });

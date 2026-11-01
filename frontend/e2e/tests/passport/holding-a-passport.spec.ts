@@ -4,76 +4,36 @@
  * Phase 6 of docs/docs/plans/2026-10-31-passport-landing-views-plan.md,
  * stories 1 to 12. Each test makes its own holder through the passport
  * admin, so nothing it records is seen by another test, a retry or the
- * other browser.
+ * other browser. Everything is done and checked on screen (Phase 7).
  */
 
-import type { Locator, Page } from "@playwright/test";
 import { test, expect } from "../../fixtures/axe";
-import { read, send } from "../../fixtures/api";
 import { linkIn, waitForEmail } from "../../fixtures/mail";
 import {
+  A_DAY_LAST_MONTH,
   FRAMEWORK_NAMES,
   HOLDER_FRAMEWORKS,
+  REFER_PALLIATIVE,
+  addLogbookEntry,
+  askForSignOff,
+  fillDate,
   makeAssessor,
   makeHolder,
+  openCompetency,
+  openUntil,
+  rowOf,
+  toggleFrameworks,
+  writeReflection,
 } from "../../fixtures/passport";
 import { signIn } from "../../fixtures/signIn";
 
-/**
- * A competency in the Gloucestershire radiotherapy record with no levels
- * and no scopes, so a sign-off of it asks for nothing beyond the
- * assessor and the date.
- */
-const REFER_PALLIATIVE = {
-  id: "ghnft_radiotherapy_record_refer_palliative",
-  name: "Refer patients for palliative radiotherapy unsupervised",
-};
-
-/** A day in the past, as the date fields are typed. */
-const A_DAY_LAST_MONTH = "1 October 2026";
-
-/** A one-page PDF, enough to be stored and opened again. */
+/** A one-page PDF, enough to be stored and drawn again. */
 const SMALL_PDF = Buffer.from(
   "%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n" +
     "2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n" +
     "3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 200 200]>>endobj\n" +
     "trailer<</Root 1 0 R>>\n%%EOF\n",
 );
-
-/** The row of the landing page's tables naming *competency*. */
-function rowOf(page: Page, competency: string): Locator {
-  return page.getByRole("row").filter({ hasText: competency });
-}
-
-/** Type a date into the date field labelled *label*, and leave it. */
-async function fillDate(page: Page, label: string, day: string): Promise<void> {
-  const field = page.getByRole("textbox", { name: label, exact: true });
-
-  await field.fill(day);
-  await field.press("Tab");
-}
-
-/** Open *competency*'s page from its row on the landing page. */
-async function openCompetency(page: Page, competency: string): Promise<void> {
-  await page.goto("/passport");
-  await rowOf(page, competency).click();
-  await expect(
-    page.getByRole("heading", { level: 1, name: competency }),
-  ).toBeVisible();
-}
-
-/** From a competency's page, ask *email* to sign it off. */
-async function askForSignOff(page: Page, email: string): Promise<void> {
-  await page.getByRole("button", { name: "Ask for a sign-off" }).click();
-  await page.getByLabel(/Who should assess this/).fill(email);
-  await fillDate(page, "Observed on", A_DAY_LAST_MONTH);
-  await page.getByRole("button", { name: "Request sign-off" }).click();
-  await page
-    .getByRole("dialog")
-    .getByRole("button", { name: "Send request" })
-    .click();
-  await expect(page.getByRole("heading", { name: "Sign-offs" })).toBeVisible();
-}
 
 test.describe("Holding a passport", () => {
   test.use({ storageState: { cookies: [], origins: [] } });
@@ -97,13 +57,7 @@ test.describe("Holding a passport", () => {
     const create = page.getByRole("button", { name: "Create my passport" });
     await expect(create).toBeDisabled();
 
-    await page
-      .getByRole("combobox", { name: /Frameworks you work to/ })
-      .click();
-    await page
-      .getByRole("option", { name: new RegExp(FRAMEWORK_NAMES.clinical) })
-      .click();
-    await page.keyboard.press("Escape");
+    await toggleFrameworks(page, ["clinical"]);
     await create.click();
 
     await expect(
@@ -121,7 +75,7 @@ test.describe("Holding a passport", () => {
     await page.goto("/passport");
 
     for (const id of HOLDER_FRAMEWORKS) {
-      const name = FRAMEWORK_NAMES[id as keyof typeof FRAMEWORK_NAMES];
+      const name = FRAMEWORK_NAMES[id];
       const table = page
         .getByTestId("competency-framework-table")
         .filter({ has: page.getByRole("heading", { name }) });
@@ -224,29 +178,22 @@ test.describe("Holding a passport", () => {
 
     await page.goto("/settings");
     await page.getByRole("radio", { name: "By record" }).check();
-    await expect
-      .poll(async () => {
-        const me = await read<{ passport: { landing_view: string } }>(
-          page,
-          "/passport/me",
-        );
-        return me.passport.landing_view;
-      })
-      .toBe("by_record");
 
-    await page.goto("/passport");
-    await expect(
-      page.getByRole("button", { name: "Open sign-offs" }),
-    ).toBeVisible();
+    await openUntil(page, "/passport", async () => {
+      await expect(
+        page.getByRole("button", { name: "Open sign-offs" }),
+      ).toBeVisible({ timeout: 3_000 });
+    });
     await expect(page.getByText("Records")).toBeVisible();
     await expect(page.getByTestId("competency-framework-table")).toHaveCount(0);
 
     await page.goto("/settings");
     await page.getByRole("radio", { name: "By competency" }).check();
-    await page.goto("/passport");
-    await expect(
-      page.getByRole("heading", { name: FRAMEWORK_NAMES.clinical }),
-    ).toBeVisible();
+    await openUntil(page, "/passport", async () => {
+      await expect(
+        page.getByRole("heading", { name: FRAMEWORK_NAMES.clinical }),
+      ).toBeVisible({ timeout: 3_000 });
+    });
   });
 
   test("7. a holder changes their frameworks in Settings", async ({
@@ -256,48 +203,31 @@ test.describe("Holding a passport", () => {
     const holder = await makeHolder(browser, testInfo.project.name);
 
     await signIn(page, holder.username);
-    const logged = await send(
-      page,
-      "POST",
-      `/passport/${holder.passportId}/logbook/${REFER_PALLIATIVE.id}`,
-      { performed_on: "2026-10-01" },
-    );
-    expect(logged.status(), await logged.text()).toBe(201);
+    await addLogbookEntry(page);
 
     // Dropped: its table goes, and nothing recorded under it is lost.
     const radiotherapy = new RegExp(FRAMEWORK_NAMES.ghnft_radiotherapy_record);
-    const field = page.getByRole("combobox", {
-      name: /Frameworks you work to/,
-    });
     await page.goto("/settings");
-    await field.click();
-    await page.getByRole("option", { name: radiotherapy }).click();
-    await page.keyboard.press("Escape");
-    await expect
-      .poll(async () => {
-        const me = await read<{ passport: { frameworks: { id: string }[] } }>(
-          page,
-          "/passport/me",
-        );
-        return me.passport.frameworks.map((framework) => framework.id);
-      })
-      .toEqual(["clinical"]);
+    await toggleFrameworks(page, ["ghnft_radiotherapy_record"]);
 
-    await page.goto("/passport");
-    await expect(
-      page.getByRole("heading", { name: FRAMEWORK_NAMES.clinical }),
-    ).toBeVisible();
-    await expect(page.getByRole("heading", { name: radiotherapy })).toHaveCount(
-      0,
-    );
+    await openUntil(page, "/passport", async () => {
+      await expect(
+        page.getByRole("heading", { name: FRAMEWORK_NAMES.clinical }),
+      ).toBeVisible({ timeout: 3_000 });
+      await expect(
+        page.getByRole("heading", { name: radiotherapy }),
+      ).toHaveCount(0, { timeout: 1_000 });
+    });
 
     // Added back: the entry made under it is still counted.
     await page.goto("/settings");
-    await field.click();
-    await page.getByRole("option", { name: radiotherapy }).click();
-    await page.keyboard.press("Escape");
-    await page.goto("/passport");
-    await expect(rowOf(page, REFER_PALLIATIVE.name)).toContainText("1 entry");
+    await toggleFrameworks(page, ["ghnft_radiotherapy_record"]);
+    await openUntil(page, "/passport", async () => {
+      await expect(rowOf(page, REFER_PALLIATIVE.name)).toContainText(
+        "1 entry",
+        { timeout: 3_000 },
+      );
+    });
   });
 
   test("8. a holder records CPD against a date range they set", async ({
@@ -355,20 +285,19 @@ test.describe("Holding a passport", () => {
     await fillDate(page, "Awarded on", A_DAY_LAST_MONTH);
     await page.getByRole("button", { name: "Record certificate" }).click();
 
+    // The certificate's page shows the file: drawn page by page where
+    // the browser has no PDF viewer of its own, as headless Chromium has
+    // not, or in the browser's own viewer where it has. Either way the
+    // stored file was loaded and drawn. That the bytes come back unchanged
+    // is router_test.py's
+    // `test_a_certificate_sends_its_attachment_to_show_inline`.
     await page.getByText("Advanced life support").first().click();
-    await expect(page.getByText("als-certificate.pdf").first()).toBeVisible();
-
-    // The file comes back as the same bytes it went in as.
-    const listed = await read<
-      { name: string; attachments: { hash: string }[] }[]
-    >(page, `/passport/${holder.passportId}/certificates`);
-    const [certificate] = listed;
-    const file = await page.request.get(
-      `/api/passport/${holder.passportId}/certificates/${certificate.name}` +
-        `/attachments/${encodeURIComponent(certificate.attachments[0].hash)}`,
-    );
-    expect(file.status()).toBe(200);
-    expect(Buffer.from(await file.body()).equals(SMALL_PDF)).toBe(true);
+    await expect(
+      page
+        .getByRole("img", { name: "Page 1 of 1" })
+        .or(page.locator('iframe[title="als-certificate.pdf"]')),
+    ).toBeVisible();
+    await expect(page.getByText("This file could not be shown")).toHaveCount(0);
   });
 
   test("10. a holder writes a reflection and reads it back", async ({
@@ -378,21 +307,7 @@ test.describe("Holding a passport", () => {
     const holder = await makeHolder(browser, testInfo.project.name);
 
     await signIn(page, holder.username);
-    await page.goto("/passport/reflections");
-    await page.getByRole("button", { name: "Write a reflection" }).click();
-    await page
-      .getByRole("textbox", { name: "Title" })
-      .fill("A difficult airway");
-    await fillDate(page, "Written on", A_DAY_LAST_MONTH);
-    await page
-      .getByRole("textbox", { name: "Your reflection" })
-      .fill("What I would do differently next time.");
-    await page
-      .getByRole("checkbox", {
-        name: "I confirm this reflection is anonymised",
-      })
-      .check();
-    await page.getByRole("button", { name: "Save reflection" }).click();
+    await writeReflection(page, "A difficult airway");
 
     await page.getByText("A difficult airway").first().click();
     await expect(
