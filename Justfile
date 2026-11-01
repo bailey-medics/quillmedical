@@ -104,6 +104,7 @@ _e2e-run *ARGS:
     public_url=$(just _e2e-public-url)
     gcs_url=$(just _e2e-gcs-url)
     echo "End-to-end stack is up at ${base_url}, public site at ${public_url}" >&2
+    just _e2e-served-files
     cd frontend && E2E_BASE_URL="${base_url}" E2E_PUBLIC_URL="${public_url}" \
         E2E_GCS_URL="${gcs_url}" npx playwright test {{ARGS}}
 
@@ -114,6 +115,26 @@ _e2e-public-url:
     set -euo pipefail
     port=$(docker compose -p "$(just _e2e-project)" -f compose.ci.yml port public 8081 | sed 's/.*://')
     echo "http://localhost:${port}"
+
+
+# Check what the web server tells a browser about the app's files, against
+# this worktree's end-to-end stack: backend/tests/served_files_test.py. Not
+# Playwright, because no person sees a header. Run in the shared backend
+# dev image, joined to the stack's network so the stack is `caddy`.
+_e2e-served-files:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    docker image inspect quill-backend-dev >/dev/null 2>&1 \
+        || docker compose -p "$(just _test-project)" -f compose.unit-tests.yml build backend >&2
+    docker run --rm \
+        --network "$(just _e2e-project)_ci" \
+        --user "${HOST_UID:-10001}:${HOST_GID:-10001}" \
+        -e E2E_BASE_URL=http://caddy \
+        -v "{{justfile_directory()}}/backend:/app" \
+        -v "{{justfile_directory()}}/shared:/shared" \
+        -w /app \
+        quill-backend-dev \
+        pytest -q -p no:cacheprovider -m integration tests/served_files_test.py >&2
 
 
 # The address of the Cloud Storage stand-in in this worktree's end-to-end
