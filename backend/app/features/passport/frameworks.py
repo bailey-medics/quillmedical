@@ -82,6 +82,28 @@ def framework_refs(framework_ids: list[str]) -> list[FrameworkRef]:
     return refs
 
 
+def current_name(ref: FrameworkRef) -> str:
+    """What to call a stored framework on screen.
+
+    The catalogue's name today, so renaming a framework in its file
+    reaches every passport at once rather than only those that choose
+    it afterwards. The name stored in the profile stays there as the
+    record of what the holder chose, and is shown only for a framework
+    the catalogue no longer holds, which must not become a bare id.
+
+    Args:
+        ref: A framework as the profile stored it.
+
+    Returns:
+        Its current name, or the stored one if it has gone.
+    """
+    framework = get_framework(ref.id)
+    if framework is None:
+        return ref.name
+
+    return framework.name
+
+
 @dataclass(frozen=True)
 class FrameworkChoice:
     """One framework, at its place in the order a holder is offered them.

@@ -115,7 +115,7 @@ describe("CompetencySummary", () => {
       expect(screen.getByText("General clinical skills")).toBeInTheDocument();
       expect(
         screen.getByText(
-          "Prescriber competencies for reviewing and prescribing SACT",
+          "Prescriber competencies for reviewing and prescribing SACT - The UK SACT Board",
         ),
       ).toBeInTheDocument();
     });
