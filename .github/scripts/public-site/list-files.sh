@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
-# Lists the contents of the teaching project's GCS landing bucket after a
-# deploy, as a lightweight confirmation that files were uploaded.
+# Lists the contents of the app project's London landing bucket after a
+# deploy, as a lightweight confirmation that files were uploaded. The deploy
+# writes the old EU bucket too while the site moves; the London one is the
+# one checked, because it is the one being filled.
 #
 # Usage: list-files.sh <gcp-project-id>
 set -euo pipefail
@@ -16,7 +18,7 @@ main() {
     exit 1
   fi
 
-  local bucket="${project_id}-landing"
+  local bucket="${project_id}-landing-uk"
 
   log "Checking bucket contents"
   gsutil ls "gs://${bucket}/"
