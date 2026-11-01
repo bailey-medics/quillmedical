@@ -53,11 +53,11 @@ ease() {
 
 @test "code spans, URLs, the marker and the triage labels are not scored" {
     cat > "$BODY" <<'EOF'
+Quill reads `GCP_DEPLOY_SERVICE_ACCOUNT` from https://github.com/x/y/blob/main/a.md now.
+
 **Size:** small. Two files.
 **Look hardest at:** `backend/app/security.py`.
 **Check for me:** nothing in particular.
-
-Quill reads `GCP_DEPLOY_SERVICE_ACCOUNT` from https://github.com/x/y/blob/main/a.md now.
 
 <!-- crp:pr-summary -->
 EOF
@@ -65,11 +65,11 @@ EOF
     with_markup="$output"
 
     cat > "$BODY" <<'EOF'
+Quill reads from now.
+
 small. Two files.
 .
 nothing in particular.
-
-Quill reads from now.
 EOF
     scored "$BODY"
 
