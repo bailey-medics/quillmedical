@@ -2986,9 +2986,9 @@ test-shell-scripts *ARGS:
 
 
 alias tw := tmux-window
-# Go to a plain shell in tmux for this worktree, starting it if needed (home box)
-tmux-window:
-    @bash scripts/tmux-window.sh
+# Go to a plain shell in tmux for this worktree, starting it if needed (home box); `just tw 2` for a second
+tmux-window NUMBER="":
+    @bash scripts/tmux-window.sh {{quote(NUMBER)}}
 
 
 alias uaw := unit-tests-alert-watcher

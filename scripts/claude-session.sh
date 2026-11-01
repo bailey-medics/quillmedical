@@ -2,8 +2,8 @@
 # Take this terminal to the worktree's Claude Code session on the home box,
 # with Claude running in it, whatever state either is in.
 #
-# Each worktree has one tmux session: q1 for ~/github/quillmedical, q2 to
-# q5 for quillmedical-2 to -5, the names ~/.local/bin/quill-sessions starts
+# Each worktree has one tmux session: q1 for ~/github/quillmedical, q2 and
+# up for quillmedical-2 and up. ~/.local/bin/quill-sessions starts q1 to q5
 # at boot. This:
 #
 #   - starts the session, with Claude in it, when there is none;
@@ -45,7 +45,7 @@ worktree="$(basename "${top}")"
 
 case "${worktree}" in
     quillmedical) name="q1" ;;
-    quillmedical-[2-5]) name="q${worktree#quillmedical-}" ;;
+    quillmedical-[2-9] | quillmedical-[1-9][0-9]) name="q${worktree#quillmedical-}" ;;
     *)
         echo "✗ ${top} is not one of the Quill worktrees." >&2
         exit 1
