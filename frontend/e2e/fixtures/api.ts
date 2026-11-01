@@ -1,11 +1,11 @@
 /**
  * Call the API as whoever the page is signed in as.
  *
- * For two jobs the screen cannot do. Setting up: a journey about
- * deactivating somebody makes that somebody through the API, so it tests
- * the deactivating and not the user form again. And refusals: a hidden
- * button proves nothing if the request behind it still succeeds, so a
- * refusal journey sends the request too and checks the API says no.
+ * For making the user accounts a journey acts on, and for little else.
+ * An end-to-end test does what a person does on screen and checks what
+ * they see; the API's half of a refusal is a backend test. Some older
+ * teaching specs still set up or check through these, and move across
+ * when next touched. See `.claude/rules/e2e.md`.
  *
  * `page.request` shares the page's cookies, so these calls carry the same
  * session. A change also needs the CSRF token, which the app reads from
