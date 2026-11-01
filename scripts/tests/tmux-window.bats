@@ -29,7 +29,8 @@ EOF
 
 run_in() {
     cd "$1"
-    run "$SCRIPT"
+    shift
+    run "$SCRIPT" "$@"
 }
 
 @test "a missing session is started with a login shell in the worktree, then attached to" {
@@ -71,6 +72,51 @@ run_in() {
     run_in "${BATS_TEST_TMPDIR}/quillmedical-5"
     [ "$status" -eq 0 ]
     grep -q "^tmux new-session -d -s t5 " "$CALLS"
+}
+
+@test "worktrees past 5 get their own session" {
+    git init -q "${BATS_TEST_TMPDIR}/quillmedical-6"
+    git init -q "${BATS_TEST_TMPDIR}/quillmedical-12"
+
+    SESSION_EXISTS=1 run_in "${BATS_TEST_TMPDIR}/quillmedical-6"
+    [ "$status" -eq 0 ]
+    SESSION_EXISTS=1 run_in "${BATS_TEST_TMPDIR}/quillmedical-12"
+    [ "$status" -eq 0 ]
+
+    grep -qx "tmux attach -t =t6" "$CALLS"
+    grep -qx "tmux attach -t =t12" "$CALLS"
+}
+
+@test "a number starts another session for the same worktree, beside the first" {
+    run_in "$WORKTREE" 2
+    [ "$status" -eq 0 ]
+    grep -q "^tmux new-session -d -s t3-2 -c .*quillmedical-3 bash -l$" "$CALLS"
+    grep -qx "tmux attach -t =t3-2" "$CALLS"
+}
+
+@test "a number comes back to its session when it is running" {
+    SESSION_EXISTS=1 run_in "$WORKTREE" 12
+    [ "$status" -eq 0 ]
+    grep -qx "tmux attach -t =t3-12" "$CALLS"
+    [ "$(grep -c new-session "$CALLS")" -eq 0 ]
+}
+
+@test "from another tmux session, a numbered one is switched to" {
+    export TMUX=/tmp/tmux-test TMUX_PANE=%1 CURRENT_SESSION=t3
+
+    SESSION_EXISTS=1 run_in "$WORKTREE" 2
+    [ "$status" -eq 0 ]
+    grep -qx "tmux switch-client -t =t3-2" "$CALLS"
+}
+
+@test "a number outside 2 to 99 is refused before tmux is asked anything" {
+    for number in 0 1 100 02 two "2;ls" -2; do
+        run_in "$WORKTREE" "$number"
+        [ "$status" -eq 1 ]
+        [[ "$output" == *"runs from 2 to 99"* ]]
+    done
+
+    [ ! -e "$CALLS" ]
 }
 
 @test "from another tmux session, it switches rather than nesting" {
