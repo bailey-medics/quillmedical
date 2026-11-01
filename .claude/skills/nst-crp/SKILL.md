@@ -265,14 +265,14 @@ nothing in the conversation makes merging part of this command.
    every line, reading on a phone, deciding in twenty seconds whether to
    merge after a skim, read every line, or push back. In short:
 
-   - **A triage block first**, three lines, each a bold label and one
+   - **Two or three short sentences first**: what is true now that was
+     not true before, as someone using the thing would see it.
+   - **Then a triage block**, three lines, each a bold label and one
      plain sentence: `**Size:**` (`tiny`, `small`, `medium` or `large`, and
      what makes it so; a migration, a security boundary or clinical data
      is `large`), `**Look hardest at:**` (one place, a file and a function,
      and what to look for), `**Check for me:**` (the one thing the reader
      must agree with before merging).
-   - **Then two or three short sentences**: what is true now that was not
-     true before, as someone using the thing would see it.
    - **Then three sections**: `## Decisions to check` (what was chosen,
      instead of what, and why; `my reading` or `a guess` where it is not
      certain; omitted when there were none), `## Risks` (always present,

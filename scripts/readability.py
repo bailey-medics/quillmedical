@@ -39,8 +39,9 @@ from pathlib import Path
 #: How many sentences `--longest` prints.
 LONGEST_SHOWN = 5
 
-#: The three lines that open every body. Their labels are scaffolding, not
-#: prose, so they are removed and the sentence after each is kept.
+#: The three lines that follow the opening of every body. Their labels are
+#: scaffolding, not prose, so they are removed and the sentence after each
+#: is kept.
 TRIAGE_LABELS = ("Size:", "Look hardest at:", "Check for me:")
 
 FENCED_CODE = re.compile(r"```.*?```", re.DOTALL)
