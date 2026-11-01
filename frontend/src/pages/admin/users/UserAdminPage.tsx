@@ -53,6 +53,11 @@ interface UserDetails {
    * was and the API has the last word.
    */
   may_deactivate?: boolean;
+  /**
+   * Every org_unit they belong to. Absent from a backend older than the
+   * field, and then nothing is said about where they are.
+   */
+  org_unit_ids?: number[];
 }
 
 /**
@@ -168,6 +173,15 @@ export default function UserAdminPage() {
               <BodyTextBold>Email:</BodyTextBold>
               <BodyTextInline>{user.email}</BodyTextInline>
             </Group>
+
+            {/* Belonging nowhere is a state of its own, not an error:
+                somebody who has left every place keeps their account. */}
+            {user.org_unit_ids?.length === 0 && (
+              <BodyText>
+                Not at any organisation. They can sign in, change their own
+                details and read their own passport, and nothing more.
+              </BodyText>
+            )}
           </Stack>
         </Stack>
       </BaseCard>

@@ -83,4 +83,47 @@ describe("AdminUsersPage", () => {
       expect(navigate).toHaveBeenCalledWith("/admin/users/1"),
     );
   });
+
+  it("filters to the people not at any organisation", async () => {
+    // Somebody who has left every place is a state of their own, and an
+    // operator needs to find them.
+    get.mockResolvedValue({
+      users: [
+        {
+          id: 1,
+          username: "ada.lovelace",
+          email: "ada@example.com",
+          full_name: "Ada Lovelace",
+          platform_role: "standard",
+          is_active: true,
+          organisations: ["Wessex Valley"],
+          sites: [],
+        },
+        {
+          id: 2,
+          username: "left.everywhere",
+          email: "left@example.com",
+          full_name: "Left Everywhere",
+          platform_role: "standard",
+          is_active: true,
+          organisations: [],
+          sites: [],
+        },
+      ],
+    });
+    const user = userEvent.setup();
+    renderWithRouter(<AdminUsersPage />);
+    await screen.findByText("ada.lovelace");
+
+    await user.click(screen.getByLabelText("Filter users"));
+    await user.click(await screen.findByRole("combobox"));
+    await user.click(
+      await screen.findByRole("option", { name: "Not at any organisation" }),
+    );
+
+    await waitFor(() =>
+      expect(screen.queryByText("ada.lovelace")).not.toBeInTheDocument(),
+    );
+    expect(screen.getByText("left.everywhere")).toBeInTheDocument();
+  });
 });
