@@ -61,6 +61,10 @@ export const INVESTIGATED_SUBJECTS: readonly string[] = [
 export const IGNORED_SUBJECTS: readonly string[] = [
   "Scheduled alert test, no action needed",
   "Training records are awaiting a decision",
+  // The reminder to apply infra/github/ by hand after a merge. Slack may
+  // hand over the emoji as its text code or as the character itself.
+  ":warning: GitHub rulesets changed",
+  "⚠️ GitHub rulesets changed",
 ];
 
 export const GCP_INCIDENT_SUBJECT = "Google Cloud reports an incident affecting this project";
@@ -75,8 +79,11 @@ const GCP_CLOSED = /State:\s*(RESOLVED|CLOSED)\b/i;
 // ❌ and `:white_check_mark:` for ✅, as the failed deploy of 28 October
 // 2026 showed, so each pattern takes both forms.
 const DEPLOY_FAILED = /(?:❌|:x:)\s*Deploy failed/;
-// A success post, such as `*✅ Deployed to app*`, opens with the tick.
-const SUCCESS = /^[\s*_]*(?:✅|:white_check_mark:)/;
+// A success post, such as `*✅ Deployed to app*`, opens with the tick. Some
+// put another emoji before it, as the pentest's `🔐 ✅` does, so any run of
+// emoji, as characters or text codes, may come first.
+const SUCCESS =
+  /^[\s*_]*(?:(?::[a-z0-9_+-]+:|\p{Extended_Pictographic}[️‍\p{Extended_Pictographic}]*)\s*)*?(?:✅|:white_check_mark:)/u;
 const BOLD = /\*([^*\n]+)\*/;
 const TITLE_LENGTH = 80;
 const COMMIT = /\/commit\/([0-9a-f]{7,40})/;
