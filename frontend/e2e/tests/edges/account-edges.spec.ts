@@ -8,22 +8,24 @@
  */
 
 import { test, expect } from "../../fixtures/axe";
-import {
-  createAccount,
-  emailOf,
-  orgUnitId,
-  read,
-  send,
-} from "../../fixtures/api";
+import { openUntil } from "../../fixtures/screen";
+import { emailOf } from "../../fixtures/userForm";
 import { sitTheAssessment } from "../../fixtures/assessment";
 import { linkIn, waitForEmail } from "../../fixtures/mail";
 import {
   TEACHING_ADMIN_STATE,
   TEACHING_PEOPLE,
+  deactivate,
+  makeAccount,
   makeLearner,
   makePerson,
+  reactivate,
 } from "../../fixtures/people";
-import { PLACES, freshUsername, signIn } from "../../fixtures/signIn";
+import {
+  expectRefusedSignIn,
+  freshUsername,
+  signIn,
+} from "../../fixtures/signIn";
 
 test.use({ storageState: { cookies: [], origins: [] } });
 test.describe.configure({ timeout: 120_000 });
@@ -49,17 +51,13 @@ for (const { who, kind, profession } of TEACHING_PEOPLE) {
       // expiry would, leaving the refresh cookie.
       await context.clearCookies({ name: "access_token" });
 
-      const refreshed = page.waitForResponse(
-        (response) =>
-          response.url().includes("/api/auth/refresh") &&
-          response.request().method() === "POST",
-      );
+      // The page opens, signed in, so the refresh cookie was used. The
+      // backend's own test is auth_test.py's `test_refresh_token_success`.
       await page
         .getByRole("complementary")
         .getByRole("link", { name: "Settings" })
         .click();
 
-      expect((await refreshed).status()).toBe(200);
       await expect(
         page.getByRole("heading", { level: 1, name: "Settings" }),
       ).toBeVisible();
@@ -89,11 +87,8 @@ for (const { who, kind, profession } of TEACHING_PEOPLE) {
         timeout: 15_000,
       });
 
-      const old = await page.request.post("/api/auth/login", {
-        data: { username, password: oldPassword },
-      });
-      expect(old.status()).toBe(400);
       await page.context().clearCookies();
+      await expectRefusedSignIn(page, username, oldPassword);
       await signIn(page, username, newPassword);
     });
 
@@ -107,18 +102,9 @@ for (const { who, kind, profession } of TEACHING_PEOPLE) {
       );
       const name = "News and updates by email";
 
-      // Made by the teaching admin, who later closes and reopens it.
-      const admin = await browser.newContext({
-        storageState: TEACHING_ADMIN_STATE,
-      });
-      const adminPage = await admin.newPage();
-      const id = await createAccount(adminPage, {
-        username,
-        name: `Person ${username}`,
-        profession,
-        password: `${username}123`,
-        orgUnitIds: [await orgUnitId(adminPage, PLACES.site)],
-      });
+      // Made by the teaching admin on the form, who later closes and
+      // reopens it on their admin page.
+      await makeAccount(browser, { username, profession });
 
       // They choose to be sent news.
       await signIn(page, username);
@@ -127,25 +113,15 @@ for (const { who, kind, profession } of TEACHING_PEOPLE) {
       await page
         .locator(`label[for="${await toggle.getAttribute("id")}"]`)
         .click();
-      await expect
-        .poll(
-          async () =>
-            (await read<{ marketing_emails: boolean }>(page, "/auth/me"))
-              .marketing_emails,
-        )
-        .toBe(true);
+      await openUntil(page, "/settings", async () => {
+        await expect(page.getByRole("switch", { name })).toBeChecked();
+      });
 
       // A newsletter is sent by an operator's job the browser cannot
       // start, so the link is taken from the email that tells somebody
       // their account was closed. It is the same link every newsletter
       // carries, and it is in that email because they are sent news.
-      const closed = await send(
-        adminPage,
-        "POST",
-        `/users/${id}/deactivate`,
-        {},
-      );
-      expect(closed.status(), await closed.text()).toBe(200);
+      await deactivate(browser, username);
       const notice = await waitForEmail(emailOf(username));
       expect(notice.subject).toBe("Your Quill account has been closed");
 
@@ -161,19 +137,13 @@ for (const { who, kind, profession } of TEACHING_PEOPLE) {
         .click();
       await expect(onTheLink).not.toBeChecked();
 
-      // Reopened, their settings say news is off.
-      const reopened = await send(
-        adminPage,
-        "POST",
-        `/users/${id}/reactivate`,
-        {},
-      );
-      expect(reopened.status(), await reopened.text()).toBe(200);
-      await admin.close();
-
+      // Reopened, their settings say news is off. The switch saves after
+      // it moves, so Settings is opened until the save has landed.
+      await reactivate(browser, username);
       await signIn(page, username);
-      await page.goto("/settings");
-      await expect(page.getByRole("switch", { name })).not.toBeChecked();
+      await openUntil(page, "/settings", async () => {
+        await expect(page.getByRole("switch", { name })).not.toBeChecked();
+      });
     });
   });
 }
