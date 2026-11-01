@@ -155,4 +155,28 @@ describe("PassportReflectionsPage", () => {
       await screen.findByText(/Your reflections could not be loaded/),
     ).toBeInTheDocument();
   });
+  it('keeps "Write a reflection" shut until the passport has loaded', async () => {
+    // A save made before the passport was known had nowhere to go, and
+    // did nothing, which a slow connection turned into a lost entry.
+    // AddButton disables through aria-disabled, and ignores a click.
+    let arrive: (value: typeof detail) => void = () => {};
+    fetchMyPassport.mockReturnValue(
+      new Promise((resolve) => {
+        arrive = resolve;
+      }),
+    );
+    renderWithRouter(<PassportReflectionsPage />);
+
+    expect(
+      screen.getByRole("button", { name: "Write a reflection" }),
+    ).toHaveAttribute("aria-disabled", "true");
+
+    arrive(detail);
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Write a reflection" }),
+      ).not.toHaveAttribute("aria-disabled"),
+    );
+  });
 });
