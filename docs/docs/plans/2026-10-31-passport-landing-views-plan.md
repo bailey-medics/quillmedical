@@ -756,11 +756,17 @@ quietly and the upload waits, and `fixtures/mediaJobs.ts` signs the
 report the job would have sent. The scan is faked the same way. One new
 stacked branch, on top of Phase 7.
 
-- [ ] **A wrong-type file is refused, and the reason reaches the
+- [x] **A wrong-type file is refused, and the reason reaches the
       screen.** Needs no scan, so it comes first. A holder adding a
       certificate chooses a file of a type the passport does not take,
       and a file whose bytes are not the type its name claims. Each time
       the uploader shows the backend's reason and nothing is attached.
+
+      Done as story 28 in `holding-a-passport.spec.ts`, with a third
+      case: a PDF that runs JavaScript, which the backend refuses naming
+      the active content. A type the passport does not take is refused by
+      the page before it is sent, and the other two by the backend, whose
+      reason the page shows.
 
 - [ ] **Switch the scan on in the end-to-end stack.** Set
       `UPLOAD_SCAN_JOB` in `compose.ci.yml` to a made-up job name, as
@@ -771,6 +777,35 @@ stacked branch, on top of Phase 7.
       test learns which object to report on (the bucket and key the
       upload was stored under) before writing it, and say here what was
       found.
+
+      **Found on 1 November 2026, and stopped here for a decision.** The
+      scan cannot be switched on for the passport in the end-to-end stack
+      by configuration alone, for two reasons:
+
+      - **Naming a bucket moves the passport to Cloud Storage.**
+        `_evidence_scan_bucket` in `backend/app/features/passport/router.py`
+        returns `PASSPORT_GCS_BUCKET`, and with no bucket every file reads
+        as clean. But the same setting is what switches
+        `backend/app/passport_storage.py` from disk to Cloud Storage, which
+        the stack does not have.
+      - **An "infected" verdict deletes the file through Cloud Storage.**
+        `delete_object` in `backend/app/features/uploads/scan.py` calls the
+        Google client directly, which fails in the stack for want of
+        credentials, so the callback would answer 500.
+
+      The teaching uploads are in the same position: `UPLOAD_SCAN_JOB` is
+      unset in `compose.ci.yml`, so no upload in the suite has ever been
+      scanned. Two ways forward, for Mark to choose:
+
+      - **A Cloud Storage stand-in in the stack** (recommended). Run a
+        local emulator beside the backend in `compose.ci.yml`, pinned and
+        mirrored on GHCR like the other images, and point the Google client
+        at it. The passport and teaching code then run exactly as in App
+        production, delete included. The cost is one more service in the
+        stack and its image to keep up to date.
+      - **A test-only setting.** Name the scan bucket separately from the
+        storage switch, and have the delete do nothing for a file on disk.
+        Smaller, but it adds a branch to the app that only tests take.
 
       Every upload in the suite then waits for a verdict, so the existing
       journeys that upload need a "clean" report: story 9, and the
