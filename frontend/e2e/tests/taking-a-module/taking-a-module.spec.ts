@@ -40,6 +40,10 @@ for (const { who, kind, profession } of LEARNERS) {
     let username = "";
 
     test.beforeAll(async ({ browser }, testInfo) => {
+      // A site, its lead and the learner, each made on screen: longer than
+      // a hook's thirty seconds on a busy runner, and the describe's own
+      // timeout does not reach a hook.
+      testInfo.setTimeout(120_000);
       username = freshUsername(`learner_${kind}`, testInfo.project.name);
       await makeLearner(browser, username, profession);
     });

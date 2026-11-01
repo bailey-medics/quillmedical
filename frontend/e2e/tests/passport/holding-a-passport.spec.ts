@@ -2,77 +2,49 @@
  * The holder's own record, for a passport holder.
  *
  * Phase 6 of docs/docs/plans/2026-10-31-passport-landing-views-plan.md,
- * stories 1 to 12. Each test makes its own holder through the passport
+ * stories 1 to 12, with 28 and 30 to 32 from Phase 8. Each test makes its own holder through the passport
  * admin, so nothing it records is seen by another test, a retry or the
- * other browser.
+ * other browser. Everything is done and checked on screen (Phase 7).
  */
 
-import type { Locator, Page } from "@playwright/test";
+import type { Page } from "@playwright/test";
 import { test, expect } from "../../fixtures/axe";
-import { read, send } from "../../fixtures/api";
 import { linkIn, waitForEmail } from "../../fixtures/mail";
 import {
+  A_DAY_LAST_MONTH,
   FRAMEWORK_NAMES,
   HOLDER_FRAMEWORKS,
+  REFER_PALLIATIVE,
+  addLogbookEntry,
+  askForSignOff,
+  fillDate,
   makeAssessor,
   makeHolder,
+  openCompetency,
+  openUntil,
+  rowOf,
+  toggleFrameworks,
+  writeReflection,
 } from "../../fixtures/passport";
+import {
+  SCAN_SHOWN,
+  digestOf,
+  reportScan,
+  uniquePdf,
+} from "../../fixtures/scanJob";
 import { signIn } from "../../fixtures/signIn";
+import { namesInZip } from "../../fixtures/zip";
 
-/**
- * A competency in the Gloucestershire radiotherapy record with no levels
- * and no scopes, so a sign-off of it asks for nothing beyond the
- * assessor and the date.
- */
-const REFER_PALLIATIVE = {
-  id: "ghnft_radiotherapy_record_refer_palliative",
-  name: "Refer patients for palliative radiotherapy unsupervised",
-};
-
-/** A day in the past, as the date fields are typed. */
-const A_DAY_LAST_MONTH = "1 October 2026";
-
-/** A one-page PDF, enough to be stored and opened again. */
-const SMALL_PDF = Buffer.from(
-  "%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n" +
-    "2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n" +
-    "3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 200 200]>>endobj\n" +
-    "trailer<</Root 1 0 R>>\n%%EOF\n",
-);
-
-/** The row of the landing page's tables naming *competency*. */
-function rowOf(page: Page, competency: string): Locator {
-  return page.getByRole("row").filter({ hasText: competency });
-}
-
-/** Type a date into the date field labelled *label*, and leave it. */
-async function fillDate(page: Page, label: string, day: string): Promise<void> {
-  const field = page.getByRole("textbox", { name: label, exact: true });
-
-  await field.fill(day);
-  await field.press("Tab");
-}
-
-/** Open *competency*'s page from its row on the landing page. */
-async function openCompetency(page: Page, competency: string): Promise<void> {
-  await page.goto("/passport");
-  await rowOf(page, competency).click();
-  await expect(
-    page.getByRole("heading", { level: 1, name: competency }),
-  ).toBeVisible();
-}
-
-/** From a competency's page, ask *email* to sign it off. */
-async function askForSignOff(page: Page, email: string): Promise<void> {
-  await page.getByRole("button", { name: "Ask for a sign-off" }).click();
-  await page.getByLabel(/Who should assess this/).fill(email);
-  await fillDate(page, "Observed on", A_DAY_LAST_MONTH);
-  await page.getByRole("button", { name: "Request sign-off" }).click();
+/** Fill in the open certificate form as *what*, and record it. */
+async function describeCertificate(page: Page, what: string): Promise<void> {
+  await page.getByRole("textbox", { name: "What is it?" }).fill(what);
   await page
-    .getByRole("dialog")
-    .getByRole("button", { name: "Send request" })
-    .click();
-  await expect(page.getByRole("heading", { name: "Sign-offs" })).toBeVisible();
+    .getByRole("textbox", { name: "Who issued it?" })
+    .fill("Resuscitation Council UK");
+  await fillDate(page, "Awarded on", A_DAY_LAST_MONTH);
+  await page.getByRole("button", { name: "Record certificate" }).click();
+
+  await expect(page.getByText(what).first()).toBeVisible();
 }
 
 test.describe("Holding a passport", () => {
@@ -97,13 +69,7 @@ test.describe("Holding a passport", () => {
     const create = page.getByRole("button", { name: "Create my passport" });
     await expect(create).toBeDisabled();
 
-    await page
-      .getByRole("combobox", { name: /Frameworks you work to/ })
-      .click();
-    await page
-      .getByRole("option", { name: new RegExp(FRAMEWORK_NAMES.clinical) })
-      .click();
-    await page.keyboard.press("Escape");
+    await toggleFrameworks(page, ["clinical"]);
     await create.click();
 
     await expect(
@@ -121,7 +87,7 @@ test.describe("Holding a passport", () => {
     await page.goto("/passport");
 
     for (const id of HOLDER_FRAMEWORKS) {
-      const name = FRAMEWORK_NAMES[id as keyof typeof FRAMEWORK_NAMES];
+      const name = FRAMEWORK_NAMES[id];
       const table = page
         .getByTestId("competency-framework-table")
         .filter({ has: page.getByRole("heading", { name }) });
@@ -224,29 +190,22 @@ test.describe("Holding a passport", () => {
 
     await page.goto("/settings");
     await page.getByRole("radio", { name: "By record" }).check();
-    await expect
-      .poll(async () => {
-        const me = await read<{ passport: { landing_view: string } }>(
-          page,
-          "/passport/me",
-        );
-        return me.passport.landing_view;
-      })
-      .toBe("by_record");
 
-    await page.goto("/passport");
-    await expect(
-      page.getByRole("button", { name: "Open sign-offs" }),
-    ).toBeVisible();
+    await openUntil(page, "/passport", async () => {
+      await expect(
+        page.getByRole("button", { name: "Open sign-offs" }),
+      ).toBeVisible({ timeout: 3_000 });
+    });
     await expect(page.getByText("Records")).toBeVisible();
     await expect(page.getByTestId("competency-framework-table")).toHaveCount(0);
 
     await page.goto("/settings");
     await page.getByRole("radio", { name: "By competency" }).check();
-    await page.goto("/passport");
-    await expect(
-      page.getByRole("heading", { name: FRAMEWORK_NAMES.clinical }),
-    ).toBeVisible();
+    await openUntil(page, "/passport", async () => {
+      await expect(
+        page.getByRole("heading", { name: FRAMEWORK_NAMES.clinical }),
+      ).toBeVisible({ timeout: 3_000 });
+    });
   });
 
   test("7. a holder changes their frameworks in Settings", async ({
@@ -256,48 +215,31 @@ test.describe("Holding a passport", () => {
     const holder = await makeHolder(browser, testInfo.project.name);
 
     await signIn(page, holder.username);
-    const logged = await send(
-      page,
-      "POST",
-      `/passport/${holder.passportId}/logbook/${REFER_PALLIATIVE.id}`,
-      { performed_on: "2026-10-01" },
-    );
-    expect(logged.status(), await logged.text()).toBe(201);
+    await addLogbookEntry(page);
 
     // Dropped: its table goes, and nothing recorded under it is lost.
     const radiotherapy = new RegExp(FRAMEWORK_NAMES.ghnft_radiotherapy_record);
-    const field = page.getByRole("combobox", {
-      name: /Frameworks you work to/,
-    });
     await page.goto("/settings");
-    await field.click();
-    await page.getByRole("option", { name: radiotherapy }).click();
-    await page.keyboard.press("Escape");
-    await expect
-      .poll(async () => {
-        const me = await read<{ passport: { frameworks: { id: string }[] } }>(
-          page,
-          "/passport/me",
-        );
-        return me.passport.frameworks.map((framework) => framework.id);
-      })
-      .toEqual(["clinical"]);
+    await toggleFrameworks(page, ["ghnft_radiotherapy_record"]);
 
-    await page.goto("/passport");
-    await expect(
-      page.getByRole("heading", { name: FRAMEWORK_NAMES.clinical }),
-    ).toBeVisible();
-    await expect(page.getByRole("heading", { name: radiotherapy })).toHaveCount(
-      0,
-    );
+    await openUntil(page, "/passport", async () => {
+      await expect(
+        page.getByRole("heading", { name: FRAMEWORK_NAMES.clinical }),
+      ).toBeVisible({ timeout: 3_000 });
+      await expect(
+        page.getByRole("heading", { name: radiotherapy }),
+      ).toHaveCount(0, { timeout: 1_000 });
+    });
 
     // Added back: the entry made under it is still counted.
     await page.goto("/settings");
-    await field.click();
-    await page.getByRole("option", { name: radiotherapy }).click();
-    await page.keyboard.press("Escape");
-    await page.goto("/passport");
-    await expect(rowOf(page, REFER_PALLIATIVE.name)).toContainText("1 entry");
+    await toggleFrameworks(page, ["ghnft_radiotherapy_record"]);
+    await openUntil(page, "/passport", async () => {
+      await expect(rowOf(page, REFER_PALLIATIVE.name)).toContainText(
+        "1 entry",
+        { timeout: 3_000 },
+      );
+    });
   });
 
   test("8. a holder records CPD against a date range they set", async ({
@@ -332,10 +274,13 @@ test.describe("Holding a passport", () => {
   test("9. a holder adds a certificate with its file and opens the file again", async ({
     page,
     browser,
+    request,
   }, testInfo) => {
-    // `UPLOAD_SCAN_JOB` is unset in the end-to-end stack, so nothing is
-    // scanned and a stored file is served at once.
+    // Every file waits for the malware scan. The holder is told it is
+    // being checked, and it attaches once the scan job reports it clean,
+    // which the test reports as the job would (fixtures/scanJob.ts).
     const holder = await makeHolder(browser, testInfo.project.name);
+    const pdf = uniquePdf(holder.username);
 
     await signIn(page, holder.username);
     await page.goto("/passport/certificates");
@@ -343,9 +288,19 @@ test.describe("Holding a passport", () => {
     await page.locator('input[type="file"]').setInputFiles({
       name: "als-certificate.pdf",
       mimeType: "application/pdf",
-      buffer: SMALL_PDF,
+      buffer: pdf,
     });
-    await expect(page.getByText("als-certificate.pdf").first()).toBeVisible();
+    await expect(page.getByText("Scanning als-certificate.pdf")).toBeVisible(
+      SCAN_SHOWN,
+    );
+    await expect(page.getByText("Attached: als-certificate.pdf")).toHaveCount(
+      0,
+    );
+
+    await reportScan(request, pdf, "clean");
+    await expect(page.getByText("Attached: als-certificate.pdf")).toBeVisible(
+      SCAN_SHOWN,
+    );
     await page
       .getByRole("textbox", { name: "What is it?" })
       .fill("Advanced life support");
@@ -355,20 +310,219 @@ test.describe("Holding a passport", () => {
     await fillDate(page, "Awarded on", A_DAY_LAST_MONTH);
     await page.getByRole("button", { name: "Record certificate" }).click();
 
+    // The certificate's page shows the file: drawn page by page where
+    // the browser has no PDF viewer of its own, as headless Chromium has
+    // not, or in the browser's own viewer where it has. Either way the
+    // stored file was loaded and drawn. That the bytes come back unchanged
+    // is router_test.py's
+    // `test_a_certificate_sends_its_attachment_to_show_inline`.
     await page.getByText("Advanced life support").first().click();
-    await expect(page.getByText("als-certificate.pdf").first()).toBeVisible();
+    await expect(
+      page
+        .getByRole("img", { name: "Page 1 of 1" })
+        .or(page.locator('iframe[title="als-certificate.pdf"]')),
+    ).toBeVisible();
+    await expect(page.getByText("This file could not be shown")).toHaveCount(0);
+  });
 
-    // The file comes back as the same bytes it went in as.
-    const listed = await read<
-      { name: string; attachments: { hash: string }[] }[]
-    >(page, `/passport/${holder.passportId}/certificates`);
-    const [certificate] = listed;
-    const file = await page.request.get(
-      `/api/passport/${holder.passportId}/certificates/${certificate.name}` +
-        `/attachments/${encodeURIComponent(certificate.attachments[0].hash)}`,
+  test("30. malware is found in a certificate's file, and it is not attached", async ({
+    page,
+    browser,
+    request,
+  }, testInfo) => {
+    // The scan job reports "infected". The holder is told what was found
+    // and that the file is gone, and the certificate is saved without it.
+    // The backend's own tests are router_test.py's
+    // `test_saving_a_record_naming_a_file_with_malware_says_why` and
+    // `test_a_file_the_scan_found_malware_in_is_gone`.
+    const holder = await makeHolder(browser, testInfo.project.name);
+    const pdf = uniquePdf(holder.username);
+
+    await signIn(page, holder.username);
+    await page.goto("/passport/certificates");
+    await page.getByRole("button", { name: "Record a certificate" }).click();
+    await page.locator('input[type="file"]').setInputFiles({
+      name: "infected.pdf",
+      mimeType: "application/pdf",
+      buffer: pdf,
+    });
+    await expect(page.getByText("Scanning infected.pdf")).toBeVisible(
+      SCAN_SHOWN,
     );
-    expect(file.status()).toBe(200);
-    expect(Buffer.from(await file.body()).equals(SMALL_PDF)).toBe(true);
+
+    await reportScan(request, pdf, "infected", "Eicar-Test-Signature");
+    await expect(page.getByText("Malware found")).toBeVisible(SCAN_SHOWN);
+    await expect(
+      page.getByText(
+        "Malware was found in infected.pdf (Eicar-Test-Signature). It has been deleted and is not attached.",
+      ),
+    ).toBeVisible();
+    await expect(page.getByText("Attached: infected.pdf")).toHaveCount(0);
+
+    await page
+      .getByRole("textbox", { name: "What is it?" })
+      .fill("Basic life support");
+    await page
+      .getByRole("textbox", { name: "Who issued it?" })
+      .fill("Resuscitation Council UK");
+    await fillDate(page, "Awarded on", A_DAY_LAST_MONTH);
+    await page.getByRole("button", { name: "Record certificate" }).click();
+
+    await page.getByText("Basic life support").first().click();
+    await expect(page.getByText("Resuscitation Council UK")).toBeVisible();
+    await expect(page.getByText("infected.pdf")).toHaveCount(0);
+    await expect(
+      page.getByRole("img", { name: /^Page \d+ of \d+$/ }),
+    ).toHaveCount(0);
+  });
+
+  test("31. the scan cannot check a certificate's file, and the holder is asked for it again", async ({
+    page,
+    browser,
+    request,
+  }, testInfo) => {
+    // The scan job reports "failed", as it does for a file it could not
+    // read. The file is not attached, and the holder is asked to upload
+    // it again. The backend's own test is router_test.py's
+    // `test_saving_a_record_naming_a_file_the_scan_could_not_check_says_so`.
+    const holder = await makeHolder(browser, testInfo.project.name);
+    const pdf = uniquePdf(holder.username);
+
+    await signIn(page, holder.username);
+    await page.goto("/passport/certificates");
+    await page.getByRole("button", { name: "Record a certificate" }).click();
+    await page.locator('input[type="file"]').setInputFiles({
+      name: "unreadable.pdf",
+      mimeType: "application/pdf",
+      buffer: pdf,
+    });
+    await expect(page.getByText("Scanning unreadable.pdf")).toBeVisible(
+      SCAN_SHOWN,
+    );
+
+    await reportScan(request, pdf, "failed", "Could not read the file");
+    await expect(page.getByText("Not checked")).toBeVisible(SCAN_SHOWN);
+    await expect(
+      page.getByText(
+        "unreadable.pdf could not be checked for malware, so it is not attached. Upload it again.",
+      ),
+    ).toBeVisible();
+    await expect(page.getByText("Attached: unreadable.pdf")).toHaveCount(0);
+  });
+
+  test("32. the downloaded bundle leaves out a file the scan found malware in", async ({
+    page,
+    browser,
+    request,
+  }, testInfo) => {
+    // A file still being scanned after two minutes is attached anyway, so
+    // a slow scan does not stop a save. The page's clock is moved on
+    // rather than waited out. Here the scan then finds malware in it, and
+    // the bundle the holder downloads holds only the clean file. The
+    // backend's own test is router_test.py's
+    // `test_the_bundle_leaves_out_a_file_not_scanned_clean`.
+    const holder = await makeHolder(browser, testInfo.project.name);
+    const clean = uniquePdf(`${holder.username}-clean`);
+    const infected = uniquePdf(`${holder.username}-infected`);
+    const input = page.locator('input[type="file"]');
+
+    await page.clock.install();
+    await signIn(page, holder.username);
+    await page.goto("/passport/certificates");
+
+    await page.getByRole("button", { name: "Record a certificate" }).click();
+    await input.setInputFiles({
+      name: "clean.pdf",
+      mimeType: "application/pdf",
+      buffer: clean,
+    });
+    await expect(page.getByText("Scanning clean.pdf")).toBeVisible(SCAN_SHOWN);
+    await reportScan(request, clean, "clean");
+    await expect(page.getByText("Attached: clean.pdf")).toBeVisible(SCAN_SHOWN);
+    await describeCertificate(page, "Advanced life support");
+
+    await page.getByRole("button", { name: "Record a certificate" }).click();
+    await input.setInputFiles({
+      name: "later.pdf",
+      mimeType: "application/pdf",
+      buffer: infected,
+    });
+    await expect(page.getByText("Scanning later.pdf")).toBeVisible(SCAN_SHOWN);
+    await page.clock.fastForward("02:05");
+    await expect(
+      page.getByText(
+        "Attached: later.pdf. Still scanning; it will be shown once it passes.",
+      ),
+    ).toBeVisible(SCAN_SHOWN);
+    await describeCertificate(page, "Basic life support");
+    await reportScan(request, infected, "infected", "Eicar-Test-Signature");
+
+    await page.goto("/passport/download");
+    const download = page.waitForEvent("download");
+    await page.getByRole("button", { name: "Full bundle" }).click();
+    const bundle = await download;
+    const names = namesInZip(await bundle.path());
+
+    expect(names.some((name) => name.endsWith(digestOf(clean)))).toBe(true);
+    expect(names.some((name) => name.endsWith(digestOf(infected)))).toBe(false);
+  });
+
+  test("28. a certificate's file is refused, and the holder is told why", async ({
+    page,
+    browser,
+  }, testInfo) => {
+    // The page refuses a type the passport does not take before sending
+    // it. The backend refuses a file that is not what it claims, or a PDF
+    // that runs something, and the page shows its reason. The backend's
+    // own tests are router_test.py's
+    // `test_bytes_that_do_not_match_the_claimed_type_are_refused` and
+    // `test_a_pdf_with_active_content_is_refused`.
+    const holder = await makeHolder(browser, testInfo.project.name);
+    const input = page.locator('input[type="file"]');
+
+    await signIn(page, holder.username);
+    await page.goto("/passport/certificates");
+    await page.getByRole("button", { name: "Record a certificate" }).click();
+
+    const refusals: [
+      { name: string; mimeType: string; buffer: Buffer },
+      string,
+    ][] = [
+      [
+        {
+          name: "notes.txt",
+          mimeType: "text/plain",
+          buffer: Buffer.from("Not a certificate"),
+        },
+        "That file cannot be attached. Use a PDF, JPEG, PNG, HEIC or WebP.",
+      ],
+      [
+        {
+          name: "certificate.pdf",
+          mimeType: "application/pdf",
+          buffer: Buffer.from("This is plain text with a .pdf name"),
+        },
+        "That file is not a real PDF",
+      ],
+      [
+        {
+          name: "scripted.pdf",
+          mimeType: "application/pdf",
+          buffer: Buffer.from(
+            "%PDF-1.4\n1 0 obj<</Type/Catalog/OpenAction 2 0 R>>endobj\n" +
+              "2 0 obj<</S/JavaScript/JS(app.alert(1))>>endobj\n" +
+              "trailer<</Root 1 0 R>>\n%%EOF\n",
+          ),
+        },
+        "That PDF contains active content",
+      ],
+    ];
+
+    for (const [file, reason] of refusals) {
+      await input.setInputFiles(file);
+      await expect(page.getByText(reason)).toBeVisible();
+      await expect(page.getByText(`Attached: ${file.name}`)).toHaveCount(0);
+    }
   });
 
   test("10. a holder writes a reflection and reads it back", async ({
@@ -378,21 +532,7 @@ test.describe("Holding a passport", () => {
     const holder = await makeHolder(browser, testInfo.project.name);
 
     await signIn(page, holder.username);
-    await page.goto("/passport/reflections");
-    await page.getByRole("button", { name: "Write a reflection" }).click();
-    await page
-      .getByRole("textbox", { name: "Title" })
-      .fill("A difficult airway");
-    await fillDate(page, "Written on", A_DAY_LAST_MONTH);
-    await page
-      .getByRole("textbox", { name: "Your reflection" })
-      .fill("What I would do differently next time.");
-    await page
-      .getByRole("checkbox", {
-        name: "I confirm this reflection is anonymised",
-      })
-      .check();
-    await page.getByRole("button", { name: "Save reflection" }).click();
+    await writeReflection(page, "A difficult airway");
 
     await page.getByText("A difficult airway").first().click();
     await expect(

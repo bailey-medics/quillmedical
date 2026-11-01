@@ -91,7 +91,7 @@ plus the Report section. The skill is Claude-only, with no copy under
       - **Look hardest at** - one place, named well enough to open: a file
         path and a function or component name, and what to look for there.
         It is where the model's own uncertainty is, or where a mistake would
-        hurt most. One place, not a list; a list belongs in Phase 4's reading
+        hurt most. One place, not a list; a list belongs in Phase 5's reading
         order.
       - **Check for me** - the one thing the reader must agree with before
         merging, written as a request. For a `tiny` change it may be "nothing
@@ -261,16 +261,169 @@ plus the Report section. The skill is Claude-only, with no copy under
       text has no Copilot source: `follow-the-plan-document.prompt.md` does
       not contain it.
 
-## Phase 3: read a week of descriptions against the shape
+## Phase 3: the older British Dyslexia Association writing rules
+
+- [x] Add the writing-style rules from the older edition of the British
+      Dyslexia Association's style guide to step 9 of
+      `.claude/skills/crpd/SKILL.md`, as one short subsection, "Writing for
+      a dyslexic reader", without removing anything Phase 1 wrote. The guide
+      was read on 1 November 2026 from a copy Wigan Council hosts, because
+      the association's own copies refuse automated reading: the 2023 PDF
+      answers 403 and the 2026 booklet is a viewer with no text. Mark
+      supplied the 2026 edition by hand. The older edition's writing-style
+      section, in full: "Use short, simple sentences in a direct style. Give
+      instructions clearly. Avoid long sentences of explanation. Use active
+      rather than passive voice. Avoid double negatives. Be concise." Step 9
+      already has the short sentences, the bullets, the first-use
+      explanation of a name or an abbreviation, and bold rather than
+      italics. What it lacks, each becoming one line:
+
+      - **Active voice** - "Quill sends a link", never "a link is sent".
+        The sentence-shape rule already names the subject; this says the
+        subject does the verb.
+      - **No double negatives** - "a job that is not excluded does not
+        fail" becomes "every job the check covers passes". Security
+        write-ups breed these.
+      - **Instructions in a numbered list, in the order they are done,
+        separate from the explanation** - the guide's "give instructions
+        clearly" and "avoid long sentences of explanation". The "Before
+        merging, and after" list in #2291 is the example: it was the part of
+        that description Mark acted on.
+      - **No italics, no underlining, no block capitals outside a code
+        span** - the guide says underlining and italics "make the text
+        appear to run together" and block capitals are "much harder to
+        read". Phase 1 brought bold back; this closes the other three.
+      - **A full stop at the end of every bullet** - from the guide's
+        text-reader section: "put semi-colons, commas, or full stops after
+        bullet points to make a pause". A text-to-speech reader pauses on
+        punctuation and runs on without it.
+      - **No tables, and no text inside an image** - the guide: "text
+        readers may have difficulty with tables" and "avoid text in images.
+        Listeners cannot hear it. Repeat in the main text." Phase 5 wants
+        screenshots embedded for guide and Storybook changes; each needs a
+        sentence beside it saying what it shows, so this is a condition on
+        that step, not a bar to it.
+
+- [x] Carry the shape rules into the Copilot short form in
+      `.github/prompts/commit-rebase-push.prompt.md`, and into the two
+      Claude copies that hold the same text, `.claude/skills/nst-crp/SKILL.md`
+      and `.claude/skills/nst-crpf/SKILL.md`, as Phase 2 did. The short form
+      gets two bullets: the three writing rules in one line, and the full
+      stop on each bullet with the ban on italics, underlining, capitals,
+      tables and text in images. This step moved ahead of the readability
+      script because it depends only on the rules above, and the two belong
+      in one pull request. Phase 2 did not update `.claude/sync-manifest.json`
+      when it mirrored the text, and nor does this: the manifest's hashes
+      date from September 2026, and `/sync-copilot-config` is the thing that
+      brings them up to date.
+
+- [x] Score every body before it is posted, with a small script,
+      `scripts/readability.py`, tested by `scripts/tests/readability.bats`
+      under `just ts` like `audit-stamp.py` beside it. It reads the body on
+      standard input, strips code spans, URLs and the three triage labels,
+      and prints the Flesch reading ease and the Flesch-Kincaid grade. The
+      stripping matters: an identifier such as `GCP_DEPLOY_SERVICE_ACCOUNT`
+      counts as six syllables and would sink any score. Pure Python with a
+      vowel-group syllable count, no dependency, and it finishes in
+      milliseconds. The older guide's targets are a reading ease of
+      "approximately 70 to 80" and a grade of "approximately 5.0, by using
+      short sentences, not by dumbing down vocabulary". A body full of real
+      names will sit above grade 5, so step 9 prints the two numbers in the
+      terminal report under the triage lines and never blocks on them. The
+      2026 edition's warning is the reason: measure "comprehension,
+      confidence and usability, not just readability scores". The score is
+      information; Mark's verdict in Phase 4 is the test.
+
+- [x] Let the score inform a rewrite, up to twice, and post the best of the
+      three attempts. Mark set the shape on 1 November 2026: "The score
+      should not block, but it should inform and allow for 2 rewrites and
+      you accept the best score of the 3 attempts if you fail after three."
+      In step 9 of `.claude/skills/crpd/SKILL.md`, the "Score the body"
+      paragraph becomes a loop:
+
+      - **Score the first draft.** A reading ease of 70 or above posts as it
+        is.
+      - **Under 70, rewrite once, aimed at the longest sentences.** The
+        script gains a `--longest` option that prints the five longest
+        sentences with their word counts, so the rewrite goes where the
+        words are rather than everywhere. A rewrite splits sentences, breaks
+        a clause-stacked bullet into two, and swaps a long word that is not
+        a name for a short one. It never changes a name, a fact or a bold
+        lead, because the older edition of the association's guide says the
+        grade is reached "by using short sentences, not by dumbing down
+        vocabulary".
+      - **Score again, rewrite once more if still under 70, then stop.** The
+        attempt with the highest ease is the one posted, whatever its
+        number. Three is the ceiling because each pass costs a reading of
+        the whole body, and a body full of identifiers will not reach 70 on
+        any pass.
+      - **Every attempt is a file in the scratchpad, and only the chosen
+        one reaches GitHub**, in a single `gh pr edit` at the end. A reader
+        watching the pull request never sees a draft replaced, and gets one
+        notification, not three.
+
+- [x] Keep a running log of every description's scores and Mark's verdict
+      on it, in a tracked file, `docs/docs/github/description-log.md`,
+      linked from `docs/docs/github/index.md`. Mark chose a tracked file over
+      a GitHub issue on 1 November 2026, so the log lives with the rules it
+      measures and travels in git. Newest entry first, no tables, one entry
+      per pull request in this shape:
+
+      ```markdown
+      ## #2299 Descriptions: score the body for readability
+
+      - **Scores** - 58, 66, 72. Attempt 3 posted.
+      - **Rules** - `.claude/skills/crpd/SKILL.md` at `a3c42d36`.
+      - **Verdict** - clear. "Read it on the phone in one go."
+      - **Changed** - nothing yet.
+      ```
+
+      `/crpd` writes the Scores and Rules lines as the last act of its run,
+      then folds the entry into the branch with `just stack-update` and
+      pushes again with `just stack-submit`, so the entry lands in the pull
+      request it describes rather than trailing into the next one. That is
+      a second push per unit, and it is the price of the entry being in the
+      right pull request. The Verdict line is Mark's, in his own words,
+      added when he gives it in chat or in a review, and it reaches `main`
+      with whatever unit is next landed; he may also write it himself. The
+      Changed line names the rule that moved because of that verdict and
+      links the pull request that moved it, so the log reads as the history
+      of how the descriptions improved. Phase 4 reads this log, and the
+      `/crpd` Report repeats the entry's Scores line so the terminal shows
+      it after an unattended run. The script's bats file gains a test for
+      `--longest`, and a new `scripts/tests/description-log.bats` is not
+      needed: the entry is prose the skill writes, not a script.
+
+      Built on 1 November 2026 with one change to the shape above: the
+      Rules line names the pull request that last changed the skill file,
+      "as of #2298", not a commit sha. `stack-submit` rebases every branch
+      on each push, so the sha a description was written under is gone
+      before its pull request merges; a pull request number is not. The
+      page is in the `GitHub` section of the docs navigation, and the
+      first two entries, #2298 and #2299, were written by hand from the
+      scores their runs printed. The skill's `allowed-tools` list was not
+      widened to `just stack-update` and `scripts/readability.py`: the
+      editing tool refused that change as self-modification, so the two
+      commands will prompt until a person adds them.
+
+## Phase 4: read the log each week and move the rules
 
 - [ ] After the first stacked run under the new step 9, read each
       description against four questions and note what fails: does the Size
       line match the diff; does Look hardest at name a place that can be
       opened; could the bold column alone be read as the summary; is there a
       sentence whose subject is an abstraction. Fix the rule, not the
-      description, when the same failure appears twice. The point of the
-      week is to find which of the new rules the model follows without being
-      policed and which need a worked example beside them.
+      description, when the same failure appears twice. Mark's verdict on
+      each description goes on the Verdict line of its entry in
+      `docs/docs/github/description-log.md`, beside the scores Phase 3
+      recorded, and every rule that moves because of a verdict is named on
+      that entry's Changed line: the 2026 edition of the association's guide
+      puts "involving the people who will actually use your content" above
+      every formatting rule, and here that is one reader. This is an
+      iterative process with no end date. The first week finds which of the
+      new rules the model follows without being policed and which need a
+      worked example beside them; every week after that reads the new
+      entries the same way.
 
 - [ ] Re-measure, the same way as the 31 October 2026 baseline: description
       words against lines changed over the next 30 merged pull requests, and
@@ -278,9 +431,9 @@ plus the Report section. The skill is Claude-only, with no copy under
       and the median bullet should be well under 26 words with the bold lead
       included.
 
-## Phase 4: let GitHub render what words describe
+## Phase 5: let GitHub render what words describe
 
-Deferred until Phase 3 has run, because each of these adds mechanism to a
+Deferred until Phase 4 has run, because each of these adds mechanism to a
 skill that is already long, and the shape should settle first.
 
 - [ ] Make Look hardest at a permalink where it can be: a
@@ -351,3 +504,28 @@ skill that is already long, and the shape should settle first.
   features that earlier work links to reading load rather than timing
   readers. The measurements of this repository's own 30 descriptions carry
   more weight here than any of them, and they point the same way.
+
+- **The older edition's rules, not the 2026 edition's principles** - Mark's
+  call, 1 November 2026: "I like the older BDA rules. Keep them." The 2026
+  edition, published October 2026, replaces the rules with five principles,
+  readable, adaptable, multimodal, testable and future-ready, and says that
+  "individual preference and the ability to customise text are more
+  important than following fixed formatting rules". A pull request body
+  cannot be customised by its writer: GitHub sets the font, the spacing and
+  the colours. What the writer controls is the sentences, and the older
+  edition is the one that says what to do with them. The two editions agree
+  on bullets, bold over italics, no long runs of capitals, plain words and
+  spelt-out abbreviations, so nothing in Phase 3 contradicts the current
+  guide; it only goes further than it.
+
+- **The score informs, and never blocks** - Mark's call, 1 November 2026.
+  Up to two rewrites, the best of three posted whatever it scores. A hard
+  gate would either hold a description hostage to its identifiers or push
+  the writer to swap real names for softer words, which is the failure the
+  "Names" rules exist to stop.
+
+- **The log is a tracked file, not a GitHub issue** - Mark's call, 1
+  November 2026. An issue needs no commit, which is why it was offered; a
+  file keeps the scores, the verdicts and the rule changes in one place in
+  git, beside the rules themselves, and `just stack-update` puts each entry
+  in its own pull request at the cost of a second push.

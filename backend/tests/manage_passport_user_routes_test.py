@@ -554,9 +554,70 @@ class TestWhatAPassportAdminMayNotDo:
         )
         assert resp.status_code == 403
 
+    def test_create_an_operator(
+        self, client: TestClient, trust: OrgUnit
+    ) -> None:
+        """Operating Quill is nobody's to give but an unlimited manager."""
+        resp = client.post(
+            "/api/users", json=_new_user(trust, platform_role="superadmin")
+        )
+
+        assert resp.status_code == 403
+
+    def test_make_a_delegate_an_operator(
+        self, client: TestClient, delegate: User, db_session: Session
+    ) -> None:
+        resp = client.patch(
+            f"/api/users/{delegate.id}", json={"platform_role": "superadmin"}
+        )
+
+        assert resp.status_code == 403
+        db_session.refresh(delegate)
+        assert delegate.platform_role != "superadmin"
+
     @pytest.mark.parametrize("action", ["deactivate", "send-invite"])
     def test_act_on_a_clinicians_account(
         self, client: TestClient, consultant: User, action: str
     ) -> None:
         resp = client.post(f"/api/users/{consultant.id}/{action}")
         assert resp.status_code == 403
+
+
+class TestSomebodyAtAnotherTrust:
+    """A passport admin's reach ends at their own trust.
+
+    The end-to-end journey for this (story 24 of the passport landing
+    views plan) checks what the admin pages show; this is the API's half.
+    """
+
+    @pytest.fixture
+    def stranger(self, db_session: Session) -> User:
+        elsewhere = OrgUnit(name="Elsewhere Trust", type="organisation")
+        db_session.add(elsewhere)
+        db_session.commit()
+
+        return _user(db_session, "stranger", "passport_delegate", elsewhere)
+
+    def test_is_not_listed(self, client: TestClient, stranger: User) -> None:
+        names = {
+            u["username"] for u in client.get("/api/users").json()["users"]
+        }
+
+        assert stranger.username not in names
+
+    def test_cannot_be_read(self, client: TestClient, stranger: User) -> None:
+        resp = client.get(f"/api/users/{stranger.id}")
+
+        assert resp.status_code == 404
+
+    def test_cannot_be_renamed(
+        self, client: TestClient, stranger: User, db_session: Session
+    ) -> None:
+        resp = client.patch(
+            f"/api/users/{stranger.id}",
+            json={"name": "Renamed by the wrong trust"},
+        )
+
+        assert resp.status_code == 404
+        db_session.refresh(stranger)
+        assert stranger.full_name != "Renamed by the wrong trust"

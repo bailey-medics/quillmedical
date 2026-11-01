@@ -1,16 +1,16 @@
 /**
- * Make a person for one test, as the seeded teaching admin.
+ * Make a person for one test, as the seeded teaching admin does it.
  *
  * A test that changes somebody's settings, password or two-factor makes
  * its own person, so a retry and the other browser never meet the change.
- * They work at "CI Teaching Centre" and their password is their username
- * followed by `123`, as every seeded person's is, so `signIn` needs only
- * the username.
+ * Everybody here is made on the add-user form, and every place on the
+ * sites pages, as a teaching admin does in a trust: an end-to-end test
+ * never calls the API to set itself up (`.claude/rules/e2e.md`). Their
+ * password is their username followed by `123`, as every seeded person's
+ * is, so `signIn` needs only the username.
  */
 
 import { expect, type Browser, type BrowserContext } from "@playwright/test";
-import { MODULE_ID } from "./answers";
-import { createAccount, orgUnitId, send } from "./api";
 import {
   PEOPLE,
   PLACES,
@@ -18,6 +18,14 @@ import {
   signIn,
   type TeachingSite,
 } from "./signIn";
+import { searchRow } from "./tables";
+import {
+  choose,
+  fillBasicDetails,
+  nextToTheEndAndCreate,
+  nextUntil,
+  switchOn,
+} from "./userForm";
 
 /** The seeded teaching admin's saved sign-in, from `auth.setup.ts`. */
 export const TEACHING_ADMIN_STATE = "e2e/.auth/user.json";
@@ -27,6 +35,88 @@ export const TEACHING_PEOPLE = [
   { who: "a TA", kind: "ta", profession: "teaching_admin" },
   { who: "a TD", kind: "td", profession: "teaching_delegate" },
 ] as const;
+
+/** How the form names each teaching profession. */
+const PROFESSION_NAMES: Record<string, string> = {
+  teaching_admin: "Teaching admin",
+  teaching_delegate: "Teaching delegate",
+  teaching_clinical_lead: "Teaching clinical lead",
+};
+
+/** The competency a learner practises, as the form's switches name it. */
+const TAKE_MODULES = "Take Teaching Modules";
+
+/** The form's name for *profession*, failing on one this file does not know. */
+function professionName(profession: string): string {
+  const name = PROFESSION_NAMES[profession];
+
+  if (name === undefined) {
+    throw new Error(`No form name for the profession ${profession}`);
+  }
+
+  return name;
+}
+
+/** Where somebody is added, and whether they take the module there. */
+interface Placing {
+  organisation: string;
+  /** A site of that organisation, or none for the organisation alone. */
+  site?: string;
+  /** Practising "Take Teaching Modules" at the site, and enrolled. */
+  takesModule?: boolean;
+}
+
+/**
+ * Add somebody on the add-user form, as the admin signed in on *context*.
+ *
+ * Practice and enrolment are the form's own later steps, switched on as
+ * a teaching admin does for a learner.
+ */
+async function addOnTheForm(
+  context: BrowserContext,
+  username: string,
+  name: string,
+  profession: string,
+  placing: Placing,
+): Promise<void> {
+  const page = await context.newPage();
+
+  await page.goto("/admin/users/new");
+  await fillBasicDetails(page, {
+    username,
+    name,
+    profession: professionName(profession),
+    password: `${username}123`,
+  });
+  await choose(page, /^Organisation/, placing.organisation);
+
+  if (placing.site !== undefined) {
+    await choose(page, /^Site/, `${placing.organisation} - ${placing.site}`);
+  }
+
+  if (placing.takesModule && placing.site !== undefined) {
+    const practice = page.getByRole("switch", {
+      name: `${TAKE_MODULES} at ${placing.site}: may practise here`,
+    });
+    await nextUntil(page, practice);
+    await switchOn(
+      page,
+      `${TAKE_MODULES} at ${placing.site}: may practise here`,
+    );
+
+    const module = page
+      .getByRole("checkbox", {
+        name: new RegExp(` at ${placing.organisation}$`),
+      })
+      .first();
+    await nextUntil(page, module);
+    await module.check();
+    await expect(module).toBeChecked();
+  }
+
+  await nextToTheEndAndCreate(page);
+  await page.close();
+}
 
 /** Make somebody of *profession*, and return their username. */
 export async function makePerson(
@@ -39,18 +129,66 @@ export async function makePerson(
   const context = await browser.newContext({
     storageState: TEACHING_ADMIN_STATE,
   });
-  const page = await context.newPage();
 
-  await createAccount(page, {
-    username,
-    name: `Person ${username}`,
-    profession,
-    password: `${username}123`,
-    orgUnitIds: [await orgUnitId(page, PLACES.site)],
+  await addOnTheForm(context, username, `Person ${username}`, profession, {
+    organisation: PLACES.organisation,
+    site: PLACES.site,
   });
   await context.close();
 
   return username;
+}
+
+/**
+ * Add a site to the seeded teaching organisation, on the sites page, and
+ * return its id, read from the address its page opens at.
+ */
+async function addSite(context: BrowserContext, name: string): Promise<number> {
+  const page = await context.newPage();
+
+  await page.goto("/admin/sites");
+  await page.getByRole("button", { name: "Add site" }).click();
+  await page.getByRole("combobox", { name: "Organisation" }).click();
+  await page.getByRole("option", { name: PLACES.organisation }).click();
+  await page.getByRole("textbox", { name: "Name" }).fill(name);
+  await page.getByRole("combobox", { name: "Type" }).click();
+  await page.getByRole("option", { name: "Site", exact: true }).click();
+  await page.getByRole("button", { name: "Create site" }).click();
+  await expect(page).toHaveURL(/\/admin\/sites\/\d+$/);
+
+  const siteId = Number(/\/admin\/sites\/(\d+)$/.exec(page.url())?.[1]);
+  await page.close();
+
+  return siteId;
+}
+
+/** Appoint *username* clinical lead of site *siteId*, on its page. */
+async function appointLead(
+  context: BrowserContext,
+  siteId: number,
+  username: string,
+): Promise<void> {
+  const page = await context.newPage();
+
+  await page.goto(`/admin/sites/${siteId}`);
+  await page.getByRole("button", { name: "Add staff" }).click();
+  await page.getByLabel("Username or email address").fill(username);
+  await page.getByRole("button", { name: "Find" }).click();
+  await expect(
+    page.getByText(/already has a Quill account/).first(),
+  ).toBeVisible();
+  await page.getByRole("combobox", { name: "Role" }).click();
+  await page
+    .getByRole("option", { name: "Clinical lead", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Add staff member" }).click();
+  await expect(page).toHaveURL(new RegExp(`/admin/sites/${siteId}$`), {
+    timeout: 30_000,
+  });
+  // By their username's text, not a table row: a phone shows cards.
+  await searchRow(page, username);
+  await expect(page.getByText(username, { exact: true }).first()).toBeVisible();
+  await page.close();
 }
 
 /**
@@ -73,35 +211,22 @@ export async function makeLearner(
   const context = await browser.newContext({
     storageState: TEACHING_ADMIN_STATE,
   });
-  const page = await context.newPage();
-  const organisationId = await orgUnitId(page, PLACES.organisation);
+  const site = `Site of ${username}`;
+  const siteId = await addSite(context, site);
 
-  const site = await send(page, "POST", "/org-units", {
-    name: `Site of ${username}`,
-    type: "site",
-    parent_id: organisationId,
-  });
-  expect(site.status(), await site.text()).toBe(200);
-  const siteId = ((await site.json()) as { id: number }).id;
+  await addOnTheForm(
+    context,
+    leadOf(username),
+    `Lead of ${username}`,
+    "teaching_clinical_lead",
+    { organisation: PLACES.organisation },
+  );
+  await appointLead(context, siteId, leadOf(username));
 
-  const leadId = await createAccount(page, {
-    username: leadOf(username),
-    name: `Lead of ${username}`,
-    profession: "teaching_clinical_lead",
-    orgUnitIds: [siteId],
-  });
-  const named = await send(page, "PUT", `/org-units/${siteId}/clinical-lead`, {
-    user_id: leadId,
-  });
-  expect(named.status(), await named.text()).toBe(200);
-
-  await createAccount(page, {
-    username,
-    name: `Learner ${username}`,
-    profession,
-    password: `${username}123`,
-    orgUnitIds: [siteId],
-    takesModule: { siteId, organisationId, moduleId: MODULE_ID },
+  await addOnTheForm(context, username, `Learner ${username}`, profession, {
+    organisation: PLACES.organisation,
+    site,
+    takesModule: true,
   });
   await context.close();
 
@@ -125,17 +250,11 @@ export async function makeLearnerAt(
   at: TeachingSite,
 ): Promise<void> {
   const context = await asTeachingAdminOf(browser, at);
-  const page = await context.newPage();
-  const siteId = await orgUnitId(page, at.site);
-  const organisationId = await orgUnitId(page, at.organisation);
 
-  await createAccount(page, {
-    username,
-    name: `Learner ${username}`,
-    profession,
-    password: `${username}123`,
-    orgUnitIds: [siteId],
-    takesModule: { siteId, organisationId, moduleId: MODULE_ID },
+  await addOnTheForm(context, username, `Learner ${username}`, profession, {
+    organisation: at.organisation,
+    site: at.site,
+    takesModule: true,
   });
   await context.close();
 }

@@ -25,7 +25,10 @@ import {
   type TeachingSite,
 } from "../../fixtures/signIn";
 
-test.describe.configure({ timeout: 120_000 });
+// Three minutes: each learner is added on the form by their
+// organisation's teaching admin, who signs in first, before the test
+// itself starts.
+test.describe.configure({ timeout: 180_000 });
 
 /** The address `seed_ci.py` gives a seeded lead. */
 function seededEmailOf(username: string): string {

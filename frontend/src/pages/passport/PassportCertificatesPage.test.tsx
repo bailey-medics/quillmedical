@@ -182,4 +182,28 @@ describe("PassportCertificatesPage", () => {
       await screen.findByText(/Your certificates could not be loaded/),
     ).toBeInTheDocument();
   });
+  it('keeps "Record a certificate" shut until the passport has loaded', async () => {
+    // A save made before the passport was known had nowhere to go, and
+    // did nothing, which a slow connection turned into a lost entry.
+    // AddButton disables through aria-disabled, and ignores a click.
+    let arrive: (value: typeof detail) => void = () => {};
+    fetchMyPassport.mockReturnValue(
+      new Promise((resolve) => {
+        arrive = resolve;
+      }),
+    );
+    renderWithRouter(<PassportCertificatesPage />);
+
+    expect(
+      screen.getByRole("button", { name: "Record a certificate" }),
+    ).toHaveAttribute("aria-disabled", "true");
+
+    arrive(detail);
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Record a certificate" }),
+      ).not.toHaveAttribute("aria-disabled"),
+    );
+  });
 });

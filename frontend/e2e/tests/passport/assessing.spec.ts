@@ -4,73 +4,24 @@
  *
  * Phase 6 of docs/docs/plans/2026-10-31-passport-landing-views-plan.md,
  * stories 13 to 16. Each test makes its own holder and assessor through
- * the passport admin, so every request and its emails are its own.
+ * the passport admin, so every request and its emails are its own. Each
+ * request is asked for on the competency's page, as story 4 asks it, and
+ * every result is checked where a person would see it (Phase 7).
  */
 
 import type { Browser, Page } from "@playwright/test";
 import { test, expect } from "../../fixtures/axe";
-import { read, send } from "../../fixtures/api";
 import { linkIn, waitForEmail } from "../../fixtures/mail";
 import {
+  REFER_PALLIATIVE,
+  askAsHolder,
   makeAssessor,
   makeHolder,
+  pageAs,
   passportEmailOf,
-  type Holder,
+  type PassportPerson,
 } from "../../fixtures/passport";
 import { freshUsername, signIn } from "../../fixtures/signIn";
-
-/** A competency with no levels and no scopes, so a request needs little. */
-const REFER_PALLIATIVE = {
-  id: "ghnft_radiotherapy_record_refer_palliative",
-  name: "Refer patients for palliative radiotherapy unsupervised",
-};
-
-/** One sign-off, as `GET /passport/{id}/sign-offs` lists it. */
-interface SignOffListed {
-  name: string;
-  status: string;
-  comments: string | null;
-}
-
-/** Sign a fresh browser context in as *username*, and return its page. */
-async function pageAs(
-  browser: Browser,
-  username: string,
-  password?: string,
-): Promise<Page> {
-  const context = await browser.newContext({
-    storageState: { cookies: [], origins: [] },
-  });
-  const page = await context.newPage();
-
-  await signIn(page, username, password);
-
-  return page;
-}
-
-/**
- * As *holder*, ask *assessorEmail* to sign off the competency, through
- * the API, and return the sign-off's name. The asking is story 4's; here
- * it is only the way in.
- */
-async function askThroughTheApi(
-  browser: Browser,
-  holder: Holder,
-  assessorEmail: string,
-): Promise<string> {
-  const page = await pageAs(browser, holder.username);
-  const asked = await send(
-    page,
-    "POST",
-    `/passport/${holder.passportId}/competencies/${REFER_PALLIATIVE.id}/requests`,
-    { assessor_email: assessorEmail, observed_on: "2026-10-01" },
-  );
-  expect(asked.status(), await asked.text()).toBe(201);
-  const name = ((await asked.json()) as { name: string }).name;
-  await page.context().close();
-
-  return name;
-}
 
 /** Open the request about the competency from the inbox, and sign it. */
 async function signFromTheInbox(page: Page): Promise<void> {
@@ -89,7 +40,7 @@ async function signFromTheInbox(page: Page): Promise<void> {
 /** The row of the holder's landing page naming the competency. */
 async function holderRowText(
   browser: Browser,
-  holder: Holder,
+  holder: PassportPerson,
 ): Promise<string> {
   const page = await pageAs(browser, holder.username);
 
@@ -112,7 +63,7 @@ test.describe("Assessing a passport", () => {
   }, testInfo) => {
     const holder = await makeHolder(browser, testInfo.project.name);
     const assessor = await makeAssessor(browser, testInfo.project.name);
-    await askThroughTheApi(browser, holder, assessor.email);
+    await askAsHolder(browser, holder, assessor.email);
 
     await signIn(page, assessor.username);
     await signFromTheInbox(page);
@@ -120,58 +71,39 @@ test.describe("Assessing a passport", () => {
     expect(await holderRowText(browser, holder)).toContain("Signed off");
   });
 
-  test("14. an assessor declines a request", async ({ browser }, testInfo) => {
-    // Declined through the API: no page offers a Decline button yet. The
-    // test below says so, and fails the build when one is added.
-    const holder = await makeHolder(browser, testInfo.project.name);
-    const assessor = await makeAssessor(browser, testInfo.project.name);
-    const name = await askThroughTheApi(browser, holder, assessor.email);
-
-    const theirs = await pageAs(browser, assessor.username);
-    const declined = await send(
-      theirs,
-      "POST",
-      `/passport/${holder.passportId}/sign-offs/${name}/decline`,
-      { reason: "Not yet ready to do this unsupervised." },
-    );
-    expect(declined.status(), await declined.text()).toBe(200);
-    await theirs.context().close();
-
-    // The row reads Not asked, as decided in Phase 1, and the decline is
-    // kept on the Sign-offs page with the assessor's reason.
-    expect(await holderRowText(browser, holder)).toContain("Not asked");
-    const page = await pageAs(browser, holder.username);
-    const listed = await read<SignOffListed[]>(
-      page,
-      `/passport/${holder.passportId}/sign-offs`,
-    );
-    expect(listed.find((signOff) => signOff.name === name)?.status).toBe(
-      "declined",
-    );
-    await page.goto("/passport/sign-offs");
-    await expect(page.getByRole("heading", { name: "Declined" })).toBeVisible();
-    await page.context().close();
-  });
-
-  test("14b. an assessor is offered a way to decline on the sign-off page", async ({
+  test("14. an assessor declines a request, with a reason", async ({
     page,
     browser,
   }, testInfo) => {
-    // Found while building Phase 6: `declineSignOff` exists in the API
-    // client and no page calls it, though the form tells an assessor to
-    // decline a scope they did not assess. Marked as failing, so the
-    // suite says when a Decline button arrives.
-    test.fail();
     const holder = await makeHolder(browser, testInfo.project.name);
     const assessor = await makeAssessor(browser, testInfo.project.name);
-    await askThroughTheApi(browser, holder, assessor.email);
+    await askAsHolder(browser, holder, assessor.email);
 
+    // On the sign-off page, from the inbox, with the reason asked for.
     await signIn(page, assessor.username);
     await page.goto("/inbox");
     await page.getByText(REFER_PALLIATIVE.name).first().click();
-    await expect(page.getByRole("button", { name: /Decline/ })).toBeVisible({
-      timeout: 5_000,
-    });
+    await page.getByRole("button", { name: "Decline request" }).click();
+    const dialog = page.getByRole("dialog", { name: "Decline this request" });
+    await dialog
+      .getByRole("textbox", { name: /Why are you declining/ })
+      .fill("Not yet ready to do this unsupervised.");
+    await dialog.getByRole("button", { name: "Decline", exact: true }).click();
+    await expect(page).toHaveURL(/\/inbox$/);
+
+    // The row reads Not asked, as decided in Phase 1, and the decline is
+    // kept on the holder's Sign-offs page with the reason.
+    expect(await holderRowText(browser, holder)).toContain("Not asked");
+    const theirs = await pageAs(browser, holder.username);
+    await theirs.goto("/passport/sign-offs");
+    await expect(
+      theirs.getByRole("heading", { name: "Declined" }),
+    ).toBeVisible();
+    await theirs.getByText(REFER_PALLIATIVE.name).first().click();
+    await expect(
+      theirs.getByText("Not yet ready to do this unsupervised."),
+    ).toBeVisible();
+    await theirs.context().close();
   });
 
   test("15. an external assessor joins through the invitation and signs", async ({
@@ -181,7 +113,7 @@ test.describe("Assessing a passport", () => {
     const username = freshUsername("ea", testInfo.project.name);
     const email = passportEmailOf(username);
     const password = `${username}-Pass-123!`;
-    await askThroughTheApi(browser, holder, email);
+    await askAsHolder(browser, holder, email);
 
     // Nobody has this address, so the request invites them.
     const invitation = await waitForEmail(email);
@@ -230,15 +162,21 @@ test.describe("Assessing a passport", () => {
       page.getByRole("button", { name: "Request sign-off" }),
     ).toBeDisabled();
 
-    // At the API: signing a request of their own is refused.
-    const name = await askThroughTheApi(browser, holder, assessor.email);
-    const forged = await send(
-      page,
-      "POST",
-      `/passport/${holder.passportId}/sign-offs/${name}/sign-off`,
-      { meaning: "directly observed", declaration_confirmed: true },
-    );
-    expect([403, 404]).toContain(forged.status());
+    // A request they made of somebody else reaches the assessor's inbox,
+    // never theirs, and their own view of it offers no way to sign it.
+    // The API's refusal is router_test.py's
+    // `test_the_holder_cannot_sign_their_own`.
+    await askAsHolder(browser, holder, assessor.email);
+    await page.goto("/inbox");
+    await expect(page.getByRole("heading", { name: "Inbox" })).toBeVisible();
+    await expect(page.getByText(REFER_PALLIATIVE.name)).toHaveCount(0);
+
+    await page.goto("/passport/sign-offs");
+    await page.getByText(REFER_PALLIATIVE.name).first().click();
+    await expect(page).toHaveURL(/\/passport\/sign-offs\/[^/]+$/);
+    await expect(
+      page.getByRole("button", { name: "Sign off competency" }),
+    ).toHaveCount(0);
     expect(await holderRowText(browser, holder)).toContain("Requested");
   });
 });
