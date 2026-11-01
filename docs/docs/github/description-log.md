@@ -27,6 +27,13 @@ The plan behind this file is
 - **Verdict** - not yet given.
 - **Changed** - nothing yet.
 
+## #2323 Tmux: more worktrees and shells
+
+- **Scores** - 84. Attempt 1 posted.
+- **Rules** - `.claude/skills/crpd/SKILL.md` as of #2302.
+- **Verdict** - not yet given.
+- **Changed** - nothing yet.
+
 ## #2322 Descriptions: open with the change, then the triage lines
 
 - **Scores** - 81. Attempt 1 posted.
