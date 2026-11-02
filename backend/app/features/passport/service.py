@@ -38,7 +38,16 @@ from __future__ import annotations
 import calendar
 from datetime import UTC, date, datetime
 
-from . import definitions, hashing, ids, index, paths, records, serialise
+from . import (
+    definitions,
+    hashing,
+    ids,
+    index,
+    layout,
+    paths,
+    records,
+    serialise,
+)
 from .commits import Actor, fit_summary
 from .commits import build as build_message
 from .schemas import (
@@ -329,11 +338,11 @@ def request_sign_off(
     )
 
     name = _unique_sign_off_name(
-        store, passport_id, observed_on, competency.name
+        store, passport_id, competency_id, observed_on, scope_id
     )
 
     files: dict[object, str | bytes] = {
-        paths.sign_off_file(name): serialise.to_yaml(
+        layout.sign_off_file(store, passport_id, name): serialise.to_yaml(
             record,
             comment=(
                 "A requested sign-off. Immutable once signed; corrected "
@@ -343,7 +352,9 @@ def request_sign_off(
     }
 
     if reflection is not None:
-        files[paths.sign_off_reflection(name)] = reflection
+        files[layout.sign_off_reflection(store, passport_id, name)] = (
+            reflection
+        )
 
     commit = _commit_with_index(
         store,
@@ -495,7 +506,7 @@ def sign_off(
     )
 
     files: dict[object, str | bytes] = {
-        paths.sign_off_file(name): serialise.to_yaml(
+        layout.sign_off_file(store, passport_id, name): serialise.to_yaml(
             signed,
             comment=(
                 "A signed sign-off. Immutable: corrected only by "
@@ -505,7 +516,9 @@ def sign_off(
     }
 
     if assessment is not None:
-        files[paths.sign_off_assessment(name)] = assessment
+        files[layout.sign_off_assessment(store, passport_id, name)] = (
+            assessment
+        )
 
     return _commit_with_index(
         store,
@@ -578,7 +591,7 @@ def decline_sign_off(
         "decline",
         f"decline {record.competency.id}",
         {
-            paths.sign_off_file(name): serialise.to_yaml(
+            layout.sign_off_file(store, passport_id, name): serialise.to_yaml(
                 declined,
                 comment=(
                     "A declined request. Recorded rather than deleted: a "
@@ -636,7 +649,7 @@ def withdraw_sign_off(
         {},
         competency=record.competency.id,
         sign_off=name,
-        delete=(paths.sign_off_file(name),),
+        delete=(layout.sign_off_file(store, passport_id, name),),
         now=moment,
     )
 
@@ -688,7 +701,7 @@ def supersede_sign_off(
         "supersede",
         f"supersede {record.competency.id}",
         {
-            paths.sign_off_file(name): serialise.to_yaml(
+            layout.sign_off_file(store, passport_id, name): serialise.to_yaml(
                 superseded,
                 comment=(
                     "A superseded sign-off, corrected by a later record. "
@@ -719,7 +732,10 @@ def read_sign_off(
         PassportNotFoundError: If there is no such sign-off.
     """
     return serialise.from_yaml(
-        SignOff, store.read(passport_id, paths.sign_off_file(name))
+        SignOff,
+        store.read(
+            passport_id, layout.sign_off_file(store, passport_id, name)
+        ),
     )
 
 
@@ -790,9 +806,11 @@ def _existing_for(
     """
     found: list[tuple[str, SignOff]] = []
 
-    for folder in store.list_dir(passport_id, paths.SIGN_OFFS):
+    for folder in layout.sign_off_folders(store, passport_id, competency_id):
+        name = paths.sign_off_id(competency_id, folder)
+
         try:
-            record = read_sign_off(store, passport_id, folder.name)
+            record = read_sign_off(store, passport_id, name)
         except PassportNotFoundError:
             continue
 
@@ -801,7 +819,7 @@ def _existing_for(
 
         record_scope = record.scope.id if record.scope is not None else None
         if scope_id == ANY_SCOPE or record_scope == scope_id:
-            found.append((folder.name, record))
+            found.append((name, record))
 
     found.sort(key=lambda pair: (pair[1].observed_on, pair[0]))
 
@@ -887,19 +905,26 @@ def _evidence_snapshot(
 
 
 def _unique_sign_off_name(
-    store: PassportStore, passport_id: str, observed_on: date, label: str
+    store: PassportStore,
+    passport_id: str,
+    competency_id: str,
+    observed_on: date,
+    scope_id: str | None,
 ) -> str:
-    """A sign-off folder name not already taken."""
-    taken = {
-        entry.name for entry in store.list_dir(passport_id, paths.SIGN_OFFS)
-    }
+    """A sign-off id whose folder is not already taken.
+
+    The folder is the date the work was observed, then the scope where
+    the competency has one, then ``-2`` or higher for a second on the
+    same day. Its parent folder already names the competency.
+    """
+    taken = set(layout.sign_off_folders(store, passport_id, competency_id))
 
     suffix = 1
 
     while True:
-        name = ids.record_dir_name(observed_on, label, suffix=suffix)
-        if name not in taken:
-            return name
+        folder = ids.sign_off_folder_name(observed_on, scope_id, suffix=suffix)
+        if folder not in taken:
+            return paths.sign_off_id(competency_id, folder)
         suffix += 1
 
 

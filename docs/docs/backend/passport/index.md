@@ -33,13 +33,30 @@ exist - see [Coordination](#coordination-in-postgres) below.
     manifest.yaml          schema version, nothing else
     profile.yaml           who this is, and their registrations
     competencies.yaml      the derived index - rebuildable, never authoritative
-    sign-offs/             one folder per sign-off, the countersigned records
-    logbook/               procedures performed, by competency
+    frameworks/
+      <framework>/
+        <competency>/
+          sign-offs/       one folder per sign-off, named by its date and scope
+          logbook/         procedures performed
     certificates/          courses and qualifications claimed
     cpd/                   continuing professional development, by year
     reflections/           holder-only prose
     files/                 evidence blobs, gitignored, addressed by hash
 ```
+
+Every sign-off and logbook entry is about one competency, and every
+competency belongs to one framework, so both live in one tree. A sign-off
+folder is its date, then its scope where it has one, then `-2` for a
+second that day: `frameworks/uk_sact_board_2023/uk_sact_board_2023_prescribe_sact/sign-offs/2026-04-02-lung/`.
+A sign-off is identified, in Postgres and in the API, as
+`<competency>.<folder>`, such as
+`uk_sact_board_2023_prescribe_sact.2026-04-02-lung`. Which framework folder
+a competency is in is found by looking, in `layout.py`, and only a
+competency's first record is placed by the catalogue.
+
+The layout is `schema_version` 2 in `manifest.yaml`, since 2 November 2026.
+No real passport existed at 1, so none was moved, and a passport at 1 is
+refused as not found rather than listed as if it held nothing.
 
 `competencies.yaml` is derived. Anything it says can be recomputed from the
 records beside it, so a disagreement between the two is always resolved in the

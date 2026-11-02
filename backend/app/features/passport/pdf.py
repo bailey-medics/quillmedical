@@ -59,7 +59,7 @@ from reportlab.platypus import (  # type: ignore[import-untyped]
     TableStyle,
 )
 
-from . import paths
+from . import layout, paths
 from .cpd_periods import group_cpd
 from .index import competency_names
 from .schemas import (
@@ -496,7 +496,9 @@ def _counts_by_year(
     per_year: dict[int, int] = {}
 
     try:
-        listing = store.list_dir(passport_id, paths.logbook_dir(competency_id))
+        listing = store.list_dir(
+            passport_id, layout.logbook_dir(store, passport_id, competency_id)
+        )
     except PassportNotFoundError, paths.PassportPathError:
         return per_year
 
@@ -719,9 +721,11 @@ def _sign_offs(
 
     records: list[tuple[str, SignOff]] = []
 
-    for name in _list(store, passport_id, paths.SIGN_OFFS):
+    for name in layout.sign_off_ids(store, passport_id):
         try:
-            raw = store.read(passport_id, paths.sign_off_file(name))
+            raw = store.read(
+                passport_id, layout.sign_off_file(store, passport_id, name)
+            )
             records.append((name, from_yaml(SignOff, raw)))
         except Exception:  # noqa: BLE001 - one bad record must still print
             logger.warning("Skipping unreadable sign-off %s", name)

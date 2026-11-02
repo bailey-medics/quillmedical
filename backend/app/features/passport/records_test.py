@@ -137,7 +137,7 @@ class TestLogbook:
             passport,
             PASSPORT_ID,
             actor,
-            "perform_bronchoscopy",
+            "clinical_perform_lumbar_puncture",
             schemas.LogbookEntry(performed_on=date(2026, 3, 12)),
             now=NOW,
         )
@@ -145,7 +145,10 @@ class TestLogbook:
         stored = serialise.from_yaml(
             schemas.LogbookEntry,
             passport.read(
-                PASSPORT_ID, paths.logbook_entry("perform_bronchoscopy", stem)
+                PASSPORT_ID,
+                paths.logbook_entry(
+                    "clinical", "clinical_perform_lumbar_puncture", stem
+                ),
             ),
         )
 
@@ -159,7 +162,7 @@ class TestLogbook:
             passport,
             PASSPORT_ID,
             actor,
-            "perform_bronchoscopy",
+            "clinical_perform_lumbar_puncture",
             schemas.LogbookEntry(performed_on=date(2026, 3, 12)),
             now=NOW,
         )
@@ -167,7 +170,7 @@ class TestLogbook:
             passport,
             PASSPORT_ID,
             actor,
-            "perform_bronchoscopy",
+            "clinical_perform_lumbar_puncture",
             schemas.LogbookEntry(performed_on=date(2026, 3, 13)),
             now=NOW,
         )
@@ -183,7 +186,7 @@ class TestLogbook:
             passport,
             PASSPORT_ID,
             actor,
-            "perform_bronchoscopy",
+            "clinical_perform_lumbar_puncture",
             schemas.LogbookEntry(
                 performed_on=date(2026, 3, 12),
                 also_counts_towards=["clinical_take_informed_consent"],
@@ -191,7 +194,12 @@ class TestLogbook:
             now=NOW,
         )
 
-        assert _entry(passport, "perform_bronchoscopy").logbook_entries == 1
+        assert (
+            _entry(
+                passport, "clinical_perform_lumbar_puncture"
+            ).logbook_entries
+            == 1
+        )
         assert (
             _entry(passport, "clinical_take_informed_consent").logbook_entries
             == 1
@@ -279,7 +287,7 @@ class TestLogbook:
             passport,
             PASSPORT_ID,
             actor,
-            "perform_bronchoscopy",
+            "clinical_perform_lumbar_puncture",
             schemas.LogbookEntry(
                 performed_on=date(2026, 3, 12), outcome="Successful"
             ),
@@ -295,7 +303,7 @@ class TestLogbook:
             passport,
             PASSPORT_ID,
             supervisor,
-            "perform_bronchoscopy",
+            "clinical_perform_lumbar_puncture",
             stem,
             confirmer=schemas.Assessor(
                 user_id="2", name="Dr Amara Okonkwo", role="Consultant"
@@ -306,7 +314,10 @@ class TestLogbook:
         stored = serialise.from_yaml(
             schemas.LogbookEntry,
             passport.read(
-                PASSPORT_ID, paths.logbook_entry("perform_bronchoscopy", stem)
+                PASSPORT_ID,
+                paths.logbook_entry(
+                    "clinical", "clinical_perform_lumbar_puncture", stem
+                ),
             ),
         )
         assert stored.confirmed_by is not None
@@ -323,7 +334,7 @@ class TestLogbook:
             passport,
             PASSPORT_ID,
             actor,
-            "perform_bronchoscopy",
+            "clinical_perform_lumbar_puncture",
             schemas.LogbookEntry(performed_on=date(2026, 3, 12)),
             now=NOW,
         )
@@ -334,7 +345,7 @@ class TestLogbook:
             passport,
             PASSPORT_ID,
             actor,
-            "perform_bronchoscopy",
+            "clinical_perform_lumbar_puncture",
             stem,
             confirmer=confirmer,
             now=NOW,
@@ -345,7 +356,7 @@ class TestLogbook:
                 passport,
                 PASSPORT_ID,
                 actor,
-                "perform_bronchoscopy",
+                "clinical_perform_lumbar_puncture",
                 stem,
                 confirmer=confirmer,
                 now=NOW,
@@ -359,7 +370,7 @@ class TestLogbook:
                 passport,
                 PASSPORT_ID,
                 actor,
-                "perform_bronchoscopy",
+                "clinical_perform_lumbar_puncture",
                 "2026-03-14-143207",
                 confirmer=schemas.Assessor(
                     user_id="2", name="Dr Amara Okonkwo", role="Consultant"
@@ -375,7 +386,7 @@ class TestLogbook:
             passport,
             PASSPORT_ID,
             actor,
-            "perform_bronchoscopy",
+            "clinical_perform_lumbar_puncture",
             schemas.LogbookEntry(performed_on=date(2026, 3, 12)),
             now=NOW,
         )
@@ -384,7 +395,7 @@ class TestLogbook:
             passport,
             PASSPORT_ID,
             actor,
-            "perform_bronchoscopy",
+            "clinical_perform_lumbar_puncture",
             stem,
             schemas.LogbookEntry(performed_on=date(2026, 3, 11)),
             now=NOW,
@@ -393,7 +404,10 @@ class TestLogbook:
         stored = serialise.from_yaml(
             schemas.LogbookEntry,
             passport.read(
-                PASSPORT_ID, paths.logbook_entry("perform_bronchoscopy", stem)
+                PASSPORT_ID,
+                paths.logbook_entry(
+                    "clinical", "clinical_perform_lumbar_puncture", stem
+                ),
             ),
         )
         assert stored.performed_on == date(2026, 3, 11)
@@ -405,13 +419,18 @@ class TestLogbook:
             passport,
             PASSPORT_ID,
             actor,
-            "perform_bronchoscopy",
+            "clinical_perform_lumbar_puncture",
             schemas.LogbookEntry(performed_on=date(2026, 3, 12)),
             now=NOW,
         )
 
         records.remove_logbook_entry(
-            passport, PASSPORT_ID, actor, "perform_bronchoscopy", stem, now=NOW
+            passport,
+            PASSPORT_ID,
+            actor,
+            "clinical_perform_lumbar_puncture",
+            stem,
+            now=NOW,
         )
 
         assert _read_index(passport).competencies == []
@@ -425,7 +444,7 @@ class TestLogbook:
                 passport,
                 PASSPORT_ID,
                 actor,
-                "perform_bronchoscopy",
+                "clinical_perform_lumbar_puncture",
                 "2026-03-14-143207",
                 schemas.LogbookEntry(performed_on=date(2026, 3, 12)),
                 now=NOW,
@@ -453,7 +472,8 @@ class TestCertificates:
             _certificate(
                 competencies=[
                     schemas.CompetencyRef(
-                        id="perform_bronchoscopy", name="Perform bronchoscopy"
+                        id="clinical_perform_lumbar_puncture",
+                        name="Perform bronchoscopy",
                     ),
                     schemas.CompetencyRef(
                         id="clinical_take_informed_consent",
@@ -464,7 +484,9 @@ class TestCertificates:
             now=NOW,
         )
 
-        assert _entry(passport, "perform_bronchoscopy").certificates == [name]
+        assert _entry(
+            passport, "clinical_perform_lumbar_puncture"
+        ).certificates == [name]
         assert _entry(
             passport, "clinical_take_informed_consent"
         ).certificates == [name]
@@ -659,14 +681,19 @@ class TestIndex:
                 passport,
                 PASSPORT_ID,
                 actor,
-                "perform_bronchoscopy",
+                "clinical_perform_lumbar_puncture",
                 schemas.LogbookEntry(performed_on=date(2026, 3, day)),
                 now=NOW,
             )
 
         rendered = passport.read(PASSPORT_ID, paths.INDEX).decode()
 
-        assert _entry(passport, "perform_bronchoscopy").logbook_entries == 3
+        assert (
+            _entry(
+                passport, "clinical_perform_lumbar_puncture"
+            ).logbook_entries
+            == 3
+        )
         for forbidden in ("target", "required", "progress", "percentage"):
             assert forbidden not in rendered
 
@@ -686,7 +713,7 @@ class TestIndex:
             passport,
             PASSPORT_ID,
             actor,
-            "perform_bronchoscopy",
+            "clinical_perform_lumbar_puncture",
             schemas.LogbookEntry(performed_on=date(2026, 3, 12)),
             now=NOW,
         )
@@ -698,7 +725,7 @@ class TestIndex:
             generated_at=NOW,
             competencies=[
                 schemas.IndexEntry(
-                    id="perform_bronchoscopy",
+                    id="clinical_perform_lumbar_puncture",
                     name="Perform bronchoscopy",
                     status="signed_off",
                     logbook_entries=500,
@@ -717,12 +744,12 @@ class TestIndex:
             passport,
             PASSPORT_ID,
             actor,
-            "perform_bronchoscopy",
+            "clinical_perform_lumbar_puncture",
             schemas.LogbookEntry(performed_on=date(2026, 3, 13)),
             now=NOW,
         )
 
-        entry = _entry(passport, "perform_bronchoscopy")
+        entry = _entry(passport, "clinical_perform_lumbar_puncture")
         assert entry.logbook_entries == 2
         assert entry.status == "requested"
 
@@ -734,7 +761,7 @@ class TestIndex:
             passport,
             PASSPORT_ID,
             actor,
-            "perform_bronchoscopy",
+            "clinical_perform_lumbar_puncture",
             schemas.LogbookEntry(performed_on=date(2026, 3, 12)),
             now=NOW,
         )
@@ -747,7 +774,10 @@ class TestIndex:
     def test_competencies_are_listed_in_a_stable_order(
         self, passport: store.LocalPassportStore, actor: commits.Actor
     ) -> None:
-        for competency in ("request_ct_scan", "clinical_perform_cannulation"):
+        for competency in (
+            "clinical_perform_cannulation",
+            "clinical_interpret_ecg",
+        ):
             records.add_logbook_entry(
                 passport,
                 PASSPORT_ID,
@@ -770,12 +800,12 @@ class TestIndex:
             passport,
             PASSPORT_ID,
             actor,
-            "perform_bronchoscopy",
+            "clinical_perform_lumbar_puncture",
             schemas.LogbookEntry(performed_on=date(2026, 3, 12)),
             now=NOW,
         )
 
-        entry = _entry(passport, "perform_bronchoscopy")
+        entry = _entry(passport, "clinical_perform_lumbar_puncture")
 
         assert entry.status == "requested"
         assert entry.sign_off is None

@@ -28,7 +28,7 @@ from __future__ import annotations
 from collections import defaultdict
 from datetime import UTC, datetime
 
-from . import paths, serialise
+from . import layout, paths, serialise
 from .schemas import (
     SCHEMA_VERSION,
     Certificate,
@@ -72,14 +72,14 @@ def _sign_offs(
     """
     found: dict[EntryKey, list[tuple[str, SignOff]]] = defaultdict(list)
 
-    for folder in store.list_dir(passport_id, paths.SIGN_OFFS):
-        name = folder.name
-
+    for name in layout.sign_off_ids(store, passport_id):
         try:
-            content = store.read(passport_id, paths.sign_off_file(name))
+            content = store.read(
+                passport_id, layout.sign_off_file(store, passport_id, name)
+            )
         except PassportNotFoundError, paths.PassportPathError:
             # A directory with no sign-off.yaml is not a sign-off, and
-            # neither is anything whose name is not a date and a slug.
+            # neither is anything whose name is not a date and a scope.
             # Neither can arise through the application, so it means
             # somebody created a folder or a file by hand; ignoring it
             # is kinder than refusing to rebuild the whole index.
@@ -123,10 +123,8 @@ def _logbook_counts(
     counts: dict[EntryKey, int] = defaultdict(int)
     scopes: dict[EntryKey, ScopeRef] = {}
 
-    for competency_dir in store.list_dir(passport_id, paths.LOGBOOK):
-        competency = competency_dir.name
-
-        for entry_path in store.list_dir(passport_id, competency_dir):
+    for competency, logbook in layout.logbook_dirs(store, passport_id):
+        for entry_path in store.list_dir(passport_id, logbook):
             entry = serialise.from_yaml(
                 LogbookEntry, store.read(passport_id, entry_path)
             )

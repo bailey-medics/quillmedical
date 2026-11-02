@@ -329,5 +329,5 @@ No CPD date ranges have been set, so these run June to June by convention rather
 - Evidence in view when signed: 0 logbook entries, 0 certificates
 
 Fingerprint: `sha256:<hash>`
-Record: `2026-03-14-review-and-prescribe-systemic-anti-cancer-therapy`
+Record: `uk_sact_board_2023_prescribe_sact.2026-03-14-lung`
 """

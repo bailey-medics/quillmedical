@@ -30,7 +30,7 @@ from collections.abc import Mapping
 from datetime import UTC, date, datetime, timedelta
 from pathlib import PurePosixPath
 
-from . import ids, index, paths, serialise
+from . import ids, index, layout, paths, serialise
 from .commits import Actor, CommitAction, fit_summary
 from .commits import build as build_message
 from .schemas import (
@@ -464,7 +464,7 @@ def add_logbook_entry(
         The filename stem and the commit id.
     """
     moment = now if now is not None else datetime.now(UTC)
-    directory = paths.logbook_dir(competency)
+    directory = layout.logbook_dir(store, passport_id, competency)
     stem = _next_entry_filename(store, passport_id, directory, moment)
 
     commit = _write(
@@ -474,7 +474,9 @@ def add_logbook_entry(
         "create",
         f"log a {competency} procedure",
         {
-            paths.logbook_entry(competency, stem): serialise.to_yaml(
+            layout.logbook_entry(
+                store, passport_id, competency, stem
+            ): serialise.to_yaml(
                 entry,
                 comment=(
                     "One logged procedure. Self-declared: nobody "
@@ -516,7 +518,7 @@ def amend_logbook_entry(
     Raises:
         RecordNotFoundError: If there is no such entry.
     """
-    path = paths.logbook_entry(competency, stem)
+    path = layout.logbook_entry(store, passport_id, competency, stem)
     _require(store, passport_id, path, "logbook entry")
 
     return _write(
@@ -572,7 +574,7 @@ def confirm_logbook_entry(
         AlreadyConfirmedError: If somebody has confirmed it already.
     """
     moment = now if now is not None else datetime.now(UTC)
-    path = paths.logbook_entry(competency, stem)
+    path = layout.logbook_entry(store, passport_id, competency, stem)
     _require(store, passport_id, path, "logbook entry")
 
     entry = serialise.from_yaml(LogbookEntry, store.read(passport_id, path))
@@ -631,7 +633,7 @@ def remove_logbook_entry(
     Raises:
         RecordNotFoundError: If there is no such entry.
     """
-    path = paths.logbook_entry(competency, stem)
+    path = layout.logbook_entry(store, passport_id, competency, stem)
     _require(store, passport_id, path, "logbook entry")
 
     return _write(

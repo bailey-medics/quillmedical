@@ -34,7 +34,7 @@ from __future__ import annotations
 from datetime import date
 from pathlib import PurePosixPath
 
-from . import paths
+from . import layout, paths
 from .cpd_periods import group_cpd
 from .index import competency_names
 from .schemas import (
@@ -254,7 +254,9 @@ def _logbook_entries(
     found: list[tuple[date, LogbookEntry]] = []
 
     try:
-        listing = store.list_dir(passport_id, paths.logbook_dir(competency_id))
+        listing = store.list_dir(
+            passport_id, layout.logbook_dir(store, passport_id, competency_id)
+        )
     except PassportNotFoundError, paths.PassportPathError:
         return found
 
@@ -417,7 +419,7 @@ def _sign_off_appendix(
     only current conclusions would hide what was decided and when.
     """
     lines = ["## Sign-offs in full", ""]
-    names = _list(store, passport_id, paths.SIGN_OFFS)
+    names = layout.sign_off_ids(store, passport_id)
 
     if not names:
         lines.append(_NOTHING)
@@ -426,7 +428,9 @@ def _sign_off_appendix(
     records: list[tuple[str, SignOff]] = []
 
     for name in names:
-        raw = store.read(passport_id, paths.sign_off_file(name))
+        raw = store.read(
+            passport_id, layout.sign_off_file(store, passport_id, name)
+        )
         records.append((name, from_yaml(SignOff, raw)))
 
     records.sort(key=lambda item: item[1].observed_on)

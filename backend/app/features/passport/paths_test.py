@@ -64,28 +64,62 @@ class TestBlob:
             paths.blob("abc123")
 
 
-class TestCompetencyGroupedPaths:
-    """Where a directory is a competency, it is named by the id."""
+class TestFrameworkFirstPaths:
+    """A sign-off and a logbook live under their framework and competency."""
 
-    def test_logbook_groups_by_competency_id_verbatim(self) -> None:
-        assert str(paths.logbook_dir("perform_bronchoscopy")) == (
-            "logbook/perform_bronchoscopy"
-        )
+    def test_logbook_sits_in_the_competency_folder(self) -> None:
+        assert str(
+            paths.logbook_dir("clinical", "clinical_perform_cannulation")
+        ) == ("frameworks/clinical/clinical_perform_cannulation/logbook")
 
     def test_logbook_entry_carries_the_write_time_stem(self) -> None:
         assert (
             str(
                 paths.logbook_entry(
-                    "perform_bronchoscopy", "2026-03-14-143207"
+                    "clinical",
+                    "clinical_perform_cannulation",
+                    "2026-03-14-143207",
                 )
             )
-            == "logbook/perform_bronchoscopy/2026-03-14-143207.yaml"
+            == "frameworks/clinical/clinical_perform_cannulation/logbook/"
+            "2026-03-14-143207.yaml"
+        )
+
+    def test_a_sign_off_sits_beside_its_logbook(self) -> None:
+        sign_off = "uk_sact_board_2023_prescribe_sact.2026-04-02-lung"
+
+        assert str(paths.sign_off_file("uk_sact_board_2023", sign_off)) == (
+            "frameworks/uk_sact_board_2023/uk_sact_board_2023_prescribe_sact/"
+            "sign-offs/2026-04-02-lung/sign-off.yaml"
+        )
+
+    def test_narratives_sit_beside_the_record(self) -> None:
+        sign_off = "clinical_perform_cannulation.2026-03-14"
+
+        assert (
+            paths.sign_off_reflection("clinical", sign_off).name
+            == "reflection.md"
+        )
+        assert (
+            paths.sign_off_assessment("clinical", sign_off).name
+            == "assessment.md"
+        )
+
+    def test_a_sign_off_id_splits_back_apart(self) -> None:
+        sign_off = paths.sign_off_id(
+            "clinical_perform_cannulation", "2026-03-14-2"
+        )
+
+        assert sign_off == "clinical_perform_cannulation.2026-03-14-2"
+        assert paths.split_sign_off_id(sign_off) == (
+            "clinical_perform_cannulation",
+            "2026-03-14-2",
         )
 
     def test_refuses_a_path_shaped_competency_id(self) -> None:
         """Hierarchy lives in the definition, never in the identifier."""
         with pytest.raises(PassportPathError):
-            paths.logbook_dir("prescribing/chemotherapy")
+            paths.logbook_dir("clinical", "prescribing/chemotherapy")
 
     @pytest.mark.parametrize(
         "bad",
@@ -93,7 +127,12 @@ class TestCompetencyGroupedPaths:
     )
     def test_refuses_a_malformed_competency_id(self, bad: str) -> None:
         with pytest.raises(PassportPathError):
-            paths.logbook_dir(bad)
+            paths.logbook_dir("clinical", bad)
+
+    @pytest.mark.parametrize("bad", ["../x", "Clinical", ""])
+    def test_refuses_a_malformed_framework_id(self, bad: str) -> None:
+        with pytest.raises(PassportPathError):
+            paths.framework_dir(bad)
 
     @pytest.mark.parametrize(
         "bad",
@@ -106,32 +145,29 @@ class TestCompetencyGroupedPaths:
     )
     def test_refuses_a_malformed_entry_filename(self, bad: str) -> None:
         with pytest.raises(PassportPathError):
-            paths.logbook_entry("perform_bronchoscopy", bad)
+            paths.logbook_entry("clinical", "clinical_x", bad)
+
+    @pytest.mark.parametrize(
+        "bad",
+        [
+            "clinical_x",  # no folder
+            "clinical_x.thing",  # no date
+            "clinical_x.2026-3-14",  # unpadded
+            "clinical_x.../escape",
+            "Clinical.2026-03-14",
+            ".2026-03-14",
+            "",
+        ],
+    )
+    def test_refuses_a_sign_off_id_this_layout_would_not_make(
+        self, bad: str
+    ) -> None:
+        with pytest.raises(PassportPathError):
+            paths.sign_off_dir("clinical", bad)
 
 
-class TestHumanNamedPaths:
-    """Where a directory is a label, the id lives inside the file."""
-
-    def test_sign_off_directory_reads_as_a_chronology(self) -> None:
-        assert str(paths.sign_off_dir("2026-03-14-perform-bronchoscopy")) == (
-            "sign-offs/2026-03-14-perform-bronchoscopy"
-        )
-
-    def test_sign_off_file_is_the_record(self) -> None:
-        assert (
-            str(paths.sign_off_file("2026-03-14-perform-bronchoscopy"))
-            == "sign-offs/2026-03-14-perform-bronchoscopy/sign-off.yaml"
-        )
-
-    def test_narratives_sit_beside_the_record(self) -> None:
-        name = "2026-03-14-perform-bronchoscopy"
-        assert paths.sign_off_reflection(name).name == "reflection.md"
-        assert paths.sign_off_assessment(name).name == "assessment.md"
-
-    def test_a_same_day_clash_is_suffixed(self) -> None:
-        assert str(
-            paths.sign_off_dir("2026-03-14-perform-bronchoscopy-2")
-        ).endswith("-2")
+class TestRecordsNotUnderAFramework:
+    """Certificates, reflections and CPD are tied to no one competency."""
 
     def test_certificates_stay_flat(self) -> None:
         """One course legitimately supports several competencies."""
@@ -147,20 +183,13 @@ class TestHumanNamedPaths:
         )
 
     @pytest.mark.parametrize(
-        "bad",
-        [
-            "perform-bronchoscopy",  # no date
-            "2026-3-14-thing",  # unpadded
-            "../../escape",
-            ".git",
-            "",
-        ],
+        "bad", ["bronchoscopy-course", "2026-3-14-thing", "../x", ""]
     )
     def test_refuses_a_name_this_layout_would_not_generate(
         self, bad: str
     ) -> None:
         with pytest.raises(PassportPathError):
-            paths.sign_off_dir(bad)
+            paths.certificate_dir(bad)
 
 
 class TestCpd:
@@ -202,10 +231,10 @@ def test_every_path_is_relative() -> None:
         paths.INDEX,
         paths.README,
         paths.GITIGNORE,
-        paths.sign_off_file("2026-03-14-a-thing"),
+        paths.sign_off_file("clinical", "clinical_thing.2026-03-14"),
         paths.certificate_file("2026-03-14-a-thing"),
         paths.logbook_entry(
-            "clinical_perform_cannulation", "2026-03-14-143207"
+            "clinical", "clinical_perform_cannulation", "2026-03-14-143207"
         ),
         paths.reflection_file("2026-03-14-a-thing"),
         paths.cpd_entry(2026, "2026-03-14-143207"),
