@@ -296,6 +296,12 @@ class FrameworkChoiceOut(BaseModel):
     ``lead`` is true when one of the holder's organisations named it to
     come first. ``items`` is how many competencies it holds, so somebody
     choosing can tell a two-page sheet from a national curriculum.
+
+    ``version`` is deprecated and read by nothing. It once held the
+    publisher's edition label, and still does, now taken from the
+    framework's ``description``: a framework's ``version`` became Quill's
+    whole-number count of changes on 2 November 2026, and changing this
+    field's type would break an open tab. It goes in a later deploy.
     """
 
     id: CompetencyIdField

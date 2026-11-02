@@ -55,9 +55,13 @@ export interface FrameworkFieldProps {
   disabled?: boolean;
 }
 
-/** A framework as one line: its name, then who published which edition. */
+/**
+ * A framework as one line: its name, then who published it. The edition
+ * is left out: it lives in a framework's `description`, which is shown to
+ * nobody, and its `version` is Quill's own count of changes.
+ */
 function optionLabel(framework: FrameworkOption): string {
-  return `${framework.name} (${framework.publisher}, ${framework.version})`;
+  return `${framework.name} (${framework.publisher})`;
 }
 
 export default function FrameworkField({

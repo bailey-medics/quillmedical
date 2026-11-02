@@ -42,9 +42,15 @@ from .schemas import SignOff
 #:
 #: Order is irrelevant - the canonical form sorts - but the list is kept
 #: in the order the plan states it, so the two can be read side by side.
+#:
+#: ``framework_version`` is which version of the framework the words came
+#: from: the same words under two versions are two different claims about
+#: what the framework asked for. It joined on 2 November 2026, before any
+#: real passport existed, so no signed record had a payload to change.
 CONTRIBUTING: tuple[str, ...] = (
     "id",
     "competency.id",
+    "framework_version",
     "kind",
     "status",
     "level.id",

@@ -122,7 +122,6 @@ export interface FrameworkChoice {
   id: string;
   name: string;
   publisher: string;
-  version: string;
   specialties: string[];
   lead: boolean;
   items: number;

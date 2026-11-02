@@ -165,6 +165,26 @@ What each kind of change to the catalogue does:
   new file, such as `uk_sact_board_2026`.
 - **Renaming a framework changes no sign-off.**
 
+### Framework versions
+
+Every framework carries a `version`, a whole number from 1 that Quill
+bumps by exactly one with every change to its file, except comments,
+spacing and `description`. A new version goes live when it merges, with
+no admin step, as a teaching bank's does. There is no draft status: a
+framework is offered as soon as it merges.
+
+- **Every sign-off records `framework_version`**, copied from its
+  framework when it is asked for, which is when it copies the words. It
+  never changes after, and it counts towards the content hash.
+- **The publisher's edition label goes in `description`**, which is shown
+  to nobody, never in a field of its own: "Pilot edition", "Published
+  November 2023". Until 2 November 2026 `version` held that label.
+- **A framework's retired competency names `retired_in_version`**, the
+  first version that left it out, beside `retired_on`.
+- **The framework list route's `version` field is deprecated.** It still
+  carries the edition label, now read from `description`, so an open tab
+  keeps working, and nothing reads it.
+
 See the [passport record and catalogue plan](../../plans/2026-11-01-passport-record-and-catalogue-plan.md).
 
 ## Scopes

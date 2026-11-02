@@ -96,14 +96,12 @@ const FRAMEWORKS: FrameworkOption[] = [
     id: "clinical",
     name: "General clinical skills",
     publisher: "Quill Medical",
-    version: "2026",
     specialties: [],
   },
   {
     id: "oncology",
     name: "Oncology (proof of concept)",
     publisher: "Quill Medical",
-    version: "2026",
     specialties: ["oncology"],
   },
 ];
@@ -111,8 +109,8 @@ const FRAMEWORKS: FrameworkOption[] = [
 /** A lead framework first, as an oncology department would have it. */
 const ONCOLOGY_FIRST: FrameworkOption[] = [FRAMEWORKS[1], FRAMEWORKS[0]];
 
-const ONCOLOGY_LABEL = "Oncology (proof of concept) (Quill Medical, 2026)";
-const GENERAL_LABEL = "General clinical skills (Quill Medical, 2026)";
+const ONCOLOGY_LABEL = "Oncology (proof of concept) (Quill Medical)";
+const GENERAL_LABEL = "General clinical skills (Quill Medical)";
 
 /** The field the frameworks are chosen in, on the create step. */
 function frameworksField(): HTMLElement {
