@@ -746,7 +746,7 @@ class TestRequestSignOff:
         )
 
         response = holder_client.post(
-            f"/api/passport/{passport_id}/competencies/perform_cannulation"
+            f"/api/passport/{passport_id}/competencies/clinical_perform_cannulation"
             "/requests",
             json={
                 "assessor_email": assessor.email,
@@ -3016,9 +3016,9 @@ class TestTheWholeLogbook:
         passport_id = _create_passport(holder_client)
 
         for competency, day in (
-            ("perform_venepuncture", "2026-03-01"),
-            ("perform_venepuncture", "2026-03-02"),
-            ("certify_death", "2026-03-03"),
+            ("clinical_perform_venepuncture", "2026-03-01"),
+            ("clinical_perform_venepuncture", "2026-03-02"),
+            ("clinical_certify_death", "2026-03-03"),
         ):
             holder_client.post(
                 f"/api/passport/{passport_id}/logbook/{competency}",
@@ -3032,8 +3032,8 @@ class TestTheWholeLogbook:
         assert body["count"] == 3
         groups = {g["competency"]: g["count"] for g in body["competencies"]}
         assert groups == {
-            "perform_venepuncture": 2,
-            "certify_death": 1,
+            "clinical_perform_venepuncture": 2,
+            "clinical_certify_death": 1,
         }
 
     def test_an_empty_logbook_is_not_an_error(
@@ -3055,7 +3055,7 @@ class TestTheWholeLogbook:
 
         for day in ("2026-03-09", "2026-03-02", "2026-03-05"):
             holder_client.post(
-                f"/api/passport/{passport_id}/logbook/perform_venepuncture",
+                f"/api/passport/{passport_id}/logbook/clinical_perform_venepuncture",
                 json={"performed_on": day},
             )
 
@@ -5034,7 +5034,7 @@ class TestOnlyAssessableCompetencies:
         passport_id = _create_passport(holder_client)
 
         response = holder_client.post(
-            f"/api/passport/{passport_id}/logbook/perform_cannulation",
+            f"/api/passport/{passport_id}/logbook/clinical_perform_cannulation",
             json={"performed_on": "2026-03-14"},
         )
 
@@ -5052,7 +5052,7 @@ class TestOnlyAssessableCompetencies:
         """
         passport_id = _create_passport(holder_client)
         written = holder_client.post(
-            f"/api/passport/{passport_id}/logbook/perform_cannulation",
+            f"/api/passport/{passport_id}/logbook/clinical_perform_cannulation",
             json={"performed_on": "2026-03-14"},
         )
         assert written.status_code == 201, written.text
@@ -5063,7 +5063,7 @@ class TestOnlyAssessableCompetencies:
             tuple(
                 competency_id
                 for competency_id in definitions.ASSESSABLE_COMPETENCY_IDS
-                if competency_id != "perform_cannulation"
+                if competency_id != "clinical_perform_cannulation"
             ),
         )
 
@@ -5073,7 +5073,7 @@ class TestOnlyAssessableCompetencies:
         assert logbook.status_code == 200, logbook.text
         assert [
             group["competency"] for group in logbook.json()["competencies"]
-        ] == ["perform_cannulation"]
+        ] == ["clinical_perform_cannulation"]
         assert exported.status_code == 200, exported.text
 
 

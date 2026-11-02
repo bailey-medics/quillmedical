@@ -418,7 +418,7 @@ class TestWrite:
             PASSPORT_ID,
             {
                 paths.logbook_entry(
-                    "perform_cannulation", "2026-03-14-143207"
+                    "clinical_perform_cannulation", "2026-03-14-143207"
                 ): "a: 1\n"
             },
             _message("an entry"),
@@ -434,7 +434,7 @@ class TestWrite:
             PassportHead(commit=second),
             delete=(
                 paths.logbook_entry(
-                    "perform_cannulation", "2026-03-14-143207"
+                    "clinical_perform_cannulation", "2026-03-14-143207"
                 ),
             ),
         )
@@ -443,7 +443,7 @@ class TestWrite:
             passport_store.read(
                 PASSPORT_ID,
                 paths.logbook_entry(
-                    "perform_cannulation", "2026-03-14-143207"
+                    "clinical_perform_cannulation", "2026-03-14-143207"
                 ),
             )
 

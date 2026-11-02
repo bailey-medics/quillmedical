@@ -68,13 +68,13 @@ it is built.
 
 ## Phase 2: Every competency a passport records under a framework, with its prefix
 
-- [ ] **Require every framework's ids to start with the framework's id**,
+- [x] **Require every framework's ids to start with the framework's id**,
       in the loader in `backend/app/cbac/competencies.py`. It checks this
       today for the three oncology frameworks only. Extending it to every
       framework is what makes two standards' cannulation two ids, and what
       makes the folder in Phase 4 safe: a prefixed id can never move to a
       different framework.
-- [ ] **Split `clinical.yaml` into its two jobs.** Its 19 assessable
+- [x] **Split `clinical.yaml` into its two jobs.** Its 19 assessable
       entries are both granted permissions and the competencies of Quill's
       own "General clinical skills" framework, under one id each, such as
       `perform_cannulation`. Keep the permissions under their current ids
@@ -82,13 +82,13 @@ it is built.
       not change. Give the framework its own copies with prefixed ids, such
       as `clinical_perform_cannulation`, in Quill's words. Quill stays the
       publisher: it may publish a framework like anybody else.
-- [ ] **Point the seed and the fixtures at the new ids.** With no real
+- [x] **Point the seed and the fixtures at the new ids.** With no real
       passports, no record anywhere holds a sign-off against
       `perform_cannulation` that has to stay readable, so the new entries
       need no `replaces` list naming the old ids. The dev seed, the
       end-to-end fixtures and the unit-test fixtures that record against a
       `clinical` id move to its prefixed copy.
-- [ ] **Treat every framework as passport-only, and drop the
+- [x] **Treat every framework as passport-only, and drop the
       `passport_only` flag.** Agreed with the product owner on 2 November
       2026. Today the three oncology frameworks carry `passport_only: true`,
       and the loader refuses their competencies wherever a competency is
@@ -100,20 +100,18 @@ it is built.
       any `may_grant` list, and leaves them out of every admin picker. The
       flag comes out of the three framework files, the framework model in
       the loader, the generated types and the frontend that reads it.
-- [ ] **Delete the first oncology list**, `retired-oncology.yaml`. It
-      declares no framework, and was kept, retired, only so that a passport
-      holding a record against one of its ids would still open. With no
-      real passports there is no such record, so it can go, and then every
-      competency a passport can record sits under a framework: Phase 4
-      needs no folder for orphans, and Phase 6 has no framework-less file
-      to find a home for. The deletion is the one
-      `check-competencies-not-deleted.sh` must let through, so the pull
-      request says so and the dev seed and fixtures that name its ids move
-      to the current frameworks. My reading, from the product owner's
-      confirmation that no real passports exist: the alternative, giving
-      the list a framework block of its own, keeps a framework nobody uses
-      and would have to be published from a repository in Phase 6.
-- [ ] **Write the rules this phase makes true**, in the passport backend
+- [x] **Keep the first oncology list, `retired-oncology.yaml`, as it is.**
+      Departed from the plan, 2 November 2026, while building this phase.
+      The plan said to delete it, since no real passport holds a record
+      against it. But `check-competencies-not-deleted.sh` fails CI on any
+      removed id and, by design, offers no approval: deleting an id
+      "destroys the vocabulary the audit trail needs". Weakening that check
+      for one file is a worse trade than keeping sixteen retired entries.
+      Nothing is lost by keeping them: every entry is retired, so nothing
+      new is recorded against one, and every competency a passport can
+      still record sits under a framework. Phase 4 needs no folder for
+      orphans, because no record exists against one.
+- [x] **Write the rules this phase makes true**, in the passport backend
       page and in `.github/copilot-instructions.md` under CBAC, then
       `CLAUDE.md` through the sync, replacing what the CBAC section says
       today about `passport_only`:
@@ -144,14 +142,18 @@ it is built.
       - **A sign-off never unlocks an ability by itself.** If one ever
         should, an organisation links the two inside the app, as an
         audited decision of its own. See the Decisions section.
-- [ ] **Put the prefix rule in the header of every framework file**:
+- [x] **Put the prefix rule in the header of every framework file**:
       `uk_sact_board_2023.yaml`, `ruh_sact_passport.yaml`,
       `ghnft_radiotherapy_record.yaml` and `clinical.yaml`.
-- [ ] **Tests**: the loader refuses an unprefixed id in any framework; a
+- [x] **Tests**: the loader refuses an unprefixed id in any framework; a
       `clinical` framework competency is refused as a grant and on a
       `may_grant` list, with no `passport_only` flag anywhere; a permission
       keeps its grant after losing `assessable`; no competency a passport
-      can record is outside a framework.
+      can record is outside a framework. The split itself is the
+      `clinical-permissions.yaml` file beside `clinical.yaml`: the
+      permissions kept their ids there, and the framework took
+      `clinical.yaml`, so its id and every organisation's lead framework
+      naming `clinical` stay as they were.
 
 ## Phase 3: Framework versions, as teaching banks have
 

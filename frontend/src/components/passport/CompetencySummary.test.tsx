@@ -102,7 +102,11 @@ describe("CompetencySummary", () => {
       renderWithMantine(
         <CompetencySummary
           competencies={[
-            { ...row, id: "perform_cannulation", name: "Insert a cannula" },
+            {
+              ...row,
+              id: "clinical_perform_cannulation",
+              name: "Insert a cannula",
+            },
             {
               ...row,
               id: "uk_sact_board_2023_prescribe_sact",

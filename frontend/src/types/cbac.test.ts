@@ -10,7 +10,6 @@
 import { describe, expect, it } from "vitest";
 import {
   ALL_COMPETENCIES,
-  ALL_FRAMEWORKS,
   ACTIVE_COMPETENCIES,
   ASSESSABLE_COMPETENCIES,
   getCompetencyDetails,
@@ -42,21 +41,15 @@ describe("The competency catalogue", () => {
     expect(offered).toEqual([]);
   });
 
-  it("offers everything that is neither retired nor passport-only", () => {
+  it("offers everything that is neither retired nor in a framework", () => {
     // The three must account for the whole catalogue: an id missing
     // from all of them would be impossible to grant without anybody
-    // having retired it or filed it in a framework written from a form.
-    const passportOnly = new Set(
-      ALL_FRAMEWORKS.filter((framework) => framework.passport_only).map(
-        (framework) => framework.id,
-      ),
-    );
-
+    // having retired it or filed it in a framework.
     expect(ACTIVE_COMPETENCIES).toHaveLength(
       ALL_COMPETENCIES.filter(
         (competency) =>
           competency.retired_on === undefined &&
-          !passportOnly.has(competency.framework_id ?? ""),
+          competency.framework_id === undefined,
       ).length,
     );
   });
@@ -66,6 +59,13 @@ describe("The competency catalogue", () => {
 
     expect(ids).not.toContain("uk_sact_board_2023_prescribe_sact");
     expect(ids).not.toContain("ruh_sact_passport_ctcae_grading");
+  });
+
+  it("never offers Quill's own framework's competencies to be granted", () => {
+    const ids = ACTIVE_COMPETENCIES.map((competency) => competency.id);
+
+    expect(ids).not.toContain("clinical_perform_cannulation");
+    expect(ids).toContain("perform_cannulation");
   });
 
   it("offers the competency that replaced the retired one", () => {
@@ -83,8 +83,14 @@ describe("The competencies the passport may record", () => {
   const ids = ASSESSABLE_COMPETENCIES.map((competency) => competency.id);
 
   it("offers clinical skills somebody can be assessed on", () => {
-    expect(ids).toContain("perform_cannulation");
+    expect(ids).toContain("clinical_perform_cannulation");
     expect(ids).toContain("uk_sact_board_2023_prescribe_sact");
+  });
+
+  it("never offers the permission of the same name", () => {
+    // The permission is checked by the code; the framework's copy is
+    // what a passport records.
+    expect(ids).not.toContain("perform_cannulation");
   });
 
   it("no longer offers the first oncology list, now retired", () => {
@@ -159,17 +165,12 @@ describe("frameworks", () => {
     }
   });
 
-  it("offers nothing passport-only where competencies are granted", async () => {
-    const { ACTIVE_COMPETENCIES, ALL_FRAMEWORKS } = await import("./cbac");
-    const passportOnly = new Set(
-      ALL_FRAMEWORKS.filter((framework) => framework.passport_only).map(
-        (framework) => framework.id,
-      ),
-    );
+  it("offers no framework's competency where competencies are granted", async () => {
+    const { ACTIVE_COMPETENCIES } = await import("./cbac");
 
     expect(
-      ACTIVE_COMPETENCIES.filter((competency) =>
-        passportOnly.has(competency.framework_id ?? ""),
+      ACTIVE_COMPETENCIES.filter(
+        (competency) => competency.framework_id !== undefined,
       ),
     ).toEqual([]);
   });

@@ -82,7 +82,8 @@ export const ALL_COMPETENCIES: Competency[] = competenciesData.competencies;
 /**
  * One published document a clinician works to, as a set of competencies:
  * a definition file that declares a `framework:` block. Its items are
- * the assessable competencies carrying its id.
+ * the competencies carrying its id, each recorded in a passport and
+ * granted to nobody.
  */
 export interface Framework {
   id: string;
@@ -91,33 +92,21 @@ export interface Framework {
   version: string;
   /** From `specialties.json`. Empty where it belongs to every specialty. */
   specialties: string[];
-  /** True where its entries are recorded in a passport and granted to nobody. */
-  passport_only?: boolean;
 }
 
 /** Every framework, in the order the definition files sort. */
 export const ALL_FRAMEWORKS: Framework[] = frameworksData.frameworks;
 
 /**
- * The frameworks whose entries exist only to be recorded in a passport:
- * those written from a paper form, whose statements are nobody's
- * permission.
+ * Whether a competency is a framework's: recorded in a passport and
+ * granted to nobody. Every framework's competencies are, so no flag on
+ * the framework says it.
  */
-const PASSPORT_ONLY_FRAMEWORK_IDS = new Set(
-  ALL_FRAMEWORKS.filter((framework) => framework.passport_only === true).map(
-    (framework) => framework.id,
-  ),
-);
-
-/** Whether a competency exists only to be recorded in a passport. */
-function isPassportOnly(competency: Competency): boolean {
-  return (
-    competency.framework_id !== undefined &&
-    PASSPORT_ONLY_FRAMEWORK_IDS.has(competency.framework_id)
-  );
+function isFrameworkCompetency(competency: Competency): boolean {
+  return competency.framework_id !== undefined;
 }
 
-/** Every competency that is not retired, passport-only ones included. */
+/** Every competency that is not retired, framework ones included. */
 const CURRENT_COMPETENCIES: Competency[] = ALL_COMPETENCIES.filter(
   (competency) => competency.retired_on === undefined,
 );
@@ -128,13 +117,13 @@ const CURRENT_COMPETENCIES: Competency[] = ALL_COMPETENCIES.filter(
  * Anything offering a choice of what to grant uses this. The API refuses
  * a retired id at the write boundary, so listing one gives an admin
  * something they can select and cannot save, with a validation error
- * they can do nothing about. It refuses a passport-only one for the same
- * reason, and leaving those out is also what keeps a paper form's sixty
+ * they can do nothing about. It refuses a framework's competency for the
+ * same reason, and leaving those out is also what keeps a paper form's sixty
  * statements out of every admin picker. Mirrors what
  * `validate_competency_ids` accepts in `backend/app/cbac/competencies.py`.
  */
 export const ACTIVE_COMPETENCIES: Competency[] = CURRENT_COMPETENCIES.filter(
-  (competency) => !isPassportOnly(competency),
+  (competency) => !isFrameworkCompetency(competency),
 );
 
 /**

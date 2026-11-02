@@ -657,7 +657,7 @@ class TestDeletePassport:
             PassportSignOffRequest(
                 passport_id=PASSPORT_ID,
                 signoff_id="20260314T143207.000Z-abc",
-                competency_id="perform_cannulation",
+                competency_id="clinical_perform_cannulation",
                 assessor_email="assessor@example.com",
             )
         )

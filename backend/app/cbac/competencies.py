@@ -96,10 +96,17 @@ class Framework(BaseModel):
     offered what those contain, so the passport never lists every
     competency Quill knows.
 
-    Quill hosts each framework as its publisher wrote it and writes no
-    standard of its own: the words, the order and the levels are the
-    document's. A revised document is a new framework, not an edit, so a
-    sign-off keeps the words it was signed under.
+    Quill hosts each framework as its publisher wrote it: the words, the
+    order and the levels are the document's. A revised document is a new
+    framework, not an edit, so a sign-off keeps the words it was signed
+    under. Quill may publish a framework of its own, as it does "General
+    clinical skills".
+
+    Every framework's competencies are recorded in a passport and granted
+    to nobody. That is what a framework is, so no flag says it: each
+    entry must be assessable and start with the framework's id, and is
+    refused wherever a competency is granted. Permissions, which the code
+    checks, live in files that declare no framework.
 
     Attributes:
         id: Stable identifier, and the file's name without ``.yaml``.
@@ -109,11 +116,6 @@ class Framework(BaseModel):
         specialties: The specialties it is filed under, from
             ``shared/specialties.yaml``. Empty where it belongs to
             every specialty, as general clinical skills do.
-        passport_only: Whether its entries exist only to be recorded in
-            a passport. True for a framework written from a paper form,
-            whose statements nobody should be granted as a permission.
-            Such entries are refused at every place a competency is
-            granted, and their ids must start with the framework's id.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -123,7 +125,6 @@ class Framework(BaseModel):
     publisher: str
     version: str
     specialties: list[str] = []
-    passport_only: bool = False
 
 
 #: The scope every list must offer, so somebody whose part of practice
@@ -196,15 +197,15 @@ class CompetencyEntry(BaseModel):
 # Load competencies from every YAML file in the definitions directory.
 #
 # A directory rather than one file, so the catalogue can be split by kind
-# - clinical.yaml describes what may be done to a patient, and
+# - clinical-permissions.yaml describes what may be done to a patient, and
 # admin.yaml what may be done to Quill - and split further later
 # without touching this loader. The files are merged into one flat
 # catalogue and the id is what everything references.
 #
 # Which file an entry lives in carries no meaning to access control. It
 # carries one meaning to the clinician passport: a file that declares a
-# ``framework:`` block is a framework, and the assessable entries in it
-# are that framework's items.
+# ``framework:`` block is a framework, and every entry in it is that
+# framework's, recorded in a passport and granted to nobody.
 COMPETENCY_DEFINITIONS_DIR: Path = SHARED_DIR / "competency-definitions"
 
 SPECIALTIES_FILE: Path = SHARED_DIR / "specialties.yaml"
@@ -298,8 +299,8 @@ def _check_belongs(
     Raises:
         ValueError: If an active assessable entry is in no framework, so
             no clinician could ever be offered it; or an entry in a
-            passport-only framework is not assessable, or does not carry
-            the framework's id at the front of its own.
+            framework is not assessable, or does not carry the
+            framework's id at the front of its own.
     """
     if framework is None:
         if entry.assessable and entry.retired_on is None:
@@ -311,14 +312,12 @@ def _check_belongs(
             )
         return
 
-    if not framework.passport_only:
-        return
-
     if not entry.assessable:
         raise ValueError(
             f"Competency {entry.id!r} in {path.name} is not assessable, "
-            f"in a framework marked passport_only. Every entry of "
-            f"{framework.id!r} exists to be recorded in a passport."
+            f"in framework {framework.id!r}. Every entry of a framework "
+            "exists to be recorded in a passport. A permission goes in a "
+            "file that declares no framework."
         )
 
     if not entry.id.startswith(f"{framework.id}_"):
@@ -415,7 +414,7 @@ def _load_catalogue(
             seen[entry.id] = path
             entries.append(entry)
 
-    _check_may_grant(entries, frameworks)
+    _check_may_grant(entries)
 
     return entries, frameworks
 
@@ -475,9 +474,7 @@ PASSPORT_WRITE: str = "passport_write"
 PASSPORT_WRITE_GRANTER: str = "manage_passport"
 
 
-def _check_may_grant(
-    entries: list[CompetencyEntry], frameworks: list[Framework]
-) -> None:
+def _check_may_grant(entries: list[CompetencyEntry]) -> None:
     """Refuse a ``may_grant`` list naming anything it should not.
 
     Checked at load, because a misspelt id in a whitelist fails silently:
@@ -486,14 +483,12 @@ def _check_may_grant(
 
     Args:
         entries: The whole merged catalogue.
-        frameworks: The frameworks the directory declares.
 
     Raises:
         ValueError: If a list names an unknown or retired competency,
-            the root competency, an entry of a passport-only framework,
-            or ``passport_write`` on any list but its granter's.
+            the root competency, a framework's competency, or
+            ``passport_write`` on any list but its granter's.
     """
-    passport_only = {f.id for f in frameworks if f.passport_only}
     by_id = {entry.id: entry for entry in entries}
 
     for entry in entries:
@@ -509,11 +504,11 @@ def _check_may_grant(
                     f"Competency {entry.id!r} may_grant names retired "
                     f"competency {granted!r}."
                 )
-            if target.framework_id in passport_only:
+            if target.framework_id is not None:
                 raise ValueError(
                     f"Competency {entry.id!r} may_grant names {granted!r}, "
-                    "which exists only to be recorded in a passport and "
-                    "is granted to nobody."
+                    f"a competency of framework {target.framework_id!r}, "
+                    "recorded in a passport and granted to nobody."
                 )
             if granted == ROOT_COMPETENCY:
                 raise ValueError(
@@ -538,15 +533,12 @@ COMPETENCIES, FRAMEWORKS = _load_catalogue(COMPETENCY_DEFINITIONS_DIR)
 
 FRAMEWORK_IDS: tuple[str, ...] = tuple(f.id for f in FRAMEWORKS)
 
-# The ids that exist only to be recorded in a passport: the entries of a
-# framework written from a paper form. Refused wherever a competency is
+# The ids of every framework's competencies, retired ones included. They
+# are recorded in a passport and refused wherever a competency is
 # granted, since nobody should hold "can define the mechanism of action"
-# as a permission.
-PASSPORT_ONLY_COMPETENCY_IDS: tuple[str, ...] = tuple(
-    c.id
-    for c in COMPETENCIES
-    if c.framework_id is not None
-    and any(f.passport_only for f in FRAMEWORKS if f.id == c.framework_id)
+# as a permission. Permissions declare no framework.
+FRAMEWORK_COMPETENCY_IDS: tuple[str, ...] = tuple(
+    c.id for c in COMPETENCIES if c.framework_id is not None
 )
 
 # Every competency id the catalogue has ever defined, retired ones
@@ -653,9 +645,7 @@ def get_framework(framework_id: str) -> Framework | None:
 def framework_competencies(framework_id: str) -> list[CompetencyEntry]:
     """A framework's items, in the order its file lists them.
 
-    Its active assessable entries: what a clinician working to it may
-    record. A file may hold permissions beside them, as clinical.yaml
-    does, and those are not items.
+    Its active entries: what a clinician working to it may record.
 
     Args:
         framework_id: Which framework.
@@ -672,18 +662,18 @@ def framework_competencies(framework_id: str) -> list[CompetencyEntry]:
     ]
 
 
-def passport_only_competency_ids(ids: Iterable[str]) -> list[str]:
-    """Return the ids that exist only to be recorded in a passport.
+def framework_competency_ids(ids: Iterable[str]) -> list[str]:
+    """Return the ids that are a framework's competencies.
 
     Args:
         ids: Competency ids to check.
 
     Returns:
-        The passport-only ids, sorted and deduplicated.
+        The framework competency ids, sorted and deduplicated.
     """
-    passport_only = set(PASSPORT_ONLY_COMPETENCY_IDS)
+    framework_ids = set(FRAMEWORK_COMPETENCY_IDS)
 
-    return sorted({i for i in ids if i in passport_only})
+    return sorted({i for i in ids if i in framework_ids})
 
 
 def validate_competency_ids(ids: Iterable[str]) -> list[str]:
@@ -704,9 +694,9 @@ def validate_competency_ids(ids: Iterable[str]) -> list[str]:
     - **Unknown**: not in the catalogue at all. A typo.
     - **Retired**: in the catalogue, but no longer newly granted. People
       who already hold it keep it.
-    - **Passport-only**: an item of a framework marked ``passport_only``,
-      a statement from a paper form. It can be signed off in a passport
-      and was never a permission, so no user is granted it.
+    - **A framework's**: a competency of a framework, such as a statement
+      from a paper form. It can be signed off in a passport and was never
+      a permission, so no user is granted it.
 
     Args:
         ids: Competency ids to validate.
@@ -715,7 +705,7 @@ def validate_competency_ids(ids: Iterable[str]) -> list[str]:
         The same ids, as a list.
 
     Raises:
-        ValueError: If any id is unknown, retired or passport-only.
+        ValueError: If any id is unknown, retired or a framework's.
     """
     checked = list(ids)
 
@@ -742,14 +732,14 @@ def validate_competency_ids(ids: Iterable[str]) -> list[str]:
             "records keep them."
         )
 
-    passport_only = passport_only_competency_ids(checked)
+    in_framework = framework_competency_ids(checked)
 
-    if passport_only:
+    if in_framework:
         raise ValueError(
-            "Passport-only competency "
-            + ("ids" if len(passport_only) > 1 else "id")
+            "Framework competency "
+            + ("ids" if len(in_framework) > 1 else "id")
             + ": "
-            + ", ".join(passport_only)
+            + ", ".join(in_framework)
             + ". These are items of a framework, recorded in a clinician "
             "passport, and are granted to nobody."
         )

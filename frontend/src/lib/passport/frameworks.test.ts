@@ -24,9 +24,9 @@ describe("frameworks", () => {
   it("gives a framework's items in the order its file lists them", () => {
     const ids = frameworkItems("clinical").map((item) => item.id);
 
-    expect(ids).toContain("perform_cannulation");
-    expect(ids.indexOf("perform_venepuncture")).toBeLessThan(
-      ids.indexOf("perform_cannulation"),
+    expect(ids).toContain("clinical_perform_cannulation");
+    expect(ids.indexOf("clinical_perform_venepuncture")).toBeLessThan(
+      ids.indexOf("clinical_perform_cannulation"),
     );
   });
 
@@ -42,7 +42,7 @@ describe("frameworks", () => {
   });
 
   it("says which framework a competency belongs to", () => {
-    expect(frameworkOf("perform_cannulation")?.id).toBe("clinical");
+    expect(frameworkOf("clinical_perform_cannulation")?.id).toBe("clinical");
     expect(frameworkOf("manage_users")).toBeUndefined();
     expect(frameworkOf("not_a_competency")).toBeUndefined();
   });

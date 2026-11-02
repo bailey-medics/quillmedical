@@ -92,14 +92,14 @@ describe("PassportLogbookPage", () => {
       count: 2,
       competencies: [
         {
-          competency: "perform_venepuncture",
+          competency: "clinical_perform_venepuncture",
           count: 1,
-          entries: [entry("a", "perform_venepuncture", "2026-03-01")],
+          entries: [entry("a", "clinical_perform_venepuncture", "2026-03-01")],
         },
         {
-          competency: "certify_death",
+          competency: "clinical_certify_death",
           count: 1,
-          entries: [entry("b", "certify_death", "2026-03-02")],
+          entries: [entry("b", "clinical_certify_death", "2026-03-02")],
         },
       ],
     });
@@ -121,9 +121,11 @@ describe("PassportLogbookPage", () => {
       count: 1,
       competencies: [
         {
-          competency: "certify_death",
+          competency: "clinical_certify_death",
           count: 1,
-          entries: [entry("20260302T0900", "certify_death", "2026-03-02")],
+          entries: [
+            entry("20260302T0900", "clinical_certify_death", "2026-03-02"),
+          ],
         },
       ],
     });
@@ -132,7 +134,7 @@ describe("PassportLogbookPage", () => {
     await user.click(await screen.findByText(/2 Mar 2026/));
 
     expect(navigate).toHaveBeenCalledWith(
-      "/passport/logbook/certify_death/20260302T0900",
+      "/passport/logbook/clinical_certify_death/20260302T0900",
     );
   });
 
@@ -230,14 +232,14 @@ describe("PassportLogbookPage", () => {
       count: 2,
       competencies: [
         {
-          competency: "perform_venepuncture",
+          competency: "clinical_perform_venepuncture",
           count: 1,
-          entries: [entry("a", "perform_venepuncture", "2026-03-01")],
+          entries: [entry("a", "clinical_perform_venepuncture", "2026-03-01")],
         },
         {
-          competency: "certify_death",
+          competency: "clinical_certify_death",
           count: 1,
-          entries: [entry("b", "certify_death", "2026-03-02")],
+          entries: [entry("b", "clinical_certify_death", "2026-03-02")],
         },
       ],
     });
