@@ -41,6 +41,7 @@ Environment Variables:
     head` against the standard CORE_DB_* connection settings, as a
     pre-deploy step run once against the shared database before the new
     app revision is created (see docs/docs/backend/alembic-migration-safety.md).
+    It then runs the framework sync, app.features.passport.sync.
     show-migration takes none either - it prints the revision the database
     is at (`alembic current`) and changes nothing.
 
@@ -284,10 +285,17 @@ def run_migrations() -> int:
     try:
         command.upgrade(cfg, "head")
         print("✓ Migrations applied successfully")
-        return 0
     except Exception as exc:
         print(f"✗ Migration failed: {exc}", file=sys.stderr)
         return 1
+
+    # The framework tables, read from the framework files this revision
+    # ships with. Here rather than at start-up, because several instances
+    # start at once and this job runs once, before any of them serve. A
+    # refusal blocks the deploy, as a failed migration does.
+    from app.features.passport import sync
+
+    return sync.main([])
 
 
 def show_migration() -> int:
