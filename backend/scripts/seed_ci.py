@@ -24,6 +24,7 @@ from app.cbac.grants import sync_competency_rows  # noqa: E402
 from app.cbac.positions import set_clinical_lead  # noqa: E402
 from app.config import settings  # noqa: E402
 from app.db import CoreSessionLocal  # noqa: E402
+from app.features.passport.sync import sync_frameworks  # noqa: E402
 from app.features.teaching.access import (  # noqa: E402
     enrol_everyone_with_a_place,
     give_place,
@@ -244,6 +245,13 @@ def seed() -> None:
 
         # 8. An attempt whose time has run out, for e2e/tests/edges/
         seed_out_of_time_attempts(db, org.id)
+
+        # 9. The framework tables, as the pre-deploy job fills them, so the
+        # end-to-end stack holds what App production does.
+        frameworks = sync_frameworks(db)
+        if not frameworks.succeeded:
+            raise RuntimeError(f"Framework sync failed: {frameworks.error}")
+        db.commit()
 
         print("CI seed complete")
     except Exception as exc:

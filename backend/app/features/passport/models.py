@@ -29,6 +29,10 @@ Tables:
   confirm one logbook entry, closed when answered.
 - ``OrgUnitPassportFramework`` - one of an organisation's lead
   frameworks, which its people are offered first when choosing their own.
+- ``PassportFramework`` and the tables beneath it - every version of every
+  framework, as the framework sync last read it. Synced content, as a
+  teaching bank's questions are, and never a copy of anybody's record:
+  a sign-off keeps its own words in its own file.
 
 Until when somebody may add to their own passport is not a table here: it
 is the ``ends_on`` of their ``passport_write`` row in ``user_competency``.
@@ -36,15 +40,17 @@ is the ``ends_on`` of their ``passport_write`` row in ``user_competency``.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 
 from sqlalchemy import (
     CheckConstraint,
+    Date,
     DateTime,
     ForeignKey,
     Index,
     Integer,
     String,
+    Text,
     UniqueConstraint,
 )
 from sqlalchemy.orm import Mapped, mapped_column
@@ -501,3 +507,205 @@ class OrgUnitPassportFramework(Base):
 #: because a renewal somebody has to think about once a year is the point
 #: of having an end date at all.
 PASSPORT_ENTITLEMENT_DAYS = 365
+
+
+#: What a framework sync run ended as.
+FRAMEWORK_SYNC_STATUSES: tuple[str, ...] = ("running", "succeeded", "failed")
+
+
+class PassportFramework(Base):
+    """One framework, by id, however many versions of it are stored.
+
+    Filled by the framework sync, ``app.features.passport.sync``, and by
+    nothing else. Every version is kept whole beneath it, as every
+    teaching bank version is, so what version 1 asked for stays a query
+    after version 2 arrives. See Phase 5 of
+    docs/docs/plans/2026-11-01-passport-record-and-catalogue-plan.md.
+    """
+
+    __tablename__ = "passport_framework"
+
+    #: The framework's id, as its file declares it.
+    id: Mapped[str] = mapped_column(String(100), primary_key=True)
+
+    first_synced_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+    )
+
+
+class PassportFrameworkVersion(Base):
+    """One version of a framework, as its file read at that version."""
+
+    __tablename__ = "passport_framework_version"
+    __table_args__ = (
+        UniqueConstraint(
+            "framework_id", "version", name="uq_passport_framework_version"
+        ),
+        CheckConstraint(
+            "version >= 1", name="ck_passport_framework_version_from_one"
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+
+    framework_id: Mapped[str] = mapped_column(
+        ForeignKey("passport_framework.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    version: Mapped[int] = mapped_column(Integer, nullable=False)
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    publisher: Mapped[str] = mapped_column(Text, nullable=False)
+
+    #: Shown to nobody: the publisher's edition label and the like.
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+
+    synced_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+    )
+
+
+class PassportFrameworkSpecialty(Base):
+    """One specialty a framework version is filed under."""
+
+    __tablename__ = "passport_framework_specialty"
+    __table_args__ = (
+        UniqueConstraint(
+            "version_row_id",
+            "specialty_id",
+            name="uq_passport_framework_specialty",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+
+    version_row_id: Mapped[int] = mapped_column(
+        ForeignKey("passport_framework_version.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    #: An id from ``shared/specialties.yaml``.
+    specialty_id: Mapped[str] = mapped_column(String(100), nullable=False)
+    position: Mapped[int] = mapped_column(Integer, nullable=False)
+
+
+class PassportFrameworkCompetency(Base):
+    """One competency of one framework version, in the file's order."""
+
+    __tablename__ = "passport_framework_competency"
+    __table_args__ = (
+        UniqueConstraint(
+            "version_row_id",
+            "competency_id",
+            name="uq_passport_framework_competency",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+
+    version_row_id: Mapped[int] = mapped_column(
+        ForeignKey("passport_framework_version.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    #: The competency's id, which a sign-off file stores. A plain string:
+    #: the file is the record, and it names no row.
+    competency_id: Mapped[str] = mapped_column(String(100), nullable=False)
+
+    #: Where it comes in the framework, counting from one.
+    position: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    display_name: Mapped[str] = mapped_column(Text, nullable=False)
+    retired_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+    retired_in_version: Mapped[int | None] = mapped_column(
+        Integer, nullable=True
+    )
+    expires_after_months: Mapped[int | None] = mapped_column(
+        Integer, nullable=True
+    )
+
+
+class PassportFrameworkLevel(Base):
+    """One step of a framework competency's scale, in order."""
+
+    __tablename__ = "passport_framework_level"
+    __table_args__ = (
+        UniqueConstraint(
+            "competency_row_id", "level_id", name="uq_passport_framework_level"
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+
+    competency_row_id: Mapped[int] = mapped_column(
+        ForeignKey("passport_framework_competency.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    level_id: Mapped[str] = mapped_column(String(100), nullable=False)
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    position: Mapped[int] = mapped_column(Integer, nullable=False)
+
+
+class PassportFrameworkScope(Base):
+    """One scope a framework competency may be signed off for, in order."""
+
+    __tablename__ = "passport_framework_scope"
+    __table_args__ = (
+        UniqueConstraint(
+            "competency_row_id", "scope_id", name="uq_passport_framework_scope"
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+
+    competency_row_id: Mapped[int] = mapped_column(
+        ForeignKey("passport_framework_competency.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    scope_id: Mapped[str] = mapped_column(String(100), nullable=False)
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    position: Mapped[int] = mapped_column(Integer, nullable=False)
+
+
+class PassportFrameworkSync(Base):
+    """One run of the framework sync, and how it ended."""
+
+    __tablename__ = "passport_framework_sync"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('running', 'succeeded', 'failed')",
+            name="ck_passport_framework_sync_status",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+
+    started_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+    )
+    finished_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    status: Mapped[str] = mapped_column(String(20), nullable=False)
+
+    #: How many framework versions this run added.
+    versions_written: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0
+    )
+
+    #: Why it failed, naming the file. No personal data can be in it:
+    #: framework files hold none.
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)

@@ -213,6 +213,29 @@ framework is offered as soon as it merges.
 
 See the [passport record and catalogue plan](../../plans/2026-11-01-passport-record-and-catalogue-plan.md).
 
+## Framework tables and the framework sync
+
+Every version of every framework is also stored in the core database, so
+it can later come from a repository of its own rather than from this one.
+`sync_frameworks` in `backend/app/features/passport/sync.py` is the only
+writer, shaped like the teaching sync, and keeps every version whole:
+
+- **`passport_framework`** - one row per framework id.
+- **`passport_framework_version`** - one row per version, with its name,
+  publisher and `description`, unique on framework and version.
+- **`passport_framework_specialty`**, **`passport_framework_competency`**,
+  **`passport_framework_level`** and **`passport_framework_scope`** - what
+  each version holds, each in its file's order.
+- **`passport_framework_sync`** - one row per run, and how it ended.
+
+The sync validates each file with the catalogue loader's own rules, then
+refuses what a framework repository's own CI might not catch: an id that
+is a permission's or another framework's, a competency deleted rather
+than retired, a version that skips or goes down, and a change with no new
+version. One refusal writes nothing. It runs in the pre-deploy migrations
+job, after the migrations, so a refusal blocks the deploy; in the CI seed;
+and after `just migrate-local`. Nothing reads the tables yet.
+
 ## Scopes
 
 Some competencies are signed off one part of practice at a time:
