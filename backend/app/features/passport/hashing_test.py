@@ -182,7 +182,7 @@ class TestWhatMustMoveTheHash:
         assert hashing.content_hash(
             _sign_off(
                 competency=schemas.CompetencyRef(
-                    id="perform_cannulation", name="Insert cannula"
+                    id="clinical_perform_cannulation", name="Insert cannula"
                 )
             )
         ) != hashing.content_hash(_sign_off())

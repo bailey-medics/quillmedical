@@ -21,8 +21,8 @@ from app.cbac.competencies import (
     COMPETENCIES,
     COMPETENCY_DEFINITIONS_DIR,
     COMPETENCY_IDS,
+    FRAMEWORK_COMPETENCY_IDS,
     FRAMEWORK_IDS,
-    PASSPORT_ONLY_COMPETENCY_IDS,
     RETIRED_COMPETENCY_IDS,
     CompetencyEntry,
     _load_catalogue,
@@ -48,7 +48,7 @@ def test_every_definition_file_is_merged() -> None:
     stopped being read would fail here rather than silently shrinking
     what anyone may do.
     """
-    assert "certify_death" in COMPETENCY_IDS  # clinical.yaml
+    assert "certify_death" in COMPETENCY_IDS  # clinical-permissions.yaml
     assert "manage_teaching" in COMPETENCY_IDS  # teaching.yaml
 
 
@@ -344,14 +344,12 @@ def test_a_retired_assessable_entry_needs_no_framework(
     assert _load_catalogue(tmp_path)[0][0].retired_on is not None
 
 
-_PASSPORT_ONLY = _FRAMEWORK + "  passport_only: true\n"
-
-
-def test_a_passport_only_entry_starts_with_its_frameworks_id(
+def test_every_frameworks_entry_starts_with_its_frameworks_id(
     tmp_path: Path,
 ) -> None:
+    """No framework is excused, Quill's own included: no flag says so."""
     (tmp_path / "sheet.yaml").write_text(
-        _PASSPORT_ONLY
+        _FRAMEWORK
         + "competencies:\n"
         + '  - id: prescribe\n    display_name: "P"\n    assessable: true\n'
     )
@@ -360,21 +358,21 @@ def test_a_passport_only_entry_starts_with_its_frameworks_id(
         _load_catalogue(tmp_path)
 
 
-def test_a_passport_only_entry_must_be_assessable(tmp_path: Path) -> None:
+def test_every_frameworks_entry_must_be_assessable(tmp_path: Path) -> None:
+    """A permission goes in a file that declares no framework."""
     (tmp_path / "sheet.yaml").write_text(
-        _PASSPORT_ONLY
-        + 'competencies:\n  - id: sheet_x\n    display_name: "X"\n'
+        _FRAMEWORK + 'competencies:\n  - id: sheet_x\n    display_name: "X"\n'
     )
 
     with pytest.raises(ValueError, match="is not assessable"):
         _load_catalogue(tmp_path)
 
 
-def test_a_passport_only_entry_may_be_on_no_may_grant_list(
+def test_no_frameworks_entry_may_be_on_a_may_grant_list(
     tmp_path: Path,
 ) -> None:
     (tmp_path / "sheet.yaml").write_text(
-        _PASSPORT_ONLY
+        _FRAMEWORK
         + "competencies:\n"
         + '  - id: sheet_x\n    display_name: "X"\n    assessable: true\n'
     )
@@ -394,25 +392,47 @@ def test_every_assessable_competency_is_in_a_framework() -> None:
             assert competency.framework_id in FRAMEWORK_IDS
 
 
-def test_a_frameworks_items_are_its_assessable_entries() -> None:
-    """clinical.yaml holds permissions beside its skills."""
+def test_general_clinical_skills_holds_its_own_ids() -> None:
+    """The framework and the permissions no longer share an id."""
     items = {c.id for c in framework_competencies("clinical")}
 
-    assert "perform_cannulation" in items
-    assert all(get_competency_details(i).assessable for i in items)  # type: ignore[union-attr]
-    in_file = {c.id for c in COMPETENCIES if c.framework_id == "clinical"}
-    assert items < in_file
+    assert "clinical_perform_cannulation" in items
+    assert "perform_cannulation" not in items
+    assert all(i.startswith("clinical_") for i in items)
+    assert len(items) == 18
 
 
-def test_a_framework_written_from_a_form_is_passport_only() -> None:
-    """Its statements are recorded in a passport and granted to nobody."""
-    assert "uk_sact_board_2023_prescribe_sact" in PASSPORT_ONLY_COMPETENCY_IDS
+def test_a_permission_keeps_its_id_and_is_no_longer_assessable() -> None:
+    """Who may do what in the app is unchanged by the split."""
+    permission = get_competency_details("prescribe_controlled_schedule_2")
+
+    assert permission is not None
+    assert permission.framework_id is None
+    assert not permission.assessable
+    assert "prescribe_controlled_schedule_2" not in ASSESSABLE_COMPETENCY_IDS
+
+
+def test_every_frameworks_competency_is_granted_to_nobody() -> None:
+    """Recorded in a passport, whoever published the framework."""
+    assert "uk_sact_board_2023_prescribe_sact" in FRAMEWORK_COMPETENCY_IDS
     assert (
         "ghnft_radiotherapy_record_acquaintance_with_aria"
-        in PASSPORT_ONLY_COMPETENCY_IDS
+        in FRAMEWORK_COMPETENCY_IDS
     )
-    # General clinical skills are real permissions too.
-    assert "perform_cannulation" not in PASSPORT_ONLY_COMPETENCY_IDS
+    assert "clinical_perform_cannulation" in FRAMEWORK_COMPETENCY_IDS
+    assert "perform_cannulation" not in FRAMEWORK_COMPETENCY_IDS
+
+
+def test_quills_own_frameworks_competency_is_refused_as_a_grant() -> None:
+    with pytest.raises(ValueError, match="granted to nobody"):
+        validate_competency_ids(["clinical_perform_cannulation"])
+
+
+def test_no_competency_a_passport_can_record_is_outside_a_framework() -> None:
+    """Only a retired one may be, and nothing new is recorded against it."""
+    for competency in COMPETENCIES:
+        if competency.id in ASSESSABLE_COMPETENCY_IDS:
+            assert competency.framework_id is not None
 
 
 def test_the_gloucestershire_record_carries_every_signed_line() -> None:
@@ -444,10 +464,10 @@ def test_the_gloucestershire_record_carries_every_signed_line() -> None:
     items = framework_competencies("ghnft_radiotherapy_record")
 
     assert [c.id for c in items] == [prefix + e for e in expected]
-    assert all(c.id in PASSPORT_ONLY_COMPETENCY_IDS for c in items)
+    assert all(c.id in FRAMEWORK_COMPETENCY_IDS for c in items)
 
 
-def test_the_real_passport_only_ids_are_refused_as_grants() -> None:
+def test_the_real_framework_ids_are_refused_as_grants() -> None:
     with pytest.raises(ValueError, match="granted to nobody"):
         validate_competency_ids(["ruh_sact_passport_ctcae_grading"])
 
@@ -461,13 +481,13 @@ def test_the_first_oncology_list_is_retired_and_still_readable() -> None:
     assert retired.levels is not None
 
 
-def test_a_passport_only_id_is_refused_where_competencies_are_granted(
+def test_a_framework_id_is_refused_where_competencies_are_granted(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from app.cbac import competencies
 
     monkeypatch.setattr(
-        competencies, "PASSPORT_ONLY_COMPETENCY_IDS", ("perform_cannulation",)
+        competencies, "FRAMEWORK_COMPETENCY_IDS", ("perform_cannulation",)
     )
 
     with pytest.raises(ValueError, match="granted to nobody"):
@@ -547,9 +567,10 @@ def test_competency_entry_is_not_assessable_unless_it_says_so() -> None:
 
 
 def test_assessable_ids_hold_skills_and_no_permissions() -> None:
-    assert "perform_cannulation" in ASSESSABLE_COMPETENCY_IDS
+    assert "clinical_perform_cannulation" in ASSESSABLE_COMPETENCY_IDS
     assert "uk_sact_board_2023_prescribe_sact" in ASSESSABLE_COMPETENCY_IDS
     for permission in (
+        "perform_cannulation",
         "manage_users",
         "access_own_patient_records",
         "passport_write",

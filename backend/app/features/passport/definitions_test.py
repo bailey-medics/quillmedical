@@ -6,7 +6,7 @@ A fixture would pass while the shared files said something else.
 
 The competencies named below are chosen for what they demonstrate:
 ``uk_sact_board_2023_prescribe_sact`` has the UK SACT Board's four levels, and
-``perform_cannulation`` deliberately has no scale - it is signed off or
+``clinical_perform_cannulation`` deliberately has no scale - it is signed off or
 it is not. If either changes in ``shared/competency-definitions/`` these tests
 should be updated to name others with the same shape, not loosened.
 """
@@ -25,7 +25,7 @@ from app.features.passport.definitions import (
 LEVELLED = "uk_sact_board_2023_prescribe_sact"
 # Signed off one tumour site at a time.
 SCOPED = "uk_sact_board_2023_prescribe_sact"
-NO_SCALE = "perform_cannulation"
+NO_SCALE = "clinical_perform_cannulation"
 
 
 class TestCompetencyRef:

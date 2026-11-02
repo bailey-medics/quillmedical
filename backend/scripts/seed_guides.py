@@ -424,7 +424,7 @@ def seed_passport(db: Session, org_unit_id: int, operator: User) -> None:
         store,
         passport_id,
         _actor(holder),
-        "perform_lumbar_puncture",
+        "clinical_perform_lumbar_puncture",
         LogbookEntry(
             performed_on=date(2026, 9, 18),
             setting="Acute medical unit",
@@ -505,10 +505,14 @@ def seed_passport(db: Session, org_unit_id: int, operator: User) -> None:
     # One left waiting, so the assessor has something in their inbox, and
     # one signed, so the holder has a finished sign-off to show.
     ask(
-        "perform_lumbar_puncture", date(2026, 9, 18), made + timedelta(days=18)
+        "clinical_perform_lumbar_puncture",
+        date(2026, 9, 18),
+        made + timedelta(days=18),
     )
     to_sign = ask(
-        "perform_chest_drain", date(2026, 9, 12), made + timedelta(days=12)
+        "clinical_perform_chest_drain",
+        date(2026, 9, 12),
+        made + timedelta(days=12),
     )
 
     signed_at = made + timedelta(days=14)
