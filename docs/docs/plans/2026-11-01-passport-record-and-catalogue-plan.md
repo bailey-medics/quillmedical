@@ -211,7 +211,7 @@ Frameworks copy that shape, with the same word: `version`.
       on an entry beside `retired_on`, so the page can say "Not in this
       framework since version 3". A competency removed from the current
       version is retired, never deleted.
-- [ ] **Check in CI that a framework's version goes up by exactly one
+- [x] **Check in CI that a framework's version goes up by exactly one
       whenever the framework changes**, modelled on `check_version_lock.py`
       and comparing each framework file with `origin/main`. Build it where
       teaching's check lives, as a tool in
@@ -245,7 +245,7 @@ Frameworks copy that shape, with the same word: `version`.
       - **the version going down, or up by more than one**, as teaching
         refuses.
       A new framework file starts at version 1 and needs no bump.
-- [ ] **Print every reworded competency, pass or fail.** The check writes
+- [x] **Print every reworded competency, pass or fail.** The check writes
       the old and new words of every `display_name`, level `name` and scope
       `name` that changed on an existing id into the job summary, whether
       the version went up or not. A change of meaning needs a new id, not
@@ -254,7 +254,7 @@ Frameworks copy that shape, with the same word: `version`.
       that rewords anything. This replaces a separate rewording check: the
       version check already stops every reword, so it is the place to show
       it.
-- [ ] **One framework change per stack.** The check compares with
+- [x] **One framework change per stack.** The check compares with
       `origin/main`, so in a stack whose two branches both change one
       framework, the upper branch is two versions ahead of `main` and fails
       as a jump. While frameworks live in this repository, the check's
@@ -263,13 +263,13 @@ Frameworks copy that shape, with the same word: `version`.
       2026 that framework repositories do not use stacks at all: until
       frameworks move out, this repository keeps its stacks, so the rule
       narrows to one framework change per stack.
-- [ ] **Write the rules this phase makes true**, in the passport backend
+- [x] **Write the rules this phase makes true**, in the passport backend
       page and the header of every framework file: every change except
       comments, spacing and the `description` bumps the version by exactly
       one; a version goes live on merge; every sign-off records its
       `framework_version`; a removed competency records its
       `retired_in_version`.
-- [ ] **Tests**: a sign-off records the current version, and one without
+- [x] **Tests**: a sign-off records the current version, and one without
       it is refused; the CI check fails on an added competency, a reordered
       scope and a renamed framework with an unchanged version, and passes
       once the version goes up by one; it fails a jump of two and a version

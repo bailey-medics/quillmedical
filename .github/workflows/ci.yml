@@ -1079,6 +1079,22 @@ jobs:
       - name: Check no competency was deleted rather than retired
         run: bash .github/scripts/ci/check-competencies-not-deleted.sh origin/main
 
+      # Every change to a framework but its comments, spacing and
+      # description moves its version up by exactly one, and every
+      # reworded competency is printed to the job summary for a person
+      # to judge. Standard library and PyYAML only, so no backend install.
+      - name: Set up Python
+        uses: ./.github/actions/setup-python
+        with:
+          install-backend-deps: "false"
+
+      - name: Install PyYAML
+        run: bash .github/scripts/shared/retry-once.sh python -m pip install "pyyaml==6.0.3"
+
+      - name: Check each changed framework moved its version up by one
+        working-directory: backend
+        run: python -m app.features.passport.tooling.check_framework_version ../shared/competency-definitions origin/main
+
   # ---------- Migration immutability ----------
   # A merged migration does not change, at all. The destructive-migration gate
   # only inspects migrations ADDED on a PR, so a drop_column edited into a file
