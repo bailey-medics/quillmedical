@@ -48,6 +48,7 @@ def _sign_off(**overrides: object) -> schemas.SignOff:
         "competency": schemas.CompetencyRef(
             id="perform_bronchoscopy", name="Perform bronchoscopy"
         ),
+        "framework_version": 1,
         "kind": "initial",
         "status": "signed_off",
         "level": schemas.LevelRef(
@@ -162,6 +163,12 @@ class TestWhatMustMoveTheHash:
         assert hashing.content_hash(scoped) != hashing.content_hash(
             _sign_off()
         )
+
+    def test_the_framework_version(self) -> None:
+        """The same words under two versions are two different claims."""
+        assert hashing.content_hash(
+            _sign_off(framework_version=2)
+        ) != hashing.content_hash(_sign_off())
 
     def test_the_observed_date(self) -> None:
         assert hashing.content_hash(

@@ -242,3 +242,20 @@ class TestSharedVocabulary:
             assert definitions.assessable_ref(competency_id).id == (
                 competency_id
             )
+
+
+def test_a_frameworks_version_is_read_for_a_competency() -> None:
+    """Gloucestershire's record gained eight rows in #2321, so it is 2."""
+    assert definitions.framework_version(NO_SCALE) == 1
+    assert (
+        definitions.framework_version(
+            "ghnft_radiotherapy_record_refer_palliative"
+        )
+        == 2
+    )
+
+
+def test_a_permission_has_no_framework_version() -> None:
+    """Nothing is signed off against a permission."""
+    with pytest.raises(NotAssessableError, match="belongs to no framework"):
+        definitions.framework_version("perform_cannulation")

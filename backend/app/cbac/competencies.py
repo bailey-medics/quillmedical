@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, StrictInt
 
 from app.paths import SHARED_DIR
 
@@ -112,7 +112,14 @@ class Framework(BaseModel):
         id: Stable identifier, and the file's name without ``.yaml``.
         name: What a reader is shown.
         publisher: Who wrote the document.
-        version: Which edition, in the publisher's own words.
+        version: Quill's count of changes to this framework, from 1. Any
+            change to the file but its comments, its spacing and
+            ``description`` bumps it by exactly one, and every sign-off
+            records the version it was given under. Strict, so a quoted
+            ``"2"`` or a YAML ``yes`` is refused rather than read as one.
+        description: Anything worth knowing about the framework that is
+            shown to nobody signing anything, such as the publisher's own
+            label for its edition. Changing it needs no new version.
         specialties: The specialties it is filed under, from
             ``shared/specialties.yaml``. Empty where it belongs to
             every specialty, as general clinical skills do.
@@ -123,7 +130,8 @@ class Framework(BaseModel):
     id: str
     name: str
     publisher: str
-    version: str
+    version: StrictInt = Field(ge=1)
+    description: str
     specialties: list[str] = []
 
 
@@ -143,6 +151,10 @@ class CompetencyEntry(BaseModel):
             use, or None while it is current. Entries are retired rather
             than deleted - see ``retired_on`` handling below and
             ``docs/docs/plans/2026-09-06-org-scoped-access-findings.md``.
+        retired_in_version: The framework version that first left this
+            competency out, so the passport can say "not in this
+            framework since version 3". Required on a framework's
+            retired competency, and refused anywhere else.
         levels: The scale this competency is signed off against, in
             order, or None where the honest answer is simply signed off
             or not. Declared per competency because the number of levels
@@ -185,6 +197,7 @@ class CompetencyEntry(BaseModel):
     id: str
     display_name: str
     retired_on: date | None = None
+    retired_in_version: StrictInt | None = Field(default=None, ge=2)
     levels: list[CompetencyLevel] | None = None
     scopes: list[CompetencyScope] | None = None
     expires_after_months: int | None = None
@@ -302,7 +315,19 @@ def _check_belongs(
             framework is not assessable, or does not carry the
             framework's id at the front of its own.
     """
+    if entry.retired_in_version is not None and entry.retired_on is None:
+        raise ValueError(
+            f"Competency {entry.id!r} in {path.name} sets "
+            "retired_in_version but is not retired. Set retired_on too."
+        )
+
     if framework is None:
+        if entry.retired_in_version is not None:
+            raise ValueError(
+                f"Competency {entry.id!r} in {path.name} sets "
+                "retired_in_version and belongs to no framework, so it "
+                "has no version to have left."
+            )
         if entry.assessable and entry.retired_on is None:
             raise ValueError(
                 f"Competency {entry.id!r} in {path.name} is assessable "
@@ -325,6 +350,23 @@ def _check_belongs(
             f"Competency {entry.id!r} in {path.name} must start with "
             f"{framework.id + '_'!r}. Ids are unique across the directory, "
             "and two frameworks describing the same act need two."
+        )
+
+    if entry.retired_on is None:
+        return
+
+    if entry.retired_in_version is None:
+        raise ValueError(
+            f"Competency {entry.id!r} in {path.name} is retired with no "
+            "retired_in_version. Name the framework version that first "
+            "left it out."
+        )
+
+    if entry.retired_in_version > framework.version:
+        raise ValueError(
+            f"Competency {entry.id!r} in {path.name} left in version "
+            f"{entry.retired_in_version}, but {framework.id!r} is at "
+            f"version {framework.version}."
         )
 
 

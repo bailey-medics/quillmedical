@@ -12,21 +12,18 @@ const options: FrameworkOption[] = [
     id: "clinical",
     name: "General clinical skills",
     publisher: "Quill Medical",
-    version: "2026",
     specialties: [],
   },
   {
     id: "uk_sact_board_2023",
     name: "Prescriber competencies for reviewing and prescribing SACT - The UK SACT Board",
     publisher: "UK SACT Board",
-    version: "November 2023",
     specialties: ["oncology", "haematology"],
   },
   {
     id: "surgery_sheet",
     name: "Theatre sign-off sheet",
     publisher: "A Trust",
-    version: "2025",
     specialties: ["general_surgery"],
   },
 ];

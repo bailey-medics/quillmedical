@@ -23,6 +23,7 @@ from app.cbac.competencies import (
     COMPETENCY_IDS,
     FRAMEWORK_COMPETENCY_IDS,
     FRAMEWORK_IDS,
+    FRAMEWORKS,
     RETIRED_COMPETENCY_IDS,
     CompetencyEntry,
     _load_catalogue,
@@ -253,7 +254,8 @@ _FRAMEWORK = (
     "  id: sheet\n"
     '  name: "A sign-off sheet"\n'
     '  publisher: "A trust"\n'
-    '  version: "2026"\n'
+    "  version: 1\n"
+    '  description: "A test sheet."\n'
     "  specialties: [oncology]\n"
 )
 
@@ -383,6 +385,94 @@ def test_no_frameworks_entry_may_be_on_a_may_grant_list(
 
     with pytest.raises(ValueError, match="granted to nobody"):
         _load_catalogue(tmp_path)
+
+
+def test_a_frameworks_version_is_a_whole_number(tmp_path: Path) -> None:
+    """A quoted "2" is the edition-label mistake this field replaced."""
+    (tmp_path / "sheet.yaml").write_text(
+        _FRAMEWORK.replace("  version: 1\n", '  version: "2"\n')
+        + "competencies:\n"
+        + '  - id: sheet_x\n    display_name: "X"\n    assessable: true\n'
+    )
+
+    with pytest.raises(ValidationError, match="version"):
+        _load_catalogue(tmp_path)
+
+
+def test_a_framework_needs_a_description(tmp_path: Path) -> None:
+    (tmp_path / "sheet.yaml").write_text(
+        _FRAMEWORK.replace('  description: "A test sheet."\n', "")
+        + "competencies:\n"
+        + '  - id: sheet_x\n    display_name: "X"\n    assessable: true\n'
+    )
+
+    with pytest.raises(ValidationError, match="description"):
+        _load_catalogue(tmp_path)
+
+
+def test_a_retired_frameworks_entry_names_the_version_it_left(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "sheet.yaml").write_text(
+        _FRAMEWORK
+        + "competencies:\n"
+        + '  - id: sheet_x\n    display_name: "X"\n    assessable: true\n'
+        + "    retired_on: 2026-11-02\n"
+    )
+
+    with pytest.raises(ValueError, match="no retired_in_version"):
+        _load_catalogue(tmp_path)
+
+
+def test_a_competency_cannot_leave_in_a_version_not_yet_made(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "sheet.yaml").write_text(
+        _FRAMEWORK
+        + "competencies:\n"
+        + '  - id: sheet_x\n    display_name: "X"\n    assessable: true\n'
+        + "    retired_on: 2026-11-02\n    retired_in_version: 2\n"
+    )
+
+    with pytest.raises(ValueError, match="is at version 1"):
+        _load_catalogue(tmp_path)
+
+
+def test_retired_in_version_needs_a_retirement(tmp_path: Path) -> None:
+    (tmp_path / "sheet.yaml").write_text(
+        _FRAMEWORK.replace("  version: 1\n", "  version: 2\n")
+        + "competencies:\n"
+        + '  - id: sheet_x\n    display_name: "X"\n    assessable: true\n'
+        + "    retired_in_version: 2\n"
+    )
+
+    with pytest.raises(ValueError, match="is not retired"):
+        _load_catalogue(tmp_path)
+
+
+def test_a_retired_entry_in_no_framework_names_no_version(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "old.yaml").write_text(
+        "competencies:\n"
+        '  - id: skill\n    display_name: "A skill"\n'
+        "    retired_on: 2026-10-07\n    retired_in_version: 2\n"
+    )
+
+    with pytest.raises(ValueError, match="belongs to no framework"):
+        _load_catalogue(tmp_path)
+
+
+def test_the_real_frameworks_versions() -> None:
+    """Gloucestershire's record changed in #2321; the rest are as made."""
+    versions = {f.id: f.version for f in FRAMEWORKS}
+
+    assert versions == {
+        "clinical": 1,
+        "ghnft_radiotherapy_record": 2,
+        "ruh_sact_passport": 1,
+        "uk_sact_board_2023": 1,
+    }
 
 
 def test_every_assessable_competency_is_in_a_framework() -> None:

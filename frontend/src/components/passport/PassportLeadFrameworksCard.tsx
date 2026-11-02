@@ -57,7 +57,7 @@ export default function PassportLeadFrameworksCard({
     return [
       ...options.map((option) => ({
         value: option.id,
-        label: `${option.name} (${option.publisher}, ${option.version})`,
+        label: `${option.name} (${option.publisher})`,
       })),
       // A saved lead whose file has gone, kept so it can be removed
       ...value
