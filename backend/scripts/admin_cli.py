@@ -552,7 +552,7 @@ def _passport_counts(passport_id: str) -> dict[str, int]:
     """How many of each record a passport holds, for the dry run."""
     from pathlib import PurePosixPath
 
-    from app.features.passport import paths
+    from app.features.passport import layout, paths
     from app.passport_storage import get_passport_store
 
     store = get_passport_store()
@@ -564,8 +564,11 @@ def _passport_counts(passport_id: str) -> dict[str, int]:
         return sum(entries(sub) for sub in store.list_dir(passport_id, folder))
 
     return {
-        "sign-offs": entries(paths.SIGN_OFFS),
-        "logbook entries": nested(paths.LOGBOOK),
+        "sign-offs": len(layout.sign_off_ids(store, passport_id)),
+        "logbook entries": sum(
+            entries(logbook)
+            for _, logbook in layout.logbook_dirs(store, passport_id)
+        ),
         "certificates": entries(paths.CERTIFICATES),
         "CPD entries": nested(paths.CPD),
         "reflections": entries(paths.REFLECTIONS),

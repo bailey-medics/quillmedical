@@ -315,31 +315,40 @@ framework, so the record can be one tree. The docstring in
   files/                               gitignored evidence
 ```
 
-- [ ] **Build the new paths in `paths.py`**: `framework_dir`,
+- [x] **Build the new paths in `paths.py`**: `framework_dir`,
       `competency_dir`, and the sign-off and logbook paths beneath them.
       Folder names are the ids exactly, prefix and all, keeping the rule
       that a competency folder is named by its id.
-- [ ] **Name a sign-off folder by its date**, then its scope where it has
+- [x] **Name a sign-off folder by its date**, then its scope where it has
       one, then `-2` or higher for a second on the same day. Its parent
       already names the competency, so the slug of a long statement, and
       the eighty-character cut it needed, both go.
-- [ ] **Find a competency's folder by looking, never by working it out from
+- [x] **Find a competency's folder by looking, never by working it out from
       the catalogue.** To read a competency, the store looks for
       `frameworks/*/<competency_id>/`. New records go under the
       competency's current framework. A record therefore stays readable
       wherever it was written, and the index brings every folder for one id
       together. With Phase 2's prefixes a competency cannot change
       framework, so this is a safeguard rather than an expected case.
-- [ ] **Correct the `paths.py` docstring** on why sign-offs were flat.
-- [ ] **Switch to the new layout outright, with no move job.** With no
+- [x] **Identify a sign-off as `<competency>.<folder>`.** Not in the plan,
+      found while building: a sign-off's folder name was also its id, held
+      in Postgres as `signoff_id` and in every sign-off address in the API.
+      Once the folder is only a date inside its competency's folder, that
+      name is no longer unique in a passport. Joining the competency id
+      and the folder with a dot keeps it unique, safe in a web address,
+      and split back apart by `paths.split_sign_off_id`; neither half can
+      hold a dot. The frontend treats the id as opaque, so it changed
+      nothing there.
+- [x] **Correct the `paths.py` docstring** on why sign-offs were flat.
+- [x] **Switch to the new layout outright, with no move job.** With no
       real passports there is nothing to move: the readers and writers use
       the new layout only, the manifest's `schema_version` goes up by one so
       a passport in the old layout is refused rather than misread, and the
       dev seed and the fixtures are rebuilt in the new one.
-- [ ] **Update the layout in the passport backend page**, which draws the
+- [x] **Update the layout in the passport backend page**, which draws the
       tree, and the README written into every passport, which explains it
       to somebody with no Quill.
-- [ ] **Tests**: the new paths refuse an unsafe id; a sign-off and a
+- [x] **Tests**: the new paths refuse an unsafe id; a sign-off and a
       logbook entry land under their framework and competency; a record
       written under one framework folder is still found by its id; a
       passport at the old `schema_version` is refused.
