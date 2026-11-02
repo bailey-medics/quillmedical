@@ -523,10 +523,18 @@ class QuestionBankOrgStatus(Base):
     coordinator email must be set before the bank can go live.
 
     ``active_version`` is the version this organisation's candidates
-    receive.  Sync imports new versions but never moves it, so revising a
-    live bank does not put the revision in front of candidates until a
-    staff org admin advances the pointer - the same deliberate step a new
-    bank already requires through ``is_live``.
+    receive. Every sync moves it to the newest version, through
+    ``_serve_newest_version`` in ``sync.py``, so a revision merged into a
+    content repository reaches candidates at the next sync. The review on
+    that pull request is the gate. An attempt already started keeps its
+    own version in ``Assessment.bank_version``.
+
+    A bank not yet switched on for an organisation has no row here, and a
+    sync makes none, so opening a bank stays a deliberate step. An admin
+    may still point an organisation at an earlier version by hand, and the
+    next sync moves it on again. Sync has served the newest version since
+    27 September 2026; before that it left the pointer for an admin to
+    move.
     """
 
     __tablename__ = "question_bank_org_status"

@@ -121,6 +121,42 @@ anything.
 
 See the [passport registrar portfolios plan](../../plans/2026-10-07-passport-registrar-portfolios-plan.md).
 
+## The record and the catalogue
+
+A passport reads from two places, and each answers its own question.
+Neither replaces the other.
+
+- **The catalogue says what a framework asks for today.** It is
+  `shared/competency-definitions/`: which rows a framework's table lists,
+  what each competency is called now, and what the framework is called.
+- **The record says what was signed off, in what words, on that day.** A
+  sign-off stores its competency's id and words (`CompetencyRef`), its
+  level's (`LevelRef`) and its scope's (`ScopeRef`), beside their ids. The
+  record is never rewritten to match the catalogue, even to fix a typo,
+  because a sign-off is evidence of what somebody signed.
+- **A framework's name is the one stored word the page overrides.** A
+  profile stores each framework it works to as `{id, name}`, and the page
+  shows the catalogue's name through `current_name` in `frameworks.py`,
+  since #2321. The name says what the document is, not what anybody
+  signed.
+
+What each kind of change to the catalogue does:
+
+- **Adding a competency** gives every passport working to that framework
+  a new "Not asked" row. Nothing recorded changes.
+- **Removing a competency** means retiring it with `retired_on`, never
+  deleting it, so a record against it still opens.
+  `check-competencies-not-deleted.sh` fails CI on a deleted id.
+- **Rewording a competency is allowed only when the meaning is
+  unchanged**, such as a typo or a capital letter. A change of meaning is
+  a new id, because otherwise an old sign-off appears to certify words
+  nobody signed.
+- **A publisher's new edition is a new framework**, with a new id and a
+  new file, such as `uk_sact_board_2026`.
+- **Renaming a framework changes no sign-off.**
+
+See the [passport record and catalogue plan](../../plans/2026-11-01-passport-record-and-catalogue-plan.md).
+
 ## Scopes
 
 Some competencies are signed off one part of practice at a time:
