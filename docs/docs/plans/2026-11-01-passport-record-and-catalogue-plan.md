@@ -519,6 +519,8 @@ still in this repository, so nothing changes for anybody until it works.
         repository needs all four set before its first merge.
       - **`run-sync-job.sh` takes the job's name**, defaulting to the
         teaching one, so both pipelines share it.
+      **The upload was taken out on 4 November 2026**, before this
+      merged: see "Read the repositories, not a bucket" below.
 - [x] **A framework sync job and somewhere to deploy to**, in `infra/`,
       copying teaching's. The teaching pipeline signs in as
       `content_ci_service_account` (`infra/environments/app/terraform.tfvars`),
@@ -543,10 +545,20 @@ still in this repository, so nothing changes for anybody until it works.
       `point-job-at-build.sh`, which skips the job while it does not exist
       yet, because Terraform makes it in a workflow that runs beside the
       deploy.
-- [ ] **Protect them in Terraform**, beside `infra/github/teaching_rulesets.tf`
+      **The bucket was replaced on 4 November 2026**, before this
+      merged: the job reads the repositories from GitHub. See "Read the
+      repositories, not a bucket" below.
+- [x] **Protect them in Terraform**, beside `infra/github/teaching_rulesets.tf`
       and the repository list in `infra/environments/app/terraform.tfvars`:
       the same rules, the same required checks, and no stacks, so each
       change is one branch off `main` and one pull request.
+      Written on 3 November 2026 as `infra/github/framework_rulesets.tf`,
+      with `local.framework_repos` beside `local.teaching_repos`.
+      **Apply it only after each repository's first commit is on `main`**,
+      with `just terraform-github`, which a person runs. An empty
+      repository has no `main` for a pull request to target, so the first
+      commit is pushed straight to `main`, and these rules refuse that
+      push.
 - [ ] **Lay each one out like a teaching repository**: a `frameworks/`
       folder holding one file per framework, a README saying what the
       repository is and who publishes it, the publisher's licence for the
@@ -581,7 +593,7 @@ still in this repository, so nothing changes for anybody until it works.
       gcloud iam workload-identity-pools providers update-oidc github-provider \
         --workload-identity-pool=github-pool --location=global \
         --project=quill-medical-app \
-        --attribute-condition="assertion.repository in ['bailey-medics/quillmedical', 'bailey-medics/eoeeta-teaching', 'bailey-medics/respiratory-teaching', 'bailey-medics/eoeeta-teaching-testing', 'bailey-medics/gloucestershire-radiotherapy-record-framework', 'bailey-medics/royal-united-hospitals-bath-sact-passport-framework', 'bailey-medics/uk-sact-board-prescribing-framework', 'bailey-medics/general-clinical-skills-quill-medical-framework']"
+        --attribute-condition="assertion.repository in ['bailey-medics/quillmedical', 'bailey-medics/eoeeta-teaching', 'bailey-medics/respiratory-teaching', 'bailey-medics/eoeeta-teaching-testing'] || (assertion.repository in ['bailey-medics/gloucestershire-radiotherapy-record-framework', 'bailey-medics/royal-united-hospitals-bath-sact-passport-framework', 'bailey-medics/uk-sact-board-prescribing-framework', 'bailey-medics/general-clinical-skills-quill-medical-framework'] && assertion.ref == 'refs/heads/main')"
 
       POOL="projects/$(gcloud projects describe quill-medical-app --format='value(projectNumber)')/locations/global/workloadIdentityPools/github-pool"
       for R in gloucestershire-radiotherapy-record-framework \
@@ -608,9 +620,72 @@ still in this repository, so nothing changes for anybody until it works.
       this step; run `gh auth refresh -s workflow` only on a machine that
       pushes over HTTPS.
 
-- [ ] **Document the repositories and the pipeline**, in a framework page
+- [x] **Document the repositories and the pipeline**, in a framework page
       beside the teaching ones in `docs/docs/teaching/`, or under the
-      passport backend page.
+      passport backend page. Done on 3 November 2026 as the "Framework
+      repositories" section of `docs/docs/backend/passport/index.md`, beside
+      the framework sync it feeds.
+
+### Read the repositories, not a bucket
+
+Agreed with the product owner on 4 November 2026, before any of the
+above merged, so each change is folded into the pull request that built
+the part it replaces: GitHub tells Google Cloud a framework repository
+has merged, and the sync job reads the repositories itself. See "The sync
+reads the repositories, not a bucket" in Decisions.
+
+- [x] **Read each version file as text, with no scratch folder**, folded
+      into the catch-up's pull request, #2338. The loader in
+      `backend/app/cbac/competencies.py` takes a file's text and the name
+      it should carry, so `_load_version` no longer copies a file into a
+      folder named for its framework. Each file is refused above a size
+      limit, and so is YAML (the file format) that uses aliases, which
+      can make a small file expand hugely in memory.
+- [x] **Compare every stored version with its file**, also in #2338.
+      The catch-up used to skip a version already stored without looking
+      at it, so a version rewritten on `main` would go unnoticed: the
+      tables would keep the old words while GitHub showed the new. A
+      stored version whose file differs is refused and named.
+- [x] **The pipeline stops uploading**, folded into #2339. On a merge to
+      `main` it only starts `quill-framework-sync-app`. `upload-versions.sh`,
+      its tests and the `GCP_FRAMEWORK_GCS_BUCKET` secret go, so each
+      framework repository needs three secrets, not four.
+- [x] **The sync job reads the framework repositories itself**, folded
+      into #2340, in place of copying a bucket.
+      - **A bare clone over HTTPS.** The repositories are public, so no
+        credential is needed. A bare clone has no working tree, so a
+        hostile repository can never place a file or a symlink, which is
+        how past git security bugs were reached. Submodules are never
+        fetched. Cloud Run holds a container's disk in memory, so the
+        clone leaves nothing behind when the job ends.
+      - **Which commit set each version** is worked out in Python, moved
+        from `upload-versions.sh`: walk `main`'s first-parent history,
+        oldest first, and take the first commit at which each version
+        appears. Each file is read with `git show`.
+      - **Each repository is paired with the framework ids it may
+        publish**, in the job's settings in Terraform, which the content
+        account cannot override. Without this, one repository could add a
+        version to another publisher's framework by naming its id. A file
+        naming any other id is refused.
+      - **A timeout on the job**, so a huge or hostile repository stops
+        one run and nothing else.
+      - `download_versions` and the `FRAMEWORK_GCS_BUCKET` setting go.
+- [x] **The docs describe the clone, and only `main` may sign in**,
+      folded into #2341. The sign-in command above admits the four
+      framework repositories from `refs/heads/main` alone, so a workflow
+      pushed to another branch cannot start the sync job or write to the
+      teaching bucket the same account may write.
+- [ ] **The sync gets its own database role**, a new pull request on
+      top. It runs today as the admin identity, the one that runs
+      migrations, so the sync's own code is all that stands between a bug
+      and the whole database. Its own Cloud SQL user may read the
+      `passport_framework*` tables, insert into them, and write its run
+      records in `passport_framework_sync`, and nothing else.
+- [ ] **Decide whether a framework change needs an approval to merge.**
+      The rulesets require none, copied from teaching, so anybody with
+      write access can merge a change to a clinical framework alone, and
+      it goes live at once. One approval is a one-line change in
+      `infra/github/framework_rulesets.tf`. The product owner's decision.
 
 ## Phase 7: Read frameworks from the database
 
@@ -824,6 +899,19 @@ still in this repository, so nothing changes for anybody until it works.
   pipeline uploads any version the bucket lacks from git history, and the
   sync catches up on every version it is missing. A skipped run then
   only delays a version, and never loses one.
+
+- **The sync reads the repositories, not a bucket.** Agreed with the
+  product owner on 4 November 2026, replacing the bucket in "Every
+  version is kept where the sync can read it" above. The bucket was a
+  second, lasting copy of every version, with its own permissions and an
+  upload step to keep right, between GitHub and the tables. The sync job
+  reads the public repositories directly instead, so the only lasting
+  copies are git history and the tables, which keep every version
+  stored. GitHub still never reaches the database: it only starts one
+  job whose action and repository list it cannot change. GitHub's API
+  was considered, to avoid even the clone in memory, and turned down:
+  without a token it allows 60 requests an hour from one address, and a
+  token is a secret for Google Cloud to keep.
 
 - **Every framework starts at version 1.** Agreed with the product owner
   on 4 November 2026. If a framework could begin at any number, a lost
