@@ -103,7 +103,7 @@ class TestOneWriteOneCommit:
             passport,
             PASSPORT_ID,
             actor,
-            "perform_cannulation",
+            "clinical_perform_cannulation",
             schemas.LogbookEntry(performed_on=date(2026, 3, 12)),
             now=NOW,
         )
@@ -118,12 +118,15 @@ class TestOneWriteOneCommit:
             passport,
             PASSPORT_ID,
             actor,
-            "perform_cannulation",
+            "clinical_perform_cannulation",
             schemas.LogbookEntry(performed_on=date(2026, 3, 12)),
             now=NOW,
         )
 
-        assert _entry(passport, "perform_cannulation").logbook_entries == 1
+        assert (
+            _entry(passport, "clinical_perform_cannulation").logbook_entries
+            == 1
+        )
 
 
 class TestLogbook:
@@ -183,13 +186,16 @@ class TestLogbook:
             "perform_bronchoscopy",
             schemas.LogbookEntry(
                 performed_on=date(2026, 3, 12),
-                also_counts_towards=["take_informed_consent"],
+                also_counts_towards=["clinical_take_informed_consent"],
             ),
             now=NOW,
         )
 
         assert _entry(passport, "perform_bronchoscopy").logbook_entries == 1
-        assert _entry(passport, "take_informed_consent").logbook_entries == 1
+        assert (
+            _entry(passport, "clinical_take_informed_consent").logbook_entries
+            == 1
+        )
 
     def test_entries_are_counted_under_the_scope_they_name(
         self, passport: store.LocalPassportStore, actor: commits.Actor
@@ -256,12 +262,12 @@ class TestLogbook:
             schemas.LogbookEntry(
                 performed_on=date(2026, 3, 12),
                 scope=schemas.ScopeRef(id="lung", name="Lung"),
-                also_counts_towards=["take_informed_consent"],
+                also_counts_towards=["clinical_take_informed_consent"],
             ),
             now=NOW,
         )
 
-        consent = _entry(passport, "take_informed_consent")
+        consent = _entry(passport, "clinical_take_informed_consent")
 
         assert consent.scope is None
         assert consent.logbook_entries == 1
@@ -450,7 +456,7 @@ class TestCertificates:
                         id="perform_bronchoscopy", name="Perform bronchoscopy"
                     ),
                     schemas.CompetencyRef(
-                        id="take_informed_consent",
+                        id="clinical_take_informed_consent",
                         name="Take informed consent",
                     ),
                 ]
@@ -459,7 +465,9 @@ class TestCertificates:
         )
 
         assert _entry(passport, "perform_bronchoscopy").certificates == [name]
-        assert _entry(passport, "take_informed_consent").certificates == [name]
+        assert _entry(
+            passport, "clinical_take_informed_consent"
+        ).certificates == [name]
 
     def test_a_same_day_clash_is_suffixed(
         self, passport: store.LocalPassportStore, actor: commits.Actor
@@ -586,7 +594,7 @@ class TestReflections:
                 written_on=date(2026, 3, 14),
                 competencies=[
                     schemas.CompetencyRef(
-                        id="perform_advanced_airway",
+                        id="clinical_perform_advanced_airway",
                         name="Advanced airway management",
                     )
                 ],
@@ -739,7 +747,7 @@ class TestIndex:
     def test_competencies_are_listed_in_a_stable_order(
         self, passport: store.LocalPassportStore, actor: commits.Actor
     ) -> None:
-        for competency in ("request_ct_scan", "perform_cannulation"):
+        for competency in ("request_ct_scan", "clinical_perform_cannulation"):
             records.add_logbook_entry(
                 passport,
                 PASSPORT_ID,

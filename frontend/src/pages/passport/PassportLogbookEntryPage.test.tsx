@@ -34,7 +34,7 @@ vi.mock("react-router-dom", async () => {
   return {
     ...actual,
     useParams: () => ({
-      competencyId: "perform_cannulation",
+      competencyId: "clinical_perform_cannulation",
       stem: "20260314T1432",
     }),
   };
@@ -55,7 +55,7 @@ const detail = {
 function entry(filename: string, outcome: string) {
   return {
     filename,
-    competency: "perform_cannulation",
+    competency: "clinical_perform_cannulation",
     performed_on: "2026-03-14",
     setting: "Emergency department",
     supervision: "supervised" as const,
@@ -70,7 +70,7 @@ function entry(filename: string, outcome: string) {
 
 function logbook(...entries: ReturnType<typeof entry>[]) {
   return {
-    competency: "perform_cannulation",
+    competency: "clinical_perform_cannulation",
     count: entries.length,
     entries,
   };
@@ -97,7 +97,7 @@ describe("PassportLogbookEntryPage", () => {
     expect(screen.queryByText("Abandoned")).not.toBeInTheDocument();
     expect(fetchLogbook).toHaveBeenCalledWith(
       "3f2a8c1e",
-      "perform_cannulation",
+      "clinical_perform_cannulation",
     );
   });
 
@@ -167,7 +167,7 @@ describe("PassportLogbookEntryPage", () => {
     await waitFor(() => expect(amendLogbookEntry).toHaveBeenCalled());
     expect(amendLogbookEntry).toHaveBeenCalledWith(
       "3f2a8c1e",
-      "perform_cannulation",
+      "clinical_perform_cannulation",
       "20260314T1432",
       expect.objectContaining({
         outcome: "Second pass",

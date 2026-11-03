@@ -64,7 +64,7 @@ class TestUnknownFields:
         """Silently dropping it would lose data on the next write."""
         with pytest.raises(ValidationError):
             schemas.CompetencyRef(
-                id="perform_cannulation",
+                id="clinical_perform_cannulation",
                 name="Insert cannula",
                 risk_level="high",  # type: ignore[call-arg]
             )
@@ -210,7 +210,7 @@ class TestCompetencyRef:
     def test_refuses_an_empty_label(self) -> None:
         """A record whose label is blank is unreadable years later."""
         with pytest.raises(ValidationError):
-            schemas.CompetencyRef(id="perform_cannulation", name="")
+            schemas.CompetencyRef(id="clinical_perform_cannulation", name="")
 
 
 class TestSignOffCorrections:
@@ -339,7 +339,8 @@ class TestSelfDeclaredRecords:
                     id="perform_bronchoscopy", name="Perform bronchoscopy"
                 ),
                 schemas.CompetencyRef(
-                    id="take_informed_consent", name="Take informed consent"
+                    id="clinical_take_informed_consent",
+                    name="Take informed consent",
                 ),
             ],
         )

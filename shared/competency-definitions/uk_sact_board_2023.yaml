@@ -36,11 +36,13 @@
 # is required on every list of scopes, so nobody is blocked by a missing
 # entry.
 #
-# `passport_only` because these are statements on a form, recorded in a
-# clinician passport and granted to nobody as a permission. Every id
-# starts with the framework's id, which the loader checks.
+# Like every framework, these are recorded in a clinician passport and
+# granted to nobody as a permission: the loader refuses them wherever a
+# competency is granted. Every id starts with the framework's id and an
+# underscore, which the loader checks for every framework.
 #
-# See docs/docs/plans/2026-10-07-passport-registrar-portfolios-plan.md.
+# See docs/docs/plans/2026-10-07-passport-registrar-portfolios-plan.md
+# and docs/docs/plans/2026-11-01-passport-record-and-catalogue-plan.md.
 
 framework:
   id: uk_sact_board_2023
@@ -50,7 +52,6 @@ framework:
   specialties:
     - oncology
     - haematology
-  passport_only: true
 
 competencies:
   - id: uk_sact_board_2023_prescribe_sact

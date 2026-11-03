@@ -404,7 +404,7 @@ class TestTheHoldersRoutes:
             "/api/passport", json={"frameworks": [GENERAL]}
         ).json()["passport_id"]
         holder_client.post(
-            f"/api/passport/{passport_id}/logbook/perform_cannulation",
+            f"/api/passport/{passport_id}/logbook/clinical_perform_cannulation",
             json={"performed_on": "2026-03-12"},
         )
 
@@ -413,7 +413,7 @@ class TestTheHoldersRoutes:
         )
 
         logbook = holder_client.get(
-            f"/api/passport/{passport_id}/logbook/perform_cannulation"
+            f"/api/passport/{passport_id}/logbook/clinical_perform_cannulation"
         ).json()
         assert logbook["count"] == 1
 
@@ -447,7 +447,7 @@ class TestOnlyWhatTheFrameworksHold:
         passport_id = self._passport(holder_client, GENERAL)
 
         response = holder_client.post(
-            f"/api/passport/{passport_id}/logbook/perform_cannulation",
+            f"/api/passport/{passport_id}/logbook/clinical_perform_cannulation",
             json={"performed_on": "2026-03-12"},
         )
 
@@ -474,7 +474,7 @@ class TestOnlyWhatTheFrameworksHold:
         passport_id = self._passport(holder_client)
 
         response = holder_client.post(
-            f"/api/passport/{passport_id}/logbook/perform_cannulation",
+            f"/api/passport/{passport_id}/logbook/clinical_perform_cannulation",
             json={"performed_on": "2026-03-12"},
         )
 
@@ -534,7 +534,9 @@ class TestOnlyWhatTheFrameworksHold:
     ) -> None:
         """Dropping a framework freezes nothing recorded under it."""
         passport_id = self._passport(holder_client, GENERAL)
-        url = f"/api/passport/{passport_id}/logbook/perform_cannulation"
+        url = (
+            f"/api/passport/{passport_id}/logbook/clinical_perform_cannulation"
+        )
         stem = holder_client.post(
             url, json={"performed_on": "2026-03-12"}
         ).json()["name"]
