@@ -54,7 +54,7 @@ framework:
   id: ghnft_radiotherapy_record
   name: "Clinical oncology registrar record of radiotherapy training and competence - Gloucestershire Hospitals NHS Foundation Trust"
   publisher: "Gloucestershire Hospitals NHS Foundation Trust"
-  version: 2
+  version: 1
   description: "Pilot edition."
   specialties:
     - oncology
