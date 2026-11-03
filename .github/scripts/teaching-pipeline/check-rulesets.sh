@@ -24,7 +24,7 @@ main() {
 
   if [ "$rulesets" -eq 0 ]; then
     error "No branch protection rulesets found on ${repo}."
-    error "Add this repo to teaching_repos in quillmedical/infra/github/"
+    error "Add this repo to teaching_repos or framework_repos in quillmedical/infra/github/"
     exit 1
   fi
 

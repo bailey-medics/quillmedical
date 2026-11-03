@@ -34,6 +34,7 @@ EOF
 
   [ "$status" -eq 1 ]
   [[ "$output" == *"No branch protection rulesets found"* ]]
+  [[ "$output" == *"teaching_repos or framework_repos"* ]]
 }
 
 @test "the failure points at where rulesets are defined" {
