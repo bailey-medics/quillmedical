@@ -181,6 +181,15 @@ framework is offered as soon as it merges.
   November 2023". Until 2 November 2026 `version` held that label.
 - **A framework's retired competency names `retired_in_version`**, the
   first version that left it out, beside `retired_on`.
+- **CI checks the version moved.** The "Competency catalogue check" job
+  runs `app.features.passport.tooling.check_framework_version`, which
+  compares each framework file's parsed content with `origin/main`. A
+  change with the same version, a jump of more than one, a version going
+  down and a version moving alone all fail. A new framework starts at 1.
+  It prints every reworded competency, level and scope, pass or fail,
+  because a change of meaning needs a new id and only a person can tell.
+  Two branches of one stack changing the same framework fail as a jump,
+  so the lower one lands first.
 - **The framework list route's `version` field is deprecated.** It still
   carries the edition label, now read from `description`, so an open tab
   keeps working, and nothing reads it.
