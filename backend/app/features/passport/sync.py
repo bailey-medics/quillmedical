@@ -20,12 +20,18 @@ docs/docs/plans/2026-11-01-passport-record-and-catalogue-plan.md.
 Usage::
 
     python -m app.features.passport.sync [<definitions-directory>]
+    python -m app.features.passport.sync --versions <folder>
+
+The second form reads the versions the framework pipeline uploads, one
+folder per framework and one file per version, and catches up on every
+version the tables lack.
 """
 
 from __future__ import annotations
 
 import logging
 import sys
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from pathlib import Path
@@ -40,6 +46,7 @@ from app.cbac.competencies import (
     CompetencyEntry,
     Framework,
     _load_catalogue,
+    load_framework_text,
 )
 
 from .models import (
@@ -203,6 +210,23 @@ def _missing_versions(name: str, stored: int, found: int) -> str:
     )
 
 
+def _starts_above_one(name: str, first: int) -> str:
+    """Say that a framework's first version is not 1.
+
+    Every framework counts from 1, so a missing version 1 cannot pass for
+    a framework that simply began later.
+    """
+    missing = list(range(1, first))
+    listed = ", ".join(str(number) for number in missing)
+    noun = "version" if len(missing) == 1 else "versions"
+    verb = "is" if len(missing) == 1 else "are"
+
+    return (
+        f"Framework {name!r} starts at version {first}, but every "
+        f"framework starts at version 1: {noun} {listed} {verb} missing."
+    )
+
+
 def _check(
     db: Session,
     framework: Framework,
@@ -236,6 +260,11 @@ def _check(
     newest = _newest(db, name)
 
     if newest is None:
+        if framework.version != 1:
+            raise FrameworkSyncError(
+                _starts_above_one(name, framework.version)
+            )
+
         return True
 
     if framework.version == newest.version:
@@ -334,17 +363,18 @@ def _write(
     db.flush()
 
 
-def sync_frameworks(
-    db: Session, directory: Path = COMPETENCY_DEFINITIONS_DIR
+def _recorded_run(
+    db: Session, work: Callable[[set[str]], int]
 ) -> FrameworkSyncResult:
-    """Read every framework in *directory* into the database.
+    """Run *work* inside one savepoint, and record how it ended.
 
-    Either every new version is written or none is, and the run is
-    recorded either way. The caller commits.
+    Either everything *work* writes lands or none of it does, and the run
+    is recorded either way. The caller commits.
 
     Args:
         db: The core database session.
-        directory: A folder of definition files.
+        work: Writes the new versions and says how many, given the ids of
+            the permissions, which no framework may use.
 
     Returns:
         How the run ended.
@@ -354,18 +384,10 @@ def sync_frameworks(
     db.flush()
 
     permission_ids = {c.id for c in COMPETENCIES if c.framework_id is None}
-    written = 0
 
     try:
         with db.begin_nested():
-            entries, frameworks = _load_catalogue(directory)
-
-            for framework in frameworks:
-                items = [e for e in entries if e.framework_id == framework.id]
-
-                if _check(db, framework, items, permission_ids):
-                    _write(db, framework, items)
-                    written += 1
+            written = work(permission_ids)
     except (FrameworkSyncError, ValueError, ValidationError) as error:
         run.status = "failed"
         run.error = str(error)
@@ -383,11 +405,258 @@ def sync_frameworks(
     return FrameworkSyncResult(True, written, None)
 
 
+def sync_frameworks(
+    db: Session, directory: Path = COMPETENCY_DEFINITIONS_DIR
+) -> FrameworkSyncResult:
+    """Read every framework in *directory* into the database.
+
+    *directory* holds each framework as it stands now, one file each, as
+    ``shared/competency-definitions/`` does. Either every new version is
+    written or none is. The caller commits.
+
+    Args:
+        db: The core database session.
+        directory: A folder of definition files.
+
+    Returns:
+        How the run ended.
+    """
+
+    def work(permission_ids: set[str]) -> int:
+        written = 0
+        entries, frameworks = _load_catalogue(directory)
+
+        for framework in frameworks:
+            items = [e for e in entries if e.framework_id == framework.id]
+
+            if _check(db, framework, items, permission_ids):
+                _write(db, framework, items)
+                written += 1
+
+        return written
+
+    return _recorded_run(db, work)
+
+
+def _stored_version(db: Session, framework_id: str) -> int:
+    """The newest version stored for a framework, or 0 for none."""
+    newest = _newest(db, framework_id)
+
+    return 0 if newest is None else newest.version
+
+
+def _version_files(folder: Path) -> dict[int, Path]:
+    """Each ``<version>.yaml`` in one framework's folder, by version.
+
+    Raises:
+        FrameworkSyncError: For a file whose name is not a version number,
+            which would otherwise be skipped without a word.
+    """
+    found: dict[int, Path] = {}
+
+    for path in sorted(folder.glob("*.yaml")):
+        if not path.stem.isdigit() or path.stem.startswith("0"):
+            raise FrameworkSyncError(
+                f"{folder.name}/{path.name} is not named for a version. "
+                "Each file is named for its version, such as 3.yaml."
+            )
+        found[int(path.stem)] = path
+
+    return found
+
+
+def _load_version(
+    framework_id: str, number: int, text: str
+) -> tuple[Framework, list[CompetencyEntry]]:
+    """Read one version's file from its text, with the catalogue's rules.
+
+    Raises:
+        FrameworkSyncError: If the file declares another version than the
+            one it was given as.
+        ValueError: For anything the loader refuses, another framework
+            among it.
+    """
+    framework, entries = load_framework_text(text, framework_id)
+
+    if framework.version != number:
+        raise FrameworkSyncError(
+            f"{framework_id}/{number}.yaml declares version "
+            f"{framework.version}. A version's file is named for it."
+        )
+
+    return framework, entries
+
+
+def _stored_row(
+    db: Session, framework_id: str, number: int
+) -> PassportFrameworkVersion | None:
+    """One stored version of a framework, or None."""
+    return db.scalars(
+        select(PassportFrameworkVersion).where(
+            PassportFrameworkVersion.framework_id == framework_id,
+            PassportFrameworkVersion.version == number,
+        )
+    ).first()
+
+
+def sync_version_texts(
+    db: Session, versions: Mapping[str, Mapping[int, str]]
+) -> FrameworkSyncResult:
+    """Store every version given that the tables do not hold yet.
+
+    *versions* holds each framework's files as text, by version number:
+    every version of it, from 1, not only the new ones. Each framework's
+    missing versions are checked and written in order, so a run that
+    finds several catches up on all of them. A version already stored is
+    compared with its file, and refused if the two differ: a stored
+    version never changes, so a difference means its history was
+    rewritten. Either everything new is written or nothing is. The caller
+    commits.
+
+    Args:
+        db: The core database session.
+        versions: Each framework's version files, by framework id, then
+            by version number.
+
+    Returns:
+        How the run ended. A version missing from *versions*, between 1
+        and the newest given, fails the run and is named.
+    """
+    return _recorded_run(
+        db, lambda permission_ids: _catch_up(db, versions, permission_ids)
+    )
+
+
+def _catch_up(
+    db: Session,
+    versions: Mapping[str, Mapping[int, str]],
+    permission_ids: set[str],
+) -> int:
+    """Check and write what :func:`sync_version_texts` describes.
+
+    Returns:
+        How many versions were written.
+
+    Raises:
+        FrameworkSyncError: For a gap, a stored version that differs, or
+            a file that declares another version.
+        ValueError: For anything the loader refuses.
+    """
+    written = 0
+
+    if not versions:
+        raise FrameworkSyncError("No framework versions were given.")
+
+    for name in sorted(versions):
+        texts = versions[name]
+        stored = _stored_version(db, name)
+        numbers = sorted(texts)
+
+        if not numbers:
+            raise FrameworkSyncError(f"Framework {name!r}: no versions given.")
+
+        gaps = sorted(set(range(1, numbers[-1] + 1)) - set(numbers))
+
+        if gaps:
+            raise FrameworkSyncError(
+                f"Framework {name!r}: "
+                + ("versions " if len(gaps) > 1 else "version ")
+                + ", ".join(str(n) for n in gaps)
+                + " not found. Every version from 1 to the newest "
+                "must be given."
+            )
+
+        for number in numbers:
+            framework, items = _load_version(name, number, texts[number])
+
+            if number <= stored:
+                row = _stored_row(db, name, number)
+                if row is None or _snapshot_of_file(
+                    framework, items
+                ) != _snapshot_of_rows(db, row):
+                    raise FrameworkSyncError(
+                        f"Framework {name!r}: version {number} differs "
+                        "from the version stored. A stored version "
+                        "never changes, so its history may have been "
+                        "rewritten."
+                    )
+                continue
+
+            if _check(db, framework, items, permission_ids):
+                _write(db, framework, items)
+                written += 1
+
+    return written
+
+
+def read_version_folder(root: Path) -> dict[str, dict[int, str]]:
+    """Every version file under *root*, as text, for the catch-up.
+
+    *root* holds one folder per framework, each holding one file per
+    version: ``<framework>/<version>.yaml``. For rebuilding by hand.
+
+    Raises:
+        FrameworkSyncError: For a file not named for a version.
+    """
+    versions: dict[str, dict[int, str]] = {}
+    folders = sorted(p for p in root.iterdir() if p.is_dir())
+
+    if not folders:
+        raise FrameworkSyncError(f"No framework folders found in {root}.")
+
+    for folder in folders:
+        files = _version_files(folder)
+        versions[folder.name] = {
+            number: path.read_text(encoding="utf-8")
+            for number, path in files.items()
+        }
+
+    return versions
+
+
+def sync_framework_versions(db: Session, root: Path) -> FrameworkSyncResult:
+    """Store every version in the folder *root* that the tables lack.
+
+    The by-hand form of :func:`sync_version_texts`. *root* is laid out as
+    :func:`read_version_folder` reads it. The caller commits.
+
+    Args:
+        db: The core database session.
+        root: The folder of framework folders.
+
+    Returns:
+        How the run ended. A file not named for a version fails the run.
+    """
+    return _recorded_run(
+        db,
+        lambda permission_ids: _catch_up(
+            db, read_version_folder(root), permission_ids
+        ),
+    )
+
+
 def main(argv: list[str] | None = None) -> int:
     """CLI entry point: sync, commit, and say what happened."""
     from app.db.core_db import CoreSessionLocal
 
     args = argv if argv is not None else sys.argv[1:]
+
+    if args[:1] == ["--versions"]:
+        if len(args) != 2:
+            print(
+                "Usage: python -m app.features.passport.sync --versions <folder>"
+            )
+            return 2
+
+        versions = Path(args[1])
+
+        with CoreSessionLocal() as db:
+            result = sync_framework_versions(db, versions)
+            # Its own session, so nothing else commits for it.
+            db.commit()
+
+        return _report(result)
+
     directory = Path(args[0]) if args else COMPETENCY_DEFINITIONS_DIR
 
     with CoreSessionLocal() as db:
@@ -395,6 +664,11 @@ def main(argv: list[str] | None = None) -> int:
         # Its own session, so nothing else commits for it.
         db.commit()
 
+    return _report(result)
+
+
+def _report(result: FrameworkSyncResult) -> int:
+    """Say how a run ended, as an exit status."""
     if not result.succeeded:
         print(f"Framework sync failed: {result.error}")
         return 1

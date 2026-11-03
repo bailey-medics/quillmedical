@@ -24,12 +24,14 @@ from app.cbac.competencies import (
     FRAMEWORK_COMPETENCY_IDS,
     FRAMEWORK_IDS,
     FRAMEWORKS,
+    MAX_FRAMEWORK_FILE_BYTES,
     RETIRED_COMPETENCY_IDS,
     CompetencyEntry,
     _load_catalogue,
     framework_competencies,
     get_competency_details,
     is_valid_competency,
+    load_framework_text,
     validate_competency_ids,
 )
 
@@ -260,6 +262,71 @@ _FRAMEWORK = (
 )
 
 
+_SHEET_TEXT = (
+    _FRAMEWORK
+    + "competencies:\n"
+    + '  - id: sheet_item\n    display_name: "An item"\n'
+    + "    assessable: true\n"
+)
+
+
+def test_a_framework_is_read_from_its_text() -> None:
+    """A version read from git history, with no file of its own."""
+    framework, entries = load_framework_text(_SHEET_TEXT, "sheet")
+
+    assert framework.id == "sheet"
+    assert [entry.id for entry in entries] == ["sheet_item"]
+    assert entries[0].framework_id == "sheet"
+
+
+def test_a_framework_text_must_declare_the_framework_named() -> None:
+    with pytest.raises(ValueError, match="is declared in other.yaml"):
+        load_framework_text(_SHEET_TEXT, "other")
+
+
+def test_a_framework_text_must_declare_a_framework() -> None:
+    text = 'competencies:\n  - id: manage\n    display_name: "Manage"\n'
+
+    with pytest.raises(ValueError, match="declares no framework"):
+        load_framework_text(text, "sheet")
+
+
+def test_a_framework_text_with_an_alias_is_refused() -> None:
+    """An alias lets a small file expand hugely in memory."""
+    text = _SHEET_TEXT.replace(
+        '    display_name: "An item"\n',
+        '    display_name: &words "An item"\n',
+    ) + (
+        "  - id: sheet_other\n    display_name: *words\n"
+        "    assessable: true\n"
+    )
+
+    with pytest.raises(ValueError, match="uses a YAML alias"):
+        load_framework_text(text, "sheet")
+
+
+def test_a_framework_text_too_large_is_refused() -> None:
+    text = _SHEET_TEXT + "#" * MAX_FRAMEWORK_FILE_BYTES
+
+    with pytest.raises(ValueError, match="is larger than"):
+        load_framework_text(text, "sheet")
+
+
+def test_a_framework_text_repeating_an_id_is_refused() -> None:
+    text = _SHEET_TEXT + (
+        '  - id: sheet_item\n    display_name: "Again"\n'
+        "    assessable: true\n"
+    )
+
+    with pytest.raises(ValueError, match="Duplicate competency ids"):
+        load_framework_text(text, "sheet")
+
+
+def test_a_framework_text_with_no_competencies_is_refused() -> None:
+    with pytest.raises(ValueError, match="lists no competencies"):
+        load_framework_text(_FRAMEWORK, "sheet")
+
+
 def test_a_file_with_a_framework_block_is_a_framework(tmp_path: Path) -> None:
     (tmp_path / "sheet.yaml").write_text(
         _FRAMEWORK
@@ -464,12 +531,16 @@ def test_a_retired_entry_in_no_framework_names_no_version(
 
 
 def test_the_real_frameworks_versions() -> None:
-    """Gloucestershire's record changed in #2321; the rest are as made."""
+    """Every framework starts at 1, Gloucestershire's record included.
+
+    Its pilot edition was never numbered, so the record started afresh at
+    version 1 on 4 November 2026 rather than at 2.
+    """
     versions = {f.id: f.version for f in FRAMEWORKS}
 
     assert versions == {
         "clinical": 1,
-        "ghnft_radiotherapy_record": 2,
+        "ghnft_radiotherapy_record": 1,
         "ruh_sact_passport": 1,
         "uk_sact_board_2023": 1,
     }

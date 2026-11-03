@@ -43,6 +43,17 @@ import yaml
 #: version is what is being checked, and the description is internal.
 _IGNORED_FRAMEWORK_FIELDS: tuple[str, ...] = ("version", "description")
 
+#: Frameworks numbered afresh from version 1, each named here by a person.
+#:
+#: The one exception to "a version never goes down", and only back to 1
+#: with nothing else changed. Empty unless a fresh start is in flight. A
+#: name here matters only while ``main`` still holds the old number, so
+#: once the change merges, the next pull request takes it off again; git
+#: history keeps the record. Gloucestershire's record went from 2 to 1 on
+#: 4 November 2026, because its pilot edition was never numbered, and the
+#: framework tables were emptied in the same change.
+STARTED_AGAIN: frozenset[str] = frozenset({"ghnft_radiotherapy_record"})
+
 
 @dataclass(frozen=True)
 class Rewording:
@@ -282,6 +293,14 @@ def check_file(
         return
 
     changed = _comparable(old) != _comparable(new)
+
+    if (
+        version == 1
+        and old_version > 1
+        and not changed
+        and framework_id in STARTED_AGAIN
+    ):
+        return
 
     if version < old_version:
         result.violations.append(

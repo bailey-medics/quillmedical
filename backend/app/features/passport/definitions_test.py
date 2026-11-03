@@ -245,13 +245,13 @@ class TestSharedVocabulary:
 
 
 def test_a_frameworks_version_is_read_for_a_competency() -> None:
-    """Gloucestershire's record gained eight rows in #2321, so it is 2."""
+    """Every real framework is at version 1, Gloucestershire's included."""
     assert definitions.framework_version(NO_SCALE) == 1
     assert (
         definitions.framework_version(
             "ghnft_radiotherapy_record_refer_palliative"
         )
-        == 2
+        == 1
     )
 
 
