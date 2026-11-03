@@ -20,6 +20,13 @@ Each entry has four lines:
 The plan behind this file is
 [readable pull request descriptions](../plans/2026-10-31-readable-pull-request-descriptions-plan.md).
 
+## #2331 Passport: framework tables and sync
+
+- **Scores** - 69, 71. Attempt 2 posted.
+- **Rules** - `.claude/skills/crpd/SKILL.md` as of #2322.
+- **Verdict** - not yet given.
+- **Changed** - nothing yet.
+
 ## #2330 Passport: git record laid out framework first
 
 - **Scores** - 77. Attempt 1 posted.

@@ -364,7 +364,7 @@ it into the database, keeping every version. Frameworks follow the same
 road. This phase builds the far end first, fed from the framework files
 still in this repository, so nothing changes for anybody until it works.
 
-- [ ] **Tables for frameworks, with every version kept**, in
+- [x] **Tables for frameworks, with every version kept**, in
       `backend/app/models.py`, then `just migrate`: one row per framework,
       one per version of it, and beneath each version its competencies,
       their levels and their scopes, each in its own table with a foreign
@@ -373,25 +373,32 @@ still in this repository, so nothing changes for anybody until it works.
       can show a retired competency's last words. No JSON columns: every
       one of these is pointed at, by a sign-off's ids or by the table
       rows, so each is a relationship and wants a table.
-- [ ] **A framework sync**, in `backend/app/features/passport/sync.py`,
+- [x] **A framework sync**, in `backend/app/features/passport/sync.py`,
       shaped like `sync_question_bank`. It reads a folder of framework
       files, validates each with the loader's existing rules (Phase 2's
       prefix rule among them), and writes a new version only when the
       file's `version` is higher than the newest stored. It is the only
       writer of the framework tables, it is safe to run twice, and it
       records each run, as `QuestionBankSync` does.
-- [ ] **Refuse in the sync what CI refuses today**, since a framework
+- [x] **Refuse in the sync what CI refuses today**, since a framework
       repository will not have this repository's CI: a competency id that
       is a permission's id, or another framework's; a competency deleted
       rather than retired, judged against the newest stored version; and
       a version that skips or goes down. Phase 3's checks stay in CI too,
       so a mistake is caught at review and again at the door.
-- [ ] **Run it at start-up and in the seed**, reading the framework files
+- [x] **Run it in the pre-deploy migrations job and in the seed**,
+      not at start-up. Departed from the plan, 2 November 2026, while
+      building it: several Cloud Run instances start together and would
+      race to write the same version, while the migrations job
+      (`run-migrations` in `backend/scripts/admin_cli.py`) runs once,
+      before the new revision serves, and a refusal there blocks the
+      deploy as a failed migration does. Dev runs it at the end of the
+      migrate recipe. Originally: reading the framework files
       still in `shared/competency-definitions/`, so the tables fill in dev,
       in `backend/scripts/seed_ci.py` for the end-to-end stack, and in App
       production on deploy. Nothing reads the tables yet.
-- [ ] **Document the tables and the sync** in the passport backend page.
-- [ ] **Tests**: the sync stores a framework and its competencies, levels
+- [x] **Document the tables and the sync** in the passport backend page.
+- [x] **Tests**: the sync stores a framework and its competencies, levels
       and scopes; a second run changes nothing; a higher version adds a
       version and keeps the old one; it refuses a clash with a permission,
       a deleted competency and a skipped version.

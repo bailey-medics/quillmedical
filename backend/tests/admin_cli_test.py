@@ -307,6 +307,9 @@ class TestRunMigrations:
         with (
             patch.dict(os.environ, env, clear=False),
             patch("alembic.command.upgrade") as mock_upgrade,
+            patch(
+                "app.features.passport.sync.main", return_value=0
+            ) as mock_sync,
         ):
             from scripts.admin_cli import run_migrations
 
@@ -316,6 +319,39 @@ class TestRunMigrations:
         mock_upgrade.assert_called_once()
         # Second positional arg is the target revision.
         assert mock_upgrade.call_args[0][1] == "head"
+        mock_sync.assert_called_once_with([])
+
+    def test_a_refused_framework_sync_fails_the_deploy(self) -> None:
+        """As a failed migration does: the new revision must not serve."""
+        env = {"ADMIN_ACTION": "run-migrations"}
+
+        with (
+            patch.dict(os.environ, env, clear=False),
+            patch("alembic.command.upgrade"),
+            patch("app.features.passport.sync.main", return_value=1),
+        ):
+            from scripts.admin_cli import run_migrations
+
+            result = run_migrations()
+
+        assert result == 1
+
+    def test_a_failed_migration_never_syncs(self) -> None:
+        env = {"ADMIN_ACTION": "run-migrations"}
+
+        with (
+            patch.dict(os.environ, env, clear=False),
+            patch(
+                "alembic.command.upgrade",
+                side_effect=RuntimeError("lock timeout"),
+            ),
+            patch("app.features.passport.sync.main") as mock_sync,
+        ):
+            from scripts.admin_cli import run_migrations
+
+            run_migrations()
+
+        mock_sync.assert_not_called()
 
     def test_upgrade_failure_returns_error(self) -> None:
         env = {"ADMIN_ACTION": "run-migrations"}
