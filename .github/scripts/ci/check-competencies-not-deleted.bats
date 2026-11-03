@@ -305,3 +305,109 @@ YAML
   [ "$status" -eq 1 ]
   [[ "$output" == *"no longer running"* ]]
 }
+
+# --- Removed on purpose ---------------------------------------------------
+#
+# REMOVED_ON_PURPOSE lets a person delete a retired id by naming it. It
+# must not let anything else through: an id still current, or one that is
+# not on the list.
+
+retire_and_delete() {
+  local id="$1" name="$2"
+
+  sed -i.bak "s/    display_name: \"${name}\"/    display_name: \"${name}\"\n    retired_on: 2026-09-08/" \
+    shared/competency-definitions/clinical.yaml
+  rm -f shared/competency-definitions/clinical.yaml.bak
+  commit_all "retire ${id}"
+  git branch -q -f retired-ref
+
+  grep -v "${id}" shared/competency-definitions/clinical.yaml \
+    | grep -v "display_name: \"${name}\"" \
+    | grep -v "retired_on: 2026-09-08" > tmp.yaml
+  mv tmp.yaml shared/competency-definitions/clinical.yaml
+  commit_all "delete ${id}"
+}
+
+@test "deleting a retired id removed on purpose passes" {
+  sed -i 's/^  prescribe_sact$/  prescribe_sact\n  certify_death/' "$SCRIPT"
+  retire_and_delete certify_death "Certify Death"
+
+  run bash "$SCRIPT" retired-ref
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"No competency was removed"* ]]
+}
+
+@test "a current id removed on purpose is still a deletion" {
+  sed -i 's/^  prescribe_sact$/  prescribe_sact\n  certify_death/' "$SCRIPT"
+  grep -v "certify_death" shared/competency-definitions/clinical.yaml \
+    | grep -v 'display_name: "Certify Death"' > tmp.yaml
+  mv tmp.yaml shared/competency-definitions/clinical.yaml
+  commit_all "delete a current competency"
+
+  run bash "$SCRIPT" base-ref
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"certify_death"* ]]
+}
+
+@test "a retired id not on the list is still a deletion" {
+  retire_and_delete certify_death "Certify Death"
+
+  run bash "$SCRIPT" retired-ref
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"certify_death"* ]]
+}
+
+# --- Levels and scopes ----------------------------------------------------
+#
+# A level or a scope is written "- id:" as a competency is, one list
+# deeper. Read as competencies, removing a scale read as deleting
+# competencies, and a level could hide a competency's retirement.
+
+@test "removing a level is not a deletion" {
+  cat > shared/competency-definitions/scaled.yaml <<'YAML'
+competencies:
+  - id: assess_sepsis
+    display_name: "Assess sepsis"
+    levels:
+      - id: observe_only
+        name: "Observe only"
+      - id: unsupervised
+        name: "Unsupervised"
+YAML
+  commit_all "add a scaled competency"
+  git branch -q -f scaled-ref
+
+  grep -v 'observe_only\|"Observe only"' shared/competency-definitions/scaled.yaml > tmp.yaml
+  mv tmp.yaml shared/competency-definitions/scaled.yaml
+  commit_all "drop a level"
+
+  run bash "$SCRIPT" scaled-ref
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"No competency was removed"* ]]
+}
+
+@test "a competency with levels is still caught when deleted" {
+  cat > shared/competency-definitions/scaled.yaml <<'YAML'
+competencies:
+  - id: assess_sepsis
+    display_name: "Assess sepsis"
+    levels:
+      - id: observe_only
+        name: "Observe only"
+YAML
+  commit_all "add a scaled competency"
+  git branch -q -f scaled-ref
+
+  git rm -q shared/competency-definitions/scaled.yaml
+  commit_all "delete it"
+
+  run bash "$SCRIPT" scaled-ref
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"assess_sepsis"* ]]
+  [[ "$output" != *"observe_only"* ]]
+}

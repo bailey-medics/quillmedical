@@ -75,7 +75,6 @@ backend/app/deps.py      - has_competency(), FastAPI dependencies
 shared/
 ├── competency-definitions/  - All competency definitions, merged at load
 │   ├── clinical.yaml        - What may be done in the care of a patient
-│   ├── retired-oncology.yaml - The first oncology competencies, all retired
 │   ├── uk_sact_board_2023.yaml        - Passport framework
 │   ├── ruh_sact_passport.yaml         - Passport framework
 │   ├── ghnft_radiotherapy_record.yaml - Passport framework
@@ -142,8 +141,7 @@ what may be done in the care of a patient; `clinical-admin.yaml`,
 `admin.yaml`, `teaching.yaml`, `passport.yaml` and `safety.yaml` hold what
 may be done to Quill itself; `uk_sact_board_2023.yaml`,
 `ruh_sact_passport.yaml` and `ghnft_radiotherapy_record.yaml` are passport
-frameworks, and `retired-oncology.yaml` keeps the first oncology list, all
-retired. The code sees one catalogue and the id is what everything
+frameworks. The code sees one catalogue and the id is what everything
 references, so moving an entry between files changes nothing to access
 control. The one meaning a file carries is to the passport: a file that
 declares a `framework:` block is a framework, and its assessable entries are
@@ -164,7 +162,7 @@ competencies:
 
 - `id`: Unique competency identifier (used in code)
 - `display_name`: Human-readable name
-- `retired_on`: The date the competency stopped being available for new use. Entries are retired, not deleted
+- `retired_on`: The date the competency stopped being available for new use. Entries are retired, not deleted: CI fails a pull request that removes an id, unless a person names that retired id in `REMOVED_ON_PURPOSE` in `.github/scripts/ci/check-competencies-not-deleted.sh`
 - `levels`, `scopes`, `expires_after_months`, `assessable`: read by the clinician passport; CBAC ignores them
 - `may_grant`, `may_assign_professions`: what a holder may grant to other people
 
