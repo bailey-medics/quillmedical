@@ -22,16 +22,22 @@ Usage::
     python -m app.features.passport.sync [<definitions-directory>]
     python -m app.features.passport.sync --versions <folder>
 
-The second form reads the versions the framework pipeline uploads, one
-folder per framework and one file per version, and catches up on every
-version the tables lack.
+The second form reads a folder of versions written by hand, one folder
+per framework and one file per version, and catches up on every version
+the tables lack. The framework sync job uses a third,
+:func:`sync_from_repositories`, which reads each framework repository's
+history from GitHub itself.
 """
 
 from __future__ import annotations
 
 import logging
+import os
+import re
+import subprocess  # noqa: S404 - git plumbing, fixed argv, never shell
 import sys
-from collections.abc import Callable, Mapping
+import tempfile
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from pathlib import Path
@@ -43,6 +49,7 @@ from sqlalchemy.orm import Session
 from app.cbac.competencies import (
     COMPETENCIES,
     COMPETENCY_DEFINITIONS_DIR,
+    MAX_FRAMEWORK_FILE_BYTES,
     CompetencyEntry,
     Framework,
     _load_catalogue,
@@ -633,6 +640,252 @@ def sync_framework_versions(db: Session, root: Path) -> FrameworkSyncResult:
             db, read_version_folder(root), permission_ids
         ),
     )
+
+
+#: Where a framework file sits in its repository: one file per framework,
+#: named for its id, under frameworks/. Any other file is not read.
+_FRAMEWORK_PATH = re.compile(
+    r"^frameworks/(?P<framework>[a-z][a-z0-9_]*)\.yaml$"
+)
+
+#: An ``owner/name`` repository on GitHub, and nothing else, so a setting
+#: cannot point the clone at a path or another host.
+_REPOSITORY_NAME = re.compile(r"^[A-Za-z0-9-]+/[A-Za-z0-9._-]+$")
+
+#: The one protocol a clone may use. Tests read local repositories, and
+#: change this to ``file`` to do it.
+_CLONE_PROTOCOL = "https"
+
+#: How long one git command may take before the run is refused, so a huge
+#: or hostile repository stops one run and nothing else.
+GIT_TIMEOUT_SECONDS = 120
+
+
+def _repository_url(repository: str) -> str:
+    """Where *repository* is cloned from."""
+    return f"https://github.com/{repository}.git"
+
+
+def _git(
+    command: str,
+    *args: str,
+    git_dir: Path | None = None,
+    config: Sequence[str] = (),
+) -> str:
+    """Run one git command, refusing the run if it fails or overruns.
+
+    Args:
+        command: The git command, such as ``clone``.
+        args: Its arguments.
+        git_dir: The repository to run it in, for anything but a clone.
+        config: ``name=value`` settings for this command alone.
+
+    Raises:
+        FrameworkSyncError: If git fails, is missing, or takes longer
+            than ``GIT_TIMEOUT_SECONDS``.
+    """
+    argv = ["git"]
+
+    if git_dir is not None:
+        argv.append(f"--git-dir={git_dir}")
+    for setting in config:
+        argv += ["-c", setting]
+    argv += [command, *args]
+
+    try:
+        result = subprocess.run(  # noqa: S603 - fixed argv, no shell  # nosec B607 B603
+            argv,
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=GIT_TIMEOUT_SECONDS,
+            env={"GIT_TERMINAL_PROMPT": "0", "PATH": os.environ["PATH"]},
+        )
+    except subprocess.CalledProcessError as error:
+        raise FrameworkSyncError(
+            f"git {command} failed: {error.stderr.strip()}"
+        ) from error
+    except subprocess.TimeoutExpired as error:
+        raise FrameworkSyncError(
+            f"git {command} took longer than {GIT_TIMEOUT_SECONDS} " "seconds."
+        ) from error
+    except OSError as error:
+        raise FrameworkSyncError(f"git could not run: {error}") from error
+
+    return result.stdout
+
+
+def _clone(repository: str, destination: Path) -> None:
+    """Make a bare clone of *repository* at *destination*.
+
+    Bare, so no file is ever written out of the repository: a hostile one
+    can then never place a file or a symlink, which is how past git
+    security bugs were reached. Submodules are never fetched, and only
+    ``_CLONE_PROTOCOL`` is allowed, so the clone reads GitHub and nowhere
+    else.
+    """
+    _git(
+        "clone",
+        "--bare",
+        "--no-recurse-submodules",
+        "--quiet",
+        _repository_url(repository),
+        str(destination),
+        config=(
+            "protocol.allow=never",
+            f"protocol.{_CLONE_PROTOCOL}.allow=always",
+        ),
+    )
+
+
+def read_repository_versions(
+    repository: str, may_publish: set[str], clone: Path
+) -> dict[str, dict[int, str]]:
+    """Every version of every framework in one repository's history.
+
+    Walks ``main``'s first-parent history, oldest first, and keeps the
+    first text at which each version appears: the merge that set it. A
+    later commit that changed only comments or the description keeps its
+    version, so its text is not read again.
+
+    Args:
+        repository: ``owner/name`` on GitHub.
+        may_publish: The framework ids this repository may publish.
+        clone: An empty folder to clone into.
+
+    Returns:
+        Each framework's version files, by framework id, then by version.
+        Empty for a repository with no ``main`` yet.
+
+    Raises:
+        FrameworkSyncError: For a framework this repository may not
+            publish, a file too large, or a git failure.
+        ValueError: For a file the loader refuses.
+    """
+    if not _REPOSITORY_NAME.match(repository):
+        raise FrameworkSyncError(
+            f"{repository!r} is not a repository named owner/name."
+        )
+
+    _clone(repository, clone)
+
+    heads = _git("branch", "--list", "main", git_dir=clone)
+    if not heads.strip():
+        # An empty repository: its first commit is not on main yet.
+        return {}
+
+    found: dict[str, dict[int, str]] = {}
+    seen_blobs: set[str] = set()
+    commits = _git(
+        "rev-list", "--first-parent", "--reverse", "main", git_dir=clone
+    ).split()
+
+    for commit in commits:
+        listing = _git(
+            "ls-tree", "-r", commit, "--", "frameworks/", git_dir=clone
+        )
+
+        for line in listing.splitlines():
+            meta, path = line.split("\t", 1)
+            blob = meta.split()[2]
+            match = _FRAMEWORK_PATH.match(path)
+
+            if match is None or blob in seen_blobs:
+                continue
+
+            framework_id = match["framework"]
+            if framework_id not in may_publish:
+                raise FrameworkSyncError(
+                    f"{repository} holds {path}, but may publish only "
+                    + ", ".join(sorted(may_publish))
+                    + "."
+                )
+
+            size = int(_git("cat-file", "-s", blob, git_dir=clone))
+            if size > MAX_FRAMEWORK_FILE_BYTES:
+                raise FrameworkSyncError(
+                    f"{repository}: {path} at {commit[:9]} is larger than "
+                    f"{MAX_FRAMEWORK_FILE_BYTES} bytes."
+                )
+
+            text = _git("cat-file", "blob", blob, git_dir=clone)
+            framework, _ = load_framework_text(text, framework_id)
+            seen_blobs.add(blob)
+            found.setdefault(framework_id, {}).setdefault(
+                framework.version, text
+            )
+
+    return found
+
+
+def read_repositories(
+    repositories: Mapping[str, Sequence[str]], scratch: Path
+) -> dict[str, dict[int, str]]:
+    """Every framework version in every repository, for the catch-up.
+
+    Args:
+        repositories: Each ``owner/name``, with the framework ids it may
+            publish.
+        scratch: An empty folder for the clones.
+
+    Raises:
+        FrameworkSyncError: For a framework id paired with two
+            repositories, or anything :func:`read_repository_versions`
+            refuses.
+    """
+    owners: dict[str, str] = {}
+
+    for repository, ids in repositories.items():
+        for framework_id in ids:
+            if framework_id in owners:
+                raise FrameworkSyncError(
+                    f"Framework {framework_id!r} is paired with both "
+                    f"{owners[framework_id]} and {repository}."
+                )
+            owners[framework_id] = repository
+
+    versions: dict[str, dict[int, str]] = {}
+
+    for position, repository in enumerate(sorted(repositories)):
+        versions.update(
+            read_repository_versions(
+                repository,
+                set(repositories[repository]),
+                scratch / str(position),
+            )
+        )
+
+    return versions
+
+
+def sync_from_repositories(
+    db: Session, repositories: Mapping[str, Sequence[str]]
+) -> FrameworkSyncResult:
+    """Read every framework repository, then catch up on what it holds.
+
+    The clones go in a scratch folder deleted as the run ends. On Cloud
+    Run a container's disk is held in memory, so nothing outlasts the
+    job. The caller commits.
+
+    Args:
+        db: The core database session.
+        repositories: Each ``owner/name``, with the framework ids it may
+            publish.
+
+    Returns:
+        How the run ended.
+    """
+    with tempfile.TemporaryDirectory(
+        prefix="framework_repositories_"
+    ) as scratch:
+        return _recorded_run(
+            db,
+            lambda permission_ids: _catch_up(
+                db,
+                read_repositories(repositories, Path(scratch)),
+                permission_ids,
+            ),
+        )
 
 
 def main(argv: list[str] | None = None) -> int:

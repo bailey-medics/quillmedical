@@ -13,7 +13,7 @@ Environment Variables:
                       send-newsletter, accessibility-reminder,
                       apply-retention, send-teaching-reminders,
                       finish-exams-out-of-time, set-records-kept,
-                      sync-teaching.
+                      sync-teaching, sync-frameworks.
     ADMIN_USERNAME:   Required.  Target username.
     ADMIN_EMAIL:      Required for create-superadmin.
     ADMIN_PASSWORD:   Required for create-superadmin.
@@ -422,6 +422,49 @@ def sync_teaching() -> int:
     return 1 if outcome.errors else 0
 
 
+def sync_frameworks() -> int:
+    """Store every passport framework version the framework repositories
+    hold and the tables lack.
+
+    Started by the framework pipeline once a framework repository merges,
+    as ``sync-teaching`` is by the teaching pipeline. It reads every
+    repository in ``FRAMEWORK_REPOSITORIES`` from GitHub, not only the one
+    that merged, so a run that was missed is caught up by the next. Every
+    new version is written or none is, so a refusal fails the job and
+    names the version, and the pipeline run goes red.
+    """
+    from app.config import settings
+    from app.db.core_db import CoreSessionLocal
+    from app.features.passport.sync import sync_from_repositories
+
+    repositories = settings.FRAMEWORK_REPOSITORIES
+
+    if not repositories:
+        print("✗ FRAMEWORK_REPOSITORIES is not set.", file=sys.stderr)
+        return 1
+
+    db = CoreSessionLocal()
+
+    try:
+        result = sync_from_repositories(db, repositories)
+        # Commits the run record whether or not the sync succeeded.
+        db.commit()
+    except Exception as exc:
+        db.rollback()
+        print(f"✗ The framework sync did not run: {exc}", file=sys.stderr)
+        return 1
+    finally:
+        db.close()
+
+    if not result.succeeded:
+        print(f"✗ Framework sync failed: {result.error}", file=sys.stderr)
+        return 1
+
+    print(f"✓ Framework sync: {result.versions_written} version(s) written.")
+
+    return 0
+
+
 def send_newsletter() -> int:
     """Send a newsletter to everybody who said yes, or report who would get it.
 
@@ -761,6 +804,10 @@ ACTIONS: dict[str, tuple[Callable[[], int], str]] = {
     "sync-teaching": (
         sync_teaching,
         "Sync every teaching bank from the bucket into the database",
+    ),
+    "sync-frameworks": (
+        sync_frameworks,
+        "Store every new passport framework version, read from GitHub",
     ),
     "finish-exams-out-of-time": (
         finish_exams_out_of_time,

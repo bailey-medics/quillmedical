@@ -995,3 +995,95 @@ class TestSyncTeaching:
         from scripts.admin_cli import ACTIONS
 
         assert "sync-teaching" in ACTIONS
+
+
+#: One repository and the framework it may publish, for the sync job.
+_REPOSITORIES = {"bailey-medics/a-framework": ["sheet"]}
+
+
+class TestSyncFrameworks:
+    """The framework sync job's one action: the repositories into the tables."""
+
+    @staticmethod
+    def _result(succeeded: bool, written: int = 0, error: str | None = None):
+        from app.features.passport.sync import FrameworkSyncResult
+
+        return FrameworkSyncResult(succeeded, written, error)
+
+    @pytest.mark.usefixtures("_patch_session")
+    def test_a_clean_sync_commits_and_passes(
+        self, db_session: Session, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        from scripts.admin_cli import sync_frameworks
+
+        with (
+            patch("app.config.settings.FRAMEWORK_REPOSITORIES", _REPOSITORIES),
+            patch(
+                "app.features.passport.sync.sync_from_repositories",
+                return_value=self._result(True, 2),
+            ) as sync,
+            patch.object(db_session, "commit") as commit,
+        ):
+            assert sync_frameworks() == 0
+
+        sync.assert_called_once_with(db_session, _REPOSITORIES)
+        commit.assert_called_once()
+        assert "2 version(s) written" in capsys.readouterr().out
+
+    @pytest.mark.usefixtures("_patch_session")
+    def test_a_refused_version_fails_the_job_and_names_it(
+        self, db_session: Session, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """The run record is still committed, so the refusal is kept."""
+        from scripts.admin_cli import sync_frameworks
+
+        with (
+            patch("app.config.settings.FRAMEWORK_REPOSITORIES", _REPOSITORIES),
+            patch(
+                "app.features.passport.sync.sync_from_repositories",
+                return_value=self._result(False, error="version 2 not found"),
+            ),
+            patch.object(db_session, "commit") as commit,
+        ):
+            assert sync_frameworks() == 1
+
+        commit.assert_called_once()
+        assert "version 2 not found" in capsys.readouterr().err
+
+    def test_no_repositories_fail_before_anything_runs(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        from scripts.admin_cli import sync_frameworks
+
+        with (
+            patch("app.config.settings.FRAMEWORK_REPOSITORIES", {}),
+            patch("app.features.passport.sync.sync_from_repositories") as sync,
+        ):
+            assert sync_frameworks() == 1
+
+        sync.assert_not_called()
+        assert "FRAMEWORK_REPOSITORIES is not set" in capsys.readouterr().err
+
+    @pytest.mark.usefixtures("_patch_session")
+    def test_a_sync_that_raises_is_rolled_back_and_fails(
+        self, db_session: Session, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        from scripts.admin_cli import sync_frameworks
+
+        with (
+            patch("app.config.settings.FRAMEWORK_REPOSITORIES", _REPOSITORIES),
+            patch(
+                "app.features.passport.sync.sync_from_repositories",
+                side_effect=RuntimeError("GitHub unreachable"),
+            ),
+            patch.object(db_session, "rollback") as rollback,
+        ):
+            assert sync_frameworks() == 1
+
+        rollback.assert_called_once()
+        assert "framework sync did not run" in capsys.readouterr().err
+
+    def test_is_listed_as_an_action(self) -> None:
+        from scripts.admin_cli import ACTIONS
+
+        assert "sync-frameworks" in ACTIONS
