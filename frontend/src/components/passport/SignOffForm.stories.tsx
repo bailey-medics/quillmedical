@@ -27,7 +27,7 @@ export const Default: Story = {
 };
 
 /**
- * A request for a competency on the RCR entrustment scale. The level
+ * A request for a competency on a scale of levels. The level
  * asked for is chosen to start with; choosing another turns the caveats
  * field into a required "Why a different level?".
  */
@@ -36,13 +36,16 @@ export const OnAScale: Story = {
     signOff: {
       ...requested,
       competency: {
-        id: "define_radiotherapy_target_volume",
-        name: "Interpret imaging for target volume and organ-at-risk definition",
+        id: "ruh_sact_passport_prescribe_sact",
+        name: "Prescribe SACT",
       },
-      level: { id: "unsupervised", name: "Entrusted to act unsupervised" },
+      level: {
+        id: "independent",
+        name: "Considered competent to prescribe SACT independently (consultant level)",
+      },
       requested_level: {
-        id: "unsupervised",
-        name: "Entrusted to act unsupervised",
+        id: "independent",
+        name: "Considered competent to prescribe SACT independently (consultant level)",
       },
     },
     onSubmit: fn(),
