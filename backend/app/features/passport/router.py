@@ -1056,7 +1056,7 @@ def list_frameworks(
             id=choice.framework.id,
             name=choice.framework.name,
             publisher=choice.framework.publisher,
-            version=choice.framework.version,
+            version=choice.framework.description,
             specialties=list(choice.framework.specialties),
             lead=choice.lead,
             items=choice.items,

@@ -14,7 +14,6 @@ const options: FrameworkOption[] = [
     id: "clinical",
     name: "General clinical skills",
     publisher: "Quill Medical",
-    version: "2026",
     specialties: [],
   },
 ];
@@ -40,8 +39,7 @@ describe("PassportFrameworksCard", () => {
 
     expect(screen.getByText("Clinician passport")).toBeInTheDocument();
     expect(
-      screen.getAllByText("General clinical skills (Quill Medical, 2026)")
-        .length,
+      screen.getAllByText("General clinical skills (Quill Medical)").length,
     ).toBeGreaterThan(0);
   });
 

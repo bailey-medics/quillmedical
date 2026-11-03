@@ -89,7 +89,13 @@ export interface Framework {
   id: string;
   name: string;
   publisher: string;
-  version: string;
+  /**
+   * Quill's count of changes to the framework, from 1. Every sign-off
+   * records the version it was given under.
+   */
+  version: number;
+  /** Shown to nobody: the publisher's own edition label, and the like. */
+  description: string;
   /** From `specialties.json`. Empty where it belongs to every specialty. */
   specialties: string[];
 }

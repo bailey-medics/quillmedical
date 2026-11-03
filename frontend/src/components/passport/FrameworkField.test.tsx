@@ -14,21 +14,18 @@ const options: FrameworkOption[] = [
     id: "clinical",
     name: "General clinical skills",
     publisher: "Quill Medical",
-    version: "2026",
     specialties: [],
   },
   {
     id: "oncology",
     name: "Oncology (proof of concept)",
     publisher: "Quill Medical",
-    version: "2026",
     specialties: ["oncology"],
   },
   {
     id: "surgery_sheet",
     name: "Theatre sign-off sheet",
     publisher: "A Trust",
-    version: "2025",
     specialties: ["general_surgery"],
   },
 ];
@@ -60,10 +57,10 @@ describe("FrameworkField", () => {
     await openFrameworks(user);
 
     expect(
-      await screen.findByText("Theatre sign-off sheet (A Trust, 2025)"),
+      await screen.findByText("Theatre sign-off sheet (A Trust)"),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("General clinical skills (Quill Medical, 2026)"),
+      screen.getByText("General clinical skills (Quill Medical)"),
     ).toBeInTheDocument();
   });
 
@@ -74,9 +71,7 @@ describe("FrameworkField", () => {
 
     await openFrameworks(user);
     await user.click(
-      await screen.findByText(
-        "Oncology (proof of concept) (Quill Medical, 2026)",
-      ),
+      await screen.findByText("Oncology (proof of concept) (Quill Medical)"),
     );
 
     expect(onChange).toHaveBeenCalledWith(["oncology"]);
@@ -99,12 +94,10 @@ describe("FrameworkField", () => {
       await openFrameworks(user);
 
       expect(
-        await screen.findByText(
-          "Oncology (proof of concept) (Quill Medical, 2026)",
-        ),
+        await screen.findByText("Oncology (proof of concept) (Quill Medical)"),
       ).toBeInTheDocument();
       expect(
-        screen.queryByText("Theatre sign-off sheet (A Trust, 2025)"),
+        screen.queryByText("Theatre sign-off sheet (A Trust)"),
       ).not.toBeInTheDocument();
     });
 
@@ -116,9 +109,7 @@ describe("FrameworkField", () => {
       await openFrameworks(user);
 
       expect(
-        await screen.findByText(
-          "General clinical skills (Quill Medical, 2026)",
-        ),
+        await screen.findByText("General clinical skills (Quill Medical)"),
       ).toBeInTheDocument();
     });
 
@@ -130,7 +121,7 @@ describe("FrameworkField", () => {
 
       // The pill, and the option behind it.
       expect(
-        screen.getAllByText("Theatre sign-off sheet (A Trust, 2025)").length,
+        screen.getAllByText("Theatre sign-off sheet (A Trust)").length,
       ).toBeGreaterThan(0);
     });
   });

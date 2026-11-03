@@ -73,22 +73,20 @@ const FRAMEWORKS: FrameworkOption[] = [
     id: "clinical",
     name: "General clinical skills",
     publisher: "Quill Medical",
-    version: "2026",
     specialties: [],
   },
   {
     id: "oncology",
     name: "Oncology (proof of concept)",
     publisher: "Quill Medical",
-    version: "2026",
     specialties: ["oncology"],
   },
 ];
 
 const ONCOLOGY_FIRST: FrameworkOption[] = [FRAMEWORKS[1], FRAMEWORKS[0]];
 
-const ONCOLOGY_LABEL = "Oncology (proof of concept) (Quill Medical, 2026)";
-const GENERAL_LABEL = "General clinical skills (Quill Medical, 2026)";
+const ONCOLOGY_LABEL = "Oncology (proof of concept) (Quill Medical)";
+const GENERAL_LABEL = "General clinical skills (Quill Medical)";
 
 /** The field on the passport card that the frameworks are chosen in. */
 function frameworksField(): HTMLElement {

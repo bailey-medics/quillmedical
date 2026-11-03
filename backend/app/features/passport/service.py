@@ -312,6 +312,7 @@ def request_sign_off(
     record = SignOff(
         id=_ids.next(moment),
         competency=competency,
+        framework_version=definitions.framework_version(competency_id),
         kind=kind,
         status="requested",
         # Both, for now: until it is signed, what is on the record is
