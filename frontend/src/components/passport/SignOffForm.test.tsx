@@ -232,20 +232,20 @@ describe("SignOffForm", () => {
 
   describe("The level", () => {
     // A request for a scaled competency. `levelsFor` reads the real
-    // catalogue, so this uses a competency that has the RCR scale.
+    // catalogue, so this uses a competency that has a scale.
     const scaled = {
       ...requested,
       competency: {
-        id: "define_radiotherapy_target_volume",
-        name: "Interpret imaging for target volume and organ-at-risk definition",
+        id: "ruh_sact_passport_prescribe_sact",
+        name: "Prescribe SACT",
       },
       level: {
-        id: "unsupervised",
-        name: "Entrusted to act unsupervised",
+        id: "independent",
+        name: "Considered competent to prescribe SACT independently (consultant level)",
       },
       requested_level: {
-        id: "unsupervised",
-        name: "Entrusted to act unsupervised",
+        id: "independent",
+        name: "Considered competent to prescribe SACT independently (consultant level)",
       },
     };
 
@@ -271,10 +271,12 @@ describe("SignOffForm", () => {
       renderWithMantine(<SignOffForm signOff={scaled} onSubmit={vi.fn()} />);
 
       expect(screen.getByRole("combobox", { name: /^Level/ })).toHaveValue(
-        "Entrusted to act unsupervised",
+        "Considered competent to prescribe SACT independently (consultant level)",
       );
       expect(
-        screen.getByText(/Asked for: Entrusted to act unsupervised/),
+        screen.getByText(
+          /Asked for: Considered competent to prescribe SACT independently/,
+        ),
       ).toBeInTheDocument();
     });
 
@@ -289,7 +291,7 @@ describe("SignOffForm", () => {
       );
 
       expect(onSubmit).toHaveBeenCalledWith(
-        expect.objectContaining({ level_id: "unsupervised" }),
+        expect.objectContaining({ level_id: "independent" }),
       );
     });
 
@@ -298,7 +300,10 @@ describe("SignOffForm", () => {
       renderWithMantine(<SignOffForm signOff={scaled} onSubmit={vi.fn()} />);
 
       await chooseBasisAndConfirm(user);
-      await chooseLevel(user, "Entrusted to act with direct supervision");
+      await chooseLevel(
+        user,
+        "Considered competent to prescribe SACT with direct supervision",
+      );
 
       expect(
         screen.getByRole("textbox", { name: /Why a different level/ }),
@@ -314,7 +319,10 @@ describe("SignOffForm", () => {
       renderWithMantine(<SignOffForm signOff={scaled} onSubmit={onSubmit} />);
 
       await chooseBasisAndConfirm(user);
-      await chooseLevel(user, "Entrusted to act with direct supervision");
+      await chooseLevel(
+        user,
+        "Considered competent to prescribe SACT with direct supervision",
+      );
       await user.type(
         screen.getByRole("textbox", { name: /Why a different level/ }),
         "Not yet contouring alone.",

@@ -93,11 +93,6 @@ describe("The competencies the passport may record", () => {
     expect(ids).not.toContain("perform_cannulation");
   });
 
-  it("no longer offers the first oncology list, now retired", () => {
-    expect(ids).not.toContain("prescribe_sact");
-    expect(ids).not.toContain("define_radiotherapy_target_volume");
-  });
-
   it("never offers a software permission", () => {
     // Nobody watches somebody "manage users" and signs it off.
     expect(ids).not.toContain("manage_users");

@@ -5,7 +5,9 @@
 # Usage: check-competencies-not-deleted.sh [<main-ref>]
 #
 # Fails directly rather than routing to a gate: there is no legitimate case to
-# approve, in the same way there is none for rewriting a merged migration.
+# approve, in the same way there is none for rewriting a merged migration. A
+# retired id a person has decided to delete is named in REMOVED_ON_PURPOSE
+# below, in the same pull request, where a reviewer reads it.
 set -euo pipefail
 
 # shellcheck source=../shared/logging.sh
@@ -43,7 +45,17 @@ entries_at_ref() {
     echo
   done < <(files_at_ref "${ref}") \
     | awk '
+        # Each file starts its own list, so its entries indent afresh.
+        /^competencies:/ { entry_indent = -1; next }
+
+        # Only an entry of the list is a competency. A level or a scope
+        # is a "- id:" too, nested deeper, and is not one.
         /^[[:space:]]*-[[:space:]]+id:/ {
+          indent = $0
+          sub(/-.*/, "", indent)
+          if (entry_indent < 0) entry_indent = length(indent)
+          if (length(indent) != entry_indent) next
+
           if (id != "") print id "\t" state
           id = $0
           sub(/^[[:space:]]*-[[:space:]]+id:[[:space:]]*/, "", id)
@@ -65,13 +77,52 @@ ids_at_ref() {
   entries_at_ref "${ref}" | cut -f1
 }
 
-# Ids present on the base ref and absent from this branch.
+# Ids taken out of the catalogue on purpose, each named here by a person.
+#
+# The one exception to "never deleted", and only for an id already retired
+# on the base ref: an id still current cannot leave through this list.
+# Entries stay after the deletion merges, as the record that it happened.
+#
+# The first oncology list, retired on 7 October 2026 and deleted on
+# 3 November 2026 at Mark's request, because no passport holds a record
+# against it.
+REMOVED_ON_PURPOSE=(
+  prescribe_sact
+  assess_sact_toxicity
+  manage_sact_complications
+  define_radiotherapy_target_volume
+  deliver_radical_radiotherapy
+  deliver_palliative_radiotherapy
+  deliver_radioisotope_therapy
+  manage_brachytherapy_patients
+  manage_oncological_emergency
+  deliver_acute_oncology_take
+  manage_neutropenic_sepsis
+  manage_metastatic_cord_compression
+  contribute_to_tumour_mdt
+  consent_for_sact
+  consent_for_radiotherapy
+  manage_end_of_life_care
+)
+
+# Ids that were retired on the base ref and are listed in REMOVED_ON_PURPOSE.
+removable_ids() {
+  local base_ref="$1"
+
+  comm -12 \
+    <(entries_at_ref "${base_ref}" | awk -F'\t' '$2 == "retired" { print $1 }') \
+    <(printf '%s\n' "${REMOVED_ON_PURPOSE[@]}" | sort)
+}
+
+# Ids present on the base ref and absent from this branch, less any that
+# were removed on purpose.
 deleted_ids() {
   local base_ref="$1"
 
   comm -23 \
     <(ids_at_ref "${base_ref}") \
-    <(ids_at_ref "HEAD")
+    <(ids_at_ref "HEAD") \
+    | comm -23 - <(removable_ids "${base_ref}")
 }
 
 # Ids that were retired on the base ref and are current again on this branch.
