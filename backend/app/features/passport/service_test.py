@@ -22,6 +22,7 @@ from app.features.passport import (
     definitions,
     hashing,
     index,
+    layout,
     paths,
     service,
     store,
@@ -297,7 +298,9 @@ class TestSigning:
 
         _sign(passport, assessor, name)
 
-        raw = passport.read(PASSPORT_ID, paths.sign_off_file(name))
+        raw = passport.read(
+            PASSPORT_ID, layout.sign_off_file(passport, PASSPORT_ID, name)
+        )
         assert b"verified" not in raw
 
     def test_signing_twice_is_refused(
@@ -908,6 +911,27 @@ class TestTheAssessorDecidesTheLevel:
         record = service.read_sign_off(passport, PASSPORT_ID, name)
 
         assert record.framework_version == 1
+
+    def test_a_request_is_filed_under_its_framework_and_competency(
+        self, passport: store.LocalPassportStore, holder: commits.Actor
+    ) -> None:
+        """Named by its date, then its scope, inside its competency."""
+        whole = _request(passport, holder)
+        scoped = _request(
+            passport,
+            holder,
+            competency_id=SCALED,
+            scope_id=SCOPE,
+            level_id="observation_only",
+        )
+        again = _request(passport, holder)
+
+        assert whole == f"{UNSCALED}.2026-03-12"
+        assert again == f"{UNSCALED}.2026-03-12-2"
+        assert scoped == f"{SCALED}.2026-03-12-lung"
+        assert passport.read(
+            PASSPORT_ID, paths.sign_off_file("uk_sact_board_2023", scoped)
+        )
 
     def test_signing_without_naming_a_level_signs_the_one_asked_for(
         self,

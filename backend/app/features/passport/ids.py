@@ -233,7 +233,7 @@ def record_dir_name(
 ) -> str:
     """A record directory's name: ``<date>-<slug>``, ``-2`` on a clash.
 
-    Used for sign-offs, certificates and reflections. The date is the one
+    Used for certificates and reflections. The date is the one
     the record is *about* - when the work was observed, when the
     certificate was awarded - not when the file was written, because
     someone looking for a sign-off thinks of when they did the procedure,
@@ -256,5 +256,40 @@ def record_dir_name(
         raise ValueError(f"Suffix must be 1 or greater, got {suffix}.")
 
     name = f"{on.isoformat()}-{slugify(label)}"
+
+    return name if suffix == 1 else f"{name}-{suffix}"
+
+
+def sign_off_folder_name(
+    on: date,
+    scope: str | None,
+    *,
+    suffix: int = 1,
+) -> str:
+    """A sign-off folder's name: ``<date>``, then its scope, ``-2`` on a clash.
+
+    The folder sits inside its competency's folder, so unlike
+    :func:`record_dir_name` it carries no label: the date says when the
+    work was observed, and the scope says which part of practice, as in
+    ``2026-04-02-lung``.
+
+    Args:
+        on: The date the work was observed.
+        scope: The scope id, or None for a competency assessed whole.
+        suffix: 1 for the first that day, then 2 and upwards.
+
+    Returns:
+        The folder name.
+
+    Raises:
+        ValueError: If *suffix* is below 1.
+    """
+    if suffix < 1:
+        raise ValueError(f"Suffix must be 1 or greater, got {suffix}.")
+
+    name = on.isoformat()
+
+    if scope is not None:
+        name = f"{name}-{slugify(scope)}"
 
     return name if suffix == 1 else f"{name}-{suffix}"

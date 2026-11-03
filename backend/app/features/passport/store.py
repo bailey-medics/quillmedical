@@ -72,10 +72,14 @@ when, and on what evidence.
 - `competencies.yaml` - every competency with evidence, and where it
   stands. This is a summary, regenerated from the directories below; if
   it ever disagrees with them, they are correct.
-- `sign-offs/` - one directory per assessment, each holding the record
-  that was signed. These never change once signed.
-- `certificates/`, `logbook/`, `reflections/`, `cpd/` - evidence the
-  holder recorded themselves. Nobody countersigns these, which is what
+- `frameworks/` - one directory per framework the holder has records
+  against, then one per competency inside it. Each competency holds:
+  - `sign-offs/` - one directory per assessment, named by the date the
+    work was observed, each holding the record that was signed. These
+    never change once signed.
+  - `logbook/` - procedures the holder logged against it.
+- `certificates/`, `reflections/`, `cpd/` - evidence the holder recorded
+  themselves, with the logbook. Nobody countersigns these, which is what
   distinguishes them from a sign-off.
 
 Every file is YAML or Markdown, so it can be read with no software

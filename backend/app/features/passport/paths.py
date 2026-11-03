@@ -14,18 +14,33 @@ created by the act of naming it.
 forward slashes everywhere: these paths are repository contents, not
 host filesystem paths, and they must read identically on every platform.
 
-Two naming rules run through the layout, and they look inconsistent
-until the reason is clear:
+**Framework first.** Every sign-off and every logbook entry is about
+one competency, and every competency belongs to one framework, so both
+live in one tree: ``frameworks/<framework>/<competency>/`` holds that
+competency's ``sign-offs/`` and ``logbook/``. Folders are named by the
+ids verbatim, prefix and all. "Show me everything for this competency"
+is one directory.
 
-- **Where a directory is a competency, it is named by the competency id
-  verbatim** - ``logbook/perform_bronchoscopy/``. A logbook entry is
-  about one procedure, so "show me my bronchoscopy logbook" should be
-  one directory.
-- **Where a directory is a human label, it is named for reading and the
-  authoritative id lives inside the file** - ``sign-offs/
-  2026-03-14-perform-bronchoscopy/``. Sign-offs and certificates
-  legitimately span several competencies at once, so the competency
-  cannot be the directory.
+- **A sign-off folder is named by its date**, then its scope where it has
+  one, then ``-2`` or higher for a second on the same day:
+  ``sign-offs/2026-04-02-lung/``. Its parent already names the
+  competency.
+- **A sign-off is identified as** ``<competency>.<folder>``, such as
+  ``uk_sact_board_2023_prescribe_sact.2026-04-02-lung``: unique in the
+  passport, safe in a web address, and split back apart by
+  :func:`split_sign_off_id`. Postgres and the API hold this, never a
+  path, so the framework folder can be found by looking.
+- **Certificates, reflections and CPD stay where they were.** A
+  certificate may cover several competencies, a reflection is the
+  holder's own prose, and CPD is tied to no competency.
+
+Which framework folder a competency is in is found by looking, in
+:mod:`.layout`, never worked out here: this module does no I/O.
+
+Until 2 November 2026 sign-offs sat flat under ``sign-offs/`` and
+logbooks under ``logbook/<competency>/``, two unrelated places. No real
+passport existed then, so nothing was moved: a passport in that layout
+carries an older ``schema_version`` and is refused when read.
 """
 
 from __future__ import annotations
@@ -61,10 +76,15 @@ GITIGNORE = PurePosixPath(".gitignore")
 # --- Directories ----------------------------------------------------------
 
 CERTIFICATES = PurePosixPath("certificates")
-LOGBOOK = PurePosixPath("logbook")
 REFLECTIONS = PurePosixPath("reflections")
 CPD = PurePosixPath("cpd")
+
+#: The root of the tree every sign-off and logbook entry lives in.
+FRAMEWORKS = PurePosixPath("frameworks")
+
+#: The two folders inside one competency's folder.
 SIGN_OFFS = PurePosixPath("sign-offs")
+LOGBOOK = PurePosixPath("logbook")
 
 #: Gitignored, content-addressed evidence. Blobs live under
 #: ``files/sha256/ab/cd/<64-hex>`` so a directory never grows unmanageably
@@ -91,6 +111,14 @@ _COMPETENCY_ID = re.compile(r"^[a-z0-9]+(?:_[a-z0-9]+)*$")
 # counter. Checked on the way back in, because a name reaching these
 # functions from a YAML file is untrusted input.
 _RECORD_DIR = re.compile(r"^\d{4}-\d{2}-\d{2}-[a-z0-9]+(?:-[a-z0-9]+)*$")
+
+# A sign-off folder: a date, then optionally a scope slug, then optionally
+# a counter for a second on the same day.
+_SIGN_OFF_FOLDER = re.compile(r"^\d{4}-\d{2}-\d{2}(?:-[a-z0-9]+)*$")
+
+#: What joins a competency id to a sign-off folder in a sign-off's id.
+#: Neither half can contain one.
+SIGN_OFF_ID_SEPARATOR = "."
 
 # A write-time entry filename: date, then hours, minutes and seconds. No
 # colons, which Windows rejects.
@@ -158,36 +186,106 @@ def competency_id(value: str) -> str:
     return _check(value, _COMPETENCY_ID, "competency id")
 
 
-def sign_off_dir(name: str) -> PurePosixPath:
+def framework_dir(framework: str) -> PurePosixPath:
+    """The directory holding one framework's competencies.
+
+    Raises:
+        PassportPathError: If the framework id is not a flat slug.
+    """
+    return FRAMEWORKS / _check(framework, _COMPETENCY_ID, "framework id")
+
+
+def competency_dir(framework: str, competency: str) -> PurePosixPath:
+    """The directory holding one competency's sign-offs and logbook.
+
+    Raises:
+        PassportPathError: If either id is not a flat slug.
+    """
+    return framework_dir(framework) / competency_id(competency)
+
+
+def sign_off_folder(value: str) -> str:
+    """Validate a sign-off folder name: a date, then scope and counter.
+
+    Raises:
+        PassportPathError: If it is not one this layout generates.
+    """
+    return _check(value, _SIGN_OFF_FOLDER, "sign-off folder name")
+
+
+def sign_off_id(competency: str, folder: str) -> str:
+    """A sign-off's id: its competency and its folder, joined.
+
+    Raises:
+        PassportPathError: If either half is malformed.
+    """
+    return (
+        competency_id(competency)
+        + SIGN_OFF_ID_SEPARATOR
+        + sign_off_folder(folder)
+    )
+
+
+def split_sign_off_id(value: str) -> tuple[str, str]:
+    """A sign-off's id, back into its competency and its folder.
+
+    Args:
+        value: The id, from a web address or a Postgres row, so
+            untrusted.
+
+    Returns:
+        The competency id and the folder name.
+
+    Raises:
+        PassportPathError: If it is not an id this layout generates.
+    """
+    competency, separator, folder = value.partition(SIGN_OFF_ID_SEPARATOR)
+
+    if not separator:
+        raise PassportPathError(
+            f"Invalid sign-off id {value!r}: expected "
+            f"<competency>{SIGN_OFF_ID_SEPARATOR}<folder>."
+        )
+
+    return competency_id(competency), sign_off_folder(folder)
+
+
+def sign_offs_dir(framework: str, competency: str) -> PurePosixPath:
+    """The directory holding one competency's sign-offs."""
+    return competency_dir(framework, competency) / SIGN_OFFS
+
+
+def sign_off_dir(framework: str, sign_off: str) -> PurePosixPath:
     """The directory holding one sign-off.
 
     Args:
-        name: Its folder name, ``<observed-date>-<competency-slug>``,
-            with ``-2`` or higher appended when a second sign-off for the
-            same competency was observed on the same day.
+        framework: The framework folder its competency is in.
+        sign_off: Its id, ``<competency>.<folder>``.
 
     Returns:
         The path, relative to the repository root.
 
     Raises:
-        PassportPathError: If the name is not one this layout generates.
+        PassportPathError: If either is not one this layout generates.
     """
-    return SIGN_OFFS / _check(name, _RECORD_DIR, "sign-off folder name")
+    competency, folder = split_sign_off_id(sign_off)
+
+    return sign_offs_dir(framework, competency) / folder
 
 
-def sign_off_file(name: str) -> PurePosixPath:
+def sign_off_file(framework: str, sign_off: str) -> PurePosixPath:
     """The record itself: the file that is hashed and signed."""
-    return sign_off_dir(name) / SIGN_OFF_FILE
+    return sign_off_dir(framework, sign_off) / SIGN_OFF_FILE
 
 
-def sign_off_reflection(name: str) -> PurePosixPath:
+def sign_off_reflection(framework: str, sign_off: str) -> PurePosixPath:
     """The holder's narrative beside a sign-off. Optional."""
-    return sign_off_dir(name) / REFLECTION_FILE
+    return sign_off_dir(framework, sign_off) / REFLECTION_FILE
 
 
-def sign_off_assessment(name: str) -> PurePosixPath:
+def sign_off_assessment(framework: str, sign_off: str) -> PurePosixPath:
     """The assessor's narrative beside a sign-off. Optional."""
-    return sign_off_dir(name) / ASSESSMENT_FILE
+    return sign_off_dir(framework, sign_off) / ASSESSMENT_FILE
 
 
 def certificate_dir(name: str) -> PurePosixPath:
@@ -213,29 +311,30 @@ def certificate_file(name: str) -> PurePosixPath:
     return certificate_dir(name) / CERTIFICATE_FILE
 
 
-def logbook_dir(competency: str) -> PurePosixPath:
+def logbook_dir(framework: str, competency: str) -> PurePosixPath:
     """The directory holding one competency's logbook entries.
 
-    Grouped by competency id verbatim, because an entry is about one
-    procedure.
-
     Args:
+        framework: The framework folder the competency is in.
         competency: The competency id.
 
     Returns:
         The path, relative to the repository root.
 
     Raises:
-        PassportPathError: If the competency id is not a flat slug.
+        PassportPathError: If either id is not a flat slug.
     """
-    return LOGBOOK / competency_id(competency)
+    return competency_dir(framework, competency) / LOGBOOK
 
 
-def logbook_entry(competency: str, filename: str) -> PurePosixPath:
+def logbook_entry(
+    framework: str, competency: str, filename: str
+) -> PurePosixPath:
     """One logged procedure.
 
     Args:
-        competency: The competency id the entry counts towards.
+        framework: The framework folder the competency is in.
+        competency: The competency id the entry is filed under.
         filename: The write-time stem, ``YYYY-MM-DD-HHMMSS``, without
             its suffix.
 
@@ -247,7 +346,7 @@ def logbook_entry(competency: str, filename: str) -> PurePosixPath:
     """
     stem = _check(filename, _ENTRY_FILE, "logbook entry filename")
 
-    return logbook_dir(competency) / f"{stem}.yaml"
+    return logbook_dir(framework, competency) / f"{stem}.yaml"
 
 
 def reflection_dir(name: str) -> PurePosixPath:

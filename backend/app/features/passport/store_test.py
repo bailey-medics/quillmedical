@@ -320,19 +320,25 @@ class TestListDir:
         passport_store.write(
             PASSPORT_ID,
             {
-                paths.sign_off_file("2026-03-14-a-thing"): "id: 1\n",
-                paths.sign_off_file("2026-03-15-another"): "id: 2\n",
+                paths.sign_off_file(
+                    "clinical", "clinical_thing.2026-03-14"
+                ): "id: 1\n",
+                paths.sign_off_file(
+                    "clinical", "clinical_thing.2026-03-15"
+                ): "id: 2\n",
             },
             _message("two sign-offs"),
             actor,
             head,
         )
 
-        entries = passport_store.list_dir(PASSPORT_ID, paths.SIGN_OFFS)
+        entries = passport_store.list_dir(
+            PASSPORT_ID, paths.sign_offs_dir("clinical", "clinical_thing")
+        )
 
         assert [entry.name for entry in entries] == [
-            "2026-03-14-a-thing",
-            "2026-03-15-another",
+            "2026-03-14",
+            "2026-03-15",
         ]
 
     def test_an_absent_directory_lists_empty(
@@ -342,7 +348,7 @@ class TestListDir:
         empty mean the same thing to a caller counting records."""
         _created(passport_store, actor)
 
-        assert passport_store.list_dir(PASSPORT_ID, paths.SIGN_OFFS) == []
+        assert passport_store.list_dir(PASSPORT_ID, paths.FRAMEWORKS) == []
 
     def test_listing_a_file_is_not_an_error(
         self, passport_store: LocalPassportStore, actor: Actor
@@ -360,7 +366,11 @@ class TestWrite:
 
         second = passport_store.write(
             PASSPORT_ID,
-            {paths.sign_off_file("2026-03-14-a-thing"): "id: 1\n"},
+            {
+                paths.sign_off_file(
+                    "clinical", "clinical_thing.2026-03-14"
+                ): "id: 1\n"
+            },
             _message("a sign-off"),
             actor,
             PassportHead(commit=first),
@@ -378,8 +388,12 @@ class TestWrite:
         passport_store.write(
             PASSPORT_ID,
             {
-                paths.sign_off_file("2026-03-14-a-thing"): "id: 1\n",
-                paths.sign_off_reflection("2026-03-14-a-thing"): "words\n",
+                paths.sign_off_file(
+                    "clinical", "clinical_thing.2026-03-14"
+                ): "id: 1\n",
+                paths.sign_off_reflection(
+                    "clinical", "clinical_thing.2026-03-14"
+                ): "words\n",
                 paths.INDEX: "updated: true\n",
             },
             _message("three files"),
@@ -418,7 +432,9 @@ class TestWrite:
             PASSPORT_ID,
             {
                 paths.logbook_entry(
-                    "clinical_perform_cannulation", "2026-03-14-143207"
+                    "clinical",
+                    "clinical_perform_cannulation",
+                    "2026-03-14-143207",
                 ): "a: 1\n"
             },
             _message("an entry"),
@@ -434,7 +450,9 @@ class TestWrite:
             PassportHead(commit=second),
             delete=(
                 paths.logbook_entry(
-                    "clinical_perform_cannulation", "2026-03-14-143207"
+                    "clinical",
+                    "clinical_perform_cannulation",
+                    "2026-03-14-143207",
                 ),
             ),
         )
@@ -443,7 +461,9 @@ class TestWrite:
             passport_store.read(
                 PASSPORT_ID,
                 paths.logbook_entry(
-                    "clinical_perform_cannulation", "2026-03-14-143207"
+                    "clinical",
+                    "clinical_perform_cannulation",
+                    "2026-03-14-143207",
                 ),
             )
 
@@ -608,7 +628,9 @@ class TestRollback:
                 PASSPORT_ID,
                 {
                     paths.INDEX: "half: written\n",
-                    paths.sign_off_file("2026-03-14-a-thing"): "id: 1\n",
+                    paths.sign_off_file(
+                        "clinical", "clinical_thing.2026-03-14"
+                    ): "id: 1\n",
                 },
                 _message("a doomed write"),
                 actor,
@@ -678,7 +700,11 @@ class TestRollback:
         with pytest.raises(StoreError):
             passport_store.write(
                 PASSPORT_ID,
-                {paths.sign_off_file("2026-03-14-a-thing"): "id: 1\n"},
+                {
+                    paths.sign_off_file(
+                        "clinical", "clinical_thing.2026-03-14"
+                    ): "id: 1\n"
+                },
                 _message("a doomed write"),
                 actor,
                 PassportHead(commit=first),

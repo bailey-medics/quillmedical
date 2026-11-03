@@ -178,8 +178,11 @@ class TestTheBundleIsComplete:
         """The walk has to reach sign-offs, logbook entries and the rest."""
         names = _names(export.build_bundle(populated, PASSPORT_ID))
 
-        assert any(n.startswith("passport/sign-offs/") for n in names)
-        assert any(n.startswith("passport/logbook/") for n in names)
+        in_frameworks = [
+            n for n in names if n.startswith("passport/frameworks/")
+        ]
+        assert any("/sign-offs/" in n for n in in_frameworks)
+        assert any("/logbook/" in n for n in in_frameworks)
         assert any(n.startswith("passport/certificates/") for n in names)
         assert any(n.startswith("passport/reflections/") for n in names)
 
