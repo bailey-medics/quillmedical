@@ -365,7 +365,7 @@ class TestLogbook:
         client, passport_id = passport
 
         response = client.post(
-            f"/api/passport/{passport_id}/logbook/perform_cannulation",
+            f"/api/passport/{passport_id}/logbook/clinical_perform_cannulation",
             json={"performed_on": "2026-03-12"},
         )
 
@@ -390,7 +390,7 @@ class TestLogbook:
         client, passport_id = passport
 
         response = client.post(
-            f"/api/passport/{passport_id}/logbook/perform_cannulation",
+            f"/api/passport/{passport_id}/logbook/clinical_perform_cannulation",
             json={"performed_on": "2026-03-12", "scope_id": SCOPE},
         )
 

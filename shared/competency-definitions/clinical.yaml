@@ -1,46 +1,30 @@
 # shared/competency-definitions/clinical.yaml
 #
-# CLINICAL COMPETENCY DEFINITIONS FOR QUILL MEDICAL
+# GENERAL CLINICAL SKILLS - QUILL MEDICAL
 #
-# Competencies describing what a person may do in the care of a patient:
-# prescribing, procedures, certification, patient management, consent,
-# imaging, patient records and specialty practice. The competencies that
-# govern Quill itself live beside this file in clinical-admin.yaml,
-# teaching.yaml and passport.yaml.
+# A framework Quill Medical publishes itself, so that a clinician can
+# record everyday skills such as venepuncture in their passport: the
+# passport offers only what a holder's frameworks contain. Quill may
+# publish a framework like anybody else. It names no specialty, because
+# these belong to every one.
 #
-# Every file in this directory is merged into one catalogue at load
-# time, so ids must be unique across the whole directory, not just
-# within a file. Which file an entry lives in carries no meaning to the
-# code - it is for the reader.
+# FRAMEWORK COMPETENCIES ARE CONTENT, NOT PERMISSIONS
 #
-# Competencies are granted to users based on their training,
-# qualifications and organisational approval. A user holds what their
-# current user_competency rows say and nothing else: a base profession
-# seeds rows when it is given, and is not consulted afterwards. See
-# User.get_final_competencies() in backend/app/models.py.
+# Every entry here is recorded in a passport and granted to nobody: the
+# loader refuses each one wherever a competency is granted, as it does
+# every framework's. The permissions of the same names, which the code
+# checks, live in clinical-permissions.yaml. Until 2 November 2026 the
+# two shared one id each; see
+# docs/docs/plans/2026-11-01-passport-record-and-catalogue-plan.md.
 #
-# ASSESSABLE
+# Every id starts with this framework's id and an underscore,
+# `clinical_`, as every framework's must. Ids are unique across the whole
+# directory, so the same act under two frameworks is two competencies.
 #
-# `assessable: true` lets the clinician passport record a sign-off,
-# logbook entry, certificate, reflection or CPD activity against a
-# competency. It is opt-in, and absent means false: the access_* ids,
-# modify_patient_records and everything governing Quill itself are
-# software permissions rather than skills nobody could watch and sign
-# off. CBAC ignores the flag.
-#
-# Decided on 26 September 2026 to leave these without it for now, as
-# clinical governance calls rather than engineering ones:
-# request_plain_xray, request_ct_scan and request_mri_scan (an IR(ME)R
-# entitlement may make them genuinely assessable), admit_patient,
-# discharge_without_review, refer_specialty and approve_clinical_letters.
-# Each is one line to change. See
-# docs/docs/plans/2026-09-26-passport-specialties-plan.md.
+# A competency is retired with `retired_on`, never deleted, so a record
+# against it still opens. Rewording one is allowed only where the meaning
+# is unchanged; a change of meaning is a new id.
 
-# The assessable entries in this file are a framework of their own, so
-# that a clinician can record everyday skills such as venepuncture in
-# their passport: the passport offers only what a holder's frameworks
-# contain. The permissions beside them are not items of it. It names no
-# specialty, because these belong to every one.
 framework:
   id: clinical
   name: "General clinical skills"
@@ -50,38 +34,38 @@ framework:
 
 competencies:
   # ==========================================================================
-  # PRESCRIBING COMPETENCIES
+  # PRESCRIBING
   # ==========================================================================
 
-  - id: prescribe_non_controlled
+  - id: clinical_prescribe_non_controlled
     display_name: "Prescribe Non-Controlled Medications"
     assessable: true
 
-  - id: prescribe_controlled_schedule_2
+  - id: clinical_prescribe_controlled_schedule_2
     display_name: "Prescribe Schedule 2 Controlled Drugs"
     assessable: true
 
-  - id: prescribe_controlled_schedule_3_4_5
+  - id: clinical_prescribe_controlled_schedule_3_4_5
     display_name: "Prescribe Schedule 3/4/5 Controlled Drugs"
     assessable: true
 
   # ==========================================================================
-  # CERTIFICATION & DEATH COMPETENCIES
+  # CERTIFICATION AND DEATH
   # ==========================================================================
 
-  - id: certify_death
+  - id: clinical_certify_death
     display_name: "Certify Death"
     assessable: true
 
-  - id: certify_cremation
+  - id: clinical_certify_cremation
     display_name: "Certify Cremation (Cremation Form 4/5)"
     assessable: true
 
-  - id: certify_fitness_to_work
+  - id: clinical_certify_fitness_to_work
     display_name: "Certify Fitness to Work (Fit Notes)"
     assessable: true
 
-  - id: certify_fitness_to_drive
+  - id: clinical_certify_fitness_to_drive
     display_name: "Certify Fitness to Drive"
     assessable: true
 
@@ -89,120 +73,54 @@ competencies:
   # CLINICAL PROCEDURES
   # ==========================================================================
 
-  - id: perform_venepuncture
+  - id: clinical_perform_venepuncture
     display_name: "Perform Venepuncture"
     assessable: true
 
-  - id: perform_cannulation
+  - id: clinical_perform_cannulation
     display_name: "Insert Intravenous Cannula"
     assessable: true
 
-  - id: perform_lumbar_puncture
+  - id: clinical_perform_lumbar_puncture
     display_name: "Perform Lumbar Puncture"
     assessable: true
 
-  - id: perform_chest_drain
+  - id: clinical_perform_chest_drain
     display_name: "Insert Chest Drain"
     assessable: true
 
-  - id: perform_advanced_airway
+  - id: clinical_perform_advanced_airway
     display_name: "Perform Advanced Airway Management"
     assessable: true
 
   # ==========================================================================
-  # PATIENT MANAGEMENT
+  # CONSENT AND MENTAL CAPACITY
   # ==========================================================================
 
-  - id: discharge_without_review
-    display_name: "Discharge Patient Without Senior Review"
-
-  - id: admit_patient
-    display_name: "Admit Patient to Hospital"
-
-  - id: refer_specialty
-    display_name: "Refer to Specialty Services"
-
-  # ==========================================================================
-  # CONSENT & MENTAL CAPACITY
-  # ==========================================================================
-
-  - id: take_informed_consent
+  - id: clinical_take_informed_consent
     display_name: "Take Informed Consent"
     assessable: true
 
-  - id: assess_mental_capacity
+  - id: clinical_assess_mental_capacity
     display_name: "Assess Mental Capacity"
     assessable: true
 
-  - id: apply_deprivation_of_liberty
+  - id: clinical_apply_deprivation_of_liberty
     display_name: "Apply Deprivation of Liberty Safeguards (DoLS)"
     assessable: true
 
   # ==========================================================================
-  # IMAGING & DIAGNOSTICS
+  # SPECIALTY PRACTICE
   # ==========================================================================
 
-  - id: request_plain_xray
-    display_name: "Request Plain X-rays"
-
-  - id: request_ct_scan
-    display_name: "Request CT Scans"
-
-  - id: request_mri_scan
-    display_name: "Request MRI Scans"
-
-  # ==========================================================================
-  # PATIENT RECORDS
-  # ==========================================================================
-
-  # Three routes reach a patient record, and each names what its holder
-  # may do rather than how the scope is decided. The scope comes from
-  # beside the competency every time: the account's own patient link, an
-  # ExternalPatientAccess grant, or a shared organisation.
-  #
-  #   access_own_patient_records     - your own record
-  #   access_granted_patient_records - someone else's, by invitation
-  #   access_patient_records         - your patients', by clinical role
-  #
-  # See docs/docs/plans/2026-09-09-platform-role-plan.md.
-
-  # Reading your own record, as the subject of it. Held by patients and
-  # by any member of staff who is also a patient here - which is the
-  # ordinary case rather than the exception.
-  - id: access_own_patient_records
-    display_name: "Access Own Patient Records"
-
-  # Reading a record you were invited to, rather than one you treat. The
-  # invite writes an ExternalPatientAccess row naming *which* patient;
-  # this names what the holder may do with it.
-  - id: access_granted_patient_records
-    display_name: "Access Granted Patient Records"
-
-  # Reading the records of patients you are treating, scoped by a shared
-  # organisation. Deliberately not the patient's own competency: for
-  # eighteen staff professions this meant a caseload, and for `patient`
-  # it meant one record, which is two permissions under one id.
-  - id: access_patient_records
-    display_name: "Access Patient Records"
-
-  - id: modify_patient_records
-    display_name: "Modify Patient Records"
-
-  - id: approve_clinical_letters
-    display_name: "Approve Clinical Letters"
-
-  # ==========================================================================
-  # SPECIALTY-SPECIFIC COMPETENCIES
-  # ==========================================================================
-
-  - id: manage_diabetes
+  - id: clinical_manage_diabetes
     display_name: "Manage Diabetes (Specialty)"
     assessable: true
 
-  - id: manage_anticoagulation
+  - id: clinical_manage_anticoagulation
     display_name: "Manage Anticoagulation Therapy"
     assessable: true
 
-  - id: interpret_ecg
+  - id: clinical_interpret_ecg
     display_name: "Interpret ECGs Independently"
     assessable: true

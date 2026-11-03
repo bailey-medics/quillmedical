@@ -75,9 +75,11 @@ mechanisms decide what a holder is offered, and only the first refuses
 anything.
 
 - **`assessable: true` on a competency** in `shared/competency-definitions/`
-  says somebody could watch it being done and sign it off. It is opt-in,
-  so a permission such as `manage_users` stays out unless somebody decides
-  otherwise. `ASSESSABLE_COMPETENCY_IDS` holds the active ones, and
+  says somebody could watch it being done and sign it off. Every
+  framework's competency carries it, and no permission does: a permission
+  such as `manage_users` or `perform_cannulation` is checked by the code,
+  while what a passport records is a framework's own copy, such as
+  `clinical_perform_cannulation`. `ASSESSABLE_COMPETENCY_IDS` holds the active ones, and
   `definitions.assessable_ref` refuses anything else when a record is
   created: a sign-off request, logbook entry, certificate, reflection or
   CPD entry. Amending an existing record keeps the looser check, and
@@ -100,9 +102,17 @@ anything.
   another: two frameworks' levels for the same act are both kept. A
   revised document is a new framework in a new file, so a sign-off
   keeps the words it was signed under.
-- **A framework written from a paper form is `passport_only`.** Its
-  entries are recorded in a passport and refused wherever a competency
-  is granted, so a form's statements never appear among the permissions.
+- **Every framework's competencies are recorded in a passport and granted
+  to nobody.** Anybody may publish a framework, Quill included: its
+  "General clinical skills" is `clinical.yaml`. Every entry is assessable
+  and starts with its framework's id and an underscore, which the loader
+  checks, so the same procedure under two frameworks is two competencies.
+  `validate_competency_ids` refuses them wherever a competency is granted,
+  so a framework's statements never appear among the permissions. Until
+  2 November 2026 a `passport_only` flag marked the frameworks this held
+  for; it now holds for all of them, so the flag has gone. The
+  permissions of the same names as Quill's skills are in
+  `clinical-permissions.yaml`.
 - **An organisation's lead frameworks** order the list a holder chooses
   from, on the create step and the Settings card. An admin with
   `manage_users` names them on the organisation's features page, and

@@ -176,7 +176,8 @@ class TestReflections:
             written_on=date(2026, 3, 14),
             competencies=[
                 schemas.CompetencyRef(
-                    id="perform_advanced_airway", name="Advanced airway"
+                    id="clinical_perform_advanced_airway",
+                    name="Advanced airway",
                 )
             ],
         )

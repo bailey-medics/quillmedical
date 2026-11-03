@@ -20,6 +20,13 @@ Each entry has four lines:
 The plan behind this file is
 [readable pull request descriptions](../plans/2026-10-31-readable-pull-request-descriptions-plan.md).
 
+## #2326 Passport: framework competencies are never granted
+
+- **Scores** - 68, 68, 70. Attempt 3 posted.
+- **Rules** - `.claude/skills/crpd/SKILL.md` as of #2322.
+- **Verdict** - not yet given.
+- **Changed** - nothing yet.
+
 ## #2325 Passport: record and catalogue plan
 
 - **Scores** - 71. Attempt 1 posted.

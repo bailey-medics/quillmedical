@@ -20,7 +20,7 @@ describe("scopesFor", () => {
   });
 
   it("gives nothing for a competency assessed as a whole", () => {
-    expect(scopesFor("perform_cannulation")).toEqual([]);
+    expect(scopesFor("clinical_perform_cannulation")).toEqual([]);
   });
 
   it("gives nothing for an unknown competency", () => {

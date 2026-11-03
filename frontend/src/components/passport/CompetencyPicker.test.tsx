@@ -111,7 +111,7 @@ describe("CompetencyPicker", () => {
       await user.click(await screen.findByText("Insert Intravenous Cannula"));
 
       // Mantine passes the chosen option as a second argument.
-      expect(onChange.mock.calls[0][0]).toBe("perform_cannulation");
+      expect(onChange.mock.calls[0][0]).toBe("clinical_perform_cannulation");
     });
 
     it("ignores a framework Quill no longer holds", () => {

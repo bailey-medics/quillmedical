@@ -14,7 +14,7 @@ describe("levelsFor", () => {
   });
 
   it("gives nothing for a competency with no scale", () => {
-    expect(levelsFor("perform_cannulation")).toEqual([]);
+    expect(levelsFor("clinical_perform_cannulation")).toEqual([]);
   });
 
   it("gives nothing for an unknown competency", () => {

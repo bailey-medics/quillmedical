@@ -1,0 +1,173 @@
+# shared/competency-definitions/clinical-permissions.yaml
+#
+# CLINICAL PERMISSIONS FOR QUILL MEDICAL
+#
+# Permissions describing what a person may do in the care of a patient in
+# Quill: prescribing, procedures, certification, patient management,
+# consent, imaging, patient records and specialty practice. The
+# permissions that govern Quill itself live beside this file in
+# clinical-admin.yaml, teaching.yaml and passport.yaml.
+#
+# Every file in this directory is merged into one catalogue at load
+# time, so ids must be unique across the whole directory, not just
+# within a file. Which file an entry lives in carries no meaning to the
+# code - it is for the reader.
+#
+# Permissions are granted to users based on their training,
+# qualifications and organisational approval. A user holds what their
+# current user_competency rows say and nothing else: a base profession
+# seeds rows when it is given, and is not consulted afterwards. See
+# User.get_final_competencies() in backend/app/models.py.
+#
+# PERMISSIONS ARE CODE, NOT FRAMEWORK COMPETENCIES
+#
+# Nothing here is assessable, and nothing here is recorded in a clinician
+# passport. Until 2 November 2026 eighteen of these ids were also the
+# competencies of Quill's "General clinical skills" framework, so one id
+# was both a permission the code checks, such as
+# prescribe_controlled_schedule_2 in has_competency(), and a line a
+# passport records. The framework now lives in clinical.yaml under ids of
+# its own, each starting clinical_, so a passport sign-off can never be
+# mistaken for a permission. See
+# docs/docs/plans/2026-11-01-passport-record-and-catalogue-plan.md.
+
+competencies:
+  # ==========================================================================
+  # PRESCRIBING COMPETENCIES
+  # ==========================================================================
+
+  - id: prescribe_non_controlled
+    display_name: "Prescribe Non-Controlled Medications"
+
+  - id: prescribe_controlled_schedule_2
+    display_name: "Prescribe Schedule 2 Controlled Drugs"
+
+  - id: prescribe_controlled_schedule_3_4_5
+    display_name: "Prescribe Schedule 3/4/5 Controlled Drugs"
+
+  # ==========================================================================
+  # CERTIFICATION & DEATH COMPETENCIES
+  # ==========================================================================
+
+  - id: certify_death
+    display_name: "Certify Death"
+
+  - id: certify_cremation
+    display_name: "Certify Cremation (Cremation Form 4/5)"
+
+  - id: certify_fitness_to_work
+    display_name: "Certify Fitness to Work (Fit Notes)"
+
+  - id: certify_fitness_to_drive
+    display_name: "Certify Fitness to Drive"
+
+  # ==========================================================================
+  # CLINICAL PROCEDURES
+  # ==========================================================================
+
+  - id: perform_venepuncture
+    display_name: "Perform Venepuncture"
+
+  - id: perform_cannulation
+    display_name: "Insert Intravenous Cannula"
+
+  - id: perform_lumbar_puncture
+    display_name: "Perform Lumbar Puncture"
+
+  - id: perform_chest_drain
+    display_name: "Insert Chest Drain"
+
+  - id: perform_advanced_airway
+    display_name: "Perform Advanced Airway Management"
+
+  # ==========================================================================
+  # PATIENT MANAGEMENT
+  # ==========================================================================
+
+  - id: discharge_without_review
+    display_name: "Discharge Patient Without Senior Review"
+
+  - id: admit_patient
+    display_name: "Admit Patient to Hospital"
+
+  - id: refer_specialty
+    display_name: "Refer to Specialty Services"
+
+  # ==========================================================================
+  # CONSENT & MENTAL CAPACITY
+  # ==========================================================================
+
+  - id: take_informed_consent
+    display_name: "Take Informed Consent"
+
+  - id: assess_mental_capacity
+    display_name: "Assess Mental Capacity"
+
+  - id: apply_deprivation_of_liberty
+    display_name: "Apply Deprivation of Liberty Safeguards (DoLS)"
+
+  # ==========================================================================
+  # IMAGING & DIAGNOSTICS
+  # ==========================================================================
+
+  - id: request_plain_xray
+    display_name: "Request Plain X-rays"
+
+  - id: request_ct_scan
+    display_name: "Request CT Scans"
+
+  - id: request_mri_scan
+    display_name: "Request MRI Scans"
+
+  # ==========================================================================
+  # PATIENT RECORDS
+  # ==========================================================================
+
+  # Three routes reach a patient record, and each names what its holder
+  # may do rather than how the scope is decided. The scope comes from
+  # beside the competency every time: the account's own patient link, an
+  # ExternalPatientAccess grant, or a shared organisation.
+  #
+  #   access_own_patient_records     - your own record
+  #   access_granted_patient_records - someone else's, by invitation
+  #   access_patient_records         - your patients', by clinical role
+  #
+  # See docs/docs/plans/2026-09-09-platform-role-plan.md.
+
+  # Reading your own record, as the subject of it. Held by patients and
+  # by any member of staff who is also a patient here - which is the
+  # ordinary case rather than the exception.
+  - id: access_own_patient_records
+    display_name: "Access Own Patient Records"
+
+  # Reading a record you were invited to, rather than one you treat. The
+  # invite writes an ExternalPatientAccess row naming *which* patient;
+  # this names what the holder may do with it.
+  - id: access_granted_patient_records
+    display_name: "Access Granted Patient Records"
+
+  # Reading the records of patients you are treating, scoped by a shared
+  # organisation. Deliberately not the patient's own competency: for
+  # eighteen staff professions this meant a caseload, and for `patient`
+  # it meant one record, which is two permissions under one id.
+  - id: access_patient_records
+    display_name: "Access Patient Records"
+
+  - id: modify_patient_records
+    display_name: "Modify Patient Records"
+
+  - id: approve_clinical_letters
+    display_name: "Approve Clinical Letters"
+
+  # ==========================================================================
+  # SPECIALTY-SPECIFIC COMPETENCIES
+  # ==========================================================================
+
+  - id: manage_diabetes
+    display_name: "Manage Diabetes (Specialty)"
+
+  - id: manage_anticoagulation
+    display_name: "Manage Anticoagulation Therapy"
+
+  - id: interpret_ecg
+    display_name: "Interpret ECGs Independently"

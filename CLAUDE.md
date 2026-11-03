@@ -214,18 +214,32 @@ profession.
   takes the two lists, resolves them with `resolve_user_competencies`, and
   brings the rows into line.
 
-- **Catalogue**: `shared/competency-definitions/` - `clinical.yaml`,
-  `clinical-admin.yaml`, `admin.yaml`, `teaching.yaml`, `passport.yaml`,
-  `safety.yaml`, and one file for each passport framework. All merged into
+- **Catalogue**: `shared/competency-definitions/` -
+  `clinical-permissions.yaml`, `clinical-admin.yaml`, `admin.yaml`,
+  `teaching.yaml`, `passport.yaml`, `safety.yaml`, and one file for each
+  passport framework, `clinical.yaml` among them. All merged into
   one catalogue at load, so **ids must be unique across the directory**, not
   just within a file. Which file an entry lives in carries no meaning to
   access control; it is for the reader.
 - **Frameworks**: the one meaning a file does carry. A file that declares a
   `framework:` block is a passport framework, one published document as a
-  set of competencies, and its assessable entries are that framework's
-  items. A framework marked `passport_only` holds statements from a paper
-  form: `validate_competency_ids` refuses them wherever a competency is
-  granted, and they never appear in an admin picker.
+  set of competencies, and every entry in it is that framework's. Anybody
+  may publish one: a trust, a college, a national board, or Quill, whose
+  "General clinical skills" is `clinical.yaml`. Every entry is assessable
+  and its id starts with the framework's id and an underscore, so the same
+  procedure under two frameworks is two competencies. Quill never maps one
+  framework's competency onto another's.
+- **Permissions are code; framework competencies are content.** A
+  permission, such as `manage_users` or `prescribe_controlled_schedule_2`,
+  is named by the code in `has_competency` and `<RequireCompetency>`,
+  lives in a file that declares no framework, and is the only kind of
+  competency that lets anybody do anything in the app. A framework's
+  competency is recorded in a passport and granted to nobody:
+  `validate_competency_ids` refuses it wherever a competency is granted,
+  the loader refuses it on any `may_grant` list, and it never appears in
+  an admin picker. No flag says so, because every framework is the same.
+  A sign-off never unlocks an ability by itself. See
+  `docs/docs/plans/2026-11-01-passport-record-and-catalogue-plan.md`.
 - **Professions**: `shared/base-professions.yaml` - `id`, `display_name`,
   `description`, `requires_clinical_services`, `base_competencies`
 - **Backend**: `backend/app/cbac/` - `has_competency("competency_id")` from

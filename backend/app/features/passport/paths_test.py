@@ -204,7 +204,9 @@ def test_every_path_is_relative() -> None:
         paths.GITIGNORE,
         paths.sign_off_file("2026-03-14-a-thing"),
         paths.certificate_file("2026-03-14-a-thing"),
-        paths.logbook_entry("perform_cannulation", "2026-03-14-143207"),
+        paths.logbook_entry(
+            "clinical_perform_cannulation", "2026-03-14-143207"
+        ),
         paths.reflection_file("2026-03-14-a-thing"),
         paths.cpd_entry(2026, "2026-03-14-143207"),
         paths.blob("ab12cd34" * 8),
