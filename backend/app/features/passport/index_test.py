@@ -145,8 +145,13 @@ def _sign_off(
     )
 
 
-def _file_sign_off(store: FakeStore, folder: str, record: SignOff) -> None:
-    store.put(paths.sign_off_file(folder), record)
+#: The framework folder these tests file records under. Any slug will do:
+#: the index finds a competency's folder by looking.
+FRAMEWORK = "a_framework"
+
+
+def _file_sign_off(store: FakeStore, sign_off: str, record: SignOff) -> None:
+    store.put(paths.sign_off_file(FRAMEWORK, sign_off), record)
 
 
 def _log(
@@ -158,7 +163,7 @@ def _log(
     also: list[str] | None = None,
 ) -> None:
     store.put(
-        paths.logbook_entry(competency_id, stem),
+        paths.logbook_entry(FRAMEWORK, competency_id, stem),
         LogbookEntry(
             performed_on=date(2026, 3, 12),
             scope=scope,
@@ -204,16 +209,22 @@ def test_sign_offs_are_grouped_by_competency_and_by_scope() -> None:
     whole = _sign_off(observed_on=date(2026, 1, 5))
     lung = _sign_off(SACT, observed_on=date(2026, 1, 6), scope=LUNG)
     breast = _sign_off(SACT, observed_on=date(2026, 1, 7), scope=BREAST)
-    _file_sign_off(store, "2026-01-05-perform-cannulation", whole)
-    _file_sign_off(store, "2026-01-06-prescribe-sact", lung)
-    _file_sign_off(store, "2026-01-07-prescribe-sact", breast)
+    _file_sign_off(
+        store, "perform_cannulation.2026-01-05-perform-cannulation", whole
+    )
+    _file_sign_off(store, "prescribe_sact.2026-01-06-prescribe-sact", lung)
+    _file_sign_off(store, "prescribe_sact.2026-01-07-prescribe-sact", breast)
 
     found = index._sign_offs(store, PASSPORT_ID)
 
     assert found == {
-        (CANNULATION, None): [("2026-01-05-perform-cannulation", whole)],
-        (SACT, "lung"): [("2026-01-06-prescribe-sact", lung)],
-        (SACT, "breast"): [("2026-01-07-prescribe-sact", breast)],
+        (CANNULATION, None): [
+            ("perform_cannulation.2026-01-05-perform-cannulation", whole)
+        ],
+        (SACT, "lung"): [("prescribe_sact.2026-01-06-prescribe-sact", lung)],
+        (SACT, "breast"): [
+            ("prescribe_sact.2026-01-07-prescribe-sact", breast)
+        ],
     }
 
 
@@ -221,28 +232,36 @@ def test_sign_offs_are_ordered_by_day_observed_not_folder_name() -> None:
     store = FakeStore()
     earlier = _sign_off(observed_on=date(2026, 1, 5))
     later = _sign_off(observed_on=date(2026, 2, 5))
-    _file_sign_off(store, "2026-01-01-zz-filed-first", later)
-    _file_sign_off(store, "2026-09-09-aa-filed-last", earlier)
+    _file_sign_off(
+        store, "perform_cannulation.2026-01-01-zz-filed-first", later
+    )
+    _file_sign_off(
+        store, "perform_cannulation.2026-09-09-aa-filed-last", earlier
+    )
 
     found = index._sign_offs(store, PASSPORT_ID)
 
     assert [name for name, _ in found[(CANNULATION, None)]] == [
-        "2026-09-09-aa-filed-last",
-        "2026-01-01-zz-filed-first",
+        "perform_cannulation.2026-09-09-aa-filed-last",
+        "perform_cannulation.2026-01-01-zz-filed-first",
     ]
 
 
 def test_sign_offs_observed_the_same_day_are_in_folder_order() -> None:
     store = FakeStore()
     record = _sign_off(observed_on=date(2026, 1, 5))
-    _file_sign_off(store, "2026-01-05-perform-cannulation-2", record)
-    _file_sign_off(store, "2026-01-05-perform-cannulation", record)
+    _file_sign_off(
+        store, "perform_cannulation.2026-01-05-perform-cannulation-2", record
+    )
+    _file_sign_off(
+        store, "perform_cannulation.2026-01-05-perform-cannulation", record
+    )
 
     found = index._sign_offs(store, PASSPORT_ID)
 
     assert [name for name, _ in found[(CANNULATION, None)]] == [
-        "2026-01-05-perform-cannulation",
-        "2026-01-05-perform-cannulation-2",
+        "perform_cannulation.2026-01-05-perform-cannulation",
+        "perform_cannulation.2026-01-05-perform-cannulation-2",
     ]
 
 
@@ -250,24 +269,36 @@ def test_a_sign_off_folder_holding_no_record_is_passed_over() -> None:
     """Somebody made the folder by hand: the rest is still rebuilt."""
     store = FakeStore()
     record = _sign_off(observed_on=date(2026, 1, 5))
-    _file_sign_off(store, "2026-01-05-perform-cannulation", record)
+    _file_sign_off(
+        store, "perform_cannulation.2026-01-05-perform-cannulation", record
+    )
     store.put(
-        paths.sign_off_reflection("2026-01-06-made-by-hand"), "Some notes.\n"
+        paths.sign_off_reflection(
+            FRAMEWORK, "perform_cannulation.2026-01-06-made-by-hand"
+        ),
+        "Some notes.\n",
     )
 
     found = index._sign_offs(store, PASSPORT_ID)
 
     assert found == {
-        (CANNULATION, None): [("2026-01-05-perform-cannulation", record)]
+        (CANNULATION, None): [
+            ("perform_cannulation.2026-01-05-perform-cannulation", record)
+        ]
     }
 
 
 @pytest.mark.parametrize(
     "stray",
     [
-        paths.SIGN_OFFS / "notes" / "sign-off.yaml",
-        paths.SIGN_OFFS / "Notes For Me" / "anything.txt",
-        paths.SIGN_OFFS / "readme.txt",
+        paths.sign_offs_dir("a_framework", "perform_cannulation")
+        / "notes"
+        / "sign-off.yaml",
+        paths.sign_offs_dir("a_framework", "perform_cannulation")
+        / "Notes For Me"
+        / "anything.txt",
+        paths.sign_offs_dir("a_framework", "perform_cannulation")
+        / "readme.txt",
     ],
 )
 def test_a_folder_or_file_with_a_name_of_its_own_is_passed_over(
@@ -276,13 +307,17 @@ def test_a_folder_or_file_with_a_name_of_its_own_is_passed_over(
     """Not a date and a slug, so made by hand: the rest is still rebuilt."""
     store = FakeStore()
     record = _sign_off(observed_on=date(2026, 1, 5))
-    _file_sign_off(store, "2026-01-05-perform-cannulation", record)
+    _file_sign_off(
+        store, "perform_cannulation.2026-01-05-perform-cannulation", record
+    )
     store.put(stray, "x\n")
 
     found = index._sign_offs(store, PASSPORT_ID)
 
     assert found == {
-        (CANNULATION, None): [("2026-01-05-perform-cannulation", record)]
+        (CANNULATION, None): [
+            ("perform_cannulation.2026-01-05-perform-cannulation", record)
+        ]
     }
 
 
@@ -290,7 +325,9 @@ def test_a_sign_off_that_cannot_be_read_is_not_quietly_skipped() -> None:
     """Skipping it would under-report what somebody is signed off for."""
     store = FakeStore()
     store.put(
-        paths.sign_off_file("2026-01-05-perform-cannulation"),
+        paths.sign_off_file(
+            FRAMEWORK, "perform_cannulation.2026-01-05-perform-cannulation"
+        ),
         "status: signed_off\n",
     )
 
@@ -384,7 +421,7 @@ def test_an_entry_naming_its_own_competency_again_is_counted_once() -> None:
 def test_a_logbook_entry_that_cannot_be_read_stops_the_count() -> None:
     store = FakeStore()
     store.put(
-        paths.logbook_entry(CANNULATION, "2026-03-12-090000"),
+        paths.logbook_entry(FRAMEWORK, CANNULATION, "2026-03-12-090000"),
         "- not\n- a mapping\n",
     )
 
@@ -576,7 +613,10 @@ def test_the_latest_sign_off_supplies_everything_an_entry_says() -> None:
 
     entry = index._entry(
         SACT,
-        [("2026-01-05-prescribe-sact", earlier), ("2026-02-05-sact", latest)],
+        [
+            ("prescribe_sact.2026-01-05-prescribe-sact", earlier),
+            ("2026-02-05-sact", latest),
+        ],
         12,
         ["2025-11-04-sact-passport"],
     )
@@ -593,7 +633,7 @@ def test_the_latest_sign_off_supplies_everything_an_entry_says() -> None:
         signed_off_by="Dr Ada Marsh",
         expires_on=date(2029, 2, 5),
         sign_off="2026-02-05-sact",
-        previous_sign_offs=["2026-01-05-prescribe-sact"],
+        previous_sign_offs=["prescribe_sact.2026-01-05-prescribe-sact"],
         logbook_entries=12,
         certificates=["2025-11-04-sact-passport"],
     )
@@ -606,7 +646,7 @@ def test_a_signed_entry_ignores_the_name_and_scope_given() -> None:
 
     entry = index._entry(
         SACT,
-        [("2026-01-05-prescribe-sact", record)],
+        [("prescribe_sact.2026-01-05-prescribe-sact", record)],
         0,
         [],
         name="As another entry had it",
@@ -640,14 +680,19 @@ def test_an_open_request_has_nobody_and_no_day_signed() -> None:
     record = _sign_off(observed_on=date(2026, 1, 5), requested_level=LEVEL_2)
 
     entry = index._entry(
-        CANNULATION, [("2026-01-05-perform-cannulation", record)], 0, []
+        CANNULATION,
+        [("perform_cannulation.2026-01-05-perform-cannulation", record)],
+        0,
+        [],
     )
 
     assert entry.status == "requested"
     assert entry.signed_on is None
     assert entry.signed_off_by is None
     assert entry.requested_level == LEVEL_2
-    assert entry.sign_off == "2026-01-05-perform-cannulation"
+    assert (
+        entry.sign_off == "perform_cannulation.2026-01-05-perform-cannulation"
+    )
 
 
 @pytest.mark.parametrize("latest_status", ["declined", "superseded"])
@@ -661,7 +706,7 @@ def test_status_is_the_latest_records_and_not_a_conclusion(
     entry = index._entry(
         CANNULATION,
         [
-            ("2026-01-05-perform-cannulation", signed),
+            ("perform_cannulation.2026-01-05-perform-cannulation", signed),
             ("2026-02-05-perform-cannulation", after),
         ],
         0,
@@ -698,7 +743,10 @@ def test_a_changed_level_carries_the_assessors_reason() -> None:
     )
 
     entry = index._entry(
-        CANNULATION, [("2026-01-05-perform-cannulation", record)], 0, []
+        CANNULATION,
+        [("perform_cannulation.2026-01-05-perform-cannulation", record)],
+        0,
+        [],
     )
 
     assert entry.level == LEVEL_2
@@ -728,7 +776,10 @@ def test_a_comment_is_not_a_reason_unless_the_level_changed(
     )
 
     entry = index._entry(
-        CANNULATION, [("2026-01-05-perform-cannulation", record)], 0, []
+        CANNULATION,
+        [("perform_cannulation.2026-01-05-perform-cannulation", record)],
+        0,
+        [],
     )
 
     assert entry.level_change_reason is None
@@ -834,7 +885,7 @@ def test_every_competency_with_any_evidence_gets_an_entry() -> None:
     store = FakeStore()
     _file_sign_off(
         store,
-        "2026-01-05-perform-cannulation",
+        "perform_cannulation.2026-01-05-perform-cannulation",
         _sign_off(observed_on=date(2026, 1, 5)),
     )
     _log(store, "perform_venepuncture", "2026-03-12-090000")
@@ -848,7 +899,10 @@ def test_every_competency_with_any_evidence_gets_an_entry() -> None:
         ("take_informed_consent", None),
     ]
     by_id = {entry.id: entry for entry in built.competencies}
-    assert by_id[CANNULATION].sign_off == "2026-01-05-perform-cannulation"
+    assert (
+        by_id[CANNULATION].sign_off
+        == "perform_cannulation.2026-01-05-perform-cannulation"
+    )
     assert by_id["perform_venepuncture"].logbook_entries == 1
     assert by_id["perform_venepuncture"].sign_off is None
     assert by_id["take_informed_consent"].certificates == [
@@ -880,7 +934,7 @@ def test_each_scope_has_an_entry_with_its_own_sign_offs_and_count() -> None:
     store = FakeStore()
     _file_sign_off(
         store,
-        "2026-01-05-prescribe-sact",
+        "prescribe_sact.2026-01-05-prescribe-sact",
         _sign_off(
             SACT,
             observed_on=date(2026, 1, 5),
@@ -891,7 +945,7 @@ def test_each_scope_has_an_entry_with_its_own_sign_offs_and_count() -> None:
     )
     _file_sign_off(
         store,
-        "2026-02-05-prescribe-sact",
+        "prescribe_sact.2026-02-05-prescribe-sact",
         _sign_off(SACT, observed_on=date(2026, 2, 5), scope=BREAST),
     )
     _log(store, SACT, "2026-03-12-110000", scope=LUNG)
@@ -905,14 +959,14 @@ def test_each_scope_has_an_entry_with_its_own_sign_offs_and_count() -> None:
         LEVEL_3,
         2,
     )
-    assert lung.sign_off == "2026-01-05-prescribe-sact"
+    assert lung.sign_off == "prescribe_sact.2026-01-05-prescribe-sact"
     assert lung.previous_sign_offs == []
     assert (breast.status, breast.level, breast.logbook_entries) == (
         "requested",
         None,
         0,
     )
-    assert breast.sign_off == "2026-02-05-prescribe-sact"
+    assert breast.sign_off == "prescribe_sact.2026-02-05-prescribe-sact"
 
 
 def test_a_scope_with_only_a_logbook_borrows_the_signed_name() -> None:
@@ -920,7 +974,7 @@ def test_a_scope_with_only_a_logbook_borrows_the_signed_name() -> None:
     store = FakeStore()
     _file_sign_off(
         store,
-        "2026-01-05-prescribe-sact",
+        "prescribe_sact.2026-01-05-prescribe-sact",
         _sign_off(
             SACT,
             observed_on=date(2026, 1, 5),
@@ -976,7 +1030,10 @@ def test_an_unreadable_sign_off_stops_the_whole_rebuild() -> None:
     store = FakeStore()
     _log(store, CANNULATION, "2026-03-12-090000")
     store.put(
-        paths.sign_off_file("2026-01-05-perform-cannulation"), "nonsense\n"
+        paths.sign_off_file(
+            FRAMEWORK, "perform_cannulation.2026-01-05-perform-cannulation"
+        ),
+        "nonsense\n",
     )
 
     with pytest.raises(RecordFormatError):
@@ -998,7 +1055,7 @@ def test_the_rendered_index_reads_back_as_the_index_built() -> None:
     store = FakeStore()
     _file_sign_off(
         store,
-        "2026-01-05-prescribe-sact",
+        "prescribe_sact.2026-01-05-prescribe-sact",
         _sign_off(
             SACT,
             observed_on=date(2026, 1, 5),

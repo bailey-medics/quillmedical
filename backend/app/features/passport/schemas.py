@@ -43,7 +43,12 @@ from pydantic import (
 #: The current schema version written into every new passport. Bumped
 #: only when a change would stop an older reader from understanding a
 #: file - adding an optional field does not qualify.
-SCHEMA_VERSION = 1
+#:
+#: 2 since 2 November 2026: sign-offs and logbooks moved under
+#: ``frameworks/<framework>/<competency>/``, and every sign-off carries
+#: ``framework_version``. No real passport existed at 1, so none was
+#: moved, and a passport at 1 is refused when read rather than misread.
+SCHEMA_VERSION = 2
 
 #: What a sign-off can be. ``requested`` exists because the record is
 #: written when the holder asks, not when the assessor signs, so the

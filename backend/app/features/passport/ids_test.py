@@ -290,7 +290,7 @@ class TestRecordDirName:
 
         name = ids.record_dir_name(date(2026, 3, 14), "Perform bronchoscopy")
 
-        assert paths.sign_off_dir(name).name == name
+        assert paths.certificate_dir(name).name == name
 
     def test_a_label_with_no_usable_words_still_yields_a_name(self) -> None:
         from app.features.passport import paths
@@ -298,4 +298,38 @@ class TestRecordDirName:
         name = ids.record_dir_name(date(2026, 3, 14), "!!!")
 
         assert name == "2026-03-14-untitled"
-        assert paths.sign_off_dir(name).name == name
+        assert paths.certificate_dir(name).name == name
+
+
+class TestSignOffFolderName:
+    def test_a_competency_assessed_whole_is_named_by_its_date(self) -> None:
+        """Its parent folder already names the competency."""
+        assert ids.sign_off_folder_name(date(2026, 3, 14), None) == (
+            "2026-03-14"
+        )
+
+    def test_a_scoped_sign_off_names_its_scope(self) -> None:
+        assert (
+            ids.sign_off_folder_name(
+                date(2026, 4, 2), "upper_gastrointestinal"
+            )
+            == "2026-04-02-upper-gastrointestinal"
+        )
+
+    def test_a_second_on_the_same_day_is_numbered(self) -> None:
+        assert (
+            ids.sign_off_folder_name(date(2026, 4, 2), "lung", suffix=2)
+            == "2026-04-02-lung-2"
+        )
+
+    def test_the_result_is_accepted_by_the_paths_module(self) -> None:
+        from app.features.passport import paths
+
+        folder = ids.sign_off_folder_name(date(2026, 4, 2), "lung")
+        sign_off = paths.sign_off_id(
+            "uk_sact_board_2023_prescribe_sact", folder
+        )
+
+        assert (
+            paths.sign_off_dir("uk_sact_board_2023", sign_off).name == folder
+        )

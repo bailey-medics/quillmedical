@@ -134,6 +134,7 @@ from . import (
     export,
     frameworks,
     ids,
+    layout,
     paths,
     pdf,
     reconcile,
@@ -1167,8 +1168,11 @@ def get_logbook_confirmation(
             LogbookEntry,
             store.read(
                 passport.id,
-                paths.logbook_entry(
-                    request_row.competency_id, request_row.entry_stem
+                layout.logbook_entry(
+                    store,
+                    passport.id,
+                    request_row.competency_id,
+                    request_row.entry_stem,
                 ),
             ),
         )
@@ -1691,14 +1695,9 @@ def list_sign_offs(
 
     found: list[tuple[str, SignOff]] = []
 
-    for folder in store.list_dir(row.id, paths.SIGN_OFFS):
+    for name in layout.sign_off_ids(store, row.id):
         try:
-            found.append(
-                (
-                    folder.name,
-                    service.read_sign_off(store, row.id, folder.name),
-                )
-            )
+            found.append((name, service.read_sign_off(store, row.id, name)))
         except PassportNotFoundError:
             # A folder with no sign-off.yaml is not a sign-off, as the
             # index treats it too.
@@ -2905,8 +2904,7 @@ def get_whole_logbook(
     groups: list[LogbookOut] = []
     total = 0
 
-    for directory in store.list_dir(row.id, paths.LOGBOOK):
-        competency_id = directory.name
+    for competency_id, directory in layout.logbook_dirs(store, row.id):
         entries: list[LogbookEntryOut] = []
 
         for path in store.list_dir(row.id, directory):
@@ -2960,7 +2958,16 @@ def get_logbook(
 
     entries: list[LogbookEntryOut] = []
 
-    for path in store.list_dir(row.id, paths.logbook_dir(competency_id)):
+    try:
+        listing = store.list_dir(
+            row.id, layout.logbook_dir(store, row.id, competency_id)
+        )
+    except paths.PassportPathError:
+        # An id that is malformed, or belongs to no framework, has no
+        # logbook: nothing could ever have been filed against it.
+        listing = []
+
+    for path in listing:
         raw = store.read(row.id, path)
         entry = from_yaml(LogbookEntry, raw)
         entries.append(
@@ -3001,7 +3008,10 @@ def amend_logbook_entry(
     try:
         existing = from_yaml(
             LogbookEntry,
-            store.read(row.id, paths.logbook_entry(competency_id, stem)),
+            store.read(
+                row.id,
+                layout.logbook_entry(store, row.id, competency_id, stem),
+            ),
         )
     except PassportNotFoundError, paths.PassportPathError:
         raise HTTPException(404, "Logbook entry not found") from None
