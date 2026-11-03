@@ -338,15 +338,15 @@ delegate finds their site by typing in its lead's email address.
 
 All models live in `backend/app/features/teaching/models.py`.
 
-| Model                   | Table                      | Purpose                                                                       |
-| ----------------------- | -------------------------- | ----------------------------------------------------------------------------- |
-| `QuestionBankConfig`    | `question_bank_configs`    | Cached config from YAML - one row per bank+version+org                        |
-| `QuestionBankItem`      | `question_bank_items`      | Individual questions - images (JSON), metadata, status (`draft`/`published`)  |
-| `Assessment`            | `assessments`              | One candidate attempt - tracks time limit, completion, score breakdown        |
-| `AssessmentAnswer`      | `assessment_answers`       | One answer within an assessment - selected option, correctness, resolved tags |
-| `TeachingOrgSettings`   | `teaching_org_settings`    | Per-org settings (coordinator email, institution name)                        |
-| `QuestionBankOrgStatus` | `question_bank_org_status` | Per-org bank settings (is_live, site registration, coordinator email)         |
-| `QuestionBankSync`      | `question_bank_syncs`      | Audit trail for sync operations (status, items created/updated, errors)       |
+| Model                   | Table                      | Purpose                                                                               |
+| ----------------------- | -------------------------- | ------------------------------------------------------------------------------------- |
+| `QuestionBankConfig`    | `question_bank_configs`    | Cached config from YAML - one row per bank+version+org                                |
+| `QuestionBankItem`      | `question_bank_items`      | Individual questions - images (JSON), metadata, status (`draft`/`published`)          |
+| `Assessment`            | `assessments`              | One candidate attempt - tracks time limit, completion, score breakdown                |
+| `AssessmentAnswer`      | `assessment_answers`       | One answer within an assessment - selected option, correctness, resolved tags         |
+| `TeachingOrgSettings`   | `teaching_org_settings`    | Per-org settings (coordinator email, institution name)                                |
+| `QuestionBankOrgStatus` | `question_bank_org_status` | Per-org bank settings (is_live, site registration, coordinator email, version served) |
+| `QuestionBankSync`      | `question_bank_syncs`      | Audit trail for sync operations (status, items created/updated, errors)               |
 
 ---
 
