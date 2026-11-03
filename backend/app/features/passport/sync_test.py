@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
 
 import pytest
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.features.passport import sync
 from app.features.passport.models import (
     PassportFrameworkCompetency,
     PassportFrameworkScope,
@@ -15,8 +17,12 @@ from app.features.passport.models import (
     PassportFrameworkVersion,
 )
 from app.features.passport.sync import (
+    FrameworkSyncError,
+    read_repositories,
+    read_repository_versions,
     sync_framework_versions,
     sync_frameworks,
+    sync_from_repositories,
     sync_version_texts,
 )
 
@@ -426,3 +432,149 @@ def test_versions_already_stored_are_left_alone(
 
     assert again.succeeded
     assert again.versions_written == 0
+
+
+# --- Reading the framework repositories ----------------------------------------
+
+
+def _git(repo: Path, *args: str) -> None:
+    subprocess.run(
+        ["git", *args], cwd=repo, capture_output=True, text=True, check=True
+    )
+
+
+def _repository(tmp_path: Path, name: str = "origin") -> Path:
+    """An empty repository on main, to commit framework files into."""
+    repo = tmp_path / name
+    repo.mkdir(parents=True)
+    _git(repo, "init", "--initial-branch=main")
+    _git(repo, "config", "user.email", "test@example.com")
+    _git(repo, "config", "user.name", "Test")
+
+    return repo
+
+
+def _commit(repo: Path, text: str, name: str = "sheet") -> None:
+    """Commit one framework file on main, as a merge would leave it."""
+    folder = repo / "frameworks"
+    folder.mkdir(exist_ok=True)
+    (folder / f"{name}.yaml").write_text(text)
+    _git(repo, "add", ".")
+    _git(repo, "commit", "-m", "A change")
+
+
+@pytest.fixture
+def local_clones(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
+    """Let the sync clone local repositories, named owner/name under here."""
+    root = tmp_path / "github"
+    root.mkdir()
+    monkeypatch.setattr(sync, "_CLONE_PROTOCOL", "file")
+    monkeypatch.setattr(sync, "_repository_url", lambda name: str(root / name))
+
+    return root
+
+
+def test_every_version_is_read_from_main_s_history(
+    local_clones: Path, tmp_path: Path
+) -> None:
+    repo = _repository(local_clones / "owner", "sheet-framework")
+    _commit(repo, _SHEET.format(version=1, words="Refer a patient"))
+    _commit(repo, _SHEET.format(version=2, words="Refer two patients"))
+    # A description changed alone keeps its version, so it is not read.
+    _commit(
+        repo,
+        _SHEET.format(version=2, words="Refer two patients").replace(
+            "Pilot edition.", "Second edition."
+        ),
+    )
+
+    versions = read_repository_versions(
+        "owner/sheet-framework", {"sheet"}, tmp_path / "clone"
+    )
+
+    assert sorted(versions["sheet"]) == [1, 2]
+    assert "Refer two patients" in versions["sheet"][2]
+    assert "Pilot edition." in versions["sheet"][2]
+
+
+def test_a_framework_the_repository_may_not_publish_is_refused(
+    local_clones: Path, tmp_path: Path
+) -> None:
+    """One publisher must not add a version to another's framework."""
+    repo = _repository(local_clones / "owner", "other-framework")
+    _commit(repo, _SHEET.format(version=1, words="Refer a patient"))
+
+    with pytest.raises(FrameworkSyncError, match="may publish only other"):
+        read_repository_versions(
+            "owner/other-framework", {"other"}, tmp_path / "clone"
+        )
+
+
+def test_a_repository_with_no_main_yet_holds_nothing(
+    local_clones: Path, tmp_path: Path
+) -> None:
+    _repository(local_clones / "owner", "empty-framework")
+
+    versions = read_repository_versions(
+        "owner/empty-framework", {"sheet"}, tmp_path / "clone"
+    )
+
+    assert versions == {}
+
+
+def test_a_framework_file_too_large_is_refused_before_it_is_read(
+    local_clones: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(sync, "MAX_FRAMEWORK_FILE_BYTES", 10)
+    repo = _repository(local_clones / "owner", "big-framework")
+    _commit(repo, _SHEET.format(version=1, words="Refer a patient"))
+
+    with pytest.raises(FrameworkSyncError, match="larger than 10 bytes"):
+        read_repository_versions(
+            "owner/big-framework", {"sheet"}, tmp_path / "clone"
+        )
+
+
+def test_a_repository_not_named_owner_slash_name_is_refused(
+    tmp_path: Path,
+) -> None:
+    """So a setting cannot point the clone at a path or another host."""
+    with pytest.raises(FrameworkSyncError, match="not a repository named"):
+        read_repository_versions("../etc", {"sheet"}, tmp_path / "clone")
+
+
+def test_only_https_may_be_cloned(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A local path is a file clone, which the sync job never allows."""
+    local = _repository(tmp_path / "owner", "sheet-framework")
+    _commit(local, _SHEET.format(version=1, words="Refer a patient"))
+    monkeypatch.setattr(sync, "_repository_url", lambda name: str(local))
+
+    with pytest.raises(FrameworkSyncError, match="git clone failed"):
+        sync._clone("owner/sheet-framework", tmp_path / "clone")
+
+
+def test_one_framework_paired_with_two_repositories_is_refused(
+    tmp_path: Path,
+) -> None:
+    with pytest.raises(FrameworkSyncError, match="paired with both"):
+        read_repositories(
+            {"owner/a-framework": ["sheet"], "owner/b-framework": ["sheet"]},
+            tmp_path,
+        )
+
+
+def test_the_repository_sync_stores_every_version_it_read(
+    db_session: Session, local_clones: Path
+) -> None:
+    repo = _repository(local_clones / "owner", "sheet-framework")
+    _commit(repo, _SHEET.format(version=1, words="Refer a patient"))
+    _commit(repo, _SHEET.format(version=2, words="Refer two patients"))
+
+    result = sync_from_repositories(
+        db_session, {"owner/sheet-framework": ["sheet"]}
+    )
+
+    assert result.succeeded
+    assert result.versions_written == 2

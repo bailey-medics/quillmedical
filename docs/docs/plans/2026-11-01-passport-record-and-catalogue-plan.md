@@ -519,7 +519,7 @@ still in this repository, so nothing changes for anybody until it works.
         repository needs all four set before its first merge.
       - **`run-sync-job.sh` takes the job's name**, defaulting to the
         teaching one, so both pipelines share it.
-- [ ] **A framework sync job and somewhere to deploy to**, in `infra/`,
+- [x] **A framework sync job and somewhere to deploy to**, in `infra/`,
       copying teaching's. The teaching pipeline signs in as
       `content_ci_service_account` (`infra/environments/app/terraform.tfvars`),
       writes into `quill-images-app`, and starts the `teaching-sync` Cloud
@@ -531,6 +531,18 @@ still in this repository, so nothing changes for anybody until it works.
       with an override: the role that allows overrides allows any action,
       `create-superadmin` among them. See
       `docs/docs/plans/2026-10-16-teaching-sync-without-a-github-secret-plan.md`.
+      Built on 3 November 2026 as `quill-framework-sync-app`, running the
+      `sync-frameworks` action in `backend/scripts/admin_cli.py`, which
+      copies `frameworks/` from the bucket and calls
+      `sync_framework_versions`. The versions share the teaching bucket,
+      `quill-images-app`, under `frameworks/`: the content account may
+      already write it, and the admin identity already reads it, so no new
+      grant on the bucket was needed. Each framework repository's
+      `GCP_FRAMEWORK_GCS_BUCKET` secret is that bucket's name.
+      `deploy.yml` points the job at each build through
+      `point-job-at-build.sh`, which skips the job while it does not exist
+      yet, because Terraform makes it in a workflow that runs beside the
+      deploy.
 - [ ] **Protect them in Terraform**, beside `infra/github/teaching_rulesets.tf`
       and the repository list in `infra/environments/app/terraform.tfvars`:
       the same rules, the same required checks, and no stacks, so each

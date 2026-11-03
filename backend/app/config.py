@@ -240,6 +240,14 @@ class Settings(BaseSettings):
         None,
         description="GCS bucket for teaching question bank images",
     )
+    FRAMEWORK_REPOSITORIES: dict[str, list[str]] = Field(
+        default_factory=dict,
+        description=(
+            "The framework repositories the framework sync job reads, as "
+            "JSON: each owner/name on GitHub, with the framework ids it "
+            "may publish"
+        ),
+    )
     TEACHING_IMAGES_BASE_URL: str | None = Field(
         None,
         description="Override for dev: local file serving base URL",

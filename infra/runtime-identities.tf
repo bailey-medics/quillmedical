@@ -220,6 +220,22 @@ resource "google_cloud_run_v2_job_iam_member" "content_ci_runs_teaching_sync" {
   member   = "serviceAccount:${var.content_ci_service_account}"
 }
 
+# The framework pipeline may start the framework sync job and watch it
+# finish, and nothing else, for the reasons given for the teaching sync
+# job above.
+resource "google_cloud_run_v2_job_iam_member" "content_ci_runs_framework_sync" {
+  for_each = local.is_teaching_product && var.content_ci_service_account != "" ? toset([
+    "roles/run.invoker",
+    "roles/run.viewer",
+  ]) : toset([])
+
+  project  = var.project_id
+  location = var.region
+  name     = module.cloud_run_framework_sync_job[0].job_name
+  role     = each.value
+  member   = "serviceAccount:${var.content_ci_service_account}"
+}
+
 # The admin job's `delete-passport` action reads a test holder's passport,
 # copies it to the archive, then removes it. Object admin on both, because
 # it creates in one and deletes in the other. It acts only on holders named
