@@ -126,6 +126,7 @@ def _sign_off(
     return SignOff(
         id=f"{observed_on.isoformat()}-{competency_id}",
         competency=CompetencyRef(id=competency_id, name=name),
+        framework_version=1,
         kind="initial",
         status=status,
         level=level,

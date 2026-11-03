@@ -25,11 +25,24 @@
 # against it still opens. Rewording one is allowed only where the meaning
 # is unchanged; a change of meaning is a new id.
 
+# VERSION
+#
+# `version` is a whole number Quill bumps by exactly one with every change
+# to this file except its comments, its spacing and `description`: a
+# competency added, retired, reworded or moved, a level or scope changed,
+# or the framework's name, publisher or specialties. A typo fix counts,
+# because no check can tell a typo from a change of meaning. Every
+# sign-off records the version it was given under, as
+# `framework_version`. The publisher's own edition goes in `description`,
+# never in a field of its own. See
+# docs/docs/plans/2026-11-01-passport-record-and-catalogue-plan.md.
+
 framework:
   id: clinical
   name: "General clinical skills"
   publisher: "Quill Medical"
-  version: "2026"
+  version: 1
+  description: "Written by Quill Medical in 2026."
   specialties: []
 
 competencies:

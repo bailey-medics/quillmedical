@@ -166,7 +166,7 @@ attempt records the version it was started on (`bank_version`), and
 when a live bank's questions change without the version going up by one.
 Frameworks copy that shape, with the same word: `version`.
 
-- [ ] **Make `version` the number Quill bumps, and move the publisher's
+- [x] **Make `version` the number Quill bumps, and move the publisher's
       edition into a `description` field.** Today each framework block's
       `version:` holds the publisher's label for the edition, "Pilot" or
       "November 2023". Two things called version is how this plan first
@@ -175,18 +175,25 @@ Frameworks copy that shape, with the same word: `version`.
       "Pilot edition" or "Published November 2023", and `version:` becomes
       a whole number: 1, 2, 3. Agreed with the product owner on 2 November
       2026. Touches every framework file, the framework model in the loader,
-      the generated types and anything that shows the old label.
-- [ ] **Set the versions already made.** The Gloucestershire record went
+      the generated types and anything that shows the old label. Built so:
+      the framework pickers now show a framework's name and publisher
+      only, since `description` is shown to nobody. The framework list
+      route, `GET /api/passport/frameworks`, keeps its `version` field as
+      text holding the old label, read from `description`, because
+      changing its type would break an open tab; nothing reads it, and a
+      later deploy removes it. `version` is a strict whole number, so a
+      quoted `"2"` is refused.
+- [x] **Set the versions already made.** The Gloucestershire record went
       from seven competencies to fifteen, and was renamed, in #2321, so it
       is version 2. Every other framework starts at version 1.
-- [ ] **A new version goes live when it merges.** No admin step and no
+- [x] **A new version goes live when it merges.** No admin step and no
       per-organisation pointer: the framework file deploys with the code,
       as it does today.
-- [ ] **No draft status.** Teaching modules have one, at which the version
+- [x] **No draft status.** Teaching modules have one, at which the version
       stays 1 and anything may change. Frameworks do not: a framework is
       offered as soon as it merges, and every change after that bumps the
       version. Agreed with the product owner on 2 November 2026.
-- [ ] **Record the version on every sign-off**, as `framework_version` in
+- [x] **Record the version on every sign-off**, as `framework_version` in
       `SignOff` in `backend/app/features/passport/schemas.py`, beside
       `competency`. It is a copy of the framework's `version` on the day the
       sign-off is written, and never changes after, as an attempt's
@@ -195,8 +202,12 @@ Frameworks copy that shape, with the same word: `version`.
       bare `version` would read as the sign-off's own. A sign-off stores no
       framework id, and needs none: after Phase 2 the competency's prefix
       names its framework. With no real passports, the field is required
-      from the start, and the seed and fixtures are written with it.
-- [ ] **Mark which version a competency left in**, as `retired_in_version`
+      from the start, and the seed and fixtures are written with it. It
+      counts towards the content hash, in `CONTRIBUTING` in
+      `backend/app/features/passport/hashing.py`, since the same words
+      under two versions are two claims; no signed record existed whose
+      fingerprint that could change.
+- [x] **Mark which version a competency left in**, as `retired_in_version`
       on an entry beside `retired_on`, so the page can say "Not in this
       framework since version 3". A competency removed from the current
       version is retired, never deleted.

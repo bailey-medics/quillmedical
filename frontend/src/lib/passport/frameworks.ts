@@ -26,7 +26,6 @@ export interface FrameworkOption {
   id: string;
   name: string;
   publisher: string;
-  version: string;
   /** The specialties it is filed under. Empty where it belongs to all. */
   specialties: string[];
 }
@@ -39,11 +38,10 @@ export interface SpecialtyFilterOption {
 
 /** Every framework, alphabetically by name. */
 export const FRAMEWORK_OPTIONS: FrameworkOption[] = ALL_FRAMEWORKS.map(
-  ({ id, name, publisher, version, specialties }) => ({
+  ({ id, name, publisher, specialties }) => ({
     id,
     name,
     publisher,
-    version,
     specialties,
   }),
 ).sort((a, b) => a.name.localeCompare(b.name));

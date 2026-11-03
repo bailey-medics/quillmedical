@@ -899,6 +899,16 @@ class TestTheAssessorDecidesTheLevel:
         assert record.requested_level is not None
         assert record.requested_level.id == "observation_only"
 
+    def test_the_request_records_its_frameworks_version(
+        self, passport: store.LocalPassportStore, holder: commits.Actor
+    ) -> None:
+        """The version the stored words came from, never changed after."""
+        name = _request(passport, holder)
+
+        record = service.read_sign_off(passport, PASSPORT_ID, name)
+
+        assert record.framework_version == 1
+
     def test_signing_without_naming_a_level_signs_the_one_asked_for(
         self,
         passport: store.LocalPassportStore,

@@ -59,17 +59,18 @@ declare module "@/generated/competencies.json" {
 declare module "@/generated/frameworks.json" {
   // One per definition file that declares a `framework:` block: a
   // published document a clinician works to. Its items are the
-  // assessable competencies carrying its id.
+  // competencies carrying its id, recorded in a passport and granted to
+  // nobody.
   interface Framework {
     id: string;
     name: string;
     publisher: string;
-    version: string;
+    // Quill's count of changes to the framework, from 1.
+    version: number;
+    // Shown to nobody: the publisher's own edition label, and the like.
+    description: string;
     // From specialties.json. Empty where it belongs to every specialty.
     specialties: string[];
-    // True where its entries exist only to be recorded in a passport,
-    // and are granted to nobody.
-    passport_only?: boolean;
   }
 
   const data: {

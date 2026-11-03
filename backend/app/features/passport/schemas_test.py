@@ -47,6 +47,7 @@ def _signed_off(**overrides: object) -> schemas.SignOff:
         "competency": schemas.CompetencyRef(
             id="perform_bronchoscopy", name="Perform bronchoscopy"
         ),
+        "framework_version": 1,
         "kind": "initial",
         "status": "signed_off",
         "observed_on": date(2026, 3, 12),
@@ -255,12 +256,26 @@ class TestSignedOffRecords:
             competency=schemas.CompetencyRef(
                 id="perform_bronchoscopy", name="Perform bronchoscopy"
             ),
+            framework_version=1,
             kind="initial",
             status="requested",
             observed_on=date(2026, 3, 12),
         )
 
         assert record.signed_off_by is None
+
+    def test_a_record_needs_its_framework_version(self) -> None:
+        """No real passport was written before the field existed."""
+        with pytest.raises(ValidationError, match="framework_version"):
+            schemas.SignOff(  # type: ignore[call-arg]
+                id="20260314T143207.881Z-" + "a" * 32,
+                competency=schemas.CompetencyRef(
+                    id="perform_bronchoscopy", name="Perform bronchoscopy"
+                ),
+                kind="initial",
+                status="requested",
+                observed_on=date(2026, 3, 12),
+            )
 
     def test_refuses_a_naive_signed_at(self) -> None:
         with pytest.raises(ValidationError, match="timezone-aware"):

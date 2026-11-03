@@ -30,6 +30,7 @@ from app.cbac.competencies import (
     ASSESSABLE_COMPETENCY_IDS,
     CompetencyEntry,
     get_competency_details,
+    get_framework,
 )
 
 from .schemas import CompetencyRef, LevelRef, ScopeRef
@@ -111,6 +112,39 @@ def competency_ref(competency_id: str) -> CompetencyRef:
     entry = _entry(competency_id)
 
     return CompetencyRef(id=entry.id, name=entry.display_name)
+
+
+def framework_version(competency_id: str) -> int:
+    """The current version of the framework a competency belongs to.
+
+    Copied into a sign-off when it is asked for, beside the words, so the
+    record says which version of the framework those words came from.
+
+    Args:
+        competency_id: The competency id.
+
+    Returns:
+        Its framework's version, from 1.
+
+    Raises:
+        UnknownCompetencyError: If the id is not in the catalogue.
+        NotAssessableError: If it belongs to no framework, so nothing can
+            be signed off against it.
+    """
+    entry = _entry(competency_id)
+    framework = (
+        get_framework(entry.framework_id)
+        if entry.framework_id is not None
+        else None
+    )
+
+    if framework is None:
+        raise NotAssessableError(
+            f"{entry.display_name} ({competency_id}) belongs to no "
+            "framework, so it cannot be signed off."
+        )
+
+    return framework.version
 
 
 def assessable_ref(competency_id: str) -> CompetencyRef:

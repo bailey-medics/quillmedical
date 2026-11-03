@@ -14,14 +14,12 @@ const options: FrameworkOption[] = [
     id: "clinical",
     name: "General clinical skills",
     publisher: "Quill Medical",
-    version: "2026",
     specialties: [],
   },
   {
     id: "oncology",
     name: "Oncology (proof of concept)",
     publisher: "Quill Medical",
-    version: "2026",
     specialties: ["oncology"],
   },
 ];
@@ -56,9 +54,7 @@ describe("PassportLeadFrameworksCard", () => {
 
     await user.click(screen.getByRole("combobox", { name: /Lead frameworks/ }));
     await user.click(
-      await screen.findByText(
-        "Oncology (proof of concept) (Quill Medical, 2026)",
-      ),
+      await screen.findByText("Oncology (proof of concept) (Quill Medical)"),
     );
 
     expect(onChange).toHaveBeenCalledWith(["oncology"]);

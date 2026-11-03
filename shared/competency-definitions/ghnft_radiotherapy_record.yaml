@@ -38,11 +38,24 @@
 # See docs/docs/plans/2026-10-07-passport-registrar-portfolios-plan.md
 # and docs/docs/plans/2026-11-01-passport-record-and-catalogue-plan.md.
 
+# VERSION
+#
+# `version` is a whole number Quill bumps by exactly one with every change
+# to this file except its comments, its spacing and `description`: a
+# competency added, retired, reworded or moved, a level or scope changed,
+# or the framework's name, publisher or specialties. A typo fix counts,
+# because no check can tell a typo from a change of meaning. Every
+# sign-off records the version it was given under, as
+# `framework_version`. The publisher's own edition goes in `description`,
+# never in a field of its own. See
+# docs/docs/plans/2026-11-01-passport-record-and-catalogue-plan.md.
+
 framework:
   id: ghnft_radiotherapy_record
   name: "Clinical oncology registrar record of radiotherapy training and competence - Gloucestershire Hospitals NHS Foundation Trust"
   publisher: "Gloucestershire Hospitals NHS Foundation Trust"
-  version: "Pilot"
+  version: 2
+  description: "Pilot edition."
   specialties:
     - oncology
 

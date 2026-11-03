@@ -358,6 +358,12 @@ class SignOff(PassportModel):
 
     id: NonEmptyText
     competency: CompetencyRef
+    #: The version of the competency's framework when the sign-off was
+    #: asked for, which is when ``competency`` and ``level`` copied their
+    #: words. Never changed after, so a framework moving on to a new
+    #: version never alters what an old sign-off meant. Required: no real
+    #: passport was written before it existed.
+    framework_version: int = Field(ge=1)
     kind: SignOffKind
     status: SignOffStatus
     level: LevelRef | None = None

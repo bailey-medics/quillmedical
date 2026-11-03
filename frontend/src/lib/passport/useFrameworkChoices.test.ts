@@ -17,7 +17,6 @@ const LEAD_FIRST = [
     id: "oncology",
     name: "Oncology (proof of concept)",
     publisher: "Quill Medical",
-    version: "2026",
     specialties: ["oncology"],
     lead: true,
     items: 16,
