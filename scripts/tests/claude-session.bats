@@ -84,6 +84,19 @@ run_in() {
     grep -qx "tmux attach -t =q1" "$CALLS"
 }
 
+@test "worktrees past 5 get their own session" {
+    git init -q "${BATS_TEST_TMPDIR}/quillmedical-6"
+    git init -q "${BATS_TEST_TMPDIR}/quillmedical-12"
+
+    SESSION_EXISTS=1 CLAUDE_RUNNING=1 run_in "${BATS_TEST_TMPDIR}/quillmedical-6"
+    [ "$status" -eq 0 ]
+    SESSION_EXISTS=1 CLAUDE_RUNNING=1 run_in "${BATS_TEST_TMPDIR}/quillmedical-12"
+    [ "$status" -eq 0 ]
+
+    grep -qx "tmux attach -t =q6" "$CALLS"
+    grep -qx "tmux attach -t =q12" "$CALLS"
+}
+
 @test "Claude is looked for in the pane's own process session" {
     SESSION_EXISTS=1 CLAUDE_RUNNING=1 run_in "$WORKTREE"
     grep -qx "pgrep -x -s 4242 claude" "$CALLS"
