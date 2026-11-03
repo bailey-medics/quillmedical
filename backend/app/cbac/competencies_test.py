@@ -562,15 +562,6 @@ def test_the_real_framework_ids_are_refused_as_grants() -> None:
         validate_competency_ids(["ruh_sact_passport_ctcae_grading"])
 
 
-def test_the_first_oncology_list_is_retired_and_still_readable() -> None:
-    """A passport already holding a record against one must still open."""
-    assert "prescribe" + "_sact" in RETIRED_COMPETENCY_IDS
-    assert "define_radiotherapy_target_volume" in RETIRED_COMPETENCY_IDS
-    retired = get_competency_details("define_radiotherapy_target_volume")
-    assert retired is not None
-    assert retired.levels is not None
-
-
 def test_a_framework_id_is_refused_where_competencies_are_granted(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

@@ -4,12 +4,13 @@ import { levelsFor } from "./levels";
 describe("levelsFor", () => {
   it("gives a scaled competency's levels in the scale's order", () => {
     expect(
-      levelsFor("define_radiotherapy_target_volume").map((l) => l.id),
+      levelsFor("uk_sact_board_2023_prescribe_sact").map((l) => l.id),
     ).toEqual([
-      "observe_only",
-      "direct_supervision",
-      "indirect_supervision",
-      "unsupervised",
+      "observation_only",
+      "review_and_authorise",
+      "prescribe_subsequent_cycles",
+      "prescribe_first_cycle",
+      "prescribe_for_complex_patients",
     ]);
   });
 
