@@ -27,6 +27,13 @@ The plan behind this file is
 - **Verdict** - not yet given.
 - **Changed** - nothing yet.
 
+## #2334 Procurement: plan governance gaps
+
+- **Scores** - 68, 70. Attempt 2 posted.
+- **Rules** - `.claude/skills/crpd/SKILL.md` as of #2322.
+- **Verdict** - not yet given.
+- **Changed** - nothing yet.
+
 ## #2331 Passport: framework tables and sync
 
 - **Scores** - 69, 71. Attempt 2 posted.
