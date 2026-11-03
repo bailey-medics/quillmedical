@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
 # Starts the teaching sync job and waits for it, failing if it failed.
 #
-# Usage: GITHUB_OUTPUT=<file> run-sync-job.sh <service-account-email>
+# Usage: GITHUB_OUTPUT=<file> run-sync-job.sh <service-account-email> [<job-name>]
+#
+# The job name defaults to the teaching sync job. The framework pipeline
+# passes quill-framework-sync-app, a job of the same shape whose action is
+# sync-frameworks.
 #
 # The job, quill-teaching-sync-app, has ADMIN_ACTION=sync-teaching fixed in
 # its own environment, so starting it is all this does: there is no action
@@ -20,7 +24,7 @@ set -euo pipefail
 # shellcheck source=../shared/logging.sh
 source "$(dirname "$0")/../shared/logging.sh" "run-sync-job"
 
-JOB_NAME="quill-teaching-sync-app"
+DEFAULT_JOB_NAME="quill-teaching-sync-app"
 REGION="europe-west2"
 # The job's own timeout is five minutes; this is the ceiling on watching
 # it, with room for the start-up and the clean-up either side.
@@ -54,6 +58,7 @@ log_url() {
 
 main() {
   local email="${1:-}"
+  local job_name="${2:-$DEFAULT_JOB_NAME}"
 
   if [ -z "$email" ]; then
     error "No service account email provided. Usage: run-sync-job.sh <service-account-email>"
@@ -67,10 +72,10 @@ main() {
     exit 1
   fi
 
-  log "Starting ${JOB_NAME} in ${project}"
+  log "Starting ${job_name} in ${project}"
   local execution
 
-  execution=$(gcloud run jobs execute "$JOB_NAME" \
+  execution=$(gcloud run jobs execute "$job_name" \
     --project="$project" \
     --region="$REGION" \
     --format='value(metadata.name)')
