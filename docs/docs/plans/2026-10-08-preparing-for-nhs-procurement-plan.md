@@ -46,12 +46,11 @@ sour the approach on its own.
 ## Phase 2: Registrations and facts a trust checks first
 
 - [x] **ICO registration.** Bailey Medics Ltd is registered, reference
-      ZC262758, and the privacy policy has carried it since 6 October
-      2026. Recorded in Phase 1 of
+      ZC262758, and the privacy policy has carried it since 6 October 2026. Recorded in Phase 1 of
       `docs/docs/plans/2026-10-06-terms-and-privacy-policy-plan.md`.
       Nothing to do but put the reference in the pack and keep the yearly
       data protection fee paid.
-- [ ] **Get an ODS code** (the Organisation Data Service code that
+- [x] **Get an ODS code** (the Organisation Data Service code that
       identifies an organisation to NHS systems), if the company does not
       have one. The DSPT in Phase 3 cannot be started without it: its
       registration page asks for "a valid organisation code". Search for
