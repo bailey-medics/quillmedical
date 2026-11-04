@@ -122,10 +122,13 @@ stop.
       subject is what the IAM binding admits, so changing it means
       issuing a new certificate. `display_name` and `description` can
       change in place, so those say Owl.
-- [ ] **Confirm the plan is in place only.** The Terraform plan in the
+- [x] **Confirm the plan is in place only.** The Terraform plan in the
       pull request must show the moves and the in-place description
       changes, and no destroy. A destroy means a `moved` block is
       missing, and the pull request is not ready until it is fixed.
+      CI's plan comment on #2376 read "Plan: 0 to add, 2 to change, 0 to
+      destroy": the four moves, and the new display name and description
+      on the service account and the pool.
 
 ## Phase 3: A recipe to restart Owl
 
@@ -153,8 +156,42 @@ stop.
 ## Phase 4: Move the box across, once Phase 1 merges
 
 For a person on the home box, straight after the merge, before the next
-alert arrives:
+alert arrives. The first step is the state the stack was left in on
+4 November 2026, written down because the session that built it can be
+cleared by the next alert at any moment.
 
+- [ ] **Know what the stack holds before merging it.** Five draft pull
+      requests, one stack with the key `watcher`, in worktree 5, bottom
+      first:
+      #2372 `feature/watcher-session-never-stops-to-ask` (Phase 1 of the
+      [alert watcher never types into a dialog plan](2026-11-04-alert-watcher-never-types-into-a-dialog-plan.md)),
+      #2373 `feature/watcher-stack-new-finishes-a-half-made-branch` (a
+      fix to `just stack-new`, found while landing #2372),
+      #2375 `feature/watcher-the-alert-watcher-is-called-owl` (Phase 1),
+      #2376 `feature/watcher-terraform-says-owl` (Phase 2) and
+      #2377 `feature/watcher-owl-restart` (Phase 3). Merge them bottom
+      first, or enqueue the whole stack. Phases 2 and 3 of the dialog plan
+      are not built yet; they belong on top of #2377, and their paths are
+      already written as `scripts/owl/`.
+- [ ] **Know that Owl is fragile until this phase is done.** Building
+      Phase 1 in worktree 5 moved `scripts/alert-watcher/`, so the unit
+      file systemd links to is gone and the old daemon runs only from what
+      it had loaded: if it stops, systemd cannot start it again. The
+      session's hooks, renamed to `owl-busy.sh`, look for `QUILL_OWL` and
+      no longer set the flag the old daemon reads, so the flag was written
+      by hand at 15:43 into `~/.local/state/quill-alert-watcher/busy`. The
+      daemon treats a flag over three hours old as abandoned, so from
+      18:43 it may type `/clear` and `/alert` into `q5` again.
+- [ ] **Move Owl's packages aside to push the stack.** `just
+      stack-submit` rebases every branch, checking out the lower ones,
+      where `scripts/owl/` is not tracked. Its `node_modules` and `.yarn`,
+      which `scripts/owl/.gitignore` ignores only on the upper branches,
+      then show as uncommitted work and the rebase stops part way, holding
+      gh-stack's shared lock in `.git/gh-stack-rebase-state` and blocking
+      stack commands in every worktree. Move both folders out of
+      `scripts/owl/` before `stack-submit`, and back afterwards. If a
+      rebase is already stuck, `gh stack rebase --abort` restores every
+      branch. This stops mattering once #2375 merges.
 - [ ] Run `just stack-fresh` in worktree 5, so it is on `main`.
 - [ ] Run `just owl-install`. It stops the old service, moves the
       folders to their `quill-owl` names and starts `quill-owl.service`.
