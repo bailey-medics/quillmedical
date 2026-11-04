@@ -405,6 +405,15 @@ plus the Report section. The skill is Claude-only, with no copy under
       widened to `just stack-update` and `scripts/readability.py`: the
       editing tool refused that change as self-modification, so the two
       commands will prompt until a person adds them.
+      **Stopped on 4 November 2026, at Mark's request.** The descriptions
+      read well by then, and the log had become the cause of a merge
+      conflict on nearly every rebase: each pull request wrote its entry
+      at the top of the same file. The file is deleted, with its nav entry
+      and its link, and `/crpd` no longer writes an entry or pushes a
+      second time. The scoring stays: `scripts/readability.py` still
+      scores every description before it is posted, and the Report still
+      prints each attempt's score. Verdicts are given in chat or in a
+      review, as they always were.
 
 ## Phase 4: read the log each week and move the rules
 
@@ -414,10 +423,10 @@ plus the Report section. The skill is Claude-only, with no copy under
       opened; could the bold column alone be read as the summary; is there a
       sentence whose subject is an abstraction. Fix the rule, not the
       description, when the same failure appears twice. Mark's verdict on
-      each description goes on the Verdict line of its entry in
-      `docs/docs/github/description-log.md`, beside the scores Phase 3
-      recorded, and every rule that moves because of a verdict is named on
-      that entry's Changed line: the 2026 edition of the association's guide
+      each description was to go on the Verdict line of its entry in
+      the description log, until the log was stopped on 4 November 2026;
+      a verdict is now given in chat or in a review, and a rule that moves
+      because of one says so in its own pull request. The 2026 edition of the association's guide
       puts "involving the people who will actually use your content" above
       every formatting rule, and here that is one reader. This is an
       iterative process with no end date. The first week finds which of the
