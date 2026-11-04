@@ -1762,6 +1762,14 @@ from app.features.passport.router import (  # noqa: E402
 
 router.include_router(passport_router)
 
+# Syncing the frameworks by hand is for an operator, who need not belong
+# anywhere the passport is on, so it sits outside the feature gate.
+from app.features.passport.admin_router import (  # noqa: E402
+    passport_admin_router,
+)
+
+router.include_router(passport_admin_router)
+
 # Accepting an assessor invitation cannot sit behind the feature gate:
 # the person accepting has no account, no organisation and therefore no
 # membership for `requires_feature` to resolve through. The signed,
