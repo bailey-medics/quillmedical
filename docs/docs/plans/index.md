@@ -128,3 +128,4 @@
 - [Home Details Stay Out of the Repository](2026-11-01-home-details-stay-out-of-the-repository-plan.md)
 - [Landing Bucket UK](2026-11-01-landing-bucket-uk-plan.md)
 - [Passport Record and Catalogue](2026-11-01-passport-record-and-catalogue-plan.md)
+- [Tmux Survives an Alert Watcher Restart](2026-11-04-tmux-survives-an-alert-watcher-restart-plan.md)
