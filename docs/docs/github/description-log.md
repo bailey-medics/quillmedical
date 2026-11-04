@@ -27,6 +27,13 @@ The plan behind this file is
 - **Verdict** - not yet given.
 - **Changed** - nothing yet.
 
+## #2347 Landing: keep CDN request coalescing on
+
+- **Scores** - 78. Attempt 1 posted.
+- **Rules** - `.claude/skills/crpd/SKILL.md` as of #2322.
+- **Verdict** - not yet given.
+- **Changed** - nothing yet.
+
 ## #2337 Passport: sync names a skipped framework version
 
 - **Scores** - 79. Attempt 1 posted.
