@@ -22,6 +22,9 @@ from app.security import hash_password
 from tests.competencies import hold
 from tests.places import administers
 
+# Every route here reads the frameworks from the tables.
+pytestmark = pytest.mark.usefixtures("stored_frameworks")
+
 
 def _user(db: Session, username: str, *, competencies: list[str]) -> User:
     user = User(

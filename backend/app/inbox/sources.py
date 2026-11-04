@@ -27,6 +27,7 @@ from sqlalchemy import ColumnElement, func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.features.passport import definitions, service
+from app.features.passport.catalogue import StoredCatalogue, stored_catalogue
 from app.features.passport.models import (
     Passport,
     PassportLogbookConfirmationRequest,
@@ -197,10 +198,12 @@ _REQUEST_STATUS_LABELS: dict[str, str] = {
 }
 
 
-def _competency_name(competency_id: str) -> str | None:
+def _competency_name(
+    catalogue: StoredCatalogue, competency_id: str
+) -> str | None:
     """A passport competency's name, or None for one since retired."""
     try:
-        return definitions.competency_ref(competency_id).name
+        return definitions.competency_ref(catalogue, competency_id).name
     except definitions.UnknownCompetencyError:
         return None
 
@@ -314,7 +317,9 @@ def _sign_off_lines(db: Session, user: User, done: bool) -> list[InboxLine]:
         InboxLine(
             id=request.id,
             title=f"Sign-off request from {full_name or username}",
-            detail=_competency_name(request.competency_id),
+            detail=_competency_name(
+                stored_catalogue(db), request.competency_id
+            ),
             status=_REQUEST_STATUS_LABELS.get(request.status),
             ref=None if done else _record_id(request),
             created_at=(
@@ -415,7 +420,9 @@ def _logbook_confirmation_lines(
         InboxLine(
             id=request.id,
             title=f"Logbook entry to confirm from {full_name or username}",
-            detail=_competency_name(request.competency_id),
+            detail=_competency_name(
+                stored_catalogue(db), request.competency_id
+            ),
             status=_CONFIRMATION_STATUS_LABELS.get(request.status),
             created_at=(
                 (request.resolved_at or request.created_at)

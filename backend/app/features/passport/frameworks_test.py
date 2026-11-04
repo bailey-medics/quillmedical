@@ -15,20 +15,29 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
-from app.cbac.competencies import FRAMEWORK_IDS, FRAMEWORKS
+from app.cbac.competencies import (
+    COMPETENCY_DEFINITIONS_DIR,
+    FRAMEWORK_IDS,
+    FRAMEWORKS,
+)
 from app.features.passport import frameworks, schemas
 from app.features.passport.frameworks import frameworks_for
 from app.features.passport.models import OrgUnitPassportFramework
 from app.features.passport.serialise import from_yaml
 from app.features.passport.store import LocalPassportStore
+from app.features.passport.sync import sync_frameworks
 from app.main import app
 from app.models import OrgUnit, OrgUnitFeature, User
 from app.organisations import add_org_unit_member
 from app.passport_storage import get_passport_store
 from app.security import hash_password
 from tests.competencies import hold
+from tests.frameworks import files_catalogue
 from tests.places import administers
 from tests.registrations import declare
+
+# Every route here reads the frameworks from the tables.
+pytestmark = pytest.mark.usefixtures("stored_frameworks")
 
 # Two frameworks the catalogue is known to hold, named here so a change
 # to it surfaces as one failure.
@@ -102,7 +111,10 @@ def _login(client: TestClient, username: str) -> TestClient:
 
 
 def _ids(db: Session, user: User, **filters: str) -> list[str]:
-    return [c.framework.id for c in frameworks_for(db, user.id, **filters)]
+    return [
+        c.framework.id
+        for c in frameworks_for(db, files_catalogue(), user.id, **filters)
+    ]
 
 
 class TestTheCatalogue:
@@ -118,7 +130,7 @@ class TestWhatAHolderIsOffered:
         holder = _make_user(db_session, "holder")
         _organisation(db_session, "Plain Trust", members=(holder,))
 
-        offered = frameworks_for(db_session, holder.id)
+        offered = frameworks_for(db_session, files_catalogue(), holder.id)
 
         names = [choice.framework.name for choice in offered]
         assert names == sorted(names, key=str.casefold)
@@ -135,7 +147,7 @@ class TestWhatAHolderIsOffered:
             db_session, "Oncology Department", ONCOLOGY, members=(holder,)
         )
 
-        offered = frameworks_for(db_session, holder.id)
+        offered = frameworks_for(db_session, files_catalogue(), holder.id)
 
         assert offered[0].framework.id == ONCOLOGY
         assert offered[0].lead is True
@@ -156,7 +168,7 @@ class TestWhatAHolderIsOffered:
     ) -> None:
         holder = _make_user(db_session, "holder")
 
-        offered = frameworks_for(db_session, holder.id)
+        offered = frameworks_for(db_session, files_catalogue(), holder.id)
 
         assert all(choice.items > 0 for choice in offered)
 
@@ -215,12 +227,17 @@ class TestSearchAndFilter:
         holder = _make_user(db_session, "holder")
 
         with pytest.raises(frameworks.UnknownSpecialtyFilterError):
-            frameworks_for(db_session, holder.id, specialty="left_elbow")
+            frameworks_for(
+                db_session,
+                files_catalogue(),
+                holder.id,
+                specialty="left_elbow",
+            )
 
 
 class TestChoosing:
     def test_a_choice_is_stored_with_its_name(self) -> None:
-        refs = frameworks.framework_refs([GENERAL])
+        refs = frameworks.framework_refs(files_catalogue(), [GENERAL])
 
         assert refs == [
             schemas.FrameworkRef(id=GENERAL, name="General clinical skills")
@@ -230,13 +247,13 @@ class TestChoosing:
         self,
     ) -> None:
         with pytest.raises(frameworks.UnknownFrameworkError) as raised:
-            frameworks.framework_refs(["left_elbow"])
+            frameworks.framework_refs(files_catalogue(), ["left_elbow"])
 
         assert "left_elbow" not in str(raised.value)
 
     def test_a_framework_is_chosen_once(self) -> None:
         with pytest.raises(frameworks.UnknownFrameworkError, match="once"):
-            frameworks.framework_refs([GENERAL, GENERAL])
+            frameworks.framework_refs(files_catalogue(), [GENERAL, GENERAL])
 
     def test_a_profile_written_before_frameworks_still_loads(self) -> None:
         profile = from_yaml(
@@ -248,12 +265,18 @@ class TestChoosing:
     def test_a_stored_framework_is_called_by_its_name_today(self) -> None:
         stored = schemas.FrameworkRef(id=GENERAL, name="Its old name")
 
-        assert frameworks.current_name(stored) == "General clinical skills"
+        assert (
+            frameworks.current_name(files_catalogue(), stored)
+            == "General clinical skills"
+        )
 
     def test_a_framework_no_longer_held_keeps_its_stored_name(self) -> None:
         stored = schemas.FrameworkRef(id="withdrawn", name="A withdrawn one")
 
-        assert frameworks.current_name(stored) == "A withdrawn one"
+        assert (
+            frameworks.current_name(files_catalogue(), stored)
+            == "A withdrawn one"
+        )
 
 
 @pytest.fixture
@@ -363,20 +386,26 @@ class TestTheHoldersRoutes:
         ]
 
     def test_a_renamed_framework_shows_its_new_name(
-        self, holder_client: TestClient, monkeypatch: pytest.MonkeyPatch
+        self, holder_client: TestClient, db_session: Session, tmp_path: Path
     ) -> None:
-        """A passport made before a rename still reads the name today."""
+        """A passport made before a rename still reads the name today.
+
+        The rename is stored as a new version through the sync, as one
+        would be after a framework repository merges.
+        """
         holder_client.post("/api/passport", json={"frameworks": [ONCOLOGY]})
-        renamed = next(f for f in FRAMEWORKS if f.id == ONCOLOGY).model_copy(
-            update={"name": "A renamed framework"}
+        source = COMPETENCY_DEFINITIONS_DIR / f"{ONCOLOGY}.yaml"
+        framework = next(f for f in FRAMEWORKS if f.id == ONCOLOGY)
+        text = source.read_text().replace(
+            f'name: "{framework.name}"', 'name: "A renamed framework"'
         )
-        monkeypatch.setattr(
-            frameworks,
-            "get_framework",
-            lambda framework_id: (
-                renamed if framework_id == ONCOLOGY else None
-            ),
+        text = text.replace(
+            f"  version: {framework.version}\n",
+            f"  version: {framework.version + 1}\n",
         )
+        (tmp_path / source.name).write_text(text)
+        assert sync_frameworks(db_session, tmp_path).succeeded
+        db_session.commit()
 
         passport = holder_client.get("/api/passport/me").json()["passport"]
 

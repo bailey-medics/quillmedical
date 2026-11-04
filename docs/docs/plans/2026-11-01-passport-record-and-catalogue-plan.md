@@ -851,11 +851,30 @@ reads the repositories, not a bucket" in Decisions.
         `shared/` for the tests that need them. Additive: nothing reads
         the reader yet. Test that it gives back exactly what the files
         hold, for every real framework.
-      - [ ] **Every framework lookup reads the reader**, with a database
+      - [x] **Every framework lookup reads the reader**, with a database
         session passed in where the function took only an id. The tests
         that rely on the real frameworks use `stored_frameworks`.
+        Built on 4 November 2026, with three choices made while building:
+        - **Each function takes the catalogue, not a session.** A route
+          reads it once with `stored_catalogue(db)` and passes it down,
+          so `definitions.py` and the service stay free of the database,
+          which `tests/features_import_boundary_test.py` requires, and one
+          request never mixes two versions of a framework.
+        - **A permission is now unknown to the passport**, where it was
+          known and refused as not assessable, because the stored
+          frameworks hold framework competencies only. A route answers
+          404 for one, not 400.
+        - **Tests that never touch the database** read the same catalogue
+          from the files, through `files_catalogue` in
+          `backend/tests/frameworks.py`, which reads them as the sync
+          does. Route tests use `stored_frameworks`.
       - [ ] **The loader holds permissions only**, and the next step's
-        refusal comes with it.
+        refusal comes with it. `layout.framework_for`, which files a
+        competency's first record under its framework, moves with it: it
+        still asks the loader, because it is reached through 21 path
+        helpers in `records.py` and the service that take only the
+        store, and threading the catalogue through them is a change of
+        its own.
 - [ ] **Refuse a sign-off naming a framework version the tables do not
       hold**, wherever one enters: a request, a read of the git record, and
       any import later, such as a passport moved from another app that
