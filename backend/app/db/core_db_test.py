@@ -89,3 +89,44 @@ class TestCoreDB:
         with sqlite_session_factory() as verify_session:
             row = verify_session.get(_ScratchRow, 1)
             assert row is None
+
+
+class TestIamSignIn:
+    """The framework sync job's connections carry a token, not a password."""
+
+    def test_each_connection_gets_a_fresh_token(self, monkeypatch):
+        from app.db import core_db
+
+        tokens = iter(["first", "second"])
+        monkeypatch.setattr(core_db, "iam_login_token", lambda: next(tokens))
+        one: dict[str, object] = {"password": ""}
+        two: dict[str, object] = {"password": ""}
+
+        core_db.sign_in_with_iam(None, None, (), one)
+        core_db.sign_in_with_iam(None, None, (), two)
+
+        assert one["password"] == "first"
+        assert two["password"] == "second"
+
+    def test_the_token_is_asked_for_with_the_sign_in_scope(self, monkeypatch):
+        import google.auth
+
+        from app.db import core_db
+
+        asked: list[list[str]] = []
+
+        class _Credentials:
+            token = "a-token"
+
+            def refresh(self, request: object) -> None:
+                pass
+
+        def _default(scopes: list[str]) -> tuple[_Credentials, str]:
+            asked.append(scopes)
+
+            return _Credentials(), "a-project"
+
+        monkeypatch.setattr(google.auth, "default", _default)
+
+        assert core_db.iam_login_token() == "a-token"
+        assert asked == [[core_db.IAM_LOGIN_SCOPE]]

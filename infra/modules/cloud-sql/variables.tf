@@ -98,3 +98,13 @@ variable "secret_depends_on" {
   type        = any
   default     = null
 }
+
+variable "iam_authentication" {
+  description = <<-EOT
+    Whether a service account may sign in as its own IAM database user,
+    with a token in place of a password. Changing it restarts the
+    instance, as Google's flag table says, so switch it at a quiet time.
+  EOT
+  type        = bool
+  default     = false
+}
