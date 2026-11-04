@@ -402,6 +402,14 @@ still in this repository, so nothing changes for anybody until it works.
       and scopes; a second run changes nothing; a higher version adds a
       version and keeps the old one; it refuses a clash with a permission,
       a deleted competency and a skipped version.
+- [x] **Name the missing version when the sync refuses a skip.** Found on
+      3 November 2026: a version the sync never saw blocks every later
+      deploy (see "Every version is kept where the sync can read it" under
+      Decisions). Until Phase 6 lets the sync catch up, its message says
+      which versions the tables lack, such as "the tables hold version 2,
+      the files version 4: version 3 is missing", and how to rebuild it from
+      git history while the frameworks still live in this repository. Test
+      the message.
 
 ## Phase 6: A repository for each publisher
 
@@ -436,10 +444,32 @@ still in this repository, so nothing changes for anybody until it works.
       shaped like `teaching-pipeline.yml`: on a pull request it validates
       the files and runs Phase 3's version check from
       `backend/app/features/passport/tooling/`, printing every reworded
-      competency; on merge to `main` it deploys the files to GCS and starts
-      the backend's framework sync. Each repository carries a thin caller,
-      as the teaching repositories do. Its job names are fixed for the
-      same reason teaching's are: the rulesets require checks by name.
+      competency; on merge to `main` it uploads each framework version as
+      a file of its own, `frameworks/<framework>/<version>.yaml`, and
+      starts the backend's framework sync. A version is one file, so it
+      needs no folder. A version's file is never overwritten or deleted,
+      so the bucket holds every version ever merged.
+      **The upload heals itself from git history.** A dropped or failed
+      run would otherwise leave its version out of the bucket for good.
+      So each run checks out the repository's full history, lists the
+      versions the bucket already holds, and uploads every missing one
+      from the commit on `main` that set it, not only the newest. Any
+      later run then fills the gap. Test it with a stubbed bucket: a run
+      that finds two versions missing uploads both, and a run that finds
+      none uploads nothing.
+      Each repository carries a thin caller, as the teaching repositories
+      do. Its job names are fixed for the same reason teaching's are: the
+      rulesets require checks by name.
+- [ ] **The sync catches up on every version it lacks**, reading the
+      version files in order, from one above the newest it has stored to
+      the newest in the bucket. Each version is checked against the one
+      before it with the same rules as today, and the run still writes all
+      of them or none. A version missing from the bucket itself is still
+      refused, naming it: the next pipeline run uploads it, and the sync
+      after that succeeds. Test a run that finds two new versions, and one
+      that finds a gap in the bucket. This replaces reading only the newest
+      files, for the reason under "Every version is kept where the sync can
+      read it" in Decisions.
 - [ ] **A framework sync job and somewhere to deploy to**, in `infra/`,
       copying teaching's. The teaching pipeline signs in as
       `content_ci_service_account` (`infra/environments/app/terraform.tfvars`),
@@ -473,6 +503,15 @@ still in this repository, so nothing changes for anybody until it works.
       `definitions._entry`, and the exports. The loader in
       `backend/app/cbac/competencies.py` stops reading framework files: it
       holds permissions only.
+- [ ] **Refuse a sign-off naming a framework version the tables do not
+      hold**, wherever one enters: a request, a read of the git record, and
+      any import later, such as a passport moved from another app that
+      uses the same frameworks. The refusal names the framework and the
+      version, so a person can find out where it came from. It is never
+      stored half-checked against the nearest version: comparing it with
+      words it was not signed against is the error this guards. Test a
+      sign-off for a version one above the newest, and one for a version
+      below the first stored.
 - [ ] **Refuse a framework competency wherever a competency is granted,
       by what it is rather than by a flag.** Once the loader holds
       permissions only, `validate_competency_ids` refuses any id that is
@@ -652,6 +691,23 @@ still in this repository, so nothing changes for anybody until it works.
 - **A version goes live on merge.** Teaching banks do the same, and nobody
   needs a pointer to move: what protects an existing sign-off is that it
   records the version it was given under.
+
+- **Every version is kept where the sync can read it.** Agreed with the
+  product owner on 3 November 2026. Phase 5's sync reads only the files as
+  they stand, never git history, so it sees a version only if a sync runs
+  while that version is the newest. GitHub keeps one waiting run behind a
+  running one and cancels the older waiting run when another arrives, so
+  three merges during one deploy lose the middle version's deploy. The
+  next sync then sees a jump of two, refuses it, and refuses it again on
+  every deploy after, because the skipped version is in no file any more.
+  Letting the sync accept the jump was considered and turned down: a
+  sign-off can arrive from somewhere other than Quill, such as an import
+  from another app using the same frameworks, and one naming a version
+  the tables lack could be neither checked nor shown beside its words.
+  So each version is uploaded as its own file, never overwritten, the
+  pipeline uploads any version the bucket lacks from git history, and the
+  sync catches up on every version it is missing. A skipped run then
+  only delays a version, and never loses one.
 
 - **A reworded competency is shown, not gated.** Decided on 2 November
   2026, when the product owner left it to this plan. The version check

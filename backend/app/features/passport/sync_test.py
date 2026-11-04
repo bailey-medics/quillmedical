@@ -159,7 +159,53 @@ def test_a_skipped_version_is_refused(
 
     result = sync_frameworks(db_session, directory)
 
-    assert "exactly one" in (result.error or "")
+    assert "version 2 is missing" in (result.error or "")
+    assert "git history" in (result.error or "")
+
+
+def test_every_skipped_version_is_named(
+    db_session: Session, tmp_path: Path
+) -> None:
+    directory = _sheet(tmp_path / "d")
+    sync_frameworks(db_session, directory)
+    _sheet(directory, version=4, words="Refer patients")
+
+    result = sync_frameworks(db_session, directory)
+
+    assert "versions 2, 3 are missing" in (result.error or "")
+
+
+def test_a_skipped_version_rebuilt_lets_the_sync_go_on(
+    db_session: Session, tmp_path: Path
+) -> None:
+    """Following the refusal's own advice works."""
+    directory = _sheet(tmp_path / "d")
+    sync_frameworks(db_session, directory)
+    _sheet(directory, version=3, words="Refer two patients")
+    sync_frameworks(db_session, directory)
+
+    rebuilt = sync_frameworks(
+        db_session, _sheet(tmp_path / "v2", version=2, words="Refer patients")
+    )
+    after = sync_frameworks(db_session, directory)
+
+    assert rebuilt.succeeded
+    assert after.succeeded
+    assert _count(db_session, PassportFrameworkVersion) == 3
+
+
+def test_a_lower_version_is_refused(
+    db_session: Session, tmp_path: Path
+) -> None:
+    directory = _sheet(tmp_path / "d")
+    sync_frameworks(db_session, directory)
+    _sheet(directory, version=2, words="Refer patients")
+    sync_frameworks(db_session, directory)
+    _sheet(directory, version=1)
+
+    result = sync_frameworks(db_session, directory)
+
+    assert "never goes down" in (result.error or "")
 
 
 def test_a_deleted_competency_is_refused(
