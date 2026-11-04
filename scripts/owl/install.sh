@@ -145,7 +145,7 @@ main() {
     # nothing until it is started again.
     if [ "${moved_across}" -eq 1 ]; then
         echo "! q5 was started before the rename. Start it again with:"
-        echo "    tmux kill-session -t q5; systemctl --user restart ${NEW_NAME}"
+        echo "    just owl-restart"
     fi
 
     systemctl --user --no-pager status "${NEW_NAME}.service"
