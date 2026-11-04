@@ -942,53 +942,9 @@ to start a stack anywhere but the tip of `origin/main`, and says to run
    `--body-file` rather than `--body`: the body holds backticks, quotes
    and newlines, and passing it inline leaves them at the shell's mercy.
 
-   Keep every attempt's ease, in order, for step 10 and the report.
+   Keep every attempt's ease, in order, for the report.
 
-10. **Write the description's entry in the log, and land it in this
-    pull request.** `docs/docs/github/description-log.md` keeps every
-    description's scores beside the reader's verdict on it, newest first,
-    so the rules can be moved by what the reader actually said. Add a new
-    entry at the top, under the heading that opens the list:
-
-    ```markdown
-    ## #2299 Descriptions: score the body for readability
-
-    - **Scores** - 58, 66, 72. Attempt 3 posted.
-    - **Rules** - `.claude/skills/crpd/SKILL.md` as of #2299.
-    - **Verdict** - not yet given.
-    - **Changed** - nothing yet.
-    ```
-
-    - **The heading** is the pull request number and its title, as step 9
-      set it.
-    - **Scores** lists every attempt's ease in order, then which attempt
-      was posted. One attempt reads "72. Attempt 1 posted."
-    - **Rules** names the pull request that last changed
-      `.claude/skills/crpd/SKILL.md`, from `gh pr list --state merged
-      --search "<path>"` or the stack itself when that change is in it. A
-      pull request number outlives a rebase; a commit sha does not.
-    - **Verdict** and **Changed** are left as written. The verdict is the
-      reader's, in their own words, added when they give it; Changed later
-      names the rule that moved because of it and links the pull request
-      that moved it.
-
-    Then fold the entry into this branch and push again:
-
-    ```bash
-    just stack-update
-    just stack-submit
-    ```
-
-    The second push is the price of the entry landing in the pull request
-    it describes rather than trailing into the next one. `stack-update`
-    amends the branch's one commit, so the pull request still holds a
-    single commit, and `stack-submit` pushes the stack as step 5 did.
-
-    This is the one place a run may amend and push a second time, and it
-    ends with it: the authorisation in "The authorisation ends with the
-    run" is unchanged.
-
-11. **Mark it ready only if `ready` was given**, and only if step 6 reported
+10. **Mark it ready only if `ready` was given**, and only if step 6 reported
    `isDraft: true`:
 
    ```bash
@@ -1006,9 +962,8 @@ One short block:
 - The branch created, and its position in the stack (`just stack-log`).
 - The pull request URL, and under it the description's three triage
   lines: Size, Look hardest at, Check for me.
-- The log entry's Scores line, as written in step 10: "Scores - 58, 66,
-  72. Attempt 3 posted." After an unattended run the terminal is read
-  before the log is.
+- Every attempt's ease, in order, and which attempt was posted: "Scores
+  58, 66, 72. Attempt 3 posted."
 - Whether it was left a draft or marked ready.
 - The commit message and the title used, since the name, the message and
   the title were all chosen for you.
