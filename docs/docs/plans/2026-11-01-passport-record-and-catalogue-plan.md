@@ -1261,7 +1261,7 @@ reads the repositories, not a bucket" in Decisions.
 
 ## Phase 14: An admin page to sync the frameworks by hand
 
-- [ ] **A page with one button, "Sync frameworks", that starts the
+- [x] **A page with one button, "Sync frameworks", that starts the
       framework sync job**, for when a framework repository merged and
       the pipeline's sync failed, as it would have during GitHub's Actions
       outage on 4 November 2026. Asked for by the product owner that day,
@@ -1324,11 +1324,26 @@ reads the repositories, not a bucket" in Decisions.
       backend on the one job; and the sync's lock. Starting a run answers
       200 rather than 202, because the passport contract test requires
       every route to answer 200 or 201 so `oasdiff` can diff it.
-- [ ] **Tests**: the route refuses anybody who is not an operator, starts
+      Frontend built on 4 November 2026, as the next unit:
+      `AdminPassportPage` in `frontend/src/pages/admin/passport/`, drawn
+      by `FrameworkSyncPanel` in `components/passport/`, which composes
+      `PageHeader`, `IconTextButton`, `ResultMessage` and `BaseCard`, with
+      a story for each state. After a start the page asks again every half
+      minute until a run newer than the press has finished, and gives up
+      after a quarter of an hour. The link sits in the side navigation's
+      operator-only block, beside Record retention, since that is where
+      operator-only admin links are.
+- [x] **Tests**: the route refuses anybody who is not an operator, starts
       the job with no overrides, and answers 503 with no job set up; the
       page shows the last run and the refusal; a story for each state; an
       end-to-end test signs in as an operator, presses the button and reads
       the refusal, as the end-to-end stack has no job.
+
+- [x] **Name the accessibility journeys the navigation change touches.**
+      None: the new link shows to a Quill operator only, and none of the
+      four journeys in `docs/docs/frontend/accessibility/journeys.md` is
+      made by one, so nothing joins the "Not yet run" list in
+      `testing-log.md`.
 
 ## Phase 15: A framework repository for testing
 
