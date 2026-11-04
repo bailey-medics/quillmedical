@@ -20,6 +20,13 @@ Each entry has four lines:
 The plan behind this file is
 [readable pull request descriptions](../plans/2026-10-31-readable-pull-request-descriptions-plan.md).
 
+## #2349 Alert: ignore the AWS Terraform reminder
+
+- **Scores** - 85. Attempt 1 posted.
+- **Rules** - `.claude/skills/crpd/SKILL.md` as of #2322.
+- **Verdict** - not yet given.
+- **Changed** - nothing yet.
+
 ## #2348 Stack: show a merge conflict
 
 - **Scores** - 85. Attempt 1 posted.
