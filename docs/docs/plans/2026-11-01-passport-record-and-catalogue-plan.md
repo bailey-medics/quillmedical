@@ -185,7 +185,10 @@ Frameworks copy that shape, with the same word: `version`.
       quoted `"2"` is refused.
 - [x] **Set the versions already made.** The Gloucestershire record went
       from seven competencies to fifteen, and was renamed, in #2321, so it
-      is version 2. Every other framework starts at version 1.
+      is version 2. Every other framework starts at version 1. Undone on
+      4 November 2026: the pilot was never numbered, so no version 1
+      existed anywhere, and Gloucestershire started afresh at version 1.
+      See "Every framework starts at version 1" in Decisions.
 - [x] **A new version goes live when it merges.** No admin step and no
       per-organisation pointer: the framework file deploys with the code,
       as it does today.
@@ -413,8 +416,12 @@ still in this repository, so nothing changes for anybody until it works.
 
 ## Phase 6: A repository for each publisher
 
-- [ ] **Create the four repositories**, after asking the product owner
+- [x] **Create the four repositories**, after asking the product owner
       before each, because creating one is visible outside this machine.
+      Created on 3 November 2026, all four approved together, and made
+      public the same day at the product owner's request. The frameworks
+      were already public in this repository. Each is empty, with no
+      licence, no README and no first commit yet.
       One per publisher, each ending `-framework`, as each teaching
       repository ends `-teaching`, under `bailey-medics`. Each is named
       from its framework's title, shortened to stay readable and inside
@@ -431,15 +438,49 @@ still in this repository, so nothing changes for anybody until it works.
       - **`general-clinical-skills-quill-medical-framework`** - for
         "General clinical skills", the framework half of `clinical.yaml`
         after Phase 2's split, Quill Medical.
-- [ ] **Lay each one out like a teaching repository**: a `frameworks/`
-      folder holding one file per framework, a README saying what the
-      repository is and who publishes it, the publisher's licence for the
-      wording, and the `cspell.config.json` the teaching repositories
-      carry.
-- [ ] **Protect them in Terraform**, beside `infra/github/teaching_rulesets.tf`
-      and the repository list in `infra/environments/app/terraform.tfvars`:
-      the same rules, the same required checks, and no stacks, so each
-      change is one branch off `main` and one pull request.
+- [x] **The sync catches up on every version it lacks**, reading the
+      version files in order, from one above the newest it has stored to
+      the newest in the bucket. Each version is checked against the one
+      before it with the same rules as today, and the run still writes all
+      of them or none. A version missing from the bucket itself is still
+      refused, naming it: the next pipeline run uploads it, and the sync
+      after that succeeds. Test a run that finds two new versions, and one
+      that finds a gap in the bucket. This replaces reading only the newest
+      files, for the reason under "Every version is kept where the sync can
+      read it" in Decisions.
+      Built as `sync_framework_versions` in
+      `backend/app/features/passport/sync.py`, run as
+      `python -m app.features.passport.sync --versions <folder>`. The
+      loader requires a framework's id to be its file's name, so each
+      version file is loaded under that name from a scratch folder.
+      Every framework's first stored version is 1, and both syncs refuse
+      one that starts above it, naming the versions missing. To get
+      there, Gloucestershire went back to version 1.
+- [x] **Delete the old framework data, Gloucestershire's version 2 with
+      it**, so nothing stored still says the record began at 2. App
+      production stored it the day before, and without this the sync
+      would refuse version 1 as a version going down. The migration
+      `d906dee73f3e` empties every framework table, children first. The
+      pre-deploy job runs the sync straight after the migrations, so the
+      same deploy stores all four frameworks again from `shared/`, each
+      at version 1. The run records in `passport_framework_sync` are
+      kept as history. It takes effect when this merges and deploys.
+      The framework version check refuses a version going down, so
+      `STARTED_AGAIN` in
+      `backend/app/features/passport/tooling/check_framework_version.py`
+      names Gloucestershire: a framework on it may go back to exactly 1,
+      with nothing else changed.
+- [ ] **Empty `STARTED_AGAIN` once the fresh start has merged**, in the
+      next pull request, and its test with it. The name matters only
+      while `main` still holds version 2; after that it would let the
+      record go back to 1 a second time.
+- [ ] **Delete the passports used to try out the Gloucestershire
+      record**, with the `delete-passport` admin action, which archives
+      each one first. Their sign-offs name version 2, which no longer
+      exists, so Phase 7's refusal would stop them being read. Needs
+      the product owner: the usernames go in
+      `PASSPORT_DELETABLE_USERNAMES`.
+
 - [ ] **A framework pipeline**, `.github/workflows/framework-pipeline.yml`,
       shaped like `teaching-pipeline.yml`: on a pull request it validates
       the files and runs Phase 3's version check from
@@ -460,16 +501,6 @@ still in this repository, so nothing changes for anybody until it works.
       Each repository carries a thin caller, as the teaching repositories
       do. Its job names are fixed for the same reason teaching's are: the
       rulesets require checks by name.
-- [ ] **The sync catches up on every version it lacks**, reading the
-      version files in order, from one above the newest it has stored to
-      the newest in the bucket. Each version is checked against the one
-      before it with the same rules as today, and the run still writes all
-      of them or none. A version missing from the bucket itself is still
-      refused, naming it: the next pipeline run uploads it, and the sync
-      after that succeeds. Test a run that finds two new versions, and one
-      that finds a gap in the bucket. This replaces reading only the newest
-      files, for the reason under "Every version is kept where the sync can
-      read it" in Decisions.
 - [ ] **A framework sync job and somewhere to deploy to**, in `infra/`,
       copying teaching's. The teaching pipeline signs in as
       `content_ci_service_account` (`infra/environments/app/terraform.tfvars`),
@@ -482,16 +513,71 @@ still in this repository, so nothing changes for anybody until it works.
       with an override: the role that allows overrides allows any action,
       `create-superadmin` among them. See
       `docs/docs/plans/2026-10-16-teaching-sync-without-a-github-secret-plan.md`.
+- [ ] **Protect them in Terraform**, beside `infra/github/teaching_rulesets.tf`
+      and the repository list in `infra/environments/app/terraform.tfvars`:
+      the same rules, the same required checks, and no stacks, so each
+      change is one branch off `main` and one pull request.
+- [ ] **Lay each one out like a teaching repository**: a `frameworks/`
+      folder holding one file per framework, a README saying what the
+      repository is and who publishes it, the publisher's licence for the
+      wording, and the `cspell.config.json` the teaching repositories
+      carry.
+      **Moved below the pipeline on 3 November 2026.** The repositories are
+      empty, so the first commit in each is a push straight to `main`, as
+      the teaching repositories' first commits were: there is no `main`
+      yet for a pull request to target. That push, and each publisher's
+      licence for the wording, are the product owner's, so this step waits
+      for them while the parts in this repository are built.
+
 - [ ] **Let the four repositories sign in as the content account.**
-      Which repositories may do so for teaching is not in this repository's
-      Terraform, as far as a search on 2 November 2026 found: the account
-      lives in a different project from the bucket. Find where the
-      teaching repositories are allowed, and add the four beside them; if
-      it is set by hand, say so to the product owner rather than guessing.
-- [ ] **Give the login that pushes them the `workflow` scope** first:
+      **Found on 3 November 2026: it is set by hand, with `gcloud`, in
+      two places**, both in `quill-medical-app`, as the
+      environment isolation plan's Phase on workload identity recorded on
+      23 September 2026. Neither is in Terraform.
+      - **The provider's attribute condition** - `github-provider` in the
+        pool `github-pool` admits only `bailey-medics/quillmedical`,
+        `eoeeta-teaching`, `respiratory-teaching` and
+        `eoeeta-teaching-testing`. A repository not named there is refused
+        before any account is looked at.
+      - **The account's own policy** - `content-sync@quill-medical-app`
+        grants `roles/iam.workloadIdentityUser` to the principal set of
+        each of the three teaching repositories, one binding each.
+
+      The product owner runs both, because the harness refuses IAM grants.
+      Do it only once the pipeline and the sync job exist, so no
+      repository can sign in before there is anything for it to do:
+
+      ```bash
+      gcloud iam workload-identity-pools providers update-oidc github-provider \
+        --workload-identity-pool=github-pool --location=global \
+        --project=quill-medical-app \
+        --attribute-condition="assertion.repository in ['bailey-medics/quillmedical', 'bailey-medics/eoeeta-teaching', 'bailey-medics/respiratory-teaching', 'bailey-medics/eoeeta-teaching-testing', 'bailey-medics/gloucestershire-radiotherapy-record-framework', 'bailey-medics/royal-united-hospitals-bath-sact-passport-framework', 'bailey-medics/uk-sact-board-prescribing-framework', 'bailey-medics/general-clinical-skills-quill-medical-framework']"
+
+      POOL="projects/$(gcloud projects describe quill-medical-app --format='value(projectNumber)')/locations/global/workloadIdentityPools/github-pool"
+      for R in gloucestershire-radiotherapy-record-framework \
+        royal-united-hospitals-bath-sact-passport-framework \
+        uk-sact-board-prescribing-framework \
+        general-clinical-skills-quill-medical-framework; do
+        gcloud iam service-accounts add-iam-policy-binding \
+          content-sync@quill-medical-app.iam.gserviceaccount.com \
+          --project=quill-medical-app \
+          --role=roles/iam.workloadIdentityUser \
+          --member="principalSet://iam.googleapis.com/${POOL}/attribute.repository/bailey-medics/${R}"
+      done
+      ```
+
+      The repositories are public, which is safe here: GitHub gives a
+      pull request from a fork no sign-in token, so only a merge to
+      `main`, by somebody with write access, can sign in. Moving this into
+      Terraform is left for another plan.
+- [ ] **The `workflow` scope is needed only for a push over HTTPS.**
       GitHub refuses a push that adds a file under `.github/workflows/`
-      without it, and the caller workflow is one. The product owner runs
-      `gh auth refresh -s workflow` once.
+      through a token without that scope. This machine pushes over SSH,
+      which the scope does not govern: #2329 changed `ci.yml` that way on
+      2 November 2026. So clone the four repositories over SSH and skip
+      this step; run `gh auth refresh -s workflow` only on a machine that
+      pushes over HTTPS.
+
 - [ ] **Document the repositories and the pipeline**, in a framework page
       beside the teaching ones in `docs/docs/teaching/`, or under the
       passport backend page.
@@ -510,8 +596,8 @@ still in this repository, so nothing changes for anybody until it works.
       version, so a person can find out where it came from. It is never
       stored half-checked against the nearest version: comparing it with
       words it was not signed against is the error this guards. Test a
-      sign-off for a version one above the newest, and one for a version
-      below the first stored.
+      sign-off for a version one above the newest, and one for version
+      0, below the version 1 every framework starts at.
 - [ ] **Refuse a framework competency wherever a competency is granted,
       by what it is rather than by a flag.** Once the loader holds
       permissions only, `validate_competency_ids` refuses any id that is
@@ -708,6 +794,16 @@ still in this repository, so nothing changes for anybody until it works.
   pipeline uploads any version the bucket lacks from git history, and the
   sync catches up on every version it is missing. A skipped run then
   only delays a version, and never loses one.
+
+- **Every framework starts at version 1.** Agreed with the product owner
+  on 4 November 2026. If a framework could begin at any number, a lost
+  version 1 would look the same as a framework that began at 2, and
+  nothing could tell the two apart. Gloucestershire had begun at 2,
+  because its pilot edition was labelled rather than numbered. Rebuilding
+  the pilot as version 1 was considered, and so was a new framework under
+  a new id. Starting afresh was simpler than either: only the product
+  owner had tried the record out, so nothing real pointed at version 2,
+  and the framework tables are a copy of the files that the sync rebuilds.
 
 - **A reworded competency is shown, not gated.** Decided on 2 November
   2026, when the product owner left it to this plan. The version check
