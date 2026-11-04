@@ -24,9 +24,9 @@
 # session, not from tmux's pane_current_command: a pane started with
 # `bash -lc 'claude ...'` reports bash while Claude runs as its child.
 #
-# Worktree 5 belongs to the alert watcher while quill-alert-watcher.service
+# Worktree 5 belongs to Owl while quill-owl.service
 # is enabled. Its Claude needs the watcher's environment and allowlist,
-# which only scripts/alert-watcher/start-session.sh gives it, so a missing
+# which only scripts/owl/start-session.sh gives it, so a missing
 # session or a stopped Claude there is refused and the fix named.
 
 set -euo pipefail
@@ -57,13 +57,13 @@ start_claude="claude --continue --ide --remote-control ${worktree} || claude --i
 watcher_owns_it=false
 claude_was_running=false
 
-if [ "${name}" = "q5" ] && systemctl --user is-enabled --quiet quill-alert-watcher.service 2> /dev/null; then
+if [ "${name}" = "q5" ] && systemctl --user is-enabled --quiet quill-owl.service 2> /dev/null; then
     watcher_owns_it=true
 fi
 
 refuse_for_watcher() {
-    echo "✗ q5 belongs to the alert watcher, and its Claude needs the watcher's flags. Start it again with:" >&2
-    echo "    tmux kill-session -t q5; systemctl --user restart quill-alert-watcher" >&2
+    echo "✗ q5 belongs to Owl, and its Claude needs the watcher's flags. Start it again with:" >&2
+    echo "    tmux kill-session -t q5; systemctl --user restart quill-owl" >&2
     exit 1
 }
 

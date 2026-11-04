@@ -124,9 +124,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"quill-alert-watcher@workspace:.":
+"quill-owl@workspace:.":
   version: 0.0.0-use.local
-  resolution: "quill-alert-watcher@workspace:."
+  resolution: "quill-owl@workspace:."
   dependencies:
     "@slack/socket-mode": "npm:3.1.1"
     "@slack/web-api": "npm:8.3.0"

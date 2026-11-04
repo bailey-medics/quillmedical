@@ -1,6 +1,6 @@
-# Alert watcher
+# Owl, the alert watcher
 
-Watches `#quill-medical-cicd` for App production alerts and types `/alert <file>` into the Claude Code session in worktree 5, which investigates and opens a pull request ready for review. It runs on the home box as the systemd user service `quill-alert-watcher.service`. The design, and the steps to set it up, are in the watcher phase of [the remote dev machine plan](../../docs/docs/plans/2026-10-19-remote-dev-machine-plan.md).
+Watches `#quill-medical-cicd` for App production alerts and types `/alert <file>` into the Claude Code session in worktree 5, which investigates and opens a pull request ready for review. It runs on the home box as the systemd user service `quill-owl.service`. The design, and the steps to set it up, are in the watcher phase of [the remote dev machine plan](../../docs/docs/plans/2026-10-19-remote-dev-machine-plan.md).
 
 ## What it does
 
@@ -19,10 +19,10 @@ The skill posts the root cause and the summary to the thread itself, through `sc
 From worktree 5 on the home box, once the env file below exists:
 
 ```bash
-just alert-watcher-install
+just owl-install
 ```
 
-That installs the packages and links `quill-alert-watcher.service` into systemd as a user service, which starts the tmux session through `start-session.sh` and then the daemon. Its log is `journalctl --user -u quill-alert-watcher`.
+That installs the packages and links `quill-owl.service` into systemd as a user service, which starts the tmux session through `start-session.sh` and then the daemon. Its log is `journalctl --user -u quill-owl`.
 
 The tmux server runs in a systemd scope of its own, `quill-tmux-server.scope`, not in the watcher's process group. At boot `start-session.sh` is usually the first `tmux new-session` on the box, so the server it starts would otherwise belong to the service, and systemd kills everything in a service's group when it stops. A restart of the watcher must never close the sessions people are working in: on 4 November 2026 one closed all of them. `systemctl --user status quill-tmux-server.scope` shows the server.
 
@@ -30,21 +30,21 @@ The unit is linked from worktree 5, so whenever that worktree moves to a commit 
 
 ## Settings
 
-Read from the environment, which the systemd unit loads from `~/.config/quill-alert-watcher/env`:
+Read from the environment, which the systemd unit loads from `~/.config/quill-owl/env`:
 
 - **`SLACK_APP_TOKEN`** - the app-level token, `xapp-`, with `connections:write`.
 - **`SLACK_BOT_TOKEN`** - the bot token, `xoxb-`, with `channels:history` and `chat:write`.
-- **`ALERT_WATCHER_CHANNEL`** - the channel's id, such as `C0123456789`, not its name.
-- **`ALERT_WATCHER_WORKTREE`** - defaults to `~/github/quillmedical-5`.
-- **`ALERT_WATCHER_TMUX_TARGET`** - defaults to `q5`.
-- **`QUILL_ALERT_WATCHER_STATE`** - defaults to `~/.local/state/quill-alert-watcher`, the folder `.claude/hooks/alert-watcher-busy.sh` keeps the busy flag in.
-- **`ALERT_WATCHER_CERTIFICATE`** - defaults to `~/.config/quill-alert-watcher/pki/watcher.crt`, the client certificate whose expiry it watches.
-- **`ALERT_WATCHER_RECORD_EVENTS=1`** - saves every channel event to `events/` in the state folder, for checking the message shapes against `src/messages.ts`. Off otherwise: the journal never holds alert text.
+- **`OWL_CHANNEL`** - the channel's id, such as `C0123456789`, not its name.
+- **`OWL_WORKTREE`** - defaults to `~/github/quillmedical-5`.
+- **`OWL_TMUX_TARGET`** - defaults to `q5`.
+- **`OWL_STATE`** - defaults to `~/.local/state/quill-owl`, the folder `.claude/hooks/owl-busy.sh` keeps the busy flag in.
+- **`OWL_CERTIFICATE`** - defaults to `~/.config/quill-owl/pki/watcher.crt`, the client certificate whose expiry it watches.
+- **`OWL_RECORD_EVENTS=1`** - saves every channel event to `events/` in the state folder, for checking the message shapes against `src/messages.ts`. Off otherwise: the journal never holds alert text.
 
 ## Tests
 
 ```bash
-just uaw
+just uow
 ```
 
 That runs `yarn typecheck` and `yarn test` in a throwaway container. CI runs the same in its shell checks job. The tests replace Slack, git and tmux with fakes, so they need none of them. One reads `infra/modules/monitoring/main.tf` and fails if an alert policy's subject there is not listed in `src/messages.ts`.

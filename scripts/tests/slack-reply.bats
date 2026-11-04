@@ -1,6 +1,6 @@
 #!/usr/bin/env bats
 # Tests for slack-reply.sh, which posts one message into an alert's Slack
-# thread for the alert watcher's `/alert` skill.
+# thread for Owl's `/alert` skill.
 #
 # curl is replaced by a stub that records what it was given and answers
 # with whatever RESPONSE holds, so nothing here reaches Slack.
@@ -33,7 +33,7 @@ EOF
     export PATH="${BATS_TEST_TMPDIR}/bin:${PATH}"
     export HOME="${BATS_TEST_TMPDIR}/home"
     export SLACK_BOT_TOKEN="xoxb-test-token"
-    unset SLACK_REPLY_DRY_RUN QUILL_ALERT_WATCHER_ENV RESPONSE
+    unset SLACK_REPLY_DRY_RUN OWL_ENV RESPONSE
 }
 
 # The value of one field of the body the dry run prints.
@@ -106,9 +106,9 @@ field() {
 
 @test "the token is read from the env file when the environment has none" {
     unset SLACK_BOT_TOKEN
-    mkdir -p "${HOME}/.config/quill-alert-watcher"
+    mkdir -p "${HOME}/.config/quill-owl"
     printf 'SLACK_APP_TOKEN=xapp-other\nSLACK_BOT_TOKEN=xoxb-from-file\n' \
-        > "${HOME}/.config/quill-alert-watcher/env"
+        > "${HOME}/.config/quill-owl/env"
 
     run "$SCRIPT" "$ALERT" "hello"
     [ "$status" -eq 0 ]
@@ -117,9 +117,9 @@ field() {
 
 @test "the env file is read, never run" {
     unset SLACK_BOT_TOKEN
-    mkdir -p "${HOME}/.config/quill-alert-watcher"
+    mkdir -p "${HOME}/.config/quill-owl"
     printf 'touch %s/ran\nSLACK_BOT_TOKEN=xoxb-from-file\n' "$BATS_TEST_TMPDIR" \
-        > "${HOME}/.config/quill-alert-watcher/env"
+        > "${HOME}/.config/quill-owl/env"
 
     run "$SCRIPT" "$ALERT" "hello"
     [ "$status" -eq 0 ]

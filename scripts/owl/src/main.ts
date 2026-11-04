@@ -1,8 +1,8 @@
-// The alert watcher: holds one Socket Mode connection to Slack, hands each
+// Owl, the alert watcher: holds one Socket Mode connection to Slack, hands each
 // channel message to the Watcher, and moves the queue on every 30 seconds.
 // Once an hour it also checks whether the client certificate needs renewing.
 //
-// Run by quill-alert-watcher.service on the home box. Reconnecting after a
+// Run by quill-owl.service on the home box. Reconnecting after a
 // dropped connection is @slack/socket-mode's job, not this file's.
 
 import { mkdirSync, writeFileSync } from "node:fs";
@@ -32,7 +32,7 @@ function isSlackMessage(value: unknown): value is SlackMessage {
   return value !== null && typeof value === "object" && "ts" in value && typeof value.ts === "string";
 }
 
-// Raw events saved to the state folder, only when ALERT_WATCHER_RECORD_EVENTS
+// Raw events saved to the state folder, only when OWL_RECORD_EVENTS
 // is 1, so the shapes Cloud Monitoring posts can be checked against
 // messages.ts during the rehearsal. Off otherwise: the journal never holds
 // alert text, and neither does the state folder.

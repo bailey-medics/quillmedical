@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-# Tests for alert-watcher/start-session.sh, which starts the alert
+# Tests for owl/start-session.sh, which starts the alert
 # watcher's Claude Code session in tmux unless one is already running.
 #
 # tmux is replaced by a stub that records what it was asked and answers
@@ -10,15 +10,15 @@
 # reaches the real systemd.
 
 setup() {
-    SCRIPT="${BATS_TEST_DIRNAME}/../alert-watcher/start-session.sh"
+    SCRIPT="${BATS_TEST_DIRNAME}/../owl/start-session.sh"
     CALLS="${BATS_TEST_TMPDIR}/tmux-calls"
-    export ALERT_WATCHER_WORKTREE="${BATS_TEST_TMPDIR}/quillmedical-5"
-    export QUILL_ALERT_WATCHER_STATE="${BATS_TEST_TMPDIR}/state"
+    export OWL_WORKTREE="${BATS_TEST_TMPDIR}/quillmedical-5"
+    export OWL_STATE="${BATS_TEST_TMPDIR}/state"
     export HOME="${BATS_TEST_TMPDIR}/home"
     SYSTEMD_RUN_CALLS="${BATS_TEST_TMPDIR}/systemd-run-calls"
-    unset ALERT_WATCHER_TMUX_TARGET SESSION_EXISTS SCOPE_ACTIVE
+    unset OWL_TMUX_TARGET SESSION_EXISTS SCOPE_ACTIVE
 
-    mkdir -p "${ALERT_WATCHER_WORKTREE}" "${BATS_TEST_TMPDIR}/bin"
+    mkdir -p "${OWL_WORKTREE}" "${BATS_TEST_TMPDIR}/bin"
     cat > "${BATS_TEST_TMPDIR}/bin/tmux" <<EOF
 #!/usr/bin/env bash
 printf '%s\n' "\$*" >> "${CALLS}"
@@ -61,12 +61,12 @@ EOF
 @test "a missing session is started in worktree 5" {
     run "$SCRIPT"
     [ "$status" -eq 0 ]
-    grep -q "^new-session -d -s q5 -c ${ALERT_WATCHER_WORKTREE} bash -lc " "$CALLS"
+    grep -q "^new-session -d -s q5 -c ${OWL_WORKTREE} bash -lc " "$CALLS"
 }
 
 @test "the session runs claude as the watcher, and may read the alert files" {
     run "$SCRIPT"
-    grep -q "export QUILL_ALERT_WATCHER=true CLOUDSDK_CONFIG=${HOME}/.config/quill-alert-watcher/gcloud CLAUDE_CODE_DISABLE_FEEDBACK_SURVEY=1; claude --add-dir ${QUILL_ALERT_WATCHER_STATE}/alerts" "$CALLS"
+    grep -q "export QUILL_OWL=true CLOUDSDK_CONFIG=${HOME}/.config/quill-owl/gcloud CLAUDE_CODE_DISABLE_FEEDBACK_SURVEY=1; claude --add-dir ${OWL_STATE}/alerts" "$CALLS"
 }
 
 @test "the session runs in auto mode, so tool calls are decided rather than asked about" {
@@ -82,14 +82,14 @@ EOF
 @test "the session loads its own settings, from beside the script" {
     local settings
 
-    settings="$(cd "${BATS_TEST_DIRNAME}/../alert-watcher" && pwd)/session-settings.json"
+    settings="$(cd "${BATS_TEST_DIRNAME}/../owl" && pwd)/session-settings.json"
 
     run "$SCRIPT"
     grep -qF -- "--settings ${settings} " "$CALLS"
 }
 
 @test "the session settings refuse reads outside the worktree rather than asking" {
-    local settings="${BATS_TEST_DIRNAME}/../alert-watcher/session-settings.json"
+    local settings="${BATS_TEST_DIRNAME}/../owl/session-settings.json"
 
     run python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print(d["permissions"]["blockReadsOutsideWorkingDirectories"])' "$settings"
     [ "$status" -eq 0 ]
@@ -103,7 +103,7 @@ EOF
 
 @test "the session keeps gcloud settings of its own, apart from the user's" {
     run "$SCRIPT"
-    grep -q "CLOUDSDK_CONFIG=${HOME}/.config/quill-alert-watcher/gcloud " "$CALLS"
+    grep -q "CLOUDSDK_CONFIG=${HOME}/.config/quill-owl/gcloud " "$CALLS"
     [ "$(grep -c "CLOUDSDK_CONFIG=${HOME}/.config/gcloud" "$CALLS")" -eq 0 ]
 }
 
@@ -131,12 +131,12 @@ EOF
 
 @test "the alert folder is made, and kept to its owner" {
     run "$SCRIPT"
-    [ -d "${QUILL_ALERT_WATCHER_STATE}/alerts" ]
-    [ "$(stat -c %a "${QUILL_ALERT_WATCHER_STATE}")" = "700" ]
+    [ -d "${OWL_STATE}/alerts" ]
+    [ "$(stat -c %a "${OWL_STATE}")" = "700" ]
 }
 
 @test "a missing worktree is refused, and nothing is started" {
-    export ALERT_WATCHER_WORKTREE="${BATS_TEST_TMPDIR}/nowhere"
+    export OWL_WORKTREE="${BATS_TEST_TMPDIR}/nowhere"
 
     run "$SCRIPT"
     [ "$status" -eq 1 ]
@@ -146,7 +146,7 @@ EOF
 @test "the session starts in a systemd scope of its own, outside the service" {
     run "$SCRIPT"
     [ "$status" -eq 0 ]
-    grep -q -- "^--user --scope --quiet --collect --unit=quill-tmux-server tmux new-session -d -s q5 -c ${ALERT_WATCHER_WORKTREE} bash -lc " "$SYSTEMD_RUN_CALLS"
+    grep -q -- "^--user --scope --quiet --collect --unit=quill-tmux-server tmux new-session -d -s q5 -c ${OWL_WORKTREE} bash -lc " "$SYSTEMD_RUN_CALLS"
     grep -q "^new-session -d -s q5 " "$CALLS"
 }
 
@@ -170,7 +170,7 @@ EOF
     PATH="$tools" run "$SCRIPT"
     [ "$status" -eq 0 ]
     [ ! -e "$SYSTEMD_RUN_CALLS" ]
-    grep -q "^new-session -d -s q5 -c ${ALERT_WATCHER_WORKTREE} bash -lc " "$CALLS"
+    grep -q "^new-session -d -s q5 -c ${OWL_WORKTREE} bash -lc " "$CALLS"
 }
 
 @test "a session already running starts no scope" {
