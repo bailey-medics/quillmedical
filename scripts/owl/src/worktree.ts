@@ -1,4 +1,4 @@
-// Whether worktree 5 is free for an alert run.
+// Whether Owl's worktree is free for an alert run.
 //
 // A person may be working there, so the watcher never resets or cleans it.
 // Each run starts by moving the checkout to the latest main, so the only

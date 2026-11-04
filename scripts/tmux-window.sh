@@ -4,7 +4,8 @@
 # browser tab on the phone, through the VS Code tunnel, above all.
 #
 # Each worktree has one such session: t1 for ~/github/quillmedical, t2 and
-# up for quillmedical-2 and up, beside the q1 and up that hold Claude. This:
+# up for quillmedical-2 and up, and towl for quillmedical-owl, beside the
+# q1 and up, and owl, that hold Claude. This:
 #
 #   - starts the session, with a login shell in the worktree, when there
 #     is none;
@@ -16,8 +17,8 @@
 # It runs nothing in the shell. Whatever is wanted is typed there.
 #
 # A session of its own, rather than a window in a q session, keeps `just c`
-# landing on Claude, and keeps it out of Owl's way: the
-# watcher types into whichever window of q5 is active.
+# landing on Claude, and keeps it out of Owl's way: Owl types into
+# whichever window of the owl session is active.
 
 set -euo pipefail
 
@@ -47,6 +48,7 @@ worktree="$(basename "${top}")"
 case "${worktree}" in
     quillmedical) name="t1" ;;
     quillmedical-[2-9] | quillmedical-[1-9][0-9]) name="t${worktree#quillmedical-}" ;;
+    quillmedical-owl) name="towl" ;;
     *)
         echo "✗ ${top} is not one of the Quill worktrees." >&2
         exit 1

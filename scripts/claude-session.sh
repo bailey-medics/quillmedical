@@ -3,8 +3,8 @@
 # with Claude running in it, whatever state either is in.
 #
 # Each worktree has one tmux session: q1 for ~/github/quillmedical, q2 and
-# up for quillmedical-2 and up. ~/.local/bin/quill-sessions starts q1 to q5
-# at boot. This:
+# up for quillmedical-2 and up, and owl for quillmedical-owl, Owl's own.
+# ~/.local/bin/quill-sessions starts the numbered ones at boot. This:
 #
 #   - starts the session, with Claude in it, when there is none;
 #   - starts Claude again in it when Claude has exited and left the shell;
@@ -24,8 +24,8 @@
 # session, not from tmux's pane_current_command: a pane started with
 # `bash -lc 'claude ...'` reports bash while Claude runs as its child.
 #
-# Worktree 5 belongs to Owl while quill-owl.service
-# is enabled. Its Claude needs the watcher's environment and allowlist,
+# The owl session belongs to Owl while quill-owl.service is enabled. Its
+# Claude needs Owl's environment and allowlist,
 # which only scripts/owl/start-session.sh gives it, so a missing
 # session or a stopped Claude there is refused and the fix named.
 
@@ -46,6 +46,7 @@ worktree="$(basename "${top}")"
 case "${worktree}" in
     quillmedical) name="q1" ;;
     quillmedical-[2-9] | quillmedical-[1-9][0-9]) name="q${worktree#quillmedical-}" ;;
+    quillmedical-owl) name="owl" ;;
     *)
         echo "✗ ${top} is not one of the Quill worktrees." >&2
         exit 1
@@ -57,12 +58,12 @@ start_claude="claude --continue --ide --remote-control ${worktree} || claude --i
 watcher_owns_it=false
 claude_was_running=false
 
-if [ "${name}" = "q5" ] && systemctl --user is-enabled --quiet quill-owl.service 2> /dev/null; then
+if [ "${name}" = "owl" ] && systemctl --user is-enabled --quiet quill-owl.service 2> /dev/null; then
     watcher_owns_it=true
 fi
 
 refuse_for_watcher() {
-    echo "✗ q5 belongs to Owl, and its Claude needs Owl's flags. Start it again from worktree 5 with:" >&2
+    echo "✗ The owl session belongs to Owl, and its Claude needs Owl's flags. Start it again from quillmedical-owl with:" >&2
     echo "    just owl-restart" >&2
     exit 1
 }

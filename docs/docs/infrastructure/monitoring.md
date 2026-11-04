@@ -110,7 +110,7 @@ they are in `infra/modules/monitoring/main.tf`.
 
 A daemon on the home box reads `#quill-medical-cicd` and, when an alert or a
 failed deploy is posted there, types `/alert <file>` into the Claude Code
-session in worktree 5. The `/alert` skill investigates, explains the cause
+session in Owl's worktree. The `/alert` skill investigates, explains the cause
 in the alert's thread, and opens a pull request ready for review when the
 fault is ours. A person reviews and merges it, or closes it. The design is
 the watcher phase of the
@@ -128,7 +128,7 @@ and the program is in `scripts/owl/`.
   records fingerprints and outcomes, never alert text.
 - **Its state**: `~/.local/state/quill-owl/`, holding the busy flag,
   the alert files and the ledger of what it has handled.
-- **Installing it again**: `just owl-install` from worktree 5.
+- **Installing it again**: `just owl-install` from Owl's worktree.
 
 ### Checking it after a change
 

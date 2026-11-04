@@ -66,6 +66,14 @@ run_in() {
     grep -qx "tmux attach -t =t1" "$CALLS"
 }
 
+@test "quillmedical-owl is towl" {
+    git init -q "${BATS_TEST_TMPDIR}/quillmedical-owl"
+
+    run_in "${BATS_TEST_TMPDIR}/quillmedical-owl"
+    [ "$status" -eq 0 ]
+    grep -q "^tmux new-session -d -s towl " "$CALLS"
+}
+
 @test "worktree 5 is t5, with no refusal for Owl" {
     git init -q "${BATS_TEST_TMPDIR}/quillmedical-5"
 
