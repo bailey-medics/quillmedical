@@ -271,7 +271,10 @@ sign-off or log a new entry. One with nothing recorded is left out.
 names them by id, and asking again compares the new level with the last
 one's place on the scale, so a level gone from the framework would leave
 a holder unable to ask again. The sync and the version check both refuse
-a version that drops one. Retiring a level or scope is not built yet.
+a version that drops one. To stop offering one, retire it, as a
+competency is retired: `retired_on` and `retired_in_version` on the
+level or scope. A retired one keeps its place on the scale and still
+reads on every record, but nothing new may ask for it.
 
 **The exports name things as the page does.** The Markdown, the PDF and
 the bundle name each framework as it is today, head each sign-off with

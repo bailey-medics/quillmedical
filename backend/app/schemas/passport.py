@@ -314,10 +314,28 @@ class FrameworkChoiceOut(BaseModel):
 
 
 class FrameworkScopeOut(BaseModel):
-    """One part of practice a framework competency is signed off for."""
+    """One part of practice a framework competency is signed off for.
+
+    A retired one is still listed, with ``retired_on`` set, so a record
+    naming it reads; it is not offered for anything new.
+    """
 
     id: NonEmptyText
     name: NonEmptyText
+    retired_on: date | None = None
+    retired_in_version: int | None = None
+
+
+class FrameworkLevelOut(LevelOptionOut):
+    """One step on a framework competency's scale, with its retirement.
+
+    A retired one is still listed, at its place on the scale, so a record
+    naming it reads and a later level can be compared with it; it is not
+    offered for anything new.
+    """
+
+    retired_on: date | None = None
+    retired_in_version: int | None = None
 
 
 class FrameworkCompetencyOut(BaseModel):
@@ -331,7 +349,7 @@ class FrameworkCompetencyOut(BaseModel):
 
     id: CompetencyIdField
     display_name: NonEmptyText
-    levels: list[LevelOptionOut] = Field(default_factory=list)
+    levels: list[FrameworkLevelOut] = Field(default_factory=list)
     scopes: list[FrameworkScopeOut] = Field(default_factory=list)
     expires_after_months: int | None = None
     retired_on: date | None = None

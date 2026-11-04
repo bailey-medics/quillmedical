@@ -86,6 +86,33 @@ describe("FrameworkCatalogue", () => {
     });
   });
 
+  it("offers no level or scope the framework retired", () => {
+    const retiring = new FrameworkCatalogue([
+      {
+        ...SHEET,
+        competencies: [
+          {
+            ...SHEET.competencies[0],
+            levels: [
+              {
+                id: "observed",
+                name: "Observed",
+                position: 0,
+                retired_on: "2026-11-04",
+                retired_in_version: 2,
+              },
+              { id: "independent", name: "Independent", position: 1 },
+            ],
+          },
+        ],
+      },
+    ]);
+
+    expect(retiring.competency("sheet_refer")?.levels).toEqual([
+      { id: "independent", name: "Independent" },
+    ]);
+  });
+
   it("keeps a retired competency, marked as retired", () => {
     expect(catalogue.competency("sheet_plan")?.retired_on).toBe("2026-10-01");
     expect(catalogue.competency("sheet_plan")?.scopes).toEqual([
