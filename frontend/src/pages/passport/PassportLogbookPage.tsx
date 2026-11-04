@@ -27,7 +27,7 @@ import LogbookTable from "@/components/passport/LogbookTable";
 import ErrorState from "@/components/error-state/ErrorState";
 import StateMessage from "@/components/message-cards/StateMessage";
 import { IconFileText } from "@/components/icons/appIcons";
-import competenciesData from "@/generated/competencies.json";
+import type { FrameworkCatalogue } from "@lib/passport/catalogue";
 import { useFrameworkCatalogue } from "@lib/passport/catalogue";
 import { scopesFor } from "@lib/passport/scopes";
 import {
@@ -53,14 +53,11 @@ import type {
  * rather than pretending to know one.
  */
 function competencyForForm(
+  catalogue: FrameworkCatalogue | null,
   competencyId: string,
   logbook: Logbook | null,
 ): CompetencyState {
-  const catalogue = competenciesData.competencies as {
-    id: string;
-    display_name: string;
-  }[];
-  const entry = catalogue.find((item) => item.id === competencyId);
+  const entry = catalogue?.competency(competencyId);
 
   return {
     id: competencyId,
@@ -165,36 +162,26 @@ export function Component() {
   // catalogue. Built from what is there rather than from the whole
   // catalogue, because a filter offering competencies with nothing
   // behind them only ever produces an empty list.
-  // Display names, from the shared catalogue. Used by the filter and by
+  // Display names, from the frameworks the backend serves. Used by the filter and by
   // each table's heading, which until now printed the raw id: the page
   // showed "certify_death" where the picker beside it said "Certify
   // death", and only the picker's wording was ever read by a test.
-  const nameOf = useMemo(() => {
-    const catalogue = competenciesData.competencies as {
-      id: string;
-      display_name: string;
-    }[];
-    const byId = new Map(catalogue.map((item) => [item.id, item.display_name]));
-    return (id: string) => byId.get(id) ?? id;
-  }, []);
+  const nameOf = useMemo(
+    () => (id: string) => catalogue?.competency(id)?.display_name ?? id,
+    [catalogue],
+  );
 
   const filterOptions = useMemo(() => {
-    const catalogue = competenciesData.competencies as {
-      id: string;
-      display_name: string;
-    }[];
     return [
       {
         group: "Competency",
         items: whole.competencies.map((entry) => ({
           value: entry.competency,
-          label:
-            catalogue.find((item) => item.id === entry.competency)
-              ?.display_name ?? entry.competency,
+          label: nameOf(entry.competency),
         })),
       },
     ];
-  }, [whole.competencies]);
+  }, [nameOf, whole.competencies]);
 
   return (
     <Stack gap="lg">
@@ -218,7 +205,11 @@ export function Component() {
 
           {competencyId && (
             <LogbookEntryForm
-              competency={competencyForForm(competencyId, groups[0] ?? null)}
+              competency={competencyForForm(
+                catalogue,
+                competencyId,
+                groups[0] ?? null,
+              )}
               scopes={scopesFor(catalogue, competencyId)}
               onSubmit={handleSubmit}
               onCancel={() => {

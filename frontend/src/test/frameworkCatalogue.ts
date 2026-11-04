@@ -1,29 +1,27 @@
 /**
- * The real frameworks as a catalogue, for tests and Storybook.
+ * The framework fixtures as a catalogue, for tests and Storybook.
  *
- * Built from the generated bundle, which still holds the frameworks, in
- * the shape `GET /api/passport/catalogue` serves them, so a component
- * under test reads exactly what the backend would give it. The bundle
- * stops holding frameworks in the next unit of Phase 7 of
- * docs/docs/plans/2026-11-01-passport-record-and-catalogue-plan.md, and
- * this then reads a fixture of its own.
+ * Built from `shared/framework-fixtures/`, which `yarn generate:types`
+ * writes to `src/generated/framework-fixtures.json`, in the shape
+ * `GET /api/passport/catalogue` serves, so a component under test reads
+ * what the backend would give it. The backend's tests and the end-to-end
+ * stack sync from the same fixtures. The app itself never reads them: it
+ * loads the frameworks from the backend.
  */
 
+import fixturesData from "@/generated/framework-fixtures.json";
 import { FrameworkCatalogue } from "@lib/passport/catalogue";
 import type { FrameworkDefinition } from "@lib/passport/types";
-import { ALL_COMPETENCIES, ALL_FRAMEWORKS } from "@/types/cbac";
 
-/** Every framework in the bundle, as the backend serves it. */
+/** Every framework fixture, as the backend serves it. */
 export const TEST_FRAMEWORK_DEFINITIONS: FrameworkDefinition[] =
-  ALL_FRAMEWORKS.map((framework) => ({
+  fixturesData.fixtures.map(({ framework, competencies }) => ({
     id: framework.id,
     name: framework.name,
     publisher: framework.publisher,
     version: framework.version,
-    specialties: framework.specialties,
-    competencies: ALL_COMPETENCIES.filter(
-      (competency) => competency.framework_id === framework.id,
-    ).map((competency) => ({
+    specialties: framework.specialties ?? [],
+    competencies: competencies.map((competency) => ({
       id: competency.id,
       display_name: competency.display_name,
       levels: (competency.levels ?? []).map((level, position) => ({
@@ -33,11 +31,11 @@ export const TEST_FRAMEWORK_DEFINITIONS: FrameworkDefinition[] =
       scopes: competency.scopes ?? [],
       expires_after_months: competency.expires_after_months ?? null,
       retired_on: competency.retired_on ?? null,
-      retired_in_version: null,
+      retired_in_version: competency.retired_in_version ?? null,
     })),
   }));
 
-/** The real frameworks, for a component that takes a catalogue. */
+/** The framework fixtures, for a component that takes a catalogue. */
 export const TEST_FRAMEWORK_CATALOGUE = new FrameworkCatalogue(
   TEST_FRAMEWORK_DEFINITIONS,
 );
