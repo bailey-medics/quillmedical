@@ -234,7 +234,7 @@ class TestTheFingerprintReachesThePage:
         record = service.read_sign_off(store, PASSPORT_ID, name)
         styles = pdf._styles()
 
-        block = pdf._one_sign_off(name, record, styles)
+        block = pdf._one_sign_off(name, record, styles, None)
         text = " ".join(item.text for item in block if hasattr(item, "text"))
 
         assert record.content_hash
@@ -250,7 +250,7 @@ class TestTheFingerprintReachesThePage:
         name = _signed(store, holder, assessor)
         record = service.read_sign_off(store, PASSPORT_ID, name)
 
-        block = pdf._one_sign_off(name, record, pdf._styles())
+        block = pdf._one_sign_off(name, record, pdf._styles(), None)
         text = " ".join(item.text for item in block if hasattr(item, "text"))
 
         assert "Dr Amara Okonkwo" in text

@@ -273,6 +273,12 @@ one's place on the scale, so a level gone from the framework would leave
 a holder unable to ask again. The sync and the version check both refuse
 a version that drops one. Retiring a level or scope is not built yet.
 
+**The exports name things as the page does.** The Markdown, the PDF and
+the bundle name each framework as it is today, head each sign-off with
+its competency's name today, add "Signed off as" with the stored words
+where they differ, and say which framework version it was given under.
+The words come from `wording.py`, shared by both.
+
 **`GET /api/passport/catalogue` serves the frameworks to the frontend**,
 every framework Quill holds at its newest version, with its competencies,
 levels and scopes, and its retired competencies marked with `retired_on`.
