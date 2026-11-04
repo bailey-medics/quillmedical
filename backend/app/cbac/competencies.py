@@ -370,6 +370,139 @@ def _check_belongs(
         )
 
 
+def _entries_of(
+    data: Any, path: Path
+) -> tuple[Framework | None, list[CompetencyEntry]]:
+    """The framework one parsed file declares, and its competencies.
+
+    Every check that needs only the one file is made here, so a file read
+    from anywhere is held to the same rules. Duplicates across files are
+    the caller's to refuse.
+
+    Args:
+        data: The parsed file.
+        path: The file, named in a refusal. Its name is the framework's.
+
+    Returns:
+        The framework, or None for a file that declares none, and the
+        competencies in the order the file lists them.
+
+    Raises:
+        ValueError: For anything the catalogue refuses.
+    """
+    framework = _framework_of(data, path)
+    entries: list[CompetencyEntry] = []
+
+    for raw in data["competencies"]:
+        if "framework_id" in raw:
+            raise ValueError(
+                f"Competency {raw.get('id')!r} in {path.name} sets "
+                "framework_id. An entry belongs to the framework its "
+                "file declares, and cannot name another."
+            )
+
+        entry = CompetencyEntry(**raw)
+        if framework is not None:
+            entry = entry.model_copy(update={"framework_id": framework.id})
+
+        _check_belongs(entry, framework, path)
+
+        # A sign-off stores the level id, so two levels sharing one
+        # would make a stored record ambiguous about which step of
+        # the scale was reached.
+        if entry.levels is not None:
+            level_ids = [lvl.id for lvl in entry.levels]
+            if len(set(level_ids)) != len(level_ids):
+                raise ValueError(
+                    f"Competency {entry.id!r} in {path.name} has "
+                    "duplicate level ids: "
+                    + ", ".join(sorted(level_ids))
+                    + "."
+                )
+            if not level_ids:
+                raise ValueError(
+                    f"Competency {entry.id!r} in {path.name} declares "
+                    "an empty level list. Omit levels entirely where a "
+                    "competency is simply signed off or not."
+                )
+
+        _check_scopes(entry, path)
+        entries.append(entry)
+
+    return framework, entries
+
+
+#: The largest framework file read as text. The biggest in
+#: shared/competency-definitions/ is under 13 KB, so this leaves room
+#: for any real framework and refuses one big enough to exhaust memory.
+MAX_FRAMEWORK_FILE_BYTES: int = 256 * 1024
+
+
+def load_framework_text(
+    text: str, framework_id: str
+) -> tuple[Framework, list[CompetencyEntry]]:
+    """Read one framework file from its text, with the catalogue's rules.
+
+    For a file that comes from outside this repository, such as a version
+    read from a framework repository's history. Held to every rule a file
+    in shared/competency-definitions/ is, and two more, because the text
+    is not ours: a size limit, and no YAML aliases, which let a small file
+    expand hugely in memory and which no framework needs.
+
+    Args:
+        text: The file's contents.
+        framework_id: The framework it must declare, as its file's name.
+
+    Returns:
+        The framework, and its competencies in the order the file lists
+        them.
+
+    Raises:
+        ValueError: For a file too large, one using an alias, one that
+            declares no framework or another one, or anything the
+            catalogue refuses.
+    """
+    path = Path(f"{framework_id}.yaml")
+
+    if len(text.encode("utf-8")) > MAX_FRAMEWORK_FILE_BYTES:
+        raise ValueError(
+            f"{path.name} is larger than {MAX_FRAMEWORK_FILE_BYTES} bytes."
+        )
+
+    for event in yaml.parse(text, Loader=yaml.SafeLoader):
+        if isinstance(event, yaml.AliasEvent):
+            raise ValueError(
+                f"{path.name} uses a YAML alias. Write each value out in "
+                "full."
+            )
+
+    data: Any = yaml.safe_load(text)
+
+    if not isinstance(data, dict) or not isinstance(
+        data.get("competencies"), list
+    ):
+        raise ValueError(f"{path.name} lists no competencies.")
+
+    framework, entries = _entries_of(data, path)
+
+    if framework is None:
+        raise ValueError(f"{path.name} declares no framework.")
+
+    ids = [entry.id for entry in entries]
+    repeated = sorted({i for i in ids if ids.count(i) > 1})
+
+    if repeated:
+        raise ValueError(
+            f"Duplicate competency ids in {path.name}: "
+            + ", ".join(repeated)
+            + "."
+        )
+
+    _check_may_grant(entries)
+
+    return framework, entries
+
+
 def _load_catalogue(
     directory: Path,
 ) -> tuple[list[CompetencyEntry], list[Framework]]:
@@ -408,45 +541,11 @@ def _load_catalogue(
         with open(path) as f:
             data: Any = yaml.safe_load(f)
 
-        framework = _framework_of(data, path)
+        framework, file_entries = _entries_of(data, path)
         if framework is not None:
             frameworks.append(framework)
 
-        for raw in data["competencies"]:
-            if "framework_id" in raw:
-                raise ValueError(
-                    f"Competency {raw.get('id')!r} in {path.name} sets "
-                    "framework_id. An entry belongs to the framework its "
-                    "file declares, and cannot name another."
-                )
-
-            entry = CompetencyEntry(**raw)
-            if framework is not None:
-                entry = entry.model_copy(update={"framework_id": framework.id})
-
-            _check_belongs(entry, framework, path)
-
-            # A sign-off stores the level id, so two levels sharing one
-            # would make a stored record ambiguous about which step of
-            # the scale was reached.
-            if entry.levels is not None:
-                level_ids = [lvl.id for lvl in entry.levels]
-                if len(set(level_ids)) != len(level_ids):
-                    raise ValueError(
-                        f"Competency {entry.id!r} in {path.name} has "
-                        "duplicate level ids: "
-                        + ", ".join(sorted(level_ids))
-                        + "."
-                    )
-                if not level_ids:
-                    raise ValueError(
-                        f"Competency {entry.id!r} in {path.name} declares "
-                        "an empty level list. Omit levels entirely where a "
-                        "competency is simply signed off or not."
-                    )
-
-            _check_scopes(entry, path)
-
+        for entry in file_entries:
             if entry.id in seen:
                 raise ValueError(
                     f"Duplicate competency id {entry.id!r}: defined in "

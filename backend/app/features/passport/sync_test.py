@@ -14,7 +14,11 @@ from app.features.passport.models import (
     PassportFrameworkSync,
     PassportFrameworkVersion,
 )
-from app.features.passport.sync import sync_frameworks
+from app.features.passport.sync import (
+    sync_framework_versions,
+    sync_frameworks,
+    sync_version_texts,
+)
 
 _SHEET = """\
 framework:
@@ -68,7 +72,7 @@ def test_the_real_frameworks_are_stored(db_session: Session) -> None:
     assert result.succeeded
     assert versions == {
         "clinical": 1,
-        "ghnft_radiotherapy_record": 2,
+        "ghnft_radiotherapy_record": 1,
         "ruh_sact_passport": 1,
         "uk_sact_board_2023": 1,
     }
@@ -260,3 +264,165 @@ def test_a_refusal_writes_nothing_and_is_recorded(
 
     assert runs == ["succeeded", "failed"]
     assert _count(db_session, PassportFrameworkVersion) == 1
+
+
+# --- Catching up from the uploaded versions ---------------------------------
+#
+# The framework pipeline uploads every version as <framework>/<version>.yaml
+# and never overwrites one. The sync reads every version the tables lack.
+
+
+def _versions(root: Path, *numbers: int) -> Path:
+    """Write sheet versions into root/sheet/, each a little different."""
+    folder = root / "sheet"
+    folder.mkdir(parents=True, exist_ok=True)
+
+    for number in numbers:
+        (folder / f"{number}.yaml").write_text(
+            _SHEET.format(version=number, words=f"Refer, edition {number}")
+        )
+
+    return root
+
+
+def test_the_sync_catches_up_on_every_missing_version(
+    db_session: Session, tmp_path: Path
+) -> None:
+    root = _versions(tmp_path / "v", 1)
+    sync_framework_versions(db_session, root)
+    _versions(root, 2, 3)
+
+    result = sync_framework_versions(db_session, root)
+
+    stored = db_session.scalars(
+        select(PassportFrameworkVersion.version).order_by(
+            PassportFrameworkVersion.version
+        )
+    ).all()
+
+    assert result.succeeded
+    assert result.versions_written == 2
+    assert stored == [1, 2, 3]
+
+
+def test_a_first_catch_up_without_version_1_is_refused(
+    db_session: Session, tmp_path: Path
+) -> None:
+    """A lost version 1 must not pass for a framework that began at 2."""
+    result = sync_framework_versions(
+        db_session, _versions(tmp_path / "v", 2, 3)
+    )
+
+    assert not result.succeeded
+    assert "version 1 not found" in (result.error or "")
+    assert _count(db_session, PassportFrameworkVersion) == 0
+
+
+def test_a_framework_first_stored_above_version_1_is_refused(
+    db_session: Session, tmp_path: Path
+) -> None:
+    result = sync_frameworks(db_session, _sheet(tmp_path / "d", version=3))
+
+    assert not result.succeeded
+    assert "starts at version 3" in (result.error or "")
+    assert "versions 1, 2 are missing" in (result.error or "")
+    assert _count(db_session, PassportFrameworkVersion) == 0
+
+
+def test_a_gap_in_the_uploaded_versions_is_refused_and_named(
+    db_session: Session, tmp_path: Path
+) -> None:
+    root = _versions(tmp_path / "v", 1)
+    sync_framework_versions(db_session, root)
+    _versions(root, 3, 4)
+
+    result = sync_framework_versions(db_session, root)
+
+    assert not result.succeeded
+    assert "version 2 not found" in (result.error or "")
+    assert _count(db_session, PassportFrameworkVersion) == 1
+
+
+def test_a_catch_up_writes_all_or_nothing(
+    db_session: Session, tmp_path: Path
+) -> None:
+    """Version 2 is good and version 3 is not, so neither is written."""
+    root = _versions(tmp_path / "v", 1)
+    sync_framework_versions(db_session, root)
+    _versions(root, 2, 3)
+    bad = (
+        (root / "sheet" / "3.yaml")
+        .read_text()
+        .replace("sheet_refer", "sheet_plan")
+    )
+    (root / "sheet" / "3.yaml").write_text(bad)
+
+    result = sync_framework_versions(db_session, root)
+
+    assert "deleted competencies" in (result.error or "")
+    assert _count(db_session, PassportFrameworkVersion) == 1
+
+
+def test_a_file_named_for_another_version_is_refused(
+    db_session: Session, tmp_path: Path
+) -> None:
+    root = _versions(tmp_path / "v", 1, 2)
+    folder = root / "sheet"
+    (folder / "2.yaml").write_text((folder / "1.yaml").read_text())
+
+    result = sync_framework_versions(db_session, root)
+
+    assert "declares version 1" in (result.error or "")
+
+
+def test_a_file_not_named_for_a_version_is_refused(
+    db_session: Session, tmp_path: Path
+) -> None:
+    root = _versions(tmp_path / "v", 1)
+    (root / "sheet" / "1.yaml").rename(root / "sheet" / "latest.yaml")
+
+    result = sync_framework_versions(db_session, root)
+
+    assert "not named for a version" in (result.error or "")
+
+
+def test_a_stored_version_that_differs_from_its_file_is_refused(
+    db_session: Session, tmp_path: Path
+) -> None:
+    """A version rewritten on main must not go unnoticed."""
+    root = _versions(tmp_path / "v", 1)
+    sync_framework_versions(db_session, root)
+    rewritten = _SHEET.format(version=1, words="Refer someone else")
+    (root / "sheet" / "1.yaml").write_text(rewritten)
+
+    result = sync_framework_versions(db_session, root)
+
+    assert not result.succeeded
+    assert "version 1 differs from the version stored" in (result.error or "")
+
+
+def test_versions_are_caught_up_from_their_text(
+    db_session: Session,
+) -> None:
+    """The form the sync job uses, reading each file from git history."""
+    texts = {
+        number: _SHEET.format(version=number, words=f"Refer {number}")
+        for number in (1, 2)
+    }
+
+    result = sync_version_texts(db_session, {"sheet": texts})
+
+    assert result.succeeded
+    assert result.versions_written == 2
+
+
+def test_versions_already_stored_are_left_alone(
+    db_session: Session, tmp_path: Path
+) -> None:
+    root = _versions(tmp_path / "v", 1, 2)
+    sync_framework_versions(db_session, root)
+
+    again = sync_framework_versions(db_session, root)
+
+    assert again.succeeded
+    assert again.versions_written == 0

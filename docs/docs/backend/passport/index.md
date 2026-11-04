@@ -236,6 +236,32 @@ version. One refusal writes nothing. It runs in the pre-deploy migrations
 job, after the migrations, so a refusal blocks the deploy; in the CI seed;
 and after `just migrate-local`. Nothing reads the tables yet.
 
+A refused skip names each missing version. A version the sync never saw
+is in no file any more, so every later sync would refuse the same way:
+
+- **While the frameworks live in this repository**, the refusal says how
+  to rebuild a missing version from git history.
+- **Once they live in their own repositories**, the sync catches up from
+  every version in a framework's history. `sync_version_texts` takes each
+  version's file as text, and stores every version the tables lack, in
+  order, all or none, so a skipped run only delays a version. A version
+  missing from the history is refused and named. So is a stored version
+  whose file now differs, because a stored version never changes.
+- **A file from outside this repository is read more strictly.** It
+  meets the loader's own rules, a size limit, and a ban on YAML aliases,
+  which can make a small file expand hugely in memory.
+- **For rebuilding by hand**,
+  `python -m app.features.passport.sync --versions <folder>` reads one
+  folder per framework and one file per version,
+  `<framework>/<version>.yaml`.
+
+Every framework starts at version 1, so a lost version 1 cannot pass for
+a framework that began later. Both syncs refuse a framework whose first
+version is above 1, and name the versions missing. Gloucestershire's
+record began at 2, because its pilot edition was never numbered, so on
+4 November 2026 it went back to 1 and a migration emptied the framework
+tables for the next deploy's sync to fill afresh.
+
 ## Scopes
 
 Some competencies are signed off one part of practice at a time:
