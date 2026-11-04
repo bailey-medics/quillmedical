@@ -174,6 +174,30 @@ rewrite leaves the ledger valid.
   tip; any branch where it is not empty still held a literal and is
   looked at by hand. `git rev-list --all --count` is unchanged.
 
+  A practice run on 1 November 2026, in a mirror in the scratch folder
+  with nothing pushed, found that the plain command rewrites every
+  commit, not only the ones since 25 October. `filter-repo` drops commit
+  signatures, and the git on the box (2.43) cannot keep them, so the
+  2,426 commits GitHub signed when merging change ID, and so does
+  everything after them. That would break the 32 docs that quote a
+  commit hash and lose every "Verified" mark. So the rewrite is limited
+  to the commits that need it:
+  - **D** is `e4a5024a` and every commit on a branch descended from it,
+    from `git rev-list --branches --ancestry-path ^e4a5024a`.
+  - **The boundary** is the parents of D that are not in D.
+  - **Only branches whose tip is in D are named**, and the boundary is
+    excluded: `git filter-repo --replace-text <file> --refs <those
+    branches> ^<each boundary commit>`. A search confirms that no commit
+    outside D holds a literal.
+
+  The run rewrote 242 commits on 13 branches and left the other 67 tips
+  and 2,299 signatures as they were. No branch's history or tip holds a
+  literal, and the commit count is unchanged. One rewritten tip has a
+  different tree: `feature/e2e-split-into-three-legs`, the branch of
+  #2219, merged on 27 October and never deleted. It still held the old
+  remote-dev plan, and the rewrite gives it the placeholders. Deleting
+  that branch before the live run is simpler.
+
 - [ ] Mark lifts the `protected-branches` ruleset on `main`, whose
   `non_fast_forward` rule refuses the force-push: in the GitHub UI, set
   its enforcement to disabled. The ruleset is managed by Terraform in
