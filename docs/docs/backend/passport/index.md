@@ -253,6 +253,13 @@ competency's first record, is given the catalogue only by the two writes
 that can make one: a sign-off request and a logbook entry. A read is
 never given it, because a competency with no folder has nothing to read.
 
+**`GET /api/passport/catalogue` serves the frameworks to the frontend**,
+every framework Quill holds at its newest version, with its competencies,
+levels and scopes, and its retired competencies marked with `retired_on`.
+Like `/me`, it needs no place with the passport switched on, because a
+holder who belongs nowhere still reads their own record, and its pages
+name every competency from the catalogue.
+
 **The catalogue in `app.cbac.competencies` holds permissions only.** It
 still loads every file in `shared/competency-definitions/`, so an id
 stays unique across them all and no `may_grant` list can name a
