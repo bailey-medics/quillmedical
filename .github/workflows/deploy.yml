@@ -358,6 +358,19 @@ jobs:
             --region=${{ env.GCP_REGION }} \
             --image=${{ env.AR_REGISTRY }}/${{ secrets.GCP_PROJECT_ID }}/quill/admin:${{ needs.prepare.outputs.sha }}
 
+      # The framework sync job runs the admin image with ADMIN_ACTION fixed
+      # to sync-frameworks, started by the framework pipeline. Through a
+      # script that skips the job while it does not exist yet: Terraform
+      # makes it in a workflow that runs beside this one, so the first
+      # deploy after it merges can get here first.
+      - name: Point the framework sync job at this build
+        if: ${{ needs.prepare.outputs.backend_changed == 'true' || steps.placeholder.outputs.backend == 'true' }}
+        env:
+          PROJECT: ${{ secrets.GCP_PROJECT_ID }}
+          IMAGE: ${{ env.AR_REGISTRY }}/${{ secrets.GCP_PROJECT_ID }}/quill/admin:${{ needs.prepare.outputs.sha }}
+          JOB: quill-framework-sync-${{ matrix.environment }}
+        run: bash .github/scripts/deploy/point-job-at-build.sh "$JOB" "$PROJECT" "$GCP_REGION" "$IMAGE"
+
       # The smoke test runs inside the admin job rather than from this
       # runner, because a tagged revision's *.run.app URL is only reachable
       # from the VPC once the backend's ingress is closed. Unset, the

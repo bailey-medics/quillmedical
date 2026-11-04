@@ -262,6 +262,30 @@ record began at 2, because its pilot edition was never numbered, so on
 4 November 2026 it went back to 1 and a migration emptied the framework
 tables for the next deploy's sync to fill afresh.
 
+In App production a framework repository's pipeline starts the
+`quill-framework-sync-app` job when the repository merges, and uploads
+nothing. The job's one action, `sync-frameworks`, runs
+`sync_from_repositories`, which reads every repository in
+`FRAMEWORK_REPOSITORIES` from GitHub itself:
+
+- **A bare clone over HTTPS, with no credential**, because the
+  repositories are public. A bare clone writes no file out of the
+  repository, so a hostile one can never place a file or a symlink, and
+  no submodule is fetched. Cloud Run holds a container's disk in memory,
+  so nothing outlasts the job.
+- **The first text of each version**, walking `main`'s first-parent
+  history oldest first. A later commit that changed only comments or the
+  description keeps its version, so it is not read again.
+- **Each repository may publish only the framework ids it is paired
+  with**, in the job's settings in Terraform. A file naming any other id
+  is refused, so one publisher cannot add a version to another's
+  framework.
+- **A time limit on every git command, and on the job.** A huge or
+  hostile repository stops one run and nothing else.
+
+The pipeline's account may start that job and nothing else, so it cannot
+change which repositories are read.
+
 ## Scopes
 
 Some competencies are signed off one part of practice at a time:
