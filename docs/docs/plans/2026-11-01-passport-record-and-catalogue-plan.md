@@ -929,7 +929,7 @@ reads the repositories, not a bucket" in Decisions.
       `retired_in_version` set: the newest version keeps every
       competency an earlier one held, because a competency is retired,
       never deleted, so the newest version is all Phase 10 needs.
-- [ ] **Read them in the frontend from that route**, not from the build:
+- [x] **Read them in the frontend from that route**, not from the build:
       `frameworks.ts`, `competencyTable.ts`, the pickers,
       `FrameworkField` and `CompetencySummary`. `yarn generate:types`
       keeps building the permissions into `src/generated/`, so the
@@ -975,8 +975,16 @@ reads the repositories, not a bucket" in Decisions.
         real competency keep working, and they need not follow the real
         frameworks when those change.
 
-      - [ ] **The bundle stops holding frameworks**: `yarn generate:types`
+      - [x] **The bundle stops holding frameworks**: `yarn generate:types`
         builds permissions only, so `CompetencyId` names permissions.
+        Built on 4 November 2026. `competencies.json` leaves out every
+        file that declares a framework, though it still checks their ids
+        for clashes, and `frameworks.json` is gone. The framework fixtures
+        are written to `framework-fixtures.json` for the unit tests and
+        Storybook alone. Three pages still read competency names from
+        `competencies.json`, which the earlier search missed, and their
+        tests caught it: the logbook, its entry and the sign-offs pages
+        now name a competency from the catalogue.
 
 - [ ] **Update the passport backend page and the CBAC section** of
       `.github/copilot-instructions.md`, then `CLAUDE.md` through the

@@ -11,7 +11,6 @@ import { describe, expect, it } from "vitest";
 import {
   ALL_COMPETENCIES,
   ACTIVE_COMPETENCIES,
-  ASSESSABLE_COMPETENCIES,
   getCompetencyDetails,
   SCOPED_MANAGER_IDS,
 } from "./cbac";
@@ -41,15 +40,12 @@ describe("The competency catalogue", () => {
     expect(offered).toEqual([]);
   });
 
-  it("offers everything that is neither retired nor in a framework", () => {
-    // The three must account for the whole catalogue: an id missing
-    // from all of them would be impossible to grant without anybody
-    // having retired it or filed it in a framework.
+  it("offers everything that is not retired", () => {
+    // The bundle holds permissions only, so an id missing from this list
+    // would be impossible to grant without anybody having retired it.
     expect(ACTIVE_COMPETENCIES).toHaveLength(
       ALL_COMPETENCIES.filter(
-        (competency) =>
-          competency.retired_on === undefined &&
-          competency.framework_id === undefined,
+        (competency) => competency.retired_on === undefined,
       ).length,
     );
   });
@@ -79,41 +75,14 @@ describe("The competency catalogue", () => {
   });
 });
 
-describe("The competencies the passport may record", () => {
-  const ids = ASSESSABLE_COMPETENCIES.map((competency) => competency.id);
+describe("The bundle", () => {
+  it("holds permissions only, and no framework's competency", () => {
+    // The passport reads the frameworks from GET /api/passport/catalogue.
+    const ids = ALL_COMPETENCIES.map((competency) => competency.id);
 
-  it("offers clinical skills somebody can be assessed on", () => {
-    expect(ids).toContain("clinical_perform_cannulation");
-    expect(ids).toContain("uk_sact_board_2023_prescribe_sact");
-  });
-
-  it("never offers the permission of the same name", () => {
-    // The permission is checked by the code; the framework's copy is
-    // what a passport records.
-    expect(ids).not.toContain("perform_cannulation");
-  });
-
-  it("never offers a software permission", () => {
-    // Nobody watches somebody "manage users" and signs it off.
-    expect(ids).not.toContain("manage_users");
-    expect(ids).not.toContain("access_own_patient_records");
-    expect(ids).not.toContain("passport_write");
-  });
-
-  it("is opt-in, so an entry without the flag is left out", () => {
-    const unflagged = ASSESSABLE_COMPETENCIES.filter(
-      (competency) => competency.assessable !== true,
-    );
-
-    expect(unflagged).toEqual([]);
-  });
-
-  it("never offers a retired competency", () => {
-    const retired = ASSESSABLE_COMPETENCIES.filter(
-      (competency) => competency.retired_on !== undefined,
-    );
-
-    expect(retired).toEqual([]);
+    expect(ids).toContain("perform_cannulation");
+    expect(ids).not.toContain("clinical_perform_cannulation");
+    expect(ids).not.toContain("uk_sact_board_2023_prescribe_sact");
   });
 });
 
@@ -147,26 +116,5 @@ describe("The scoped managers", () => {
     );
 
     expect(SCOPED_MANAGER_IDS.filter((id) => retired.includes(id))).toEqual([]);
-  });
-});
-
-describe("frameworks", () => {
-  it("puts every assessable competency in a framework", async () => {
-    const { ALL_FRAMEWORKS, ASSESSABLE_COMPETENCIES } = await import("./cbac");
-    const ids = new Set(ALL_FRAMEWORKS.map((framework) => framework.id));
-
-    for (const competency of ASSESSABLE_COMPETENCIES) {
-      expect(ids.has(competency.framework_id ?? "")).toBe(true);
-    }
-  });
-
-  it("offers no framework's competency where competencies are granted", async () => {
-    const { ACTIVE_COMPETENCIES } = await import("./cbac");
-
-    expect(
-      ACTIVE_COMPETENCIES.filter(
-        (competency) => competency.framework_id !== undefined,
-      ),
-    ).toEqual([]);
   });
 });

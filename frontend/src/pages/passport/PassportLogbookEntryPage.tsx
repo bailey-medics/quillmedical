@@ -25,7 +25,7 @@ import StateMessage from "@/components/message-cards/StateMessage";
 import LogbookEntryForm from "@/components/passport/LogbookEntryForm";
 import PassportRecordCard from "@/components/passport/PassportRecordCard";
 import { IconFileText } from "@/components/icons/appIcons";
-import competenciesData from "@/generated/competencies.json";
+import type { FrameworkCatalogue } from "@lib/passport/catalogue";
 import { useFrameworkCatalogue } from "@lib/passport/catalogue";
 import { scopesFor } from "@lib/passport/scopes";
 import {
@@ -39,23 +39,22 @@ import type {
   LogbookEntryInput,
 } from "@lib/passport";
 
-/** The competency's display name, from the shared catalogue. */
-function competencyName(competencyId: string): string {
-  const catalogue = competenciesData.competencies as {
-    id: string;
-    display_name: string;
-  }[];
-  return (
-    catalogue.find((item) => item.id === competencyId)?.display_name ??
-    competencyId
-  );
+/** The competency's display name, from the frameworks the backend serves. */
+function competencyName(
+  catalogue: FrameworkCatalogue | null,
+  competencyId: string,
+): string {
+  return catalogue?.competency(competencyId)?.display_name ?? competencyId;
 }
 
 /** What the logbook form needs to name the competency it is editing. */
-function competencyForForm(competencyId: string): CompetencyState {
+function competencyForForm(
+  catalogue: FrameworkCatalogue | null,
+  competencyId: string,
+): CompetencyState {
   return {
     id: competencyId,
-    name: competencyName(competencyId),
+    name: competencyName(catalogue, competencyId),
     status: "requested",
     level: null,
     signed_on: null,
@@ -138,7 +137,7 @@ export function Component() {
   // "Logbook:" first, as every record page names its section, then the
   // competency: a logbook entry has no title of its own, and the date
   // heads the card beneath.
-  const title = `Logbook: ${competencyId ? competencyName(competencyId) : "entry"}`;
+  const title = `Logbook: ${competencyId ? competencyName(catalogue, competencyId) : "entry"}`;
 
   // Only a failed load replaces the page. A failed save keeps the entry
   // on screen, with the message above it.
@@ -173,7 +172,7 @@ export function Component() {
 
       {entry && competencyId && editing && (
         <LogbookEntryForm
-          competency={competencyForForm(competencyId)}
+          competency={competencyForForm(catalogue, competencyId)}
           scopes={scopesFor(catalogue, competencyId)}
           initial={entry}
           onSubmit={handleSave}
