@@ -9,16 +9,21 @@ docs/docs/plans/2026-10-07-passport-registrar-portfolios-plan.md.
 from __future__ import annotations
 
 from collections.abc import Iterator
+from datetime import date
 from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import update
 from sqlalchemy.orm import Session
 
 from app.cbac.competencies import COMPETENCY_DEFINITIONS_DIR
-from app.features.passport import frameworks, schemas
+from app.features.passport import catalogue, frameworks, schemas
 from app.features.passport.frameworks import frameworks_for
-from app.features.passport.models import OrgUnitPassportFramework
+from app.features.passport.models import (
+    OrgUnitPassportFramework,
+    PassportFrameworkCompetency,
+)
 from app.features.passport.serialise import from_yaml
 from app.features.passport.store import LocalPassportStore
 from app.features.passport.sync import sync_frameworks
@@ -303,6 +308,77 @@ class TestTheHoldersRoutes:
         )
 
         return _login(test_client, "holder")
+
+    def test_the_catalogue_serves_every_framework_in_full(
+        self, holder_client: TestClient
+    ) -> None:
+        """What the pages will read in place of the frontend's copy."""
+        response = holder_client.get("/api/passport/catalogue")
+
+        assert response.status_code == 200, response.text
+        served = {f["id"]: f for f in response.json()}
+        held = files_catalogue()
+        assert set(served) == set(held.frameworks)
+
+        oncology = served[ONCOLOGY]
+        assert oncology["version"] == held.frameworks[ONCOLOGY].version
+        assert [c["id"] for c in oncology["competencies"]] == [
+            e.id for e in held.competencies[ONCOLOGY]
+        ]
+
+    def test_the_catalogue_gives_levels_their_position_and_scopes_their_order(
+        self, holder_client: TestClient
+    ) -> None:
+        response = holder_client.get("/api/passport/catalogue")
+
+        oncology = next(f for f in response.json() if f["id"] == ONCOLOGY)
+        sact = next(
+            c
+            for c in oncology["competencies"]
+            if c["id"] == "uk_sact_board_2023_prescribe_sact"
+        )
+        entry = files_catalogue().entries["uk_sact_board_2023_prescribe_sact"]
+        assert [lvl["id"] for lvl in sact["levels"]] == [
+            lvl.id for lvl in entry.levels or []
+        ]
+        assert [lvl["position"] for lvl in sact["levels"]] == list(
+            range(len(entry.levels or []))
+        )
+        assert [sc["id"] for sc in sact["scopes"]] == [
+            sc.id for sc in entry.scopes or []
+        ]
+
+    def test_the_catalogue_serves_a_retired_competency_as_retired(
+        self, holder_client: TestClient, db_session: Session
+    ) -> None:
+        """So a page can still name a record held against one."""
+        db_session.execute(
+            update(PassportFrameworkCompetency)
+            .where(
+                PassportFrameworkCompetency.competency_id
+                == "clinical_perform_cannulation"
+            )
+            .values(retired_on=date(2026, 3, 15))
+        )
+        db_session.commit()
+        catalogue.clear_cache()
+
+        response = holder_client.get("/api/passport/catalogue")
+
+        general = next(f for f in response.json() if f["id"] == GENERAL)
+        cannulation = next(
+            c
+            for c in general["competencies"]
+            if c["id"] == "clinical_perform_cannulation"
+        )
+        assert cannulation["retired_on"] == "2026-03-15"
+
+    def test_the_catalogue_needs_a_signed_in_passport_user(
+        self, test_client: TestClient
+    ) -> None:
+        response = test_client.get("/api/passport/catalogue")
+
+        assert response.status_code in (401, 404)
 
     def test_the_list_carries_what_a_page_needs(
         self, holder_client: TestClient

@@ -4849,6 +4849,21 @@ class TestAnOwnerWhoBelongsNowhereThePassportIsOn:
 
         assert response.status_code == 200
 
+    def test_they_read_the_frameworks(
+        self, removed: tuple[TestClient, str], stored_frameworks: Session
+    ) -> None:
+        """Their own record's pages name everything from the catalogue.
+
+        Without it the competency page cannot tell a competency from an
+        address nobody was given, and says "not found".
+        """
+        client, _ = removed
+
+        response = client.get("/api/passport/catalogue")
+
+        assert response.status_code == 200
+        assert response.json()
+
     def test_they_are_told_it_is_read_only(
         self, removed: tuple[TestClient, str]
     ) -> None:

@@ -917,11 +917,18 @@ reads the repositories, not a bucket" in Decisions.
       A sign-off for a competency no framework defines any more is let
       through, because its framework cannot be known, and a passport
       must stay readable when a competency leaves the catalogue.
-- [ ] **Serve the frameworks to the frontend**, through a typed route
+- [x] **Serve the frameworks to the frontend**, through a typed route
       under `/api/passport/`, with each framework's current version, its
       competencies, levels and scopes, and the retired competencies of
       earlier versions that Phase 10 needs. Additive, so it needs no
       expand-contract.
+      Built on 4 November 2026 as `GET /api/passport/catalogue`, behind
+      the passport feature like the framework list, answering
+      `list[FrameworkDefinitionOut]` from `backend/app/schemas/passport.py`.
+      A retired competency is served with `retired_on` and
+      `retired_in_version` set: the newest version keeps every
+      competency an earlier one held, because a competency is retired,
+      never deleted, so the newest version is all Phase 10 needs.
 - [ ] **Read them in the frontend from that route**, not from the build:
       `frameworks.ts`, `competencyTable.ts`, the pickers,
       `FrameworkField` and `CompetencySummary`. `yarn generate:types`
