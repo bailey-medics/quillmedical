@@ -109,6 +109,16 @@ def test_the_newest_version_is_the_one_read(
     assert held.entries["sheet_refer"].display_name == "Refer a patient"
 
 
+def test_every_stored_version_is_known(
+    db_session: Session, tmp_path: Path
+) -> None:
+    """So a sign-off naming an older version can be checked as held."""
+    _store(db_session, tmp_path / "d", 1, "Refer")
+    _store(db_session, tmp_path / "d", 2, "Refer a patient")
+
+    assert stored_catalogue(db_session).versions["sheet"] == {1, 2}
+
+
 def test_a_second_read_with_nothing_new_uses_the_cache(
     db_session: Session, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

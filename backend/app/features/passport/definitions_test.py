@@ -26,6 +26,7 @@ from app.features.passport.catalogue import StoredCatalogue, stored_catalogue
 from app.features.passport.definitions import (
     NotAssessableError,
     UnknownCompetencyError,
+    UnknownFrameworkVersionError,
     UnknownLevelError,
 )
 from tests.frameworks import files_catalogue
@@ -367,3 +368,38 @@ def test_a_permission_has_no_framework_version(
     """Nothing is signed off against a permission, which no framework holds."""
     with pytest.raises(UnknownCompetencyError, match="perform_cannulation"):
         definitions.framework_version(catalogue, "perform_cannulation")
+
+
+class TestHeldVersions:
+    """A sign-off naming a version Quill does not hold is refused."""
+
+    def test_a_version_quill_holds_passes(
+        self, catalogue: StoredCatalogue
+    ) -> None:
+        definitions.check_held_version(catalogue, LEVELLED, 1)
+
+    def test_a_version_one_above_the_newest_is_refused(
+        self, catalogue: StoredCatalogue
+    ) -> None:
+        """As a passport moved from another app could carry."""
+        with pytest.raises(
+            UnknownFrameworkVersionError,
+            match="version 2 of framework 'uk_sact_board_2023'",
+        ):
+            definitions.check_held_version(catalogue, LEVELLED, 2)
+
+    def test_version_0_cannot_be_read_from_a_record(self) -> None:
+        """Below the version 1 every framework starts at."""
+        from pydantic import ValidationError
+
+        from app.features.passport.schemas import SignOff
+
+        with pytest.raises(ValidationError, match="framework_version"):
+            SignOff.model_validate({"framework_version": 0})
+
+    def test_a_competency_no_framework_defines_is_let_through(
+        self, catalogue: StoredCatalogue
+    ) -> None:
+        """Its framework cannot be known, and a passport must stay
+        readable when a competency leaves the catalogue."""
+        definitions.check_held_version(catalogue, "made_up_thing", 9)
