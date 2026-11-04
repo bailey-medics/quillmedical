@@ -620,6 +620,11 @@ class IndexEntry(PassportModel):
     #: The assessor's comment, carried only where they signed a different
     #: level from the one asked for, so the holder sees why beside it.
     level_change_reason: str | None = None
+    #: The framework version the latest sign-off was given under, so the
+    #: page can say so where it is not the current one. Absent from an
+    #: index written before 4 November 2026, and where there is no
+    #: sign-off; the index is rebuilt on the next write.
+    framework_version: int | None = Field(default=None, ge=1)
     signed_on: date | None = None
     signed_off_by: str | None = None
     expires_on: date | None = None

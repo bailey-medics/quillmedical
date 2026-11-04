@@ -14,7 +14,12 @@ import {
   referRadicalCompetency,
 } from "@/components/passport/fixtures";
 import { frameworkRows, logbookLabel, standingOf } from "./competencyTable";
-import { TEST_FRAMEWORK_CATALOGUE } from "@test/frameworkCatalogue";
+import {
+  TEST_FRAMEWORK_CATALOGUE,
+  TEST_FRAMEWORK_DEFINITIONS,
+} from "@test/frameworkCatalogue";
+import { FrameworkCatalogue } from "./catalogue";
+import type { CompetencyState } from "./types";
 
 const [radiotherapy, sact] = oncologyFrameworks;
 const colorectal = { id: "colorectal", name: "Colorectal" };
@@ -143,5 +148,76 @@ describe("logbookLabel", () => {
     expect(logbookLabel(0)).toBe("-");
     expect(logbookLabel(1)).toBe("1 entry");
     expect(logbookLabel(12)).toBe("12 entries");
+  });
+});
+
+describe("what a sign-off recorded, where the framework moved on", () => {
+  const row = (catalogue: FrameworkCatalogue, state: CompetencyState) =>
+    frameworkRows(catalogue, radiotherapy.id, [state]).find(
+      (each) => each.id === state.id,
+    );
+
+  it("shows a matching name once", () => {
+    expect(
+      row(TEST_FRAMEWORK_CATALOGUE, referPalliativeCompetency)?.signedAs,
+    ).toBeNull();
+  });
+
+  it("keeps the words a sign-off recorded where they differ", () => {
+    const reworded = {
+      ...referPalliativeCompetency,
+      name: "Refer for palliative radiotherapy",
+    };
+
+    expect(row(TEST_FRAMEWORK_CATALOGUE, reworded)?.signedAs).toEqual({
+      name: "Refer for palliative radiotherapy",
+      level: null,
+      version: null,
+    });
+  });
+
+  it("names the version a sign-off was given under, where older", () => {
+    const newer = new FrameworkCatalogue(
+      TEST_FRAMEWORK_DEFINITIONS.map((framework) =>
+        framework.id === radiotherapy.id
+          ? { ...framework, version: 2 }
+          : framework,
+      ),
+    );
+    const signedAtOne = { ...referPalliativeCompetency, framework_version: 1 };
+
+    expect(row(newer, signedAtOne)?.signedAs).toEqual({
+      name: null,
+      level: null,
+      version: 1,
+    });
+  });
+
+  it("says nothing of a competency not signed off", () => {
+    const reworded = {
+      ...referRadicalCompetency,
+      name: "Different words",
+    };
+
+    expect(row(TEST_FRAMEWORK_CATALOGUE, reworded)?.signedAs).toBeNull();
+  });
+});
+
+describe("a level reworded since it was signed", () => {
+  it("keeps the level's words the sign-off recorded", () => {
+    const [first] =
+      TEST_FRAMEWORK_CATALOGUE.competency(lungCompetency.id)?.levels ?? [];
+    const signed = {
+      ...lungCompetency,
+      status: "signed_off" as const,
+      sign_off: "2026-07-02-lung",
+      level: { id: first.id, name: "Old words for the level" },
+    };
+
+    const found = frameworkRows(TEST_FRAMEWORK_CATALOGUE, sact.id, [
+      signed,
+    ]).find((each) => each.id === signed.id);
+
+    expect(found?.signedAs?.level).toBe("Old words for the level");
   });
 });

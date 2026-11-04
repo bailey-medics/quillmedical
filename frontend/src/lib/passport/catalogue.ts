@@ -30,6 +30,8 @@ export class FrameworkCatalogue {
 
   private readonly byCompetency: Map<string, Competency>;
 
+  private readonly versions: Map<string, number>;
+
   constructor(definitions: FrameworkDefinition[]) {
     this.frameworks = definitions
       .map(({ id, name, publisher, specialties }) => ({
@@ -45,6 +47,10 @@ export class FrameworkCatalogue {
         framework.id,
         framework.competencies.map((entry) => asCompetency(framework, entry)),
       ]),
+    );
+
+    this.versions = new Map(
+      definitions.map((framework) => [framework.id, framework.version]),
     );
 
     this.byCompetency = new Map(
@@ -67,6 +73,11 @@ export class FrameworkCatalogue {
     return (this.byFramework.get(frameworkId) ?? []).filter(
       (competency) => competency.retired_on === undefined,
     );
+  }
+
+  /** A framework's newest version, or undefined where Quill holds none. */
+  frameworkVersion(frameworkId: string): number | undefined {
+    return this.versions.get(frameworkId);
   }
 
   /** A framework competency by id, retired ones included, or undefined. */

@@ -369,6 +369,9 @@ class CompetencyStateOut(BaseModel):
     requested_level: LevelRefOut | None = None
     #: The assessor's reason, only where they signed a different level.
     level_change_reason: str | None = None
+    #: The framework version the latest sign-off was given under, or
+    #: null where there is none, or the index predates the field.
+    framework_version: int | None = None
     signed_on: date | None = None
     signed_off_by: str | None = None
     expires_on: date | None = None

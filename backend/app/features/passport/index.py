@@ -291,6 +291,7 @@ def _entry(
         level=latest.level,
         requested_level=latest.requested_level,
         level_change_reason=latest.comments if changed else None,
+        framework_version=latest.framework_version,
         signed_on=signed_on,
         signed_off_by=assessor,
         expires_on=latest.expires_on,
