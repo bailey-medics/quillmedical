@@ -986,14 +986,27 @@ reads the repositories, not a bucket" in Decisions.
         tests caught it: the logbook, its entry and the sign-offs pages
         now name a competency from the catalogue.
 
-- [ ] **Update the passport backend page and the CBAC section** of
+- [x] **Update the passport backend page and the CBAC section** of
       `.github/copilot-instructions.md`, then `CLAUDE.md` through the
       sync: the catalogue folder holds permissions, and frameworks come
       from their repositories.
-- [ ] **Tests**: each lookup reads the tables; a framework competency is
+      Done on 4 November 2026. The passport backend page was kept up to
+      date unit by unit. The CBAC section's three bullets on the
+      catalogue, frameworks and permissions now say the catalogue holds
+      permissions only and the app reads frameworks from the tables. The
+      same text went into `CLAUDE.md` by hand, in the section the sync
+      writes, so the next `/sync-copilot-config` finds the two agreeing.
+- [x] **Tests**: each lookup reads the tables; a framework competency is
       refused as a grant with no framework file present; the route serves
       a framework with a retired competency; the pickers and table render
       from the route's data.
+      Written with each unit above: `catalogue_test.py` and the route
+      tests through `stored_frameworks`;
+      `test_the_real_framework_ids_are_refused_as_grants` and
+      `test_the_catalogue_holds_permissions_only` in
+      `competencies_test.py`; `test_the_catalogue_serves_a_retired_competency_as_retired`
+      in `frameworks_test.py`; and the component tests, which render
+      from `TEST_FRAMEWORK_CATALOGUE`, built in the route's shape.
 
 ## Phase 8: Move the frameworks out of this repository
 
