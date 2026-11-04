@@ -2,7 +2,7 @@
 //
 // The /alert skill reads App production's logs as alert-watcher-logs, which
 // the box signs in as by showing Google a client certificate (see
-// infra/alert-watcher.tf). The certificate lasts a year, and once it runs out
+// infra/owl.tf). The certificate lasts a year, and once it runs out
 // every investigation loses its logs without saying why. So from 30 days
 // before, the watcher posts a reminder with the renewal command, once a week
 // until the certificate is renewed.
