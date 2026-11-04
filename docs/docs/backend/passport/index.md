@@ -286,6 +286,54 @@ nothing. The job's one action, `sync-frameworks`, runs
 The pipeline's account may start that job and nothing else, so it cannot
 change which repositories are read.
 
+## Framework repositories
+
+Each publisher's frameworks are moving into a public repository of its
+own under `bailey-medics`, named from the framework's title and ending
+`-framework`, as each teaching repository ends `-teaching`:
+
+- **`gloucestershire-radiotherapy-record-framework`** - Gloucestershire
+  Hospitals NHS Foundation Trust.
+- **`royal-united-hospitals-bath-sact-passport-framework`** - Royal United
+  Hospitals Bath NHS Foundation Trust.
+- **`uk-sact-board-prescribing-framework`** - the UK SACT Board.
+- **`general-clinical-skills-quill-medical-framework`** - Quill Medical.
+
+Each holds one file per framework in `frameworks/`, written exactly as the
+files in `shared/competency-definitions/` are, with a README and the
+publisher's licence for the wording. There are no stacks there: each
+change is one branch off `main` and one pull request.
+
+**The pipeline is Quill's**, `.github/workflows/framework-pipeline.yml`,
+and each repository calls it from one thin workflow whose job is named
+`pipeline`. The ruleset requires the checks by name, so neither name
+changes:
+
+- **On a pull request** - `pipeline / validate` runs Quill's loader over
+  `frameworks/` through `app.features.passport.tooling.validate_frameworks`,
+  then the version check, which prints every reworded competency.
+  `pipeline / check-protection` fails while the repository has no
+  ruleset.
+- **On a merge to `main`** - `run-sync-job.sh` starts
+  `quill-framework-sync-app` and waits for it. Nothing is uploaded: the
+  job reads every framework repository's history itself.
+
+Each repository sets three secrets, passed to the pipeline by name:
+`GCP_WORKLOAD_IDENTITY_PROVIDER` and `GCP_SERVICE_ACCOUNT`, which are the
+teaching repositories' values, and `SLACK_WEBHOOK_URL`, for a failed
+deploy.
+
+**Two settings are made by hand, not by Terraform.** The workload identity
+provider names each repository allowed to sign in, and admits a
+framework repository from `main` alone, so a workflow pushed to another
+branch cannot start the sync job. The content account names each
+repository allowed to act as it. The commands are in
+Phase 6 of the
+[passport record and catalogue plan](../../plans/2026-11-01-passport-record-and-catalogue-plan.md).
+The rulesets are in `infra/github/framework_rulesets.tf`, applied with
+`just terraform-github` only after a repository's first commit is on
+`main`, because they refuse a push straight to `main`.
+
 ## Scopes
 
 Some competencies are signed off one part of practice at a time:
