@@ -997,6 +997,75 @@ class TestSyncTeaching:
         assert "sync-teaching" in ACTIONS
 
 
+class TestGrantFrameworkSyncRole:
+    """The migrations job grants the sync job's user its one role."""
+
+    _USER = "run-framework-sync@quill-medical-app.iam"
+
+    def test_nothing_is_done_where_no_user_is_named(self) -> None:
+        """CI and a laptop have no such user."""
+        from scripts.admin_cli import grant_framework_sync_role
+
+        with (
+            patch("app.config.settings.FRAMEWORK_SYNC_DB_USER", None),
+            patch("app.db.core_db.CoreSessionLocal") as session,
+        ):
+            assert grant_framework_sync_role() == 0
+
+        session.assert_not_called()
+
+    def test_a_name_that_is_not_an_iam_user_is_refused(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """The name goes into SQL, so nothing else may reach it."""
+        from scripts.admin_cli import grant_framework_sync_role
+
+        with (
+            patch(
+                "app.config.settings.FRAMEWORK_SYNC_DB_USER",
+                'x"; DROP TABLE users; --',
+            ),
+            patch("app.db.core_db.CoreSessionLocal") as session,
+        ):
+            assert grant_framework_sync_role() == 1
+
+        session.assert_not_called()
+        assert "not an IAM database user" in capsys.readouterr().err
+
+    def test_a_user_not_made_yet_is_left_for_the_next_deploy(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        from scripts.admin_cli import grant_framework_sync_role
+
+        db = MagicMock()
+        db.execute.return_value.first.return_value = None
+
+        with (
+            patch("app.config.settings.FRAMEWORK_SYNC_DB_USER", self._USER),
+            patch("app.db.core_db.CoreSessionLocal", return_value=db),
+        ):
+            assert grant_framework_sync_role() == 0
+
+        assert db.execute.call_count == 1
+        assert "does not exist yet" in capsys.readouterr().out
+
+    def test_an_existing_user_is_granted_the_role(self) -> None:
+        from scripts.admin_cli import grant_framework_sync_role
+
+        db = MagicMock()
+        db.execute.return_value.first.return_value = (1,)
+
+        with (
+            patch("app.config.settings.FRAMEWORK_SYNC_DB_USER", self._USER),
+            patch("app.db.core_db.CoreSessionLocal", return_value=db),
+        ):
+            assert grant_framework_sync_role() == 0
+
+        granted = str(db.execute.call_args_list[1].args[0])
+        assert granted == f'GRANT framework_sync TO "{self._USER}"'
+        db.commit.assert_called_once()
+
+
 #: One repository and the framework it may publish, for the sync job.
 _REPOSITORIES = {"bailey-medics/a-framework": ["sheet"]}
 

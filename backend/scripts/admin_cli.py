@@ -66,6 +66,7 @@ Usage (local dev container):
 from __future__ import annotations
 
 import os
+import re
 import sys
 from collections.abc import Callable
 from typing import NoReturn
@@ -289,6 +290,9 @@ def run_migrations() -> int:
         print(f"✗ Migration failed: {exc}", file=sys.stderr)
         return 1
 
+    if grant_framework_sync_role() != 0:
+        return 1
+
     # The framework tables, read from the framework files this revision
     # ships with. Here rather than at start-up, because several instances
     # start at once and this job runs once, before any of them serve. A
@@ -296,6 +300,68 @@ def run_migrations() -> int:
     from app.features.passport import sync
 
     return sync.main([])
+
+
+#: A Cloud SQL IAM database user for a service account: its email
+#: without ".gserviceaccount.com". Checked before it is put into SQL,
+#: where a name cannot be passed as a parameter.
+_IAM_DATABASE_USER = re.compile(r"^[a-z][a-z0-9-]*@[a-z][a-z0-9-]*\.iam$")
+
+
+def grant_framework_sync_role() -> int:
+    """Grant the framework_sync role to the framework sync job's user.
+
+    Run after the migrations on every deploy, so it does not matter
+    whether Terraform made that user before or after the migration that
+    made the role. Granting a role already held changes nothing. Where
+    ``FRAMEWORK_SYNC_DB_USER`` is unset, as in CI and on a laptop, there
+    is no such user and nothing is done. Where the user does not exist
+    yet, it says so and carries on, and the next deploy grants it.
+    """
+    from sqlalchemy import text
+
+    from app.config import settings
+    from app.db.core_db import CoreSessionLocal
+
+    user = settings.FRAMEWORK_SYNC_DB_USER
+
+    if not user:
+        return 0
+
+    if not _IAM_DATABASE_USER.match(user):
+        print(
+            f"✗ FRAMEWORK_SYNC_DB_USER is not an IAM database user: {user!r}",
+            file=sys.stderr,
+        )
+        return 1
+
+    db = CoreSessionLocal()
+
+    try:
+        exists = db.execute(
+            text("SELECT 1 FROM pg_roles WHERE rolname = :name"),
+            {"name": user},
+        ).first()
+
+        if exists is None:
+            print(f"! {user} does not exist yet; the next deploy grants it.")
+            return 0
+
+        # A role name cannot be a parameter. It was checked against
+        # _IAM_DATABASE_USER above, which no quote or space passes.
+        grant = f'GRANT framework_sync TO "{user}"'  # noqa: S608  # nosec B608
+        db.execute(text(grant))
+        db.commit()
+    except Exception as exc:
+        db.rollback()
+        print(f"✗ Could not grant framework_sync: {exc}", file=sys.stderr)
+        return 1
+    finally:
+        db.close()
+
+    print(f"✓ {user} holds framework_sync")
+
+    return 0
 
 
 def show_migration() -> int:

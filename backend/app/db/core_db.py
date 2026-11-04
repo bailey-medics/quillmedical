@@ -6,11 +6,47 @@ permissions, organisational units, teaching, and more).
 """
 
 from collections.abc import Generator
+from typing import Any
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.config import settings
+
+#: The scope an access token needs to sign in to Cloud SQL as its account.
+IAM_LOGIN_SCOPE = "https://www.googleapis.com/auth/sqlservice.login"
+
+
+def iam_login_token() -> str:
+    """A fresh access token for the account this process runs as.
+
+    Cloud SQL accepts it as the password of that account's IAM database
+    user. It lasts an hour, so one is fetched for every new connection
+    rather than kept.
+
+    Raises:
+        google.auth.exceptions.GoogleAuthError: If no credentials are
+            found, or the token cannot be fetched.
+    """
+    import google.auth
+    from google.auth.transport.requests import Request
+
+    credentials, _ = google.auth.default(scopes=[IAM_LOGIN_SCOPE])
+    credentials.refresh(Request())  # type: ignore[no-untyped-call]
+
+    return str(credentials.token)
+
+
+def sign_in_with_iam(
+    dialect: Any, connection_record: Any, cargs: Any, cparams: dict[str, Any]
+) -> None:
+    """Give a new connection a token as its password.
+
+    A ``do_connect`` listener, so it runs as each connection is opened,
+    including one the pool opens again after the token before it expired.
+    """
+    cparams["password"] = iam_login_token()
+
 
 # Create core database engine
 #
@@ -36,6 +72,12 @@ core_engine = create_engine(
     pool_size=5,
     max_overflow=4,
 )
+
+# The framework sync job signs in as its own service account, with no
+# password: see docs/docs/backend/passport/index.md. Everything else
+# signs in with CORE_DB_PASSWORD.
+if settings.CORE_DB_IAM_AUTH:
+    event.listen(core_engine, "do_connect", sign_in_with_iam)
 
 # Create session factory
 CoreSessionLocal = sessionmaker(
