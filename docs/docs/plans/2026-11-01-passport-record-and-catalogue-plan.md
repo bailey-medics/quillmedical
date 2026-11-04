@@ -946,10 +946,19 @@ reads the repositories, not a bucket" in Decisions.
         shape when its source moves. `useFrameworkCatalogue` loads it
         once for the whole app and shares it, and loads again after a
         failure. Additive: nothing reads it yet.
-      - [ ] **Every page and component reads the catalogue**, in place of
+      - [x] **Every page and component reads the catalogue**, in place of
         `ALL_FRAMEWORKS`, `ASSESSABLE_COMPETENCIES`, `FRAMEWORK_OPTIONS`,
         `frameworkItems`, `frameworkOf` and `getFramework`, and the
         level, scope and table helpers that read the bundle.
+        Built on 4 November 2026. Each page calls `useFrameworkCatalogue`
+        and passes the catalogue to the components that need it, as a
+        prop, so the components stay pure for Storybook and the tests.
+        `levelsFor`, `scopesFor` and `frameworkRows` take it first, as
+        the backend's lookups do. A page that must know whether a
+        competency exists, the competency page, waits for it with a
+        spinner. The tests and Storybook prime the real frameworks with
+        `primeFrameworkCatalogue`, from `src/test/frameworkCatalogue.ts`,
+        which still builds them from the bundle until the next unit.
       - [ ] **The bundle stops holding frameworks**: `yarn generate:types`
         builds permissions only, so `CompetencyId` names permissions.
 

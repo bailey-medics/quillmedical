@@ -26,6 +26,7 @@ import LogbookEntryForm from "@/components/passport/LogbookEntryForm";
 import PassportRecordCard from "@/components/passport/PassportRecordCard";
 import { IconFileText } from "@/components/icons/appIcons";
 import competenciesData from "@/generated/competencies.json";
+import { useFrameworkCatalogue } from "@lib/passport/catalogue";
 import { scopesFor } from "@lib/passport/scopes";
 import {
   amendLogbookEntry,
@@ -68,6 +69,7 @@ function competencyForForm(competencyId: string): CompetencyState {
 }
 
 export function Component() {
+  const { catalogue } = useFrameworkCatalogue();
   const { competencyId, stem } = useParams<{
     competencyId: string;
     stem: string;
@@ -172,7 +174,7 @@ export function Component() {
       {entry && competencyId && editing && (
         <LogbookEntryForm
           competency={competencyForForm(competencyId)}
-          scopes={scopesFor(competencyId)}
+          scopes={scopesFor(catalogue, competencyId)}
           initial={entry}
           onSubmit={handleSave}
           onCancel={() => setEditing(false)}

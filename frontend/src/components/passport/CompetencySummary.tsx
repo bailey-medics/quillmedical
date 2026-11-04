@@ -26,7 +26,7 @@ import BaseCard from "@/components/base-card/BaseCard";
 import StateMessage from "@/components/message-cards/StateMessage";
 import { IconFileText } from "@/components/icons/appIcons";
 import { BodyTextBold, Heading } from "@/components/typography";
-import { frameworkOf } from "@lib/passport/frameworks";
+import type { FrameworkCatalogue } from "@lib/passport/catalogue";
 import Divider from "@/components/divider/Divider";
 import CompetencyRow from "./CompetencyRow";
 import type { CompetencyState } from "@lib/passport";
@@ -47,12 +47,14 @@ export const NO_FRAMEWORK_GROUP = "Other records";
  * holds everything recorded under it, and it is listed under its name.
  */
 function byFramework(
+  catalogue: FrameworkCatalogue | null,
   competencies: CompetencyState[],
 ): { name: string; competencies: CompetencyState[] }[] {
   const groups = new Map<string, CompetencyState[]>();
 
   for (const competency of competencies) {
-    const name = frameworkOf(competency.id)?.name ?? NO_FRAMEWORK_GROUP;
+    const name =
+      catalogue?.frameworkOf(competency.id)?.name ?? NO_FRAMEWORK_GROUP;
     groups.set(name, [...(groups.get(name) ?? []), competency]);
   }
 
@@ -63,6 +65,12 @@ function byFramework(
 }
 
 export interface CompetencySummaryProps {
+  /**
+   * The frameworks Quill holds, from `useFrameworkCatalogue`, to group
+   * the rows by. Null while they load, when every row is under
+   * `NO_FRAMEWORK_GROUP`.
+   */
+  catalogue: FrameworkCatalogue | null;
   /** Every competency the passport holds evidence for */
   competencies: CompetencyState[];
   /** Called when a competency is chosen */
@@ -83,6 +91,7 @@ export interface CompetencySummaryProps {
  * passport holds nothing yet.
  */
 export default function CompetencySummary({
+  catalogue,
   competencies,
   onSelect,
   title = "Competencies",
@@ -110,7 +119,7 @@ export default function CompetencySummary({
     );
   }
 
-  const groups = byFramework(competencies);
+  const groups = byFramework(catalogue, competencies);
 
   return (
     <BaseCard data-testid="competency-summary">

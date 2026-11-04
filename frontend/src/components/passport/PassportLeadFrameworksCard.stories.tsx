@@ -5,13 +5,13 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { fn } from "storybook/test";
 import PassportLeadFrameworksCard from "./PassportLeadFrameworksCard";
-import { FRAMEWORK_OPTIONS } from "@lib/passport/frameworks";
+import { TEST_FRAMEWORK_CATALOGUE } from "@test/frameworkCatalogue";
 
 const meta: Meta<typeof PassportLeadFrameworksCard> = {
   title: "Passport/Passport lead frameworks card",
   component: PassportLeadFrameworksCard,
   parameters: { layout: "padded" },
-  args: { options: FRAMEWORK_OPTIONS, onChange: fn() },
+  args: { options: TEST_FRAMEWORK_CATALOGUE.frameworks, onChange: fn() },
 };
 
 export default meta;

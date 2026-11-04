@@ -7,8 +7,17 @@
 
 import "@testing-library/jest-dom/vitest";
 import { cleanup, configure } from "@testing-library/react";
-import { afterEach } from "vitest";
+import { afterEach, beforeEach } from "vitest";
 import { act } from "react";
+import { primeFrameworkCatalogue } from "@lib/passport/catalogue";
+import { TEST_FRAMEWORK_CATALOGUE } from "./frameworkCatalogue";
+
+// Every test has the real frameworks at once, as if they had loaded from
+// GET /api/passport/catalogue: the tests have no backend to load them
+// from. A test of the loading itself forgets them first.
+beforeEach(() => {
+  primeFrameworkCatalogue(TEST_FRAMEWORK_CATALOGUE);
+});
 
 /**
  * How long `findBy*` and `waitFor` keep looking.

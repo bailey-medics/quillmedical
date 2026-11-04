@@ -5,6 +5,7 @@
 import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import CompetencyPicker from "./CompetencyPicker";
+import { TEST_FRAMEWORK_CATALOGUE } from "@test/frameworkCatalogue";
 
 const meta: Meta<typeof CompetencyPicker> = {
   title: "Passport/Competency picker",
@@ -19,6 +20,7 @@ function Controlled({ frameworks }: { frameworks: string[] }) {
   const [value, setValue] = useState<string | null>(null);
   return (
     <CompetencyPicker
+      catalogue={TEST_FRAMEWORK_CATALOGUE}
       value={value}
       onChange={setValue}
       frameworks={frameworks}

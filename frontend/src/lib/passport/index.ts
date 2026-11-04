@@ -124,6 +124,14 @@ export type {
   PassportRecordKind,
   RecordSources,
 } from "./recordList";
+export {
+  FrameworkCatalogue,
+  forgetFrameworkCatalogue,
+  loadFrameworkCatalogue,
+  primeFrameworkCatalogue,
+  useFrameworkCatalogue,
+} from "./catalogue";
+export type { FrameworkCatalogueState } from "./catalogue";
 export { levelsFor } from "./levels";
 export type { LevelOption } from "./levels";
 export { nameWithScope, scopesFor } from "./scopes";

@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { renderHook, waitFor } from "@testing-library/react";
 import {
   FrameworkCatalogue,
@@ -109,6 +109,12 @@ describe("FrameworkCatalogue", () => {
 });
 
 describe("loading the catalogue", () => {
+  beforeEach(() => {
+    // The setup primes the real frameworks for every test; these test
+    // the load itself.
+    forgetFrameworkCatalogue();
+  });
+
   afterEach(() => {
     forgetFrameworkCatalogue();
     vi.clearAllMocks();

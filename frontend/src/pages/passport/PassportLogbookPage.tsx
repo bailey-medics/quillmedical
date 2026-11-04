@@ -28,6 +28,7 @@ import ErrorState from "@/components/error-state/ErrorState";
 import StateMessage from "@/components/message-cards/StateMessage";
 import { IconFileText } from "@/components/icons/appIcons";
 import competenciesData from "@/generated/competencies.json";
+import { useFrameworkCatalogue } from "@lib/passport/catalogue";
 import { scopesFor } from "@lib/passport/scopes";
 import {
   addLogbookEntry,
@@ -80,6 +81,7 @@ function competencyForForm(
 }
 
 export function Component() {
+  const { catalogue } = useFrameworkCatalogue();
   const navigate = useNavigate();
   const [passportId, setPassportId] = useState<string | null>(null);
   // What the view is narrowed to. Empty means everything, which is what
@@ -206,6 +208,7 @@ export function Component() {
               Inside the form rather than above the page, because this
               is the only moment it is asked anything. */}
           <CompetencyPicker
+            catalogue={catalogue}
             frameworks={frameworks}
             value={competencyId}
             onChange={setCompetencyId}
@@ -216,7 +219,7 @@ export function Component() {
           {competencyId && (
             <LogbookEntryForm
               competency={competencyForForm(competencyId, groups[0] ?? null)}
-              scopes={scopesFor(competencyId)}
+              scopes={scopesFor(catalogue, competencyId)}
               onSubmit={handleSubmit}
               onCancel={() => {
                 setAdding(false);

@@ -15,7 +15,6 @@
 
 import { useEffect, useState } from "react";
 import type { Competency } from "@/types/cbac";
-import { fetchFrameworkCatalogue } from "./api";
 import type { FrameworkOption } from "./frameworks";
 import type {
   FrameworkCompetencyDefinition,
@@ -126,15 +125,35 @@ function asCompetency(
 /** The one load, shared by every page that asks. */
 let loading: Promise<FrameworkCatalogue> | null = null;
 
+/** What the load gave, once it has, so a later page has it at once. */
+let loaded: FrameworkCatalogue | null = null;
+
 /** Forget the shared load, so the next page loads again. For tests. */
 export function forgetFrameworkCatalogue(): void {
   loading = null;
+  loaded = null;
+}
+
+/**
+ * Hold this catalogue as if it had loaded, so every page has it at once.
+ * For tests and Storybook, which have no backend to load it from.
+ */
+export function primeFrameworkCatalogue(catalogue: FrameworkCatalogue): void {
+  loading = Promise.resolve(catalogue);
+  loaded = catalogue;
 }
 
 /** Load the catalogue, or reuse the load already started. */
 export function loadFrameworkCatalogue(): Promise<FrameworkCatalogue> {
-  loading ??= fetchFrameworkCatalogue()
-    .then((definitions) => new FrameworkCatalogue(definitions))
+  // Imported here, not at the top, so importing this module loads no API
+  // client: the test setup primes the catalogue before each test file
+  // mocks the client, and a client loaded first would escape the mock.
+  loading ??= import("./api")
+    .then(({ fetchFrameworkCatalogue }) => fetchFrameworkCatalogue())
+    .then((definitions) => {
+      loaded = new FrameworkCatalogue(definitions);
+      return loaded;
+    })
     .catch((error: unknown) => {
       // A failed load is not kept, so the next page tries again.
       loading = null;
@@ -154,8 +173,9 @@ export interface FrameworkCatalogueState {
 
 /** The frameworks Quill holds, loaded once and shared. */
 export function useFrameworkCatalogue(): FrameworkCatalogueState {
+  // A page opened after the first load has the frameworks at once.
   const [state, setState] = useState<FrameworkCatalogueState>({
-    catalogue: null,
+    catalogue: loaded,
     failed: false,
   });
 

@@ -9,7 +9,6 @@ import { describe, expect, it, vi, beforeEach, onTestFinished } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithRouter } from "@/test/test-utils";
-import { frameworkItems } from "@lib/passport/frameworks";
 import type { FrameworkOption } from "@lib/passport/frameworks";
 import { Component as PassportPage } from "./PassportPage";
 import {
@@ -24,6 +23,7 @@ import type * as passportLib from "@lib/passport";
 
 import type { PassportDetail } from "@lib/passport";
 import type * as frameworkChoicesLib from "@lib/passport/useFrameworkChoices";
+import { TEST_FRAMEWORK_CATALOGUE } from "@test/frameworkCatalogue";
 const {
   fetchMyPassport,
   createPassport,
@@ -612,7 +612,7 @@ describe("PassportPage", () => {
 
     it("opens a competency's own page from its row", async () => {
       const user = userEvent.setup();
-      const [first] = frameworkItems("clinical");
+      const [first] = TEST_FRAMEWORK_CATALOGUE.frameworkItems("clinical");
       fetchMyPassport.mockResolvedValue(detail);
       renderWithRouter(<PassportPage />);
 

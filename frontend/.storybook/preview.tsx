@@ -111,6 +111,8 @@ globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
 import { AuthProvider, useAuth } from "../src/auth/AuthContext";
 import { ConnectivityProvider } from "../src/lib/connectivity/ConnectivityContext";
 import { ForcedReloadProvider } from "../src/lib/compat-generation/ForcedReloadProvider";
+import { primeFrameworkCatalogue } from "../src/lib/passport/catalogue";
+import { TEST_FRAMEWORK_CATALOGUE } from "../src/test/frameworkCatalogue";
 
 // Wrapper to ensure auth is available (renders immediately, auth loads in background)
 // eslint-disable-next-line react-refresh/only-export-components
@@ -125,6 +127,10 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
   console.log("[AuthWrapper] Rendering (auth status:", state.status + ")");
   return <>{children}</>;
 }
+
+// Every story has the real frameworks at once, as if they had loaded from
+// GET /api/passport/catalogue: Storybook has no backend to load them from.
+primeFrameworkCatalogue(TEST_FRAMEWORK_CATALOGUE);
 
 const decorators: Decorator[] = [
   (Story, context) => {

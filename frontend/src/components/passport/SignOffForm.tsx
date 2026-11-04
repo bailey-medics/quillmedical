@@ -46,6 +46,7 @@ import {
   TextAreaField,
   TextField,
 } from "@components/form";
+import type { FrameworkCatalogue } from "@lib/passport/catalogue";
 import { levelsFor } from "@lib/passport/levels";
 import { nameWithScope } from "@lib/passport/scopes";
 import { Heading } from "@/components/typography";
@@ -65,6 +66,11 @@ const MEANING_OPTIONS: { value: SignOffMeaning; label: string }[] = [
 ];
 
 export interface SignOffFormProps {
+  /**
+   * The frameworks Quill holds, from `useFrameworkCatalogue`, for the
+   * competency's levels. Null while they load, when no level is offered.
+   */
+  catalogue: FrameworkCatalogue | null;
   /** The requested sign-off being signed */
   signOff: SignOff;
   /** Called with the completed input when the assessor submits */
@@ -82,6 +88,7 @@ export interface SignOffFormProps {
  * a basis is chosen and the declaration is confirmed.
  */
 export default function SignOffForm({
+  catalogue,
   signOff,
   onSubmit,
   onCancel,
@@ -91,7 +98,7 @@ export default function SignOffForm({
   // What the holder asked for. A record from before `requested_level`
   // existed still holds the request in `level`, since nobody signed it.
   const requested = signOff.requested_level ?? signOff.level ?? null;
-  const levels = levelsFor(signOff.competency.id);
+  const levels = levelsFor(catalogue, signOff.competency.id);
   const [levelId, setLevelId] = useState<string | null>(requested?.id ?? null);
   const [comments, setComments] = useState("");
   const [assessment, setAssessment] = useState("");

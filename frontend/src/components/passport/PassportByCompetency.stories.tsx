@@ -12,6 +12,7 @@ import { fn } from "storybook/test";
 import PassportByCompetency from "./PassportByCompetency";
 import { oncologyCompetencies, oncologyFrameworks } from "./fixtures";
 import { PageHeader } from "@/components/typography";
+import { TEST_FRAMEWORK_CATALOGUE } from "@test/frameworkCatalogue";
 
 // The Gloucestershire radiotherapy record only: the SACT framework is left
 // out of this view's stories.
@@ -24,6 +25,7 @@ const meta: Meta<typeof PassportByCompetency> = {
   component: PassportByCompetency,
   parameters: { layout: "padded" },
   args: {
+    catalogue: TEST_FRAMEWORK_CATALOGUE,
     frameworks: gloucestershire,
     competencies: oncologyCompetencies,
     onSelectCompetency: fn(),
