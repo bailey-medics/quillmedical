@@ -653,6 +653,13 @@ class PassportFrameworkLevel(Base):
     level_id: Mapped[str] = mapped_column(String(100), nullable=False)
     name: Mapped[str] = mapped_column(Text, nullable=False)
     position: Mapped[int] = mapped_column(Integer, nullable=False)
+    #: When the framework stopped offering it, and the version that
+    #: first left it out. Retired, never removed, because a record names
+    #: it. Null for one still offered.
+    retired_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+    retired_in_version: Mapped[int | None] = mapped_column(
+        Integer, nullable=True
+    )
 
 
 class PassportFrameworkScope(Base):
@@ -676,6 +683,13 @@ class PassportFrameworkScope(Base):
     scope_id: Mapped[str] = mapped_column(String(100), nullable=False)
     name: Mapped[str] = mapped_column(Text, nullable=False)
     position: Mapped[int] = mapped_column(Integer, nullable=False)
+    #: When the framework stopped offering it, and the version that
+    #: first left it out. Retired, never removed, because a record names
+    #: it. Null for one still offered.
+    retired_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+    retired_in_version: Mapped[int | None] = mapped_column(
+        Integer, nullable=True
+    )
 
 
 class PassportFrameworkSync(Base):

@@ -133,12 +133,18 @@ export interface FrameworkLevel {
   name: string;
   /** Its place on the scale, from 0. The scale's order is this order. */
   position: number;
+  /** Set once the framework retired it: no longer offered. */
+  retired_on?: string | null;
+  retired_in_version?: number | null;
 }
 
 /** One part of practice a framework competency is signed off for. */
 export interface FrameworkScopeDefinition {
   id: string;
   name: string;
+  /** Set once the framework retired it: no longer offered. */
+  retired_on?: string | null;
+  retired_in_version?: number | null;
 }
 
 /**
