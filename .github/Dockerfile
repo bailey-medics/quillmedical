@@ -2,7 +2,7 @@
 # is pinned to.
 #
 # The suite under .github/scripts, .claude/hooks and scripts/tests runs on
-# ubuntu-24.04 GitHub runners. Running it on a developer's Mac tests a
+# ubuntu-26.04 GitHub runners. Running it on a developer's Mac tests a
 # different bash, a different coreutils and a different sha256sum, so a
 # local result - green or red - is not evidence about CI. This image has
 # GNU's versions of all three, the same bats, and only the tools the suite
