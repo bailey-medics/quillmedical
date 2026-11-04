@@ -170,6 +170,38 @@ sour the approach on its own.
       Phase 4 will promise a time, so the promise and the practice are
       written together. This is the one-page incident response plan
       still unticked in `docs/docs/plans/todo.md`; tick it there too.
+- [ ] **Write the rest of the policy set**, each one or two pages with an
+      owner and a review date: information security, access control,
+      back-up and business continuity, acceptable use, supplier and
+      sub-processor management, and secure development and change
+      control. The DSPT asks for most of them by name, and a trust's
+      information governance team asks for the same set. Write them from
+      what the repository already does, not from a template: branch
+      protection and the merge queue, the approval gates in
+      `infra/github/environments.tf`, Renovate and Dependabot, gitleaks,
+      Semgrep and ZAP, and Terraform as the only way infrastructure
+      changes. A policy that describes practice nobody follows is worse
+      than none.
+- [ ] **Scan the whole git history for secrets once.** gitleaks runs in
+      pre-commit and in `.github/workflows/ci.yml`, but against the
+      changes since `origin/main`, so it has never looked at history from
+      before it was added. Run it once over every commit, rotate anything
+      it finds, and record the date of the run. The repository is
+      public, so anything found must be treated as already leaked.
+- [ ] **Write down the technical answers DTAC asks for, with the value
+      and where it is set.** Session lifetimes: a 15-minute access token
+      and a 7-day refresh token, in HTTP-only cookies, and whether
+      "sign out everywhere" exists. Encryption: Google's default at rest,
+      and in transit the minimum TLS version on the load balancer and the
+      HSTS header in `caddy/prod/Caddyfile`. Logging: what Cloud Logging
+      keeps, for how long, whether any line holds personal data, and who
+      can read it. Each answer is read from the code or the live project
+      on the day, not from memory.
+- [ ] **Set a fix-time target for vulnerabilities** found by Renovate,
+      Dependabot, Semgrep or a scan: for example critical within 7 days
+      and high within 30. A trust asks for the number, and the secure
+      development policy above states it. Record which dependencies are
+      treated as clinically significant, if any, and why.
 
 ## Phase 4: The data protection pack
 
@@ -192,7 +224,16 @@ EoEETA's host. These steps are what this approach adds.
       processing terms have to say which records the trust controls,
       which the holder does, and what the trust can and cannot see or
       delete when a trainee leaves. This is a question for the product
-      owner before the terms are final.
+      owner before the terms are final. There are two ways a passport
+      can be bought, and the answer differs for each. A clinician who
+      signs up and pays for themselves makes Bailey Medics the
+      controller, with no trust involved, and the terms they accept at
+      sign-up are the whole contract, so check that acceptance is
+      recorded with a time and the version of the terms. A trust that
+      buys for a department is a controller of at least some records,
+      with Bailey Medics as its processor under Article 28 data
+      processing terms. Say which of the two the Gloucestershire pilot
+      is, and whether both are offered.
 - [ ] **Decide what to call the person responsible for data protection.**
       The product owner takes the role. Check first whether Bailey Medics
       is obliged to appoint a Data Protection Officer at all: the duty
@@ -205,7 +246,29 @@ EoEETA's host. These steps are what this approach adds.
 - [ ] **Write a DPIA the trust can adopt.** A trust runs its own data
       protection impact assessment and a supplier who arrives with one
       already filled in saves weeks. Cover what is held, where, who can
-      see it, the sub-processors, retention, and the risks below.
+      see it, the sub-processors, retention, and the risks below. Build
+      the list of what is held from the models and the passport's file
+      layout in the code, field by field, not from memory.
+- [ ] **Write the record of processing activities from the same list.**
+      UK GDPR Article 30 requires one, and the DSPT asks for it. It is one
+      table per purpose, and the data inventory behind the DPIA fills
+      most of it.
+- [ ] **Draw the data flows and check every region.** Browser, the
+      backend on Cloud Run, the core database, the passport bucket, Resend
+      for email, and every logging or monitoring sink. Mark the region
+      each runs in and flag anything outside the UK or the EU. A trust's
+      DPIA asks for exactly this picture.
+- [ ] **Find out what deleting an account actually removes, and make it
+      match what the privacy policy says.** The passport bucket in
+      `infra/modules/passport-storage/main.tf` keeps every earlier version
+      of every bundle, deliberately, as the trace of a history rewrite,
+      and nothing removes those versions. So a passport deleted today
+      still exists in its old versions indefinitely. The admin job's
+      `delete-passport` copies a test passport to an archive bucket that
+      clears after 30 days, but that is for test holders. Decide how a
+      real holder's erasure request is met, versions included, and write
+      it into the retention section of the DPIA. This conflicts with the
+      reason versioning is on, so it is a decision, not a fix.
 - [x] **Keep patient details out of the passport.** Most of this was
       already in place. The terms forbid it, in clause 9 and in the rules of use.
       A reflection cannot be saved without ticking that it identifies no
@@ -242,8 +305,25 @@ EoEETA's host. These steps are what this approach adds.
       sign-off read as covering a scope it does not; a sign-off by
       somebody not entitled to give it, since who may sign off whom is
       not enforced; an expired sign-off still shown as current, since
-      nothing acts on expiry; and a passport-only framework drifting from
-      its publisher's current version.
+      nothing acts on expiry; a passport-only framework drifting from
+      its publisher's current version; a sign-off recorded against the
+      wrong clinician or competency; a passport lost or corrupted shortly
+      before an ARCP or appraisal; a reflection or upload that identifies
+      a patient; one clinician reading another's passport; and a
+      certificate generated with the wrong content. For each give the
+      cause, the consequence, the controls that exist with the code path
+      that enforces them, and the risk that remains.
+- [ ] **Describe change control as it is, and decide whether to gate
+      deploys.** A pasted checklist on 3 November 2026 assumed production
+      deploys need the Clinical Safety Officer's approval in GitHub. They
+      do not. The `app` environment in `infra/github/environments.tf`
+      accepts deploys from `main` only, so every change has passed a pull
+      request, its checks and the merge queue; the two approval gates
+      there cover an undeclared breaking API change and a destructive
+      migration, not a release. Write that down accurately in the safety
+      case. If a deploy gate is wanted, adding the CSO as a required
+      reviewer on `app` is a small Terraform change, but it would hold
+      every scheduled job in that environment too, so weigh it first.
 - [ ] **State that the passport is not a medical device**, with the
       reason, in the one-page description from Phase 1. The DTAC asks,
       and "not applicable" needs a sentence behind it.
@@ -273,12 +353,32 @@ EoEETA's host. These steps are what this approach adds.
 
 ## Phase 8: The pack and the approach
 
+- [ ] **Write the short statements DTAC asks for that need no new
+      work.** Which browsers and versions are supported, since the App is
+      a PWA. Interoperability, stated without claiming more than is
+      there: exports as
+      PDF, Markdown and zip; no ESR feed, no GMC lookup, and FHIR has no
+      part in the passport. Identity: email and password with optional
+      TOTP, and whether sign-in through NHSmail or Microsoft Entra is
+      planned.
+- [ ] **Write a service description**: what is supplied, support hours,
+      an uptime target, and how fast an incident is answered. The
+      contracts team asks for it, and a G-Cloud listing needs the same
+      document if the passport is ever sold above a direct award.
+- [ ] **Write one-page anti-bribery, equality and supplier conduct
+      statements.** Supplier forms ask for each. A modern slavery
+      statement is not required below £36 million turnover; say so on
+      the form rather than leaving it blank.
 - [ ] **Assemble the pack**: the one-page description, the completed
       DTAC, Cyber Essentials Plus certificate, penetration test summary,
-      DSPT status, ICO number, DPIA, data processing terms, sub-processor
-      list, clinical safety statement, accessibility statement, insurance
+      DSPT status, ICO number, the policy set, DPIA, record of processing
+      activities, data flow diagram, data processing terms, sub-processor
+      list, clinical safety statement and hazard log, accessibility
+      statement, the statements and service description above, insurance
       certificates and the exit plan. One folder, dated, reused for the
-      next trust.
+      next trust. Company details for supplier set-up, bank details
+      above all, go to the trust directly and never into this
+      repository.
 - [ ] **Approach Gloucestershire information governance first**, with
       the pack and the conflict of interest stated, proposing a pilot
       with a named group of trainees.
@@ -333,3 +433,14 @@ EoEETA's host. These steps are what this approach adds.
   or is not held, and how a negotiation will be run are kept in private
   notes. This plan lists what has to be done, not the company's position
   on each.
+
+- **A pasted governance checklist was folded in, not kept beside this
+  plan** - on 3 November 2026 a checklist of the same ground arrived,
+  asking for a review file and drafts under a new `docs/governance/`
+  folder. Its new items became steps here instead, so there is one list
+  to keep up to date. Three of its points were not taken: it said
+  mandatory MFA was planned, where the decision in Phase 3 is to leave it
+  optional until a trust asks; it carried prices and bank details, which
+  the decision above keeps out; and a new folder outside `docs/docs/`
+  would split the safety and legal evidence away from
+  `docs/docs/safety/` and `docs/docs/legal/`, where it already lives.
