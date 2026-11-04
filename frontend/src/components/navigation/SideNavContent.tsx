@@ -518,6 +518,13 @@ export default function SideNavContent({
               href: "/admin/retention",
               icon: showIcons ? "database" : undefined,
             } satisfies NavItem,
+            // Operator-only too: syncing the frameworks by hand, which
+            // belong to every organisation at once.
+            {
+              label: "Passport",
+              href: "/admin/passport",
+              icon: showIcons ? "passport" : undefined,
+            } satisfies NavItem,
           ]
         : []),
       // Shown to whoever `RequireNewsletter` lets through: both read

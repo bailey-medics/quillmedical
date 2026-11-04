@@ -24,6 +24,7 @@ export { default as AdminRetentionPage } from "./retention/AdminRetentionPage";
 export { default as AdminNewsletterPage } from "./newsletter/AdminNewsletterPage";
 export { default as AdminOrganisationsPage } from "./organisations/AdminOrganisationsPage";
 export { default as AdminPage } from "../AdminPage";
+export { default as AdminPassportPage } from "./passport/AdminPassportPage";
 export { default as AdminPatientsPage } from "./patients/AdminPatientsPage";
 export { default as AdminSitesPage } from "./sites/AdminSitesPage";
 export { default as AdminTeachingDashboard } from "./teaching/AdminTeachingDashboard";

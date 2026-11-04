@@ -172,6 +172,24 @@ export interface FrameworkDefinition {
   competencies: FrameworkCompetencyDefinition[];
 }
 
+/** One finished run of the framework sync, and how it ended. */
+export interface FrameworkSyncRun {
+  started_at: string;
+  finished_at: string | null;
+  status: "running" | "succeeded" | "failed";
+  /** How many framework versions the run added. */
+  versions_written: number;
+  /** Why it failed, naming the file. Never personal data. */
+  error: string | null;
+}
+
+/** Whether the sync can be started here, and how it last went. */
+export interface FrameworkSyncStatus {
+  /** False where no job is set up: development and the end-to-end stack. */
+  configured: boolean;
+  last_run: FrameworkSyncRun | null;
+}
+
 /**
  * One of the holder's appraisal years, shown to them as a "CPD date
  * range". Both dates are ISO `YYYY-MM-DD`, and `ends_on` is on or after
