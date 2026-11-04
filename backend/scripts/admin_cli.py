@@ -764,8 +764,18 @@ def delete_passport() -> int:
         if not confirm:
             print(f"Holder:   {username} (user {user.id})")
             print(f"Passport: {passport.id}")
-            for label, count in _passport_counts(passport.id).items():
-                print(f"  {count:4d} {label}")
+            from app.features.passport.layout import OutdatedPassportError
+
+            # A passport in an older layout is refused by the module the
+            # counts read through. It is still named, because deleting
+            # one is exactly what this is for.
+            try:
+                counts = _passport_counts(passport.id)
+            except OutdatedPassportError:
+                print("  In an older layout, so its records were not counted")
+            else:
+                for label, count in counts.items():
+                    print(f"  {count:4d} {label}")
             print(f"  {open_requests or 0:4d} open sign-off requests")
             print(
                 "Deletable: "

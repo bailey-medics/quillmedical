@@ -55,8 +55,14 @@ a competency is in is found by looking, in `layout.py`, and only a
 competency's first record is placed by the catalogue.
 
 The layout is `schema_version` 2 in `manifest.yaml`, since 2 November 2026.
-No real passport existed at 1, so none was moved, and a passport at 1 is
-refused as not found rather than listed as if it held nothing.
+None was moved, because no passport held real records at 1. A passport at
+1 is refused, never listed as if it held nothing: a route that catches the
+store's not-found answers 404, and any other answers 410, from
+`outdated_passport_handler` in `backend/app/main.py`, saying the passport
+is in an older format. Two passports made to try the record out were still
+at 1 in App production on 4 November 2026, and answered 500 until then.
+Both are deleted with `delete-passport`, whose dry run says a passport is
+in an older layout instead of counting its records.
 
 `competencies.yaml` is derived. Anything it says can be recomputed from the
 records beside it, so a disagreement between the two is always resolved in the

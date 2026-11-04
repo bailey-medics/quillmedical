@@ -749,6 +749,51 @@ class TestDeletePassport:
         assert self._exists(db_session, roots)
 
     @pytest.mark.usefixtures("_patch_session")
+    def test_a_dry_run_reports_a_passport_in_an_older_layout(
+        self,
+        db_session: Session,
+        holder: User,
+        roots: tuple[Path, Path],
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Its records are not counted, but the passport is still named.
+
+        A passport made before #2330 is refused by ``layout``, which the
+        counts read through. Deleting one is the reason to run this, so
+        the dry run must still say what the confirmed run would delete.
+        """
+        from app.features.passport import commits, paths
+        from app.features.passport.store import LocalPassportStore
+
+        store = LocalPassportStore(roots[0])
+        actor = commits.Actor(
+            name="Dr Test", role="Registrar", email="test@example.com"
+        )
+        store.write(
+            PASSPORT_ID,
+            {
+                paths.MANIFEST: f"passport_id: {PASSPORT_ID}\nschema_version: 1\n"
+            },
+            commits.build("amend", "an older layout", actor),
+            actor,
+            store.head(PASSPORT_ID),
+        )
+
+        result = self._run(
+            {
+                "ADMIN_USERNAME": holder.username,
+                "PASSPORT_DELETABLE_USERNAMES": holder.username,
+            },
+            roots,
+        )
+
+        assert result == 0
+        output = capsys.readouterr().out
+        assert "older layout" in output
+        assert f"CONFIRM={PASSPORT_ID}" in output
+        assert self._exists(db_session, roots)
+
+    @pytest.mark.usefixtures("_patch_session")
     def test_a_confirmed_run_archives_and_removes_the_passport(
         self, db_session: Session, holder: User, roots: tuple[Path, Path]
     ) -> None:
