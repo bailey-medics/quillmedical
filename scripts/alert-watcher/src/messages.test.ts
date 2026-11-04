@@ -130,6 +130,17 @@ describe("classify", () => {
     assert.equal(classify(botPost({ text: `*${subject}*\n\n${body}` }), OPTIONS)?.kind, "other");
   });
 
+  it("ignores the reminder to apply the AWS Terraform, with either form of its emoji", () => {
+    const subject = "AWS Terraform changed - manual terraform apply required";
+    const body = "Files under `infra/aws/` were merged to main. *Action required:* `just terraform-aws`";
+
+    for (const emoji of [":warning:", "⚠️"]) {
+      assert.equal(classify(botPost({ text: `*${emoji} ${subject}*\n\n${body}` }), OPTIONS), undefined);
+    }
+
+    assert.equal(classify(botPost({ text: `*${subject}*\n\n${body}` }), OPTIONS)?.kind, "other");
+  });
+
   it("reads the Google Cloud incident policy as an incident, and its resolution as closing", () => {
     const opened = classify(googlePost(GCP_INCIDENT_SUBJECT, "Alert open", "State: ACTIVE"), OPTIONS);
     const closed = classify(googlePost(GCP_INCIDENT_SUBJECT, "Alert open", "State: RESOLVED"), OPTIONS);
