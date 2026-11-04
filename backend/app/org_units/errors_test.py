@@ -54,9 +54,9 @@ from app.org_units.types import ORG_UNIT_TYPE_IDS
             "Nobody practises anything at a room.",
         ),
         (
-            CompetencyNotHeld("perform_venepuncture"),
+            CompetencyNotHeld("take_informed_consent"),
             422,
-            "They do not hold perform_venepuncture, so it cannot be "
+            "They do not hold take_informed_consent, so it cannot be "
             "authorised here. Grant it to them first.",
         ),
     ],

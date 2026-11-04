@@ -194,8 +194,6 @@ base_professions:
     base_competencies:
       - access_patient_records
       - modify_patient_records
-      - perform_venepuncture
-      - perform_cannulation
       - request_plain_xray
       - take_informed_consent
       - refer_specialty
@@ -294,9 +292,9 @@ async def certify_fitness(
 For "user needs all of these", chain dependencies:
 
 ```python
-@router.post("/high-risk-procedure")
-async def perform_procedure(
-    user1: User = Depends(has_competency("perform_lumbar_puncture")),
+@router.post("/controlled-prescription")
+async def prescribe_controlled(
+    user1: User = Depends(has_competency("prescribe_controlled_schedule_2")),
     user2: User = Depends(has_competency("assess_mental_capacity")),
 ):
     """User must have both competencies."""
@@ -345,8 +343,6 @@ removed_competencies = []
 # Result: FY1 base competencies
 # - access_patient_records
 # - modify_patient_records
-# - perform_venepuncture
-# - perform_cannulation
 # - request_plain_xray
 # - take_informed_consent
 # - refer_specialty
@@ -393,8 +389,6 @@ removed_competencies = []
 # Result: advanced nurse practitioner base competencies
 # - access_patient_records
 # - modify_patient_records
-# - perform_venepuncture
-# - perform_cannulation
 # - request_plain_xray
 # - take_informed_consent
 # - assess_mental_capacity
@@ -453,7 +447,7 @@ print(details.assessable)  # True
 Some competencies require supervision even when granted:
 
 ```yaml
-- id: perform_lumbar_puncture
+- id: prescribe_controlled_schedule_2
   requires_supervision: true
   supervision_level: "direct" # Senior present
 ```

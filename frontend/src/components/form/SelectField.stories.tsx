@@ -24,8 +24,8 @@ const groupedData = [
   {
     group: "Others",
     items: [
-      { value: "perform_cannulation", label: "Perform cannulation" },
-      { value: "perform_venepuncture", label: "Perform venepuncture" },
+      { value: "take_informed_consent", label: "Take informed consent" },
+      { value: "request_plain_xray", label: "Request plain X-rays" },
     ],
   },
 ];

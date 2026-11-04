@@ -109,7 +109,10 @@ def test_a_permission_has_nowhere_to_be_filed(
 ) -> None:
     with pytest.raises(paths.PassportPathError, match="no framework"):
         layout.framework_for(
-            passport, PASSPORT_ID, "perform_cannulation", files_catalogue()
+            passport,
+            PASSPORT_ID,
+            "prescribe_non_controlled",
+            files_catalogue(),
         )
 
 

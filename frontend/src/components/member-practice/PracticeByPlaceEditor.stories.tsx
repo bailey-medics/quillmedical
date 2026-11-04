@@ -20,7 +20,7 @@ const places = [
 ];
 
 const competencies = [
-  "perform_venepuncture",
+  "take_informed_consent",
   "certify_death",
   "prescribe_controlled_schedule_2",
 ];
@@ -38,7 +38,7 @@ const meta: Meta<typeof PracticeByPlaceEditor> = {
   args: {
     places,
     competencies,
-    value: { 3: ["perform_venepuncture"], 4: [] },
+    value: { 3: ["take_informed_consent"], 4: [] },
     onChange: () => {},
   },
   render: (args) => <Editor {...args} />,

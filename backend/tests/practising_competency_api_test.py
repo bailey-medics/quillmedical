@@ -21,7 +21,7 @@ from app.organisations import add_org_unit_member
 from app.security import hash_password
 from tests.places import administers
 
-COMPETENCY = "perform_venepuncture"
+COMPETENCY = "take_informed_consent"
 OTHER_COMPETENCY = "certify_death"
 
 

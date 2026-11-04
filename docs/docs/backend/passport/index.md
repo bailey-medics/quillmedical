@@ -100,7 +100,7 @@ anything.
 - **`assessable: true` on a competency** in `shared/competency-definitions/`
   says somebody could watch it being done and sign it off. Every
   framework's competency carries it, and no permission does: a permission
-  such as `manage_users` or `perform_cannulation` is checked by the code,
+  such as `manage_users` or `prescribe_non_controlled` is checked by the code,
   while what a passport records is a framework's own copy, such as
   `clinical_perform_cannulation`. `ASSESSABLE_COMPETENCY_IDS` holds the active ones, and
   `definitions.assessable_ref` refuses anything else when a record is

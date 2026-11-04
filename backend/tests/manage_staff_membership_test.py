@@ -264,4 +264,4 @@ class TestThePlaceSurfaceSaysTheSame:
 
         assert response.status_code == 200, response.text
         db_session.refresh(colleague)
-        assert "perform_venepuncture" in colleague.get_final_competencies()
+        assert "access_patient_records" in colleague.get_final_competencies()

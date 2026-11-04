@@ -120,12 +120,12 @@ def coordinator_client(
 
 
 #: Held by a consultant, from their profession, and by no delegate.
-CLINICAL = "perform_venepuncture"
+CLINICAL = "take_informed_consent"
 #: One a teaching admin may grant, which a delegate does not hold.
 TEACHING = "view_teaching_analytics"
 
 ACCOUNT_OUT_OF_SCOPE = "This account is outside what you may manage."
-OFF_THE_WHITELIST = "You may not grant or remove: perform_venepuncture."
+OFF_THE_WHITELIST = "You may not grant or remove: take_informed_consent."
 
 
 def _capacity(db: Session, unit: OrgUnit, user: User) -> str | None:
