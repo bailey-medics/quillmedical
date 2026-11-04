@@ -104,6 +104,21 @@ _Snapshot = tuple[
 ]
 
 
+#: The competency rows of a snapshot, as ``_Snapshot`` holds them.
+_CompetencyRows = tuple[
+    tuple[
+        str,
+        str,
+        date | None,
+        int | None,
+        int | None,
+        tuple[tuple[str, str], ...],
+        tuple[tuple[str, str], ...],
+    ],
+    ...,
+]
+
+
 def _snapshot_of_file(
     framework: Framework, items: list[CompetencyEntry]
 ) -> _Snapshot:
@@ -296,7 +311,8 @@ def _check(
             _missing_versions(name, newest.version, framework.version)
         )
 
-    stored_ids = {row[0] for row in _snapshot_of_rows(db, newest)[3]}
+    stored = _snapshot_of_rows(db, newest)[3]
+    stored_ids = {row[0] for row in stored}
     deleted = sorted(stored_ids - set(ids))
     if deleted:
         raise FrameworkSyncError(
@@ -304,7 +320,48 @@ def _check(
             f"them: {', '.join(deleted)}."
         )
 
+    dropped = _dropped_levels_and_scopes(stored, items)
+    if dropped:
+        raise FrameworkSyncError(
+            f"Framework {name!r} removed levels or scopes a sign-off may "
+            f"name: {', '.join(dropped)}. A level or scope is never "
+            "removed from a competency."
+        )
+
     return True
+
+
+def _dropped_levels_and_scopes(
+    stored: _CompetencyRows,
+    items: list[CompetencyEntry],
+) -> list[str]:
+    """Each level or scope id the stored version had that a file drops.
+
+    A sign-off names a level and a scope by id, and asking again compares
+    the new level with the last one, so an id gone from the framework
+    leaves a holder unable to ask again. See Phase 11 of
+    docs/docs/plans/2026-11-01-passport-record-and-catalogue-plan.md.
+
+    Returns:
+        ``competency_id: level_or_scope_id`` for each one dropped, sorted.
+    """
+    now = {item.id: item for item in items}
+    dropped: list[str] = []
+
+    for competency_id, _, _, _, _, levels, scopes in stored:
+        item = now.get(competency_id)
+        if item is None:
+            continue
+
+        kept_levels = {lvl.id for lvl in item.levels or []}
+        kept_scopes = {sc.id for sc in item.scopes or []}
+
+        for gone in sorted({i for i, _ in levels} - kept_levels):
+            dropped.append(f"{competency_id}: level {gone}")
+        for gone in sorted({i for i, _ in scopes} - kept_scopes):
+            dropped.append(f"{competency_id}: scope {gone}")
+
+    return dropped
 
 
 def _write(

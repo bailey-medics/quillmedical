@@ -267,6 +267,12 @@ entry. It comes after the current ones, marked "Not in this framework
 since version N", and its page is read-only, with no way to ask for a new
 sign-off or log a new entry. One with nothing recorded is left out.
 
+**A level or scope is never removed from a competency.** A sign-off
+names them by id, and asking again compares the new level with the last
+one's place on the scale, so a level gone from the framework would leave
+a holder unable to ask again. The sync and the version check both refuse
+a version that drops one. Retiring a level or scope is not built yet.
+
 **`GET /api/passport/catalogue` serves the frameworks to the frontend**,
 every framework Quill holds at its newest version, with its competencies,
 levels and scopes, and its retired competencies marked with `retired_on`.
