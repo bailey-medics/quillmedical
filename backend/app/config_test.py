@@ -121,6 +121,33 @@ class TestCorsOriginsStartupCheck:
         assert settings.CORS_ORIGINS == ["*"]
 
 
+class TestCoreDbSignIn:
+    """A password, unless the connection signs in with a token instead."""
+
+    @staticmethod
+    def _settings(**overrides: object) -> Settings:
+        return Settings(
+            JWT_SECRET="test_secret_long_enough_32_chars_min",
+            VAPID_PRIVATE="vapid_key",
+            **overrides,
+        )
+
+    def test_no_password_is_refused(self):
+        with pytest.raises(ValidationError, match="CORE_DB_PASSWORD"):
+            self._settings(CORE_DB_PASSWORD="")
+
+    def test_no_password_is_accepted_with_iam_sign_in(self):
+        """The framework sync job signs in with a token."""
+        settings = self._settings(CORE_DB_PASSWORD="", CORE_DB_IAM_AUTH=True)
+
+        assert settings.CORE_DB_IAM_AUTH is True
+
+    def test_iam_sign_in_is_off_unless_set(self):
+        settings = self._settings(CORE_DB_PASSWORD="auth_pass")
+
+        assert settings.CORE_DB_IAM_AUTH is False
+
+
 class TestParseAddressList:
     """A comma-separated setting, read as the addresses it names."""
 

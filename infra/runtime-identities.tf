@@ -93,6 +93,9 @@ locals {
     local.is_teaching_product ? {
       transcode = values(local.transcode_secret_env_vars)
       caption   = values(local.caption_secret_env_vars)
+      # The framework sync job reads no secret: it signs in to the core
+      # database with a token for its own account. See main.tf.
+      framework-sync = []
     } : {}
   )
 
@@ -234,6 +237,21 @@ resource "google_cloud_run_v2_job_iam_member" "content_ci_runs_framework_sync" {
   name     = module.cloud_run_framework_sync_job[0].job_name
   role     = each.value
   member   = "serviceAccount:${var.content_ci_service_account}"
+}
+
+# The framework sync job signs in to the core database as its own IAM
+# (Identity and Access Management) database user, with no password.
+# `cloudsql.instanceUser` is what lets an account sign in that way; what it
+# may then do inside the database is only the `framework_sync` role, in
+# migration 79b9d509f6f6. It needs no `cloudsql.client`: that is for
+# Google's connector libraries and the Auth Proxy, and the job connects to
+# the private address directly.
+resource "google_project_iam_member" "framework_sync_signs_in_to_cloud_sql" {
+  count = local.is_teaching_product ? 1 : 0
+
+  project = var.project_id
+  role    = "roles/cloudsql.instanceUser"
+  member  = "serviceAccount:${google_service_account.runtime["framework-sync"].email}"
 }
 
 # The admin job's `delete-passport` action reads a test holder's passport,

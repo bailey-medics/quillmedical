@@ -111,6 +111,67 @@ it is built.
       new is recorded against one, and every competency a passport can
       still record sits under a framework. Phase 4 needs no folder for
       orphans, because no record exists against one.
+      **Reversed in #2335, merged 3 November 2026, at the product owner's
+      request:** the list was deleted after all. To pass the check, #2335
+      named all sixteen ids in `REMOVED_ON_PURPOSE` in
+      `.github/scripts/ci/check-competencies-not-deleted.sh`, the check's
+      one exception, for an id already retired on the base ref.
+- [ ] **Empty `REMOVED_ON_PURPOSE` now that #2335 has merged.** The
+      sixteen ids are no longer on `main`, so the list does nothing, and
+      an exception left open is one somebody can lean on later. A pull
+      request of its own, on a new branch off `origin/main` such as
+      `feature/catalogue-empty-removed-on-purpose`, in no stack.
+      Recorded on 4 November 2026: the change was first made in the wrong
+      worktree. A copy sits uncommitted in worktree 3
+      (`~/github/quillmedical-3`, on the merged
+      `feature/catalogue-delete-the-retired-oncology-list`), and a patch
+      of it was saved on 3 November. Once this pull request is open,
+      worktree 3 drops its copy.
+      - **In `check-competencies-not-deleted.sh`**, replace the sixteen
+        ids and the comment above them with an empty list:
+
+        ```bash
+        # Empty unless a deletion is in flight. An id here matters only while it
+        # is still on the base ref, so once the deletion merges, the next pull
+        # request takes it off again; git history keeps the record. The first
+        # oncology list left this way, in pull request #2335.
+        REMOVED_ON_PURPOSE=()
+        ```
+
+        Delete the line "Entries stay after the deletion merges, as the
+        record that it happened", which now says the opposite of the
+        rule. Leave the mechanism, `removable_ids` and the check that uses
+        it, as it is: only the list's contents go.
+      - **In `check-competencies-not-deleted.bats`**, two tests put
+        `certify_death` on the list with a `sed` anchored on the line
+        `  prescribe_sact`, which will no longer exist. Add a helper above
+        `retire_and_delete`, and use it in "deleting a retired id removed
+        on purpose passes" and "a current id removed on purpose is still
+        a deletion":
+
+        ```bash
+        # Writes one id into the script's list, as a person deleting it would.
+        name_on_the_list() {
+          local id="$1"
+
+          sed -i "s/^REMOVED_ON_PURPOSE=(/REMOVED_ON_PURPOSE=(\n  ${id}\n/" "$SCRIPT"
+          grep -q "^  ${id}$" "$SCRIPT"
+        }
+        ```
+
+      - **The docs stay.** `docs/docs/concepts/cbac.md` still reads
+        correctly.
+      - **Checks**: `just ts .github/scripts/ci`, and
+        `bash .github/scripts/ci/check-competencies-not-deleted.sh origin/main`,
+        which passes because nothing is deleted.
+      - **For the product owner to choose: empty the list, or remove the
+        exception.** The steps above empty it and keep the mechanism, so a
+        retired id can still be deleted later by naming it there. An
+        earlier version went further, and deleted `REMOVED_ON_PURPOSE`,
+        `removable_ids`, their three tests and the `REMOVED_ON_PURPOSE`
+        clause in `cbac.md`. Then a retired id could never be deleted at
+        all. Emptying it is the default, because it matches the copy in
+        worktree 3 and leaves the way #2335 used open for the next time.
 - [x] **Write the rules this phase makes true**, in the passport backend
       page and in `.github/copilot-instructions.md` under CBAC, then
       `CLAUDE.md` through the sync, replacing what the CBAC section says
@@ -675,12 +736,89 @@ reads the repositories, not a bucket" in Decisions.
       framework repositories from `refs/heads/main` alone, so a workflow
       pushed to another branch cannot start the sync job or write to the
       teaching bucket the same account may write.
-- [ ] **The sync gets its own database role**, a new pull request on
+- [x] **The sync gets its own database role**, a new pull request on
       top. It runs today as the admin identity, the one that runs
       migrations, so the sync's own code is all that stands between a bug
-      and the whole database. Its own Cloud SQL user may read the
+      and the whole database. Its own database user may read the
       `passport_framework*` tables, insert into them, and write its run
       records in `passport_framework_sync`, and nothing else.
+      **Signed in with IAM (Identity and Access Management), not a
+      password**, the product owner's choice on 4 November 2026:
+      - **A new service account, `framework-sync`**, which the job runs
+        as in place of the admin identity, with
+        `roles/cloudsql.instanceUser`. Google's guide says
+        `roles/cloudsql.client` is needed only for the Auth Proxy and its
+        connector libraries, and the job connects to the private address
+        directly, so it does not get it.
+      - **An IAM database user for it**, `google_sql_user` of type
+        `CLOUD_IAM_SERVICE_ACCOUNT`, on an instance with the
+        `cloudsql.iam_authentication` flag on. Unlike a user made with a
+        password through Cloud SQL, an IAM user is not made a member of
+        `cloudsqlsuperuser`, so it holds nothing until it is granted.
+      - **The grants in a migration**: a role with no sign-in of its own,
+        `framework_sync`, given `SELECT` and `INSERT` on the framework
+        tables, `SELECT`, `INSERT` and `UPDATE` on
+        `passport_framework_sync`, and `USAGE` on their id sequences. The
+        migration then grants that role to the IAM user named in a
+        setting, and skips that last step where the setting is unset, as
+        in CI and on a laptop, which keep the one user they have now.
+      - **The job connects with a token as its password**: it asks
+        Google for an access token for its own account, which lasts an
+        hour, longer than the job. No password exists to leak.
+      - **A test that the role can do no more**, against Postgres in the
+        `migration` test tier: as `framework_sync`, a sync succeeds, and
+        a `DELETE` or a read of `users` is refused.
+
+      Built on 4 November 2026. What was found while building it:
+      - **Google's guide confirms an IAM user starts with nothing**: "that
+        new account is granted no privileges on any databases, by
+        default". Its name is the account's email without
+        `.gserviceaccount.com`.
+      - **Switching `cloudsql.iam_authentication` on restarts the
+        instance**, as Google's flag table marks it. The Terraform apply
+        that brings this in restarts App production's core database, so
+        it is applied at a quiet time, chosen by the product owner.
+      - **The grant to the user is not in the migration.** Terraform makes
+        the user in a workflow that runs beside the deploy, so it may not
+        exist when the migration runs. `grant_framework_sync_role` in
+        `backend/scripts/admin_cli.py` grants it after the migrations on
+        every deploy, and says so where the user does not exist yet.
+      - **The settings insist on a JWT signing key**, which the sync never
+        uses, so the job is given a random key nothing accepts, not the
+        real one.
+- [ ] **Reading a private framework repository, when there is one: a
+      GitHub App.** Every framework repository is public today, so the
+      sync job needs no credential to clone, and nothing here is built
+      until the first private repository arrives. Agreed with the product
+      owner on 4 November 2026. When one does:
+      - **Register one GitHub App for Quill**, owned by `bailey-medics`,
+        with one permission, read-only access to repository contents,
+        and no webhook.
+      - **Install it on the framework repositories alone**, choosing
+        each by name rather than "all repositories", so it can read
+        nothing else in the organisation.
+      - **Keep its private key in Secret Manager**, readable by the
+        `framework-sync` service account alone. The key is kept where it
+        is used, by the sync job, never in GitHub.
+      - **Mint a token at each run.** The job signs a short request with
+        the key and swaps it for an installation token, which lasts an
+        hour and reads only the repositories the app is installed on.
+        Nothing long-lived ever reaches git.
+      - **Hand the token to git through its environment**, as an HTTP
+        header set by `GIT_CONFIG_COUNT`, `GIT_CONFIG_KEY_0` and
+        `GIT_CONFIG_VALUE_0`, never in the clone URL or the command line.
+        So it is never in a log, and never in an error message.
+      - **Public repositories keep cloning with no token**, so a public
+        framework works the same as today.
+      - **Test it with the token fetch stubbed**: the token reaches git
+        only through the environment, and an error from git never
+        contains it.
+
+      Two other ways were considered and turned down. A read-only deploy
+      key on each repository is simpler, but it is one SSH key a
+      repository, so four keys to rotate and a new key for every new
+      repository. A fine-grained personal access token is tied to one
+      person's account and expires on a fixed date.
 - [ ] **Decide whether a framework change needs an approval to merge.**
       The rulesets require none, copied from teaching, so anybody with
       write access can merge a change to a clinical framework alone, and

@@ -286,6 +286,27 @@ nothing. The job's one action, `sync-frameworks`, runs
 The pipeline's account may start that job and nothing else, so it cannot
 change which repositories are read.
 
+**The job signs in to the database as itself, and may only add framework
+rows.** It runs as its own service account, `run-framework-sync`, and
+signs in to the core database as that account's IAM (Identity and
+Access Management) database user, with an access token as the password,
+fetched for each connection. No password exists to leak. That user holds
+one role, `framework_sync`, made by migration `79b9d509f6f6`: it may read
+the framework tables and add rows to them, and record its own runs. It
+cannot delete or change a row, or read any other table, so even a bug in
+the sync cannot reach the rest of the database.
+`backend/tests/framework_sync_role_test.py` proves each limit against
+Postgres.
+
+- **The migrations job grants the role on every run**, to the user named
+  in `FRAMEWORK_SYNC_DB_USER`, so it does not matter whether Terraform
+  made the user before or after the migration.
+- **A table added to the framework needs its own grant** to
+  `framework_sync`, in the migration that adds it.
+- **Switching IAM sign-in on restarts the core database.** It is the
+  `cloudsql.iam_authentication` flag, which Google's flag table marks as
+  needing a restart.
+
 ## Framework repositories
 
 Each publisher's frameworks are moving into a public repository of its
