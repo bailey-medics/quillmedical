@@ -42,21 +42,37 @@ import {
 import type { CompetencyState, FrameworkRef } from "@lib/passport";
 
 /**
- * The competency's name today, then what its sign-off recorded where the
- * framework has moved on: its words, its level's words and its version.
+ * The competency's name today, then whether it has left the framework,
+ * then what its sign-off recorded where the framework has moved on: its
+ * words, its level's words and its version.
  * The record keeps the words it was signed under, so they are shown, not
  * silently replaced.
  */
 function competencyCell(row: CompetencyTableRow) {
   const name = row.scope ? `${row.name} (${row.scope.name})` : row.name;
 
-  if (row.signedAs === null) return name;
+  if (row.signedAs === null && !row.retired) return name;
 
-  const { name: signedName, level, version } = row.signedAs;
+  const {
+    name: signedName,
+    level,
+    version,
+  } = row.signedAs ?? {
+    name: null,
+    level: null,
+    version: null,
+  };
 
   return (
     <Stack gap={0}>
       <BodyText>{name}</BodyText>
+      {row.retired && (
+        <BodyText c="dimmed">
+          {row.retiredInVersion !== null
+            ? `Not in this framework since version ${row.retiredInVersion}`
+            : "No longer in this framework"}
+        </BodyText>
+      )}
       {signedName !== null && (
         <BodyText c="dimmed">Signed off as: {signedName}</BodyText>
       )}
