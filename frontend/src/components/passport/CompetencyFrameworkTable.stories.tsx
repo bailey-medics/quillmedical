@@ -17,6 +17,7 @@ import {
   lungCompetency,
   oncologyCompetencies,
   oncologyFrameworks,
+  referPalliativeCompetency,
 } from "./fixtures";
 import { StoryNote } from "@/stories/variants";
 import { TEST_FRAMEWORK_CATALOGUE } from "@test/frameworkCatalogue";
@@ -53,6 +54,28 @@ export const Default: Story = {
 };
 
 /** A long framework: the SACT prescriber competencies, mostly not started. */
+/** A row the framework reworded after it was signed off. */
+export const Reworded: Story = {
+  args: {
+    competencies: [
+      {
+        ...referPalliativeCompetency,
+        name: "Refer for palliative radiotherapy",
+        framework_version: 1,
+      },
+    ],
+  },
+  render: (args) => (
+    <Stack gap="sm">
+      <CompetencyFrameworkTable {...args} />
+      <StoryNote>
+        The record keeps the words it was signed under, so the row shows
+        today&apos;s words, then what the sign-off recorded.
+      </StoryNote>
+    </Stack>
+  ),
+};
+
 export const LongFramework: Story = {
   args: { framework: sact },
 };

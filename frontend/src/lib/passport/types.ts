@@ -270,6 +270,11 @@ export interface CompetencyState {
   requested_level?: LevelRef | null;
   /** The assessor's reason, only where they signed a different level */
   level_change_reason?: string | null;
+  /**
+   * The framework version the latest sign-off was given under, or null
+   * where there is none, or the index predates the field.
+   */
+  framework_version?: number | null;
   signed_on: IsoDate | null;
   signed_off_by: string | null;
   expires_on: IsoDate | null;
