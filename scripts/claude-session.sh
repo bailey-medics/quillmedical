@@ -62,8 +62,8 @@ if [ "${name}" = "q5" ] && systemctl --user is-enabled --quiet quill-owl.service
 fi
 
 refuse_for_watcher() {
-    echo "✗ q5 belongs to Owl, and its Claude needs the watcher's flags. Start it again with:" >&2
-    echo "    tmux kill-session -t q5; systemctl --user restart quill-owl" >&2
+    echo "✗ q5 belongs to Owl, and its Claude needs Owl's flags. Start it again from worktree 5 with:" >&2
+    echo "    just owl-restart" >&2
     exit 1
 }
 

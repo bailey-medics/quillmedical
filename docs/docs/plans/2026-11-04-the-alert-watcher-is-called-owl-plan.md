@@ -129,22 +129,26 @@ stop.
 
 ## Phase 3: A recipe to restart Owl
 
-- [ ] **Add `just owl-restart` (`owr`)**, running
+- [x] **Add `just owl-restart` (`owr`)**, running
       `scripts/owl/restart.sh`, which restarts Owl and its Claude Code
       session in `q5`. It refuses anywhere but worktree 5 on the home
       box, as `owl-install` does. It refuses while the busy flag is set,
       unless given `force`, except when it is run from inside `q5`,
       where the flag belongs to the turn running it.
-- [ ] **Run the restart detached**, with `systemd-run --user --collect`:
+- [x] **Run the restart detached**, with `systemd-run --user --collect`:
       stop `quill-owl.service`, `tmux kill-session -t =q5`, clear the
       busy flag, start the service. Killing `q5` kills whatever shell
       ran the recipe inside it, so a restart run in place would stop
       after the kill and before the start, leaving no Owl at all.
-- [ ] **Tests in `scripts/tests/owl-restart.bats`**, stubbing
+- [x] **Tests in `scripts/tests/owl-restart.bats`**, stubbing
       `systemctl`, `tmux` and `systemd-run`: refused in another
       worktree; refused while busy, and `force` overrides it; the flag
       ignored from inside `q5`; the four steps handed to `systemd-run`
       in that order; and nothing killed in place.
+- [x] **Point the restart instructions at it.** `scripts/claude-session.sh`
+      refuses to start a plain Claude in `q5` and says how to start it
+      again, and `install.sh` says the same after moving the box across.
+      Both now say `just owl-restart`, and the README describes it.
 
 ## Phase 4: Move the box across, once Phase 1 merges
 
