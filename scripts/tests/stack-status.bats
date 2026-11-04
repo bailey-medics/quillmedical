@@ -354,3 +354,52 @@ PY
     run left_behind_of 'null'
     [ "$output" = "none" ]
 }
+
+# Prints what stack-status adds after the check marks for one pull request,
+# or "none" when it adds nothing.
+conflict_of() {
+    python3 - "$SCRIPT" "$1" <<'PY'
+import importlib.util, json, sys
+
+spec = importlib.util.spec_from_file_location("stack_status", sys.argv[1])
+module = importlib.util.module_from_spec(spec)
+sys.modules["stack_status"] = module
+spec.loader.exec_module(module)
+
+mark = module.conflict_mark(json.loads(sys.argv[2]), module.Palette(False))
+print(mark or "none")
+PY
+}
+
+@test "a pull request GitHub cannot merge says conflict" {
+    # #2337, 4 November 2026: both marks were ticks while GitHub showed
+    # a merge conflict, because the marks report only the checks.
+    run conflict_of '{"mergeable": "CONFLICTING"}'
+    [ "$status" -eq 0 ]
+    [ "$output" = "conflict" ]
+}
+
+@test "a pull request that merges cleanly adds nothing" {
+    run conflict_of '{"mergeable": "MERGEABLE"}'
+    [ "$status" -eq 0 ]
+    [ "$output" = "none" ]
+}
+
+@test "a pull request GitHub has not worked out yet adds nothing" {
+    # GitHub answers UNKNOWN until it has computed the answer; the next
+    # redraw usually has it.
+    run conflict_of '{"mergeable": "UNKNOWN"}'
+    [ "$status" -eq 0 ]
+    [ "$output" = "none" ]
+}
+
+@test "a pull request with no mergeable field adds nothing" {
+    run conflict_of '{}'
+    [ "$status" -eq 0 ]
+    [ "$output" = "none" ]
+}
+
+@test "the pull request listing asks GitHub for mergeable" {
+    run grep -F '"number,headRefName,isDraft,mergeable,state,"' "$SCRIPT"
+    [ "$status" -eq 0 ]
+}

@@ -305,7 +305,8 @@ def read_pull_requests(branches: list[str]) -> dict[str, dict[str, object]]:
             "--limit",
             str(limit),
             "--json",
-            "number,headRefName,isDraft,state,statusCheckRollup,url",
+            "number,headRefName,isDraft,mergeable,state,"
+            "statusCheckRollup,url",
         ],
         check=False,
     )
@@ -546,6 +547,23 @@ def summarise_checks(pr: dict[str, object], palette: Palette) -> str:
     return f"{mark(fast)} {mark(heavy)}"
 
 
+def conflict_mark(pr: dict[str, object], palette: Palette) -> str | None:
+    """Say "conflict" when GitHub cannot merge the pull request as it is.
+
+    The two check marks cannot show this: a branch can pass every check
+    and still conflict with the branch beneath it. GitHub works out
+    ``mergeable`` only when somebody asks, and answers ``UNKNOWN`` until
+    it has, which is common just after a push or a merge to ``main``.
+    That shows nothing rather than a guess: the next redraw, a minute
+    later, usually has the answer, and asking is what sets GitHub
+    working on it.
+    """
+    if pr.get("mergeable") != "CONFLICTING":
+        return None
+
+    return palette.red("conflict")
+
+
 def build_branches(
     stack: dict[str, object],
     occupied: dict[str, str],
@@ -678,6 +696,10 @@ def draw(
                 label = text
             cells.append(palette.link(url, label))
             cells.append(summarise_checks(branch.pr, palette))
+
+            conflict = conflict_mark(branch.pr, palette)
+            if conflict:
+                cells.append(conflict)
         elif show_prs and branch.is_merged:
             # A merged branch has no *open* pull request, which is what the
             # listing asks for - but "no pull request" then reads as "you
