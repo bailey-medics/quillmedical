@@ -23,18 +23,21 @@ of what an audit trail is for.
 
 from __future__ import annotations
 
+import dataclasses
 from datetime import date
 from pathlib import Path
 
 import pytest
 
 from app.features.passport import records, render, service
+from app.features.passport.catalogue import StoredCatalogue
 from app.features.passport.commits import Actor
 from app.features.passport.schemas import (
     AppraisalPeriod,
     Certificate,
     CompetencyRef,
     CpdEntry,
+    FrameworkRef,
     LogbookEntry,
     Reflection,
 )
@@ -601,3 +604,67 @@ class TestTheDocumentIsNotStored:
         render.render(store, PASSPORT_ID)
 
         assert store.head(PASSPORT_ID).commit == before
+
+
+def _renamed(competency_id: str, words: str) -> StoredCatalogue:
+    """The fixtures, with one competency reworded since it was signed."""
+    held = files_catalogue()
+    reworded = held.entries[competency_id].model_copy(
+        update={"display_name": words}
+    )
+
+    return dataclasses.replace(
+        held, entries={**held.entries, competency_id: reworded}
+    )
+
+
+class TestTheWordsOfToday:
+    """The export names things as the page does, with what was signed."""
+
+    def test_a_framework_is_named_as_it_is_today(
+        self, store: LocalPassportStore, holder: Actor
+    ) -> None:
+        records.set_frameworks(
+            store,
+            PASSPORT_ID,
+            holder,
+            [FrameworkRef(id="uk_sact_board_2023", name="An older name")],
+        )
+        today = files_catalogue().frameworks["uk_sact_board_2023"].name
+
+        output = render.render(store, PASSPORT_ID, catalogue=files_catalogue())
+
+        assert today in output
+        assert "An older name" not in output
+
+    def test_a_reworded_competency_prints_both_wordings(
+        self, store: LocalPassportStore, holder: Actor, assessor: Actor
+    ) -> None:
+        _sign_off(store, holder, assessor)
+
+        output = render.render(
+            store,
+            PASSPORT_ID,
+            catalogue=_renamed(COMPETENCY, "Words chosen later"),
+        )
+
+        assert "### Words chosen later" in output
+        assert "Signed off as: " in output
+
+    def test_every_sign_off_names_its_framework_version(
+        self, store: LocalPassportStore, holder: Actor, assessor: Actor
+    ) -> None:
+        _sign_off(store, holder, assessor)
+
+        output = render.render(store, PASSPORT_ID, catalogue=files_catalogue())
+
+        assert "Framework version: 1" in output
+
+    def test_matching_words_print_once(
+        self, store: LocalPassportStore, holder: Actor, assessor: Actor
+    ) -> None:
+        _sign_off(store, holder, assessor)
+
+        output = render.render(store, PASSPORT_ID, catalogue=files_catalogue())
+
+        assert "Signed off as:" not in output

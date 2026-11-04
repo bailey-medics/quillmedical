@@ -33,6 +33,7 @@ from __future__ import annotations
 
 from datetime import date
 from pathlib import PurePosixPath
+from typing import TYPE_CHECKING
 
 from . import layout, paths
 from .cpd_periods import group_cpd
@@ -50,6 +51,11 @@ from .schemas import (
 )
 from .serialise import from_yaml, reflection_from_markdown
 from .store import PassportNotFoundError, PassportStore
+from .wording import framework_name, sign_off_heading, version_note
+
+if TYPE_CHECKING:
+    # A type only. The catalogue module reads the database.
+    from .catalogue import StoredCatalogue
 
 #: What a reader sees where a passport records nothing. An empty section
 #: is stated rather than omitted: a missing heading reads as an oversight,
@@ -62,6 +68,7 @@ def render(
     passport_id: str,
     *,
     include_reflections: bool = False,
+    catalogue: StoredCatalogue | None = None,
 ) -> str:
     """Render a whole passport as Markdown.
 
@@ -74,6 +81,9 @@ def render(
             or an employer must not carry one by accident. Written
             reflection can be disclosed in legal proceedings, so the
             default has to be the narrow one.
+        catalogue: The stored frameworks, so a framework or competency
+            is named as it is today, with what a sign-off recorded where
+            that differs. Without them, the record's own words are used.
 
     Returns:
         The document.
@@ -85,7 +95,7 @@ def render(
     index = from_yaml(Index, store.read(passport_id, paths.INDEX))
 
     parts = [
-        _front_page(profile, index),
+        _front_page(profile, index, catalogue),
         _competency_table(index),
         _logbook_section(store, passport_id, index),
         _certificates_section(store, passport_id),
@@ -95,12 +105,14 @@ def render(
     if include_reflections:
         parts.append(_reflections_section(store, passport_id))
 
-    parts.append(_sign_off_appendix(store, passport_id, index))
+    parts.append(_sign_off_appendix(store, passport_id, index, catalogue))
 
     return "\n\n".join(part.rstrip() for part in parts if part) + "\n"
 
 
-def _front_page(profile: Profile, index: Index) -> str:
+def _front_page(
+    profile: Profile, index: Index, catalogue: StoredCatalogue | None
+) -> str:
     """Who this is, and what they are registered as."""
     lines = [
         "# Clinician passport",
@@ -119,7 +131,10 @@ def _front_page(profile: Profile, index: Index) -> str:
     if profile.frameworks:
         lines.append(
             "Frameworks: "
-            + ", ".join(framework.name for framework in profile.frameworks)
+            + ", ".join(
+                framework_name(catalogue, framework)
+                for framework in profile.frameworks
+            )
         )
         lines.append("")
 
@@ -409,7 +424,10 @@ def _reflections_section(store: PassportStore, passport_id: str) -> str:
 
 
 def _sign_off_appendix(
-    store: PassportStore, passport_id: str, index: Index
+    store: PassportStore,
+    passport_id: str,
+    index: Index,
+    catalogue: StoredCatalogue | None,
 ) -> str:
     """Every sign-off in full, superseded ones included.
 
@@ -436,22 +454,27 @@ def _sign_off_appendix(
     records.sort(key=lambda item: item[1].observed_on)
 
     for name, record in records:
-        lines.extend(_one_sign_off(name, record))
+        lines.extend(_one_sign_off(name, record, catalogue))
 
     return "\n".join(lines)
 
 
-def _one_sign_off(name: str, record: SignOff) -> list[str]:
+def _one_sign_off(
+    name: str, record: SignOff, catalogue: StoredCatalogue | None
+) -> list[str]:
     """One sign-off, rendered in full."""
-    lines = [
-        f"### {name_with_scope(record.competency.name, record.scope)}",
-        "",
-    ]
+    heading, signed_as = sign_off_heading(catalogue, record)
+    lines = [f"### {heading}", ""]
+
+    if signed_as is not None:
+        lines.append(f"Signed off as: {signed_as}")
+        lines.append("")
 
     if record.level:
         lines.append(f"**Level:** {record.level.name}")
         lines.append("")
 
+    lines.append(f"- {version_note(record)}")
     lines.append(f"- Status: {record.status}")
     lines.append(f"- Kind: {record.kind}")
     lines.append(f"- Observed: {record.observed_on.isoformat()}")
