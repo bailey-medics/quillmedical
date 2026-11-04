@@ -658,6 +658,7 @@
     "ondelete",
     "oneline",
     "onupdate",
+    "oneshot",
     "opcs",
     "openehr",
     "openjpeg",
