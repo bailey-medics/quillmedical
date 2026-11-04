@@ -183,6 +183,26 @@ def _held_elsewhere(
     return sorted(set(rows))
 
 
+def _missing_versions(name: str, stored: int, found: int) -> str:
+    """Say which versions a jump skipped, and how to put them back.
+
+    A version the sync never saw is in no file any more, so every later
+    sync refuses the same way until somebody stores it. Git still has it.
+    """
+    missing = list(range(stored + 1, found))
+    listed = ", ".join(str(number) for number in missing)
+    noun = "version" if len(missing) == 1 else "versions"
+    verb = "is" if len(missing) == 1 else "are"
+
+    return (
+        f"Framework {name!r}: the tables hold version {stored}, the files "
+        f"version {found}: {noun} {listed} {verb} missing. Rebuild each "
+        "from git history, oldest first: copy the framework's file from "
+        "the commit that set that version into a folder of its own, run "
+        "'python -m app.features.passport.sync <folder>', then sync again."
+    )
+
+
 def _check(
     db: Session,
     framework: Framework,
@@ -228,10 +248,16 @@ def _check(
             )
         return False
 
-    if framework.version != newest.version + 1:
+    if framework.version < newest.version:
         raise FrameworkSyncError(
-            f"Framework {name!r} is version {framework.version}, and the "
-            f"newest stored is {newest.version}: it goes up by exactly one."
+            f"Framework {name!r} is version {framework.version}, but the "
+            f"tables already hold version {newest.version}: a version "
+            "never goes down."
+        )
+
+    if framework.version > newest.version + 1:
+        raise FrameworkSyncError(
+            _missing_versions(name, newest.version, framework.version)
         )
 
     stored_ids = {row[0] for row in _snapshot_of_rows(db, newest)[3]}
