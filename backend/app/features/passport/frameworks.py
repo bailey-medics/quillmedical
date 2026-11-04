@@ -2,9 +2,8 @@
 
 A framework is one published document as a set of competencies: the UK
 SACT Board's prescriber competencies, or one hospital's own sign-off
-sheet. Each is a file in ``shared/competency-definitions/`` that declares
-a ``framework:`` block, loaded and checked with the catalogue by
-:mod:`app.cbac.competencies`.
+sheet. Each is read from the framework tables, where the framework sync
+stores it, through :mod:`.catalogue`.
 
 **A holder chooses the frameworks they work to**, and the passport offers
 them what those contain. That is the whole point: Quill will come to
@@ -31,15 +30,9 @@ from dataclasses import dataclass
 
 from sqlalchemy.orm import Session
 
-from app.cbac.competencies import (
-    FRAMEWORK_IDS,
-    FRAMEWORKS,
-    SPECIALTY_IDS,
-    Framework,
-    framework_competencies,
-    get_framework,
-)
+from app.cbac.competencies import SPECIALTY_IDS, Framework
 
+from .catalogue import StoredCatalogue
 from .schemas import FrameworkRef
 
 
@@ -56,10 +49,13 @@ class UnknownSpecialtyFilterError(ValueError):
     """A search was filtered by a specialty that is not listed."""
 
 
-def framework_refs(framework_ids: list[str]) -> list[FrameworkRef]:
+def framework_refs(
+    catalogue: StoredCatalogue, framework_ids: list[str]
+) -> list[FrameworkRef]:
     """The id and name of each chosen framework, to store in a profile.
 
     Args:
+        catalogue: The stored frameworks, read once for the request.
         framework_ids: What the holder chose, in their order.
 
     Returns:
@@ -74,7 +70,7 @@ def framework_refs(framework_ids: list[str]) -> list[FrameworkRef]:
     refs: list[FrameworkRef] = []
 
     for framework_id in framework_ids:
-        framework = get_framework(framework_id)
+        framework = catalogue.frameworks.get(framework_id)
         if framework is None:
             raise UnknownFrameworkError("That is not a framework Quill holds.")
         refs.append(FrameworkRef(id=framework.id, name=framework.name))
@@ -82,7 +78,7 @@ def framework_refs(framework_ids: list[str]) -> list[FrameworkRef]:
     return refs
 
 
-def current_name(ref: FrameworkRef) -> str:
+def current_name(catalogue: StoredCatalogue, ref: FrameworkRef) -> str:
     """What to call a stored framework on screen.
 
     The catalogue's name today, so renaming a framework in its file
@@ -92,12 +88,13 @@ def current_name(ref: FrameworkRef) -> str:
     the catalogue no longer holds, which must not become a bare id.
 
     Args:
+        catalogue: The stored frameworks, read once for the request.
         ref: A framework as the profile stored it.
 
     Returns:
         Its current name, or the stored one if it has gone.
     """
-    framework = get_framework(ref.id)
+    framework = catalogue.frameworks.get(ref.id)
     if framework is None:
         return ref.name
 
@@ -149,6 +146,7 @@ def _filed_under(framework: Framework, specialty: str | None) -> bool:
 
 def frameworks_for(
     db: Session,
+    catalogue: StoredCatalogue,
     user_id: int,
     *,
     query: str | None = None,
@@ -164,6 +162,7 @@ def frameworks_for(
 
     Args:
         db: Core database session.
+        catalogue: The stored frameworks, read once for the request.
         user_id: The holder, or would-be holder.
         query: Words to find in a framework's name or publisher.
         specialty: A specialty id to narrow to.
@@ -206,12 +205,15 @@ def frameworks_for(
         for _name, _id, _position, framework_id in sorted(
             rows, key=lambda row: (row[0].casefold(), row[1], row[2])
         ):
-            if framework_id in FRAMEWORK_IDS and framework_id not in lead_ids:
+            if (
+                framework_id in catalogue.frameworks
+                and framework_id not in lead_ids
+            ):
                 lead_ids.append(framework_id)
 
-    by_id = {framework.id: framework for framework in FRAMEWORKS}
+    by_id = catalogue.frameworks
     rest = sorted(
-        (f for f in FRAMEWORKS if f.id not in lead_ids),
+        (f for f in by_id.values() if f.id not in lead_ids),
         key=lambda f: f.name.casefold(),
     )
     ordered = [(by_id[i], True) for i in lead_ids] + [
@@ -222,7 +224,13 @@ def frameworks_for(
         FrameworkChoice(
             framework=framework,
             lead=lead,
-            items=len(framework_competencies(framework.id)),
+            # Its active entries, as the loader counted them: a retired
+            # competency is not something a holder may record.
+            items=sum(
+                1
+                for entry in catalogue.competencies.get(framework.id, [])
+                if entry.retired_on is None
+            ),
         )
         for framework, lead in ordered
         if _matches(framework, query) and _filed_under(framework, specialty)

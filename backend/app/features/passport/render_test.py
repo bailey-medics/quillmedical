@@ -39,6 +39,7 @@ from app.features.passport.schemas import (
     Reflection,
 )
 from app.features.passport.store import LocalPassportStore
+from tests.frameworks import files_catalogue
 
 PASSPORT_ID = "3f2a8c1e4b7d49f0a6c2e8b1d5a7f309"
 COMPETENCY = "uk_sact_board_2023_prescribe_sact"
@@ -102,6 +103,7 @@ def _sign_off(
         store,
         PASSPORT_ID,
         holder,
+        catalogue=files_catalogue(),
         competency_id=COMPETENCY,
         scope_id=SCOPE,
         observed_on=date(2026, 3, 14),
@@ -111,6 +113,7 @@ def _sign_off(
         store,
         PASSPORT_ID,
         assessor,
+        catalogue=files_catalogue(),
         name=name,
         assessor_user_id="2",
         holder_user_id="1",
@@ -199,6 +202,7 @@ class TestCompetencyTable:
             store,
             PASSPORT_ID,
             holder,
+            catalogue=files_catalogue(),
             competency_id=COMPETENCY,
             scope_id="breast",
             observed_on=date(2026, 6, 1),
@@ -217,6 +221,7 @@ class TestCompetencyTable:
             store,
             PASSPORT_ID,
             holder,
+            catalogue=files_catalogue(),
             competency_id=COMPETENCY,
             scope_id=SCOPE,
             observed_on=date(2026, 3, 14),
@@ -308,6 +313,7 @@ class TestLogbook:
             store,
             PASSPORT_ID,
             holder,
+            catalogue=files_catalogue(),
             competency_id=COMPETENCY,
             scope_id="breast",
             observed_on=date(2026, 6, 1),

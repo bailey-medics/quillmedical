@@ -44,6 +44,9 @@ from app.security import hash_password
 from tests.competencies import hold
 from tests.registrations import declare
 
+# Every route here reads the frameworks from the tables.
+pytestmark = pytest.mark.usefixtures("stored_frameworks")
+
 COMPETENCY = "uk_sact_board_2023_prescribe_sact"
 # The frameworks a test holder works to. A passport offers the
 # competencies in its holder's frameworks and no others, so one made with
