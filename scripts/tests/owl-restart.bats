@@ -1,6 +1,6 @@
 #!/usr/bin/env bats
 # Tests for owl/restart.sh, which restarts Owl and its Claude Code session
-# in q5, detached.
+# owl, detached.
 #
 # systemd-run, systemctl, tmux and uname are stubs that record what they
 # were asked, so nothing is restarted and no session killed. tmux answers
@@ -13,7 +13,7 @@ setup() {
     SCRIPT="$(cd "${BATS_TEST_DIRNAME}/../owl" && pwd)/restart.sh"
     CALLS="${BATS_TEST_TMPDIR}/calls"
     export HOME="${BATS_TEST_TMPDIR}/home"
-    export OWL_WORKTREE="${BATS_TEST_TMPDIR}/quillmedical-5"
+    export OWL_WORKTREE="${BATS_TEST_TMPDIR}/quillmedical-owl"
     export OWL_STATE="${BATS_TEST_TMPDIR}/state"
     unset OWL_TMUX_TARGET TMUX IN_SESSION XDG_STATE_HOME
 
@@ -40,7 +40,7 @@ EOF
     chmod +x "${BATS_TEST_TMPDIR}/bin/${name}"
 }
 
-@test "anywhere but worktree 5 is refused, and nothing is restarted" {
+@test "anywhere but Owl's worktree is refused, and nothing is restarted" {
     cd "${BATS_TEST_TMPDIR}"
     run "$SCRIPT"
 
@@ -68,7 +68,7 @@ EOF
     run "$SCRIPT"
 
     [ "$status" -eq 0 ]
-    grep -qF "systemctl --user stop quill-owl.service; tmux kill-session -t =q5; rm -f ${OWL_STATE}/busy; systemctl --user start quill-owl.service" "$CALLS"
+    grep -qF "systemctl --user stop quill-owl.service; tmux kill-session -t =owl; rm -f ${OWL_STATE}/busy; systemctl --user start quill-owl.service" "$CALLS"
 }
 
 @test "nothing is stopped or killed in place" {
@@ -85,7 +85,7 @@ EOF
     run "$SCRIPT"
 
     [ "$status" -eq 1 ]
-    [[ "$output" == *"q5 is busy"* ]]
+    [[ "$output" == *"owl is busy"* ]]
     run ! grep -q "^systemd-run" "$CALLS"
 }
 
@@ -98,10 +98,10 @@ EOF
     grep -q "^systemd-run" "$CALLS"
 }
 
-@test "from inside q5 the busy flag is the caller's own, so it restarts" {
+@test "from inside the owl session the busy flag is the caller's own, so it restarts" {
     date +%s > "${OWL_STATE}/busy"
     export TMUX="/tmp/tmux-1000/default,1,0"
-    export IN_SESSION="q5"
+    export IN_SESSION="owl"
 
     run "$SCRIPT"
 

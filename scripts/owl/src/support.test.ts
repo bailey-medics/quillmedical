@@ -24,11 +24,11 @@ const GOOD_ENV = {
 };
 
 describe("readConfig", () => {
-  it("defaults to worktree 5, its q5 session and the hook's state folder", () => {
+  it("defaults to Owl's worktree, its owl session and the hook's state folder", () => {
     const config = readConfig(GOOD_ENV);
 
-    assert.equal(config.worktree, "/home/watcher/github/quillmedical-5");
-    assert.equal(config.tmuxTarget, "q5");
+    assert.equal(config.worktree, "/home/watcher/github/quillmedical-owl");
+    assert.equal(config.tmuxTarget, "owl");
     assert.equal(config.stateDirectory, "/home/watcher/.local/state/quill-owl");
     assert.equal(config.certificatePath, "/home/watcher/.config/quill-owl/pki/watcher.crt");
     assert.equal(config.recordEvents, false);
@@ -95,7 +95,7 @@ function fakeGit(answers: Record<string, string>): Run {
 }
 
 // A clean, detached checkout whose commit main already contains: where
-// `just stack-fresh` leaves worktree 5, whether or not main has moved since.
+// `just stack-fresh` leaves Owl's worktree, whether or not main has moved since.
 const DETACHED_ON_MAIN = {
   "status --porcelain": "",
   "rev-parse --abbrev-ref HEAD": "HEAD",
@@ -146,7 +146,7 @@ describe("checkWorktree", () => {
 describe("Session", () => {
   it("reads the busy flag the hook writes, and clears it", () => {
     const state = temporaryDirectory();
-    const session = new Session({ stateDirectory: state, tmuxTarget: "q5" });
+    const session = new Session({ stateDirectory: state, tmuxTarget: "owl" });
 
     assert.equal(session.busySince(100), undefined);
 
@@ -161,11 +161,11 @@ describe("Session", () => {
     const state = temporaryDirectory();
     writeFileSync(join(state, "busy"), "garbled");
 
-    assert.equal(new Session({ stateDirectory: state, tmuxTarget: "q5" }).busySince(100), 100);
+    assert.equal(new Session({ stateDirectory: state, tmuxTarget: "owl" }).busySince(100), 100);
   });
 
   it("writes the header above the alert text, so text from Slack cannot pose as it", () => {
-    const session = new Session({ stateDirectory: temporaryDirectory(), tmuxTarget: "q5" });
+    const session = new Session({ stateDirectory: temporaryDirectory(), tmuxTarget: "owl" });
     const alert = {
       kind: "monitoring" as const,
       fingerprint: "monitoring|x|2026-10-26",
@@ -192,13 +192,13 @@ describe("Session", () => {
       return "";
     };
 
-    await new Session({ stateDirectory: temporaryDirectory(), tmuxTarget: "q5", run, pauseMs: 0 }).startRun("/s/a.txt");
+    await new Session({ stateDirectory: temporaryDirectory(), tmuxTarget: "owl", run, pauseMs: 0 }).startRun("/s/a.txt");
 
     assert.deepEqual(calls, [
-      "tmux send-keys -t q5 -l /clear",
-      "tmux send-keys -t q5 Enter",
-      "tmux send-keys -t q5 -l /alert /s/a.txt",
-      "tmux send-keys -t q5 Enter",
+      "tmux send-keys -t owl -l /clear",
+      "tmux send-keys -t owl Enter",
+      "tmux send-keys -t owl -l /alert /s/a.txt",
+      "tmux send-keys -t owl Enter",
     ]);
   });
 });

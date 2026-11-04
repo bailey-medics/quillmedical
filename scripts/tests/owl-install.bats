@@ -2,9 +2,9 @@
 # Tests for owl/install.sh, which installs Owl as a systemd user service
 # and moves the box across from the alert watcher's old names.
 #
-# systemctl, yarn, loginctl and uname are stubs that record what they were
+# systemctl, yarn, loginctl, uname and tmux are stubs that record what they were
 # asked, so no service is touched and no package installed. The worktree
-# is a throwaway git repository, so the "only from worktree 5" check sees
+# is a throwaway git repository, so the "only from Owl's worktree" check sees
 # a real top level.
 
 bats_require_minimum_version 1.5.0
@@ -13,9 +13,9 @@ setup() {
     SCRIPT="$(cd "${BATS_TEST_DIRNAME}/../owl" && pwd)/install.sh"
     CALLS="${BATS_TEST_TMPDIR}/calls"
     export HOME="${BATS_TEST_TMPDIR}/home"
-    export OWL_WORKTREE="${BATS_TEST_TMPDIR}/quillmedical-5"
+    export OWL_WORKTREE="${BATS_TEST_TMPDIR}/quillmedical-owl"
     export USER="tester"
-    unset XDG_STATE_HOME OLD_ACTIVE
+    unset XDG_STATE_HOME OLD_ACTIVE Q5_EXISTS
 
     mkdir -p "${HOME}/.config/systemd/user" "${HOME}/.local/state" "${OWL_WORKTREE}/scripts/owl" "${BATS_TEST_TMPDIR}/bin"
     git -C "${OWL_WORKTREE}" init --quiet
@@ -24,6 +24,7 @@ setup() {
     write_stub yarn ''
     write_stub loginctl 'echo "Linger=yes"'
     write_stub uname 'echo Linux'
+    write_stub tmux 'if [ "$1" = "has-session" ]; then [ "${Q5_EXISTS:-}" = "1" ]; fi'
     export PATH="${BATS_TEST_TMPDIR}/bin:${PATH}"
 }
 
@@ -60,7 +61,7 @@ new_box() {
     chmod 0600 "${HOME}/.config/quill-owl/env"
 }
 
-@test "anywhere but worktree 5 is refused, and nothing is touched" {
+@test "anywhere but Owl's worktree is refused, and nothing is touched" {
     new_box
 
     cd "${BATS_TEST_TMPDIR}"
@@ -139,18 +140,30 @@ new_box() {
     run ! grep -q "ALERT_WATCHER_" "${HOME}/.config/quill-owl/env"
 }
 
-@test "moving across says q5 needs starting again" {
+@test "moving across with the old q5 still running says to stop it" {
+    old_box
+    export Q5_EXISTS=1
+
+    cd "${OWL_WORKTREE}"
+    run "$SCRIPT"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"q5, Owl's session before the rename, is still running"* ]]
+}
+
+@test "moving across with no q5 left says nothing about it" {
     old_box
 
     cd "${OWL_WORKTREE}"
     run "$SCRIPT"
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"q5 was started before the rename"* ]]
+    [[ "$output" != *"q5, Owl's session"* ]]
 }
 
 @test "a second run moves nothing and asks for no restart" {
     old_box
+    export Q5_EXISTS=1
     cd "${OWL_WORKTREE}"
     "$SCRIPT" >/dev/null
 
@@ -158,7 +171,7 @@ new_box() {
 
     [ "$status" -eq 0 ]
     [[ "$output" != *"Moved "* ]]
-    [[ "$output" != *"q5 was started before the rename"* ]]
+    [[ "$output" != *"q5, Owl's session"* ]]
 }
 
 @test "a folder under both names is refused before the service is stopped" {

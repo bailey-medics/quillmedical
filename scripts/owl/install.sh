@@ -4,8 +4,8 @@
 #
 # Usage: install.sh
 #
-# Run by `just owl-install`, from worktree 5 on the home box only, because
-# the unit names worktree 5 by path: installing it from another checkout
+# Run by `just owl-install`, from quillmedical-owl on the home box only,
+# because the unit names that worktree by path: installing it from another checkout
 # would run code that is not that checkout's.
 #
 # Safe to run again. On a box that still has quill-alert-watcher.service,
@@ -79,7 +79,7 @@ retire_old_service() {
 }
 
 main() {
-    local worktree="${OWL_WORKTREE:-${HOME}/github/quillmedical-5}"
+    local worktree="${OWL_WORKTREE:-${HOME}/github/quillmedical-owl}"
     local config="${HOME}/.config/${NEW_NAME}"
     local state="${XDG_STATE_HOME:-${HOME}/.local/state}"
     local units="${HOME}/.config/systemd/user"
@@ -140,12 +140,12 @@ main() {
         echo "    sudo loginctl enable-linger ${USER}"
     fi
 
-    # A q5 started under the old names is left running, because a person
-    # may be in it. Its Claude still has the old variable, so its hooks do
-    # nothing until it is started again.
-    if [ "${moved_across}" -eq 1 ]; then
-        echo "! q5 was started before the rename. Start it again with:"
-        echo "    just owl-restart"
+    # q5 was Owl's session before the rename. It is left alone, because a
+    # person may be in it, but its Claude has the old variable, so its hooks
+    # do nothing, and Owl now types into the owl session instead.
+    if [ "${moved_across}" -eq 1 ] && tmux has-session -t "=q5" 2>/dev/null; then
+        echo "! q5, Owl's session before the rename, is still running. Stop it with:"
+        echo "    tmux kill-session -t q5"
     fi
 
     systemctl --user --no-pager status "${NEW_NAME}.service"

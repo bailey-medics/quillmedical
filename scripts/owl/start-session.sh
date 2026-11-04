@@ -8,13 +8,14 @@
 # that is already there is left alone, so one a person is sitting in
 # survives a restart of the daemon.
 #
-# The session is q5, the name ~/.local/bin/quill-sessions gives worktree 5,
-# so `acc` attaches to it as to any other worktree. While this service is
-# enabled, quill-sessions leaves worktree 5 to it: a q5 started there would
-# lack the environment and the flags below, and this script would find it
-# and leave it alone.
+# The session is owl, the name scripts/claude-session.sh gives Owl's
+# worktree, quillmedical-owl, so `acc` attaches to it as to any other
+# worktree. While this service is enabled, claude-session.sh refuses to
+# start a plain Claude there: one started that way would lack the
+# environment and the flags below, and this script would find it and
+# leave it alone.
 #
-# The session runs `claude` in worktree 5 with QUILL_OWL=true,
+# The session runs `claude` in quillmedical-owl with QUILL_OWL=true,
 # which is what turns on the busy-flag hook and the standing permission in
 # CLAUDE.md, and nothing else sets it. It may read the alert files the
 # daemon writes (--add-dir), and runs without a prompt only the commands
@@ -101,14 +102,14 @@ start_tmux() {
 }
 
 main() {
-    local session="${OWL_TMUX_TARGET:-q5}"
-    local worktree="${OWL_WORKTREE:-${HOME}/github/quillmedical-5}"
+    local session="${OWL_TMUX_TARGET:-owl}"
+    local worktree="${OWL_WORKTREE:-${HOME}/github/quillmedical-owl}"
     local state="${OWL_STATE:-${XDG_STATE_HOME:-${HOME}/.local/state}/quill-owl}"
     local gcloud_config="${HOME}/.config/quill-owl/gcloud"
     local settings
     settings="$(cd -- "${BASH_SOURCE[0]%/*}" && pwd)/session-settings.json"
 
-    # `=` asks for that exact name, so a session called q50 does not
+    # `=` asks for that exact name, so a session called owl2 does not
     # count as this one.
     if tmux has-session -t "=${session}" 2>/dev/null; then
         echo "The tmux session ${session} is already running; left as it is."
