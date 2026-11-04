@@ -234,7 +234,17 @@ is a permission's or another framework's, a competency deleted rather
 than retired, a version that skips or goes down, and a change with no new
 version. One refusal writes nothing. It runs in the pre-deploy migrations
 job, after the migrations, so a refusal blocks the deploy; in the CI seed;
-and after `just migrate-local`. Nothing reads the tables yet.
+and after `just migrate-local`.
+
+**The passport reads the frameworks from the tables**, through
+`stored_catalogue` in `backend/app/features/passport/catalogue.py`. It
+gives back the newest version of each framework, as the same `Framework`
+and `CompetencyEntry` objects the file loader makes, and caches them
+until a new version is stored. A route reads it once and passes it to
+`definitions.py`, `frameworks.py` and the service, so one request never
+mixes two versions. One lookup still reads the files: `framework_for` in
+`layout.py`, which files a competency's first record, until the loader
+stops holding frameworks.
 
 A refused skip names each missing version. A version the sync never saw
 is in no file any more, so every later sync would refuse the same way:

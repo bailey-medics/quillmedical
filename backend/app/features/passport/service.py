@@ -37,6 +37,7 @@ from __future__ import annotations
 
 import calendar
 from datetime import UTC, date, datetime
+from typing import TYPE_CHECKING
 
 from . import (
     definitions,
@@ -65,6 +66,11 @@ from .schemas import (
     SignOffKind,
 )
 from .store import PassportNotFoundError, PassportStore
+
+if TYPE_CHECKING:
+    # A type only. The catalogue module reads the database, and this one
+    # must import nothing that does: tests/features_import_boundary_test.py.
+    from .catalogue import StoredCatalogue
 
 #: The text an assessor confirms before signing. Fixed, and deliberately
 #: not configurable per organisation: a declaration that varied by site
@@ -193,7 +199,9 @@ def create_passport(
     )
 
 
-def check_scope(competency_id: str, scope_id: str | None) -> ScopeRef | None:
+def check_scope(
+    catalogue: StoredCatalogue, competency_id: str, scope_id: str | None
+) -> ScopeRef | None:
     """Refuse a scope a sign-off for this competency cannot carry.
 
     A scope is required where the competency declares scopes, and
@@ -202,6 +210,7 @@ def check_scope(competency_id: str, scope_id: str | None) -> ScopeRef | None:
     made.
 
     Args:
+        catalogue: The stored frameworks, read once for the request.
         competency_id: What the holder is asking to be signed off for.
         scope_id: What they say the sign-off covers.
 
@@ -215,16 +224,19 @@ def check_scope(competency_id: str, scope_id: str | None) -> ScopeRef | None:
         SignOffError: If it declares scopes and none was given.
     """
     if scope_id is not None:
-        return definitions.scope_ref(competency_id, scope_id)
+        return definitions.scope_ref(catalogue, competency_id, scope_id)
 
-    if definitions.has_scopes(competency_id):
+    if definitions.has_scopes(catalogue, competency_id):
         raise SignOffError(SCOPE_REQUIRED_MESSAGE)
 
     return None
 
 
 def check_request(
-    competency_id: str, level_id: str | None, scope_id: str | None = None
+    catalogue: StoredCatalogue,
+    competency_id: str,
+    level_id: str | None,
+    scope_id: str | None = None,
 ) -> LevelRef | None:
     """Refuse a sign-off request that could never be saved.
 
@@ -234,6 +246,7 @@ def check_request(
     cannot drift apart.
 
     Args:
+        catalogue: The stored frameworks, read once for the request.
         competency_id: What the holder is asking to be signed off for.
         level_id: The level they ask for, where the competency has a
             scale.
@@ -252,13 +265,13 @@ def check_request(
         SignOffError: If it has a scale and no level was given, or
             declares scopes and none was given.
     """
-    definitions.competency_ref(competency_id)
-    check_scope(competency_id, scope_id)
+    definitions.competency_ref(catalogue, competency_id)
+    check_scope(catalogue, competency_id, scope_id)
 
     if level_id is not None:
-        return definitions.level_ref(competency_id, level_id)
+        return definitions.level_ref(catalogue, competency_id, level_id)
 
-    if definitions.has_levels(competency_id):
+    if definitions.has_levels(catalogue, competency_id):
         raise SignOffError(LEVEL_REQUIRED_MESSAGE)
 
     return None
@@ -269,6 +282,7 @@ def request_sign_off(
     passport_id: str,
     holder: Actor,
     *,
+    catalogue: StoredCatalogue,
     competency_id: str,
     observed_on: date,
     level_id: str | None = None,
@@ -288,6 +302,7 @@ def request_sign_off(
         store: Where passports live.
         passport_id: Whose passport.
         holder: The holder, asking.
+        catalogue: The stored frameworks, read once for the request.
         competency_id: What they are asking to be signed off for.
         observed_on: When the work was done.
         level_id: Which level, where the competency has a scale.
@@ -311,17 +326,19 @@ def request_sign_off(
             given.
     """
     moment = now if now is not None else datetime.now(UTC)
-    competency = definitions.competency_ref(competency_id)
-    level = check_request(competency_id, level_id, scope_id)
-    scope = check_scope(competency_id, scope_id)
+    competency = definitions.competency_ref(catalogue, competency_id)
+    level = check_request(catalogue, competency_id, level_id, scope_id)
+    scope = check_scope(catalogue, competency_id, scope_id)
 
     existing = _existing_for(store, passport_id, competency_id, scope_id)
-    kind = _kind_for(competency_id, level_id, existing)
+    kind = _kind_for(catalogue, competency_id, level_id, existing)
 
     record = SignOff(
         id=_ids.next(moment),
         competency=competency,
-        framework_version=definitions.framework_version(competency_id),
+        framework_version=definitions.framework_version(
+            catalogue, competency_id
+        ),
         kind=kind,
         status="requested",
         # Both, for now: until it is signed, what is on the record is
@@ -376,6 +393,7 @@ def sign_off(
     passport_id: str,
     assessor: Actor,
     *,
+    catalogue: StoredCatalogue,
     name: str,
     assessor_user_id: str,
     holder_user_id: str,
@@ -393,6 +411,7 @@ def sign_off(
         store: Where passports live.
         passport_id: Whose passport.
         assessor: Who is signing.
+        catalogue: The stored frameworks, read once for the request.
         name: Which sign-off folder.
         assessor_user_id: The assessor's Quill user id.
         holder_user_id: The holder's, so self-sign-off can be refused.
@@ -448,7 +467,9 @@ def sign_off(
     level = record.level
 
     if level_id is not None:
-        level = definitions.level_ref(record.competency.id, level_id)
+        level = definitions.level_ref(
+            catalogue, record.competency.id, level_id
+        )
 
     changed = (
         level is not None
@@ -467,6 +488,7 @@ def sign_off(
     # progressed, whatever the request said. The record being signed is
     # still "requested", so it does not count towards its own kind.
     kind = _kind_for(
+        catalogue,
         record.competency.id,
         level.id if level is not None else None,
         _existing_for(
@@ -477,7 +499,7 @@ def sign_off(
         ),
     )
 
-    expires_on = _expiry(record.competency.id, moment.date())
+    expires_on = _expiry(catalogue, record.competency.id, moment.date())
 
     signed = record.model_copy(
         update={
@@ -827,6 +849,7 @@ def _existing_for(
 
 
 def _kind_for(
+    catalogue: StoredCatalogue,
     competency_id: str,
     level_id: str | None,
     existing: list[tuple[str, SignOff]],
@@ -852,21 +875,25 @@ def _kind_for(
         return "reassessment"
 
     previous = definitions.level_order(
-        competency_id, signed[-1].level.id  # type: ignore[union-attr]
+        catalogue,
+        competency_id,
+        signed[-1].level.id,  # type: ignore[union-attr]
     )
-    now_at = definitions.level_order(competency_id, level_id)
+    now_at = definitions.level_order(catalogue, competency_id, level_id)
 
     return "progression" if now_at > previous else "reassessment"
 
 
-def _expiry(competency_id: str, signed_on: date) -> date | None:
+def _expiry(
+    catalogue: StoredCatalogue, competency_id: str, signed_on: date
+) -> date | None:
     """When a sign-off wants revisiting, or None.
 
     Recorded and nothing more: no expired status, no reminders, no
     dropping back a level. The date is there to be read by a person who
     can judge what it means.
     """
-    months = definitions.expires_after_months(competency_id)
+    months = definitions.expires_after_months(catalogue, competency_id)
 
     if months is None:
         return None

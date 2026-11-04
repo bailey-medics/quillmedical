@@ -14,7 +14,7 @@ nothing, so the tables never hold half a sync.
 
 Until the frameworks move out it reads ``shared/competency-definitions/``,
 from the pre-deploy migrations job, the CI seed and the dev migrate
-recipe. Nothing reads the tables yet. See Phase 5 of
+recipe. The passport reads them through :mod:`.catalogue`. See Phase 5 of
 docs/docs/plans/2026-11-01-passport-record-and-catalogue-plan.md.
 
 Usage::
