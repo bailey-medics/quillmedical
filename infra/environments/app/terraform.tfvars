@@ -73,9 +73,12 @@ cloud_run_services       = ["quill-backend-app", "quill-frontend-app"]
 
 # The content pipeline in eoeeta-teaching and respiratory-teaching
 # authenticates as this account and publishes question banks into
-# quill-images-app. It is scoped to that bucket and holds nothing else,
-# unlike the teaching CI account it replaced on 2026-09-23, which carried
-# roles/editor across the whole project.
+# quill-images-app. The framework pipeline in the four -framework
+# repositories (infra/github/framework_rulesets.tf) uses it too, only to
+# start the framework sync job, which reads those repositories itself. It
+# is scoped to that bucket and those jobs, unlike the teaching CI
+# account it replaced on 2026-09-23, which carried roles/editor across
+# the whole project.
 content_ci_service_account = "content-sync@quill-medical-app.iam.gserviceaccount.com"
 deploy_service_account     = "github-deploy@quill-medical-app.iam.gserviceaccount.com"
 
