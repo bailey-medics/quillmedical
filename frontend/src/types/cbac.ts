@@ -33,6 +33,8 @@ export interface Competency {
   /** Set once a competency is retired. Retired ids stay readable and
    *  cannot be granted again. */
   retired_on?: string;
+  /** For a framework's competency, the first version that left it out. */
+  retired_in_version?: number;
   /** Present only where a competency is signed off against a scale. */
   levels?: CompetencyLevel[];
   /**

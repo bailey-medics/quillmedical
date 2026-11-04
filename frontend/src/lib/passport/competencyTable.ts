@@ -32,6 +32,14 @@ export interface CompetencyTableRow {
    * framework today, or null where nothing differs or nothing is signed.
    */
   signedAs: SignedAs | null;
+  /**
+   * Whether the competency has left the framework. Listed only where the
+   * holder has something recorded against it, and never offered for a
+   * new sign-off.
+   */
+  retired: boolean;
+  /** The first version that left it out, where the framework says. */
+  retiredInVersion: number | null;
 }
 
 /**
@@ -120,7 +128,21 @@ export function frameworkRows(
 ): CompetencyTableRow[] {
   const rows: CompetencyTableRow[] = [];
 
-  for (const item of catalogue.frameworkItems(frameworkId)) {
+  // The current competencies, then any that have left the framework but
+  // still have something recorded against them: a sign-off, a request or
+  // a logbook entry. A retired one with nothing recorded is left out.
+  const items = [
+    ...catalogue.frameworkItems(frameworkId),
+    ...catalogue
+      .retiredItems(frameworkId)
+      .filter((item) => competencies.some((state) => state.id === item.id)),
+  ];
+
+  for (const item of items) {
+    const retired = {
+      retired: item.retired_on !== undefined,
+      retiredInVersion: item.retired_in_version ?? null,
+    };
     const states = competencies.filter((state) => state.id === item.id);
     const scopedWithSignOff = states.filter(
       (state) => state.scope && standingOf(state) !== "not_asked",
@@ -141,6 +163,7 @@ export function frameworkRows(
             item.display_name,
             state,
           ),
+          ...retired,
         });
       }
       continue;
@@ -166,6 +189,7 @@ export function frameworkRows(
         item.display_name,
         states.find((state) => standingOf(state) === standing),
       ),
+      ...retired,
     });
   }
 

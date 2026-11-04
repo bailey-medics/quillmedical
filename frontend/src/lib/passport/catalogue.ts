@@ -75,6 +75,17 @@ export class FrameworkCatalogue {
     );
   }
 
+  /**
+   * A framework's retired competencies, in the order its file lists
+   * them: no longer offered, but still named on a record held against
+   * one.
+   */
+  retiredItems(frameworkId: string): Competency[] {
+    return (this.byFramework.get(frameworkId) ?? []).filter(
+      (competency) => competency.retired_on !== undefined,
+    );
+  }
+
   /** A framework's newest version, or undefined where Quill holds none. */
   frameworkVersion(frameworkId: string): number | undefined {
     return this.versions.get(frameworkId);
@@ -128,6 +139,9 @@ function asCompetency(
   }
   if (entry.retired_on !== null) {
     competency.retired_on = entry.retired_on;
+  }
+  if (entry.retired_in_version !== null) {
+    competency.retired_in_version = entry.retired_in_version;
   }
 
   return competency;
