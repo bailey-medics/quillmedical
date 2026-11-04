@@ -20,6 +20,13 @@ Each entry has four lines:
 The plan behind this file is
 [readable pull request descriptions](../plans/2026-10-31-readable-pull-request-descriptions-plan.md).
 
+## #2351 Passport: a reader for the stored frameworks
+
+- **Scores** - 79. Attempt 1 posted.
+- **Rules** - `.claude/skills/crpd/SKILL.md` as of #2322.
+- **Verdict** - not yet given.
+- **Changed** - nothing yet.
+
 ## #2350 Passport: framework sync signs in as itself
 
 - **Scores** - 76. Attempt 1 posted.
