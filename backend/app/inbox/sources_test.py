@@ -20,6 +20,10 @@ from app.inbox import sources
 from app.inbox.sources import InboxLine
 from app.models import Feedback, User
 from tests.competencies import withhold
+from tests.frameworks import files_catalogue
+
+# Every route here reads the frameworks from the tables.
+pytestmark = pytest.mark.usefixtures("stored_frameworks")
 
 START = datetime(2026, 1, 5, 9, 0, tzinfo=UTC)
 
@@ -28,7 +32,7 @@ SECRET_MESSAGE = "The case for Mrs Example-Leak shows the wrong dose"
 SECRET_REPLY = "Corrected for Mrs Example-Leak, thank you"
 
 #: A competency the catalogue names, and one it has never defined.
-KNOWN_COMPETENCY = "perform_venepuncture"
+KNOWN_COMPETENCY = "clinical_perform_venepuncture"
 UNKNOWN_COMPETENCY = "chest_drain_insertion"
 
 #: Holds ``assess_clinician_passport``, so may be asked to assess.
@@ -642,14 +646,17 @@ def test_a_competency_is_named_as_the_catalogue_names_it() -> None:
     entry = get_competency_details(KNOWN_COMPETENCY)
 
     assert entry is not None
-    assert sources._competency_name(KNOWN_COMPETENCY) == entry.display_name
+    assert (
+        sources._competency_name(files_catalogue(), KNOWN_COMPETENCY)
+        == entry.display_name
+    )
 
 
 @pytest.mark.parametrize("competency_id", [UNKNOWN_COMPETENCY, ""])
 def test_a_competency_the_catalogue_does_not_know_has_no_name(
     competency_id: str,
 ) -> None:
-    assert sources._competency_name(competency_id) is None
+    assert sources._competency_name(files_catalogue(), competency_id) is None
 
 
 def test_a_requests_record_is_read_from_its_holders_passport(
@@ -839,7 +846,9 @@ def test_an_open_request_line_names_who_asked_and_about_what(
         InboxLine(
             id=row.id,
             title="Sign-off request from Dr Priya Shah",
-            detail=sources._competency_name(KNOWN_COMPETENCY),
+            detail=sources._competency_name(
+                files_catalogue(), KNOWN_COMPETENCY
+            ),
             status="Waiting",
             created_at=row.created_at,
             done=False,
@@ -1108,7 +1117,9 @@ def test_an_open_ask_line_names_who_asked_and_the_competency_logged(
         InboxLine(
             id=row.id,
             title="Logbook entry to confirm from Dr Priya Shah",
-            detail=sources._competency_name(KNOWN_COMPETENCY),
+            detail=sources._competency_name(
+                files_catalogue(), KNOWN_COMPETENCY
+            ),
             status="Waiting",
             created_at=row.created_at,
             done=False,

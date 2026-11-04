@@ -33,7 +33,7 @@ import io
 import logging
 import zipfile
 from collections.abc import Iterator
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from unittest.mock import patch
 
@@ -48,11 +48,12 @@ from sqlalchemy.orm import Session
 from app.body_limit import limit_for
 from app.config import settings
 from app.email_send import EmailNotAllowedError, EmailRateLimitError
-from app.features.passport import definitions, router
+from app.features.passport import catalogue, definitions, router
 from app.features.passport.blobs import BlobStore
 from app.features.passport.models import (
     Passport,
     PassportAssessorInvite,
+    PassportFrameworkCompetency,
     PassportSignOffRequest,
 )
 from app.features.passport.store import LocalPassportStore
@@ -70,7 +71,11 @@ from app.organisations import (
 from app.passport_storage import get_blob_store, get_passport_store
 from app.security import PASSPORT_INVITE_TYPE, hash_password
 from tests.competencies import hold, lapse
+from tests.frameworks import files_catalogue
 from tests.registrations import declare
+
+# Every route here reads the frameworks from the tables.
+pytestmark = pytest.mark.usefixtures("stored_frameworks")
 
 #: From the oncology set drafted in Phase 0. Chosen because it declares
 #: the UK SACT Board's four levels, so the level paths are exercised
@@ -845,7 +850,7 @@ class TestRequestSignOff:
         assert response.status_code == 201, response.text
         level_name = next(
             level.name
-            for level in definitions.levels(COMPETENCY)
+            for level in definitions.levels(files_catalogue(), COMPETENCY)
             if level.id == LEVEL
         )
         assert level_name in bodies[0]
@@ -4914,9 +4919,12 @@ class TestAnOwnerWhoBelongsNowhereThePassportIsOn:
 class TestOnlyAssessableCompetencies:
     """A passport records skills, never software permissions.
 
-    ``manage_users`` stands in for every competency not marked
-    ``assessable``: nobody could watch somebody "manage users" and sign
-    it off, so no route creating a record accepts it.
+    ``manage_users`` stands in for every permission: nobody could watch
+    somebody "manage users" and sign it off, so no route creating a
+    record accepts it. Since the passport reads the frameworks from the
+    tables, a permission is in none of them, so it is unknown to the
+    passport and refused with 404. Before, it was known and refused as
+    not assessable, with 400.
     """
 
     PERMISSION = "manage_users"
@@ -4943,7 +4951,7 @@ class TestOnlyAssessableCompetencies:
             },
         )
 
-        assert response.status_code == 400, response.text
+        assert response.status_code == 404, response.text
         assert self.PERMISSION in response.json()["detail"]
         assert sent == []
 
@@ -4981,7 +4989,7 @@ class TestOnlyAssessableCompetencies:
             json={"performed_on": "2026-03-14"},
         )
 
-        assert response.status_code == 400, response.text
+        assert response.status_code == 404, response.text
 
     @pytest.mark.parametrize(
         ("path", "body"),
@@ -5026,7 +5034,7 @@ class TestOnlyAssessableCompetencies:
             json={**body, "competencies": [self.PERMISSION]},
         )
 
-        assert response.status_code == 400, response.text
+        assert response.status_code == 404, response.text
 
     def test_an_assessable_competency_is_accepted(
         self, holder_client: TestClient
@@ -5043,9 +5051,9 @@ class TestOnlyAssessableCompetencies:
     def test_a_record_stays_readable_after_its_competency_is_withdrawn(
         self,
         holder_client: TestClient,
-        monkeypatch: pytest.MonkeyPatch,
+        db_session: Session,
     ) -> None:
-        """Marking a competency not assessable refuses new records only.
+        """Retiring a competency refuses new records only.
 
         A record written while it was assessable must still list and
         export, or changing one line of YAML would lose somebody's work.
@@ -5057,15 +5065,19 @@ class TestOnlyAssessableCompetencies:
         )
         assert written.status_code == 201, written.text
 
-        monkeypatch.setattr(
-            definitions,
-            "ASSESSABLE_COMPETENCY_IDS",
-            tuple(
-                competency_id
-                for competency_id in definitions.ASSESSABLE_COMPETENCY_IDS
-                if competency_id != "clinical_perform_cannulation"
-            ),
+        # Retired in the tables, as a new version of its framework would
+        # retire it. The cache is keyed on the newest version, which this
+        # does not change, so it is cleared by hand.
+        db_session.execute(
+            update(PassportFrameworkCompetency)
+            .where(
+                PassportFrameworkCompetency.competency_id
+                == "clinical_perform_cannulation"
+            )
+            .values(retired_on=date(2026, 3, 15))
         )
+        db_session.commit()
+        catalogue.clear_cache()
 
         logbook = holder_client.get(f"/api/passport/{passport_id}/logbook")
         exported = holder_client.get(f"/api/passport/{passport_id}/export.md")

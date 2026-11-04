@@ -24,7 +24,7 @@ from fastapi import (
 from sqlalchemy import delete, func, insert, select
 from sqlalchemy.orm import Session
 
-from app.cbac.competencies import FRAMEWORK_IDS, SCOPED_MANAGER_IDS
+from app.cbac.competencies import SCOPED_MANAGER_IDS
 from app.cbac.grant_scope import scope_for
 from app.cbac.positions import clinical_leads_of, set_clinical_lead
 from app.cbac.practising import authorise_practice, withdraw_practice
@@ -37,6 +37,7 @@ from app.deps import (
     requires_any_competency,
 )
 from app.features.passport import cover
+from app.features.passport.catalogue import stored_catalogue
 from app.features.passport.models import OrgUnitPassportFramework
 from app.features.teaching.models import Assessment
 from app.models import (
@@ -1262,11 +1263,12 @@ def set_org_unit_passport_frameworks(
 
     # Neither message repeats what was sent: a client's own text is not
     # echoed back in an error.
-    if any(i not in FRAMEWORK_IDS for i in body.framework_ids):
+    held = stored_catalogue(db).frameworks
+
+    if any(i not in held for i in body.framework_ids):
         raise HTTPException(
             status_code=422,
-            detail="Unknown framework. Must be one of: "
-            + ", ".join(FRAMEWORK_IDS),
+            detail="Unknown framework. Must be one of: " + ", ".join(held),
         )
     if len(set(body.framework_ids)) != len(body.framework_ids):
         raise HTTPException(

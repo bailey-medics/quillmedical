@@ -53,6 +53,7 @@ from app.features.passport import (  # noqa: E402
     records,
     service,
 )
+from app.features.passport.catalogue import stored_catalogue  # noqa: E402
 from app.features.passport.commits import Actor  # noqa: E402
 from app.features.passport.models import (  # noqa: E402
     Passport,
@@ -404,6 +405,8 @@ def seed_passport(db: Session, org_unit_id: int, operator: User) -> None:
 
     made = datetime(2026, 9, 1, 9, 0, tzinfo=UTC)
     passport_id = ids.new_passport_id()
+    # The frameworks seed_ci.py stored, read once for every record below.
+    held = stored_catalogue(db)
     commit = service.create_passport(
         store,
         passport_id,
@@ -413,7 +416,7 @@ def seed_passport(db: Session, org_unit_id: int, operator: User) -> None:
         # A passport offers the competencies in its holder's frameworks
         # and no others, so the guides' holder works to the general one,
         # which holds everything seeded below.
-        frameworks=frameworks.framework_refs(["clinical"]),
+        frameworks=frameworks.framework_refs(held, ["clinical"]),
         now=made,
     )
     row = Passport(id=passport_id, user_id=holder.id, head_commit=commit)
@@ -483,6 +486,7 @@ def seed_passport(db: Session, org_unit_id: int, operator: User) -> None:
             store,
             passport_id,
             _actor(holder),
+            catalogue=held,
             competency_id=competency_id,
             observed_on=observed_on,
             comments="My third supervised procedure this month.",
@@ -520,6 +524,7 @@ def seed_passport(db: Session, org_unit_id: int, operator: User) -> None:
         store,
         passport_id,
         _actor(assessor),
+        catalogue=held,
         name=to_sign,
         assessor_user_id=str(assessor.id),
         holder_user_id=str(holder.id),
