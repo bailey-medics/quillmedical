@@ -105,4 +105,5 @@ passport_deletable_usernames = [
   "mark.bailey.superadmin",
   "mark.bailey.admin",
   "mark.bailey",
+  "jessica.bailey",
 ]
