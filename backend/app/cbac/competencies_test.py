@@ -546,7 +546,9 @@ def test_the_catalogue_holds_permissions_only() -> None:
     assert COMPETENCIES
     assert all(c.framework_id is None for c in COMPETENCIES)
     assert "clinical_perform_cannulation" not in COMPETENCY_IDS
-    assert "perform_cannulation" in COMPETENCY_IDS
+    assert "prescribe_controlled_schedule_2" in COMPETENCY_IDS
+    # A procedure is not a permission: Quill cannot stop anybody doing one.
+    assert "perform_cannulation" not in COMPETENCY_IDS
 
 
 def test_every_framework_competency_is_assessable() -> None:
@@ -620,8 +622,8 @@ def test_the_real_framework_ids_are_refused_as_grants() -> None:
 
 def test_a_permission_is_still_granted() -> None:
     """The refusal of framework ids takes nothing from the permissions."""
-    assert validate_competency_ids(["perform_cannulation"]) == [
-        "perform_cannulation"
+    assert validate_competency_ids(["prescribe_non_controlled"]) == [
+        "prescribe_non_controlled"
     ]
 
 

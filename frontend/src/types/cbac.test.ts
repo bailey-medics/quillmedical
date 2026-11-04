@@ -61,7 +61,7 @@ describe("The competency catalogue", () => {
     const ids = ACTIVE_COMPETENCIES.map((competency) => competency.id);
 
     expect(ids).not.toContain("clinical_perform_cannulation");
-    expect(ids).toContain("perform_cannulation");
+    expect(ids).toContain("prescribe_non_controlled");
   });
 
   it("offers the competency that replaced the retired one", () => {
@@ -80,9 +80,11 @@ describe("The bundle", () => {
     // The passport reads the frameworks from GET /api/passport/catalogue.
     const ids = ALL_COMPETENCIES.map((competency) => competency.id);
 
-    expect(ids).toContain("perform_cannulation");
+    expect(ids).toContain("prescribe_non_controlled");
     expect(ids).not.toContain("clinical_perform_cannulation");
     expect(ids).not.toContain("uk_sact_board_2023_prescribe_sact");
+    // A procedure is not a permission: Quill cannot stop anybody doing one.
+    expect(ids).not.toContain("perform_cannulation");
   });
 });
 

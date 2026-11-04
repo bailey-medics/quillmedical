@@ -19,6 +19,14 @@
 # seeds rows when it is given, and is not consulted afterwards. See
 # User.get_final_competencies() in backend/app/models.py.
 #
+# A PROCEDURE IS NOT A PERMISSION
+#
+# A permission names something Quill lets a person do. Quill cannot stop
+# anybody putting in a cannula, so "perform cannulation" governed nothing,
+# and five such permissions were deleted on 4 November 2026. Recording a
+# procedure in the notes is something Quill could govern, and a permission
+# for that, such as document_cannulation, is added when a feature checks it.
+#
 # PERMISSIONS ARE CODE, NOT FRAMEWORK COMPETENCIES
 #
 # Nothing here is assessable, and nothing here is recorded in a clinician
@@ -60,25 +68,6 @@ competencies:
 
   - id: certify_fitness_to_drive
     display_name: "Certify Fitness to Drive"
-
-  # ==========================================================================
-  # CLINICAL PROCEDURES
-  # ==========================================================================
-
-  - id: perform_venepuncture
-    display_name: "Perform Venepuncture"
-
-  - id: perform_cannulation
-    display_name: "Insert Intravenous Cannula"
-
-  - id: perform_lumbar_puncture
-    display_name: "Perform Lumbar Puncture"
-
-  - id: perform_chest_drain
-    display_name: "Insert Chest Drain"
-
-  - id: perform_advanced_airway
-    display_name: "Perform Advanced Airway Management"
 
   # ==========================================================================
   # PATIENT MANAGEMENT

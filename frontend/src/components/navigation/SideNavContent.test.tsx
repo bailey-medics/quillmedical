@@ -1078,7 +1078,7 @@ describe("SideNavContent Component", () => {
     it.each([
       ["/passport/cpd/2026/2026-09-28-062503", "CPD", "Activity"],
       [
-        "/passport/logbook/perform_cannulation/20260314T1432",
+        "/passport/logbook/clinical_perform_cannulation/20260314T1432",
         "Logbook",
         "Entry",
       ],

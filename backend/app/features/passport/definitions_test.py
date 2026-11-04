@@ -366,8 +366,10 @@ def test_a_permission_has_no_framework_version(
     catalogue: StoredCatalogue,
 ) -> None:
     """Nothing is signed off against a permission, which no framework holds."""
-    with pytest.raises(UnknownCompetencyError, match="perform_cannulation"):
-        definitions.framework_version(catalogue, "perform_cannulation")
+    with pytest.raises(
+        UnknownCompetencyError, match="prescribe_non_controlled"
+    ):
+        definitions.framework_version(catalogue, "prescribe_non_controlled")
 
 
 class TestHeldVersions:
