@@ -481,7 +481,7 @@ still in this repository, so nothing changes for anybody until it works.
       the product owner: the usernames go in
       `PASSPORT_DELETABLE_USERNAMES`.
 
-- [ ] **A framework pipeline**, `.github/workflows/framework-pipeline.yml`,
+- [x] **A framework pipeline**, `.github/workflows/framework-pipeline.yml`,
       shaped like `teaching-pipeline.yml`: on a pull request it validates
       the files and runs Phase 3's version check from
       `backend/app/features/passport/tooling/`, printing every reworded
@@ -501,6 +501,24 @@ still in this repository, so nothing changes for anybody until it works.
       Each repository carries a thin caller, as the teaching repositories
       do. Its job names are fixed for the same reason teaching's are: the
       rulesets require checks by name.
+      Built on 3 November 2026:
+      - **Validation uses Quill's own loader**, through
+        `app.features.passport.tooling.validate_frameworks`, from a narrow
+        checkout: `backend/app/cbac`, the passport tooling and `shared/`.
+        It adds two rules for a framework repository: every file declares
+        a framework, and no id is one of Quill's permissions. pydantic and
+        PyYAML are pinned in the workflow, and `framework-pins.bats`
+        checks the pins against `backend/poetry.lock`.
+      - **`upload-versions.sh`** in `.github/scripts/framework-pipeline/`
+        walks `main`'s first-parent history and uploads the first commit
+        that set each version. A commit that changed only comments or the
+        description keeps its version, so the file already uploaded stays.
+      - **Secrets are passed by name**, never `secrets: inherit`:
+        `GCP_WORKLOAD_IDENTITY_PROVIDER`, `GCP_SERVICE_ACCOUNT`,
+        `GCP_FRAMEWORK_GCS_BUCKET` and `SLACK_WEBHOOK_URL`. Each framework
+        repository needs all four set before its first merge.
+      - **`run-sync-job.sh` takes the job's name**, defaulting to the
+        teaching one, so both pipelines share it.
 - [ ] **A framework sync job and somewhere to deploy to**, in `infra/`,
       copying teaching's. The teaching pipeline signs in as
       `content_ci_service_account` (`infra/environments/app/terraform.tfvars`),
