@@ -19,6 +19,7 @@ import {
   oncologyFrameworks,
 } from "./fixtures";
 import { StoryNote } from "@/stories/variants";
+import { TEST_FRAMEWORK_CATALOGUE } from "@test/frameworkCatalogue";
 
 const [radiotherapy, sact] = oncologyFrameworks;
 
@@ -27,6 +28,7 @@ const meta: Meta<typeof CompetencyFrameworkTable> = {
   component: CompetencyFrameworkTable,
   parameters: { layout: "padded" },
   args: {
+    catalogue: TEST_FRAMEWORK_CATALOGUE,
     framework: radiotherapy,
     competencies: oncologyCompetencies,
     onSelect: fn(),

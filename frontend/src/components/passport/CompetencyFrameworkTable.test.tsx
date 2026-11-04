@@ -16,6 +16,7 @@ import {
   referPalliativeCompetency,
   referRadicalCompetency,
 } from "./fixtures";
+import { TEST_FRAMEWORK_CATALOGUE } from "@test/frameworkCatalogue";
 
 const [radiotherapy, sact] = oncologyFrameworks;
 
@@ -28,6 +29,7 @@ describe("CompetencyFrameworkTable", () => {
   it("heads the table with the framework's name", () => {
     renderWithMantine(
       <CompetencyFrameworkTable
+        catalogue={TEST_FRAMEWORK_CATALOGUE}
         framework={radiotherapy}
         competencies={oncologyCompetencies}
       />,
@@ -41,6 +43,7 @@ describe("CompetencyFrameworkTable", () => {
   it("shows each row's sign-off and logbook count", () => {
     renderWithMantine(
       <CompetencyFrameworkTable
+        catalogue={TEST_FRAMEWORK_CATALOGUE}
         framework={radiotherapy}
         competencies={oncologyCompetencies}
       />,
@@ -61,6 +64,7 @@ describe("CompetencyFrameworkTable", () => {
   it("shows no signed count under the framework's name", () => {
     renderWithMantine(
       <CompetencyFrameworkTable
+        catalogue={TEST_FRAMEWORK_CATALOGUE}
         framework={radiotherapy}
         competencies={oncologyCompetencies}
       />,
@@ -72,6 +76,7 @@ describe("CompetencyFrameworkTable", () => {
   it("names the site on each row of a scoped competency", () => {
     renderWithMantine(
       <CompetencyFrameworkTable
+        catalogue={TEST_FRAMEWORK_CATALOGUE}
         framework={sact}
         competencies={[lungCompetency, breastCompetency]}
       />,
@@ -89,6 +94,7 @@ describe("CompetencyFrameworkTable", () => {
     const onSelect = vi.fn<(competencyId: string) => void>();
     renderWithMantine(
       <CompetencyFrameworkTable
+        catalogue={TEST_FRAMEWORK_CATALOGUE}
         framework={radiotherapy}
         competencies={oncologyCompetencies}
         onSelect={onSelect}

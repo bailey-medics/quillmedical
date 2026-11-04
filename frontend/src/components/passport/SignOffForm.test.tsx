@@ -11,6 +11,7 @@ import userEvent from "@testing-library/user-event";
 import { renderWithMantine } from "@test/test-utils";
 import SignOffForm from "./SignOffForm";
 import { requested, requestedForLung } from "./fixtures";
+import { TEST_FRAMEWORK_CATALOGUE } from "@test/frameworkCatalogue";
 
 /** Chooses a basis, which is required before the form will submit. */
 async function chooseBasis(user: ReturnType<typeof userEvent.setup>) {
@@ -20,7 +21,13 @@ async function chooseBasis(user: ReturnType<typeof userEvent.setup>) {
 
 describe("SignOffForm", () => {
   it("names the competency being signed off", () => {
-    renderWithMantine(<SignOffForm signOff={requested} onSubmit={vi.fn()} />);
+    renderWithMantine(
+      <SignOffForm
+        catalogue={TEST_FRAMEWORK_CATALOGUE}
+        signOff={requested}
+        onSubmit={vi.fn()}
+      />,
+    );
     expect(
       screen.getByText(/Sign off Perform thoracic ultrasound/),
     ).toBeInTheDocument();
@@ -29,7 +36,11 @@ describe("SignOffForm", () => {
   describe("Scope", () => {
     it("shows what the holder asked to be signed off for", () => {
       renderWithMantine(
-        <SignOffForm signOff={requestedForLung} onSubmit={vi.fn()} />,
+        <SignOffForm
+          catalogue={TEST_FRAMEWORK_CATALOGUE}
+          signOff={requestedForLung}
+          onSubmit={vi.fn()}
+        />,
       );
       expect(
         screen.getByRole("textbox", { name: /What this sign-off covers/ }),
@@ -38,7 +49,11 @@ describe("SignOffForm", () => {
 
     it("does not let the assessor change it", () => {
       renderWithMantine(
-        <SignOffForm signOff={requestedForLung} onSubmit={vi.fn()} />,
+        <SignOffForm
+          catalogue={TEST_FRAMEWORK_CATALOGUE}
+          signOff={requestedForLung}
+          onSubmit={vi.fn()}
+        />,
       );
       expect(
         screen.getByRole("textbox", { name: /What this sign-off covers/ }),
@@ -46,7 +61,13 @@ describe("SignOffForm", () => {
     });
 
     it("shows nothing for a sign-off with no scope", () => {
-      renderWithMantine(<SignOffForm signOff={requested} onSubmit={vi.fn()} />);
+      renderWithMantine(
+        <SignOffForm
+          catalogue={TEST_FRAMEWORK_CATALOGUE}
+          signOff={requested}
+          onSubmit={vi.fn()}
+        />,
+      );
       expect(
         screen.queryByRole("textbox", { name: /What this sign-off covers/ }),
       ).not.toBeInTheDocument();
@@ -54,7 +75,13 @@ describe("SignOffForm", () => {
   });
 
   it("names the act on the button rather than saying 'Save'", () => {
-    renderWithMantine(<SignOffForm signOff={requested} onSubmit={vi.fn()} />);
+    renderWithMantine(
+      <SignOffForm
+        catalogue={TEST_FRAMEWORK_CATALOGUE}
+        signOff={requested}
+        onSubmit={vi.fn()}
+      />,
+    );
     expect(
       screen.getByRole("button", { name: "Sign off competency" }),
     ).toBeInTheDocument();
@@ -66,7 +93,13 @@ describe("SignOffForm", () => {
       // words in the declaration card and again as the checkbox's
       // description, so the same paragraph appeared twice on screen
       // and `toBeGreaterThan(0)` was happy with both.
-      renderWithMantine(<SignOffForm signOff={requested} onSubmit={vi.fn()} />);
+      renderWithMantine(
+        <SignOffForm
+          catalogue={TEST_FRAMEWORK_CATALOGUE}
+          signOff={requested}
+          onSubmit={vi.fn()}
+        />,
+      );
       expect(
         screen.getAllByText(/accept professional accountability/),
       ).toHaveLength(1);
@@ -75,7 +108,13 @@ describe("SignOffForm", () => {
     it("puts the confirmation inside the declaration card", () => {
       // The statement and the act of agreeing to it are one thing, so
       // the checkbox sits under the words rather than beside the card.
-      renderWithMantine(<SignOffForm signOff={requested} onSubmit={vi.fn()} />);
+      renderWithMantine(
+        <SignOffForm
+          catalogue={TEST_FRAMEWORK_CATALOGUE}
+          signOff={requested}
+          onSubmit={vi.fn()}
+        />,
+      );
 
       const card = screen.getByTestId("assessor-declaration");
       expect(card).toContainElement(screen.getByRole("checkbox"));
@@ -83,14 +122,26 @@ describe("SignOffForm", () => {
 
     it("starts unticked", () => {
       // Never pre-ticked: the deliberate act is the whole point.
-      renderWithMantine(<SignOffForm signOff={requested} onSubmit={vi.fn()} />);
+      renderWithMantine(
+        <SignOffForm
+          catalogue={TEST_FRAMEWORK_CATALOGUE}
+          signOff={requested}
+          onSubmit={vi.fn()}
+        />,
+      );
       expect(screen.getByRole("checkbox")).not.toBeChecked();
     });
 
     it("offers no drawn or uploaded signature", () => {
       // A scribble looks more official and proves less; an uploaded image
       // is a reusable credential. See the plan's decision.
-      renderWithMantine(<SignOffForm signOff={requested} onSubmit={vi.fn()} />);
+      renderWithMantine(
+        <SignOffForm
+          catalogue={TEST_FRAMEWORK_CATALOGUE}
+          signOff={requested}
+          onSubmit={vi.fn()}
+        />,
+      );
       expect(screen.queryByRole("img")).not.toBeInTheDocument();
       expect(document.querySelector("canvas")).not.toBeInTheDocument();
       expect(
@@ -101,7 +152,13 @@ describe("SignOffForm", () => {
 
   describe("Submission is refused until both are given", () => {
     it("is disabled before anything is filled in", () => {
-      renderWithMantine(<SignOffForm signOff={requested} onSubmit={vi.fn()} />);
+      renderWithMantine(
+        <SignOffForm
+          catalogue={TEST_FRAMEWORK_CATALOGUE}
+          signOff={requested}
+          onSubmit={vi.fn()}
+        />,
+      );
       expect(
         screen.getByRole("button", { name: "Sign off competency" }),
       ).toHaveAttribute("aria-disabled", "true");
@@ -109,7 +166,13 @@ describe("SignOffForm", () => {
 
     it("stays disabled with a basis but no confirmation", async () => {
       const user = userEvent.setup();
-      renderWithMantine(<SignOffForm signOff={requested} onSubmit={vi.fn()} />);
+      renderWithMantine(
+        <SignOffForm
+          catalogue={TEST_FRAMEWORK_CATALOGUE}
+          signOff={requested}
+          onSubmit={vi.fn()}
+        />,
+      );
 
       await chooseBasis(user);
 
@@ -120,7 +183,13 @@ describe("SignOffForm", () => {
 
     it("stays disabled with a confirmation but no basis", async () => {
       const user = userEvent.setup();
-      renderWithMantine(<SignOffForm signOff={requested} onSubmit={vi.fn()} />);
+      renderWithMantine(
+        <SignOffForm
+          catalogue={TEST_FRAMEWORK_CATALOGUE}
+          signOff={requested}
+          onSubmit={vi.fn()}
+        />,
+      );
 
       await user.click(screen.getByRole("checkbox"));
 
@@ -131,7 +200,13 @@ describe("SignOffForm", () => {
 
     it("enables once both are given", async () => {
       const user = userEvent.setup();
-      renderWithMantine(<SignOffForm signOff={requested} onSubmit={vi.fn()} />);
+      renderWithMantine(
+        <SignOffForm
+          catalogue={TEST_FRAMEWORK_CATALOGUE}
+          signOff={requested}
+          onSubmit={vi.fn()}
+        />,
+      );
 
       await chooseBasis(user);
       await user.click(screen.getByRole("checkbox"));
@@ -147,7 +222,11 @@ describe("SignOffForm", () => {
       const user = userEvent.setup();
       const onSubmit = vi.fn();
       renderWithMantine(
-        <SignOffForm signOff={requested} onSubmit={onSubmit} />,
+        <SignOffForm
+          catalogue={TEST_FRAMEWORK_CATALOGUE}
+          signOff={requested}
+          onSubmit={onSubmit}
+        />,
       );
 
       await chooseBasis(user);
@@ -168,7 +247,11 @@ describe("SignOffForm", () => {
       const user = userEvent.setup();
       const onSubmit = vi.fn();
       renderWithMantine(
-        <SignOffForm signOff={requested} onSubmit={onSubmit} />,
+        <SignOffForm
+          catalogue={TEST_FRAMEWORK_CATALOGUE}
+          signOff={requested}
+          onSubmit={onSubmit}
+        />,
       );
 
       await chooseBasis(user);
@@ -188,7 +271,11 @@ describe("SignOffForm", () => {
       const user = userEvent.setup();
       const onSubmit = vi.fn();
       renderWithMantine(
-        <SignOffForm signOff={requested} onSubmit={onSubmit} />,
+        <SignOffForm
+          catalogue={TEST_FRAMEWORK_CATALOGUE}
+          signOff={requested}
+          onSubmit={onSubmit}
+        />,
       );
 
       await chooseBasis(user);
@@ -206,7 +293,12 @@ describe("SignOffForm", () => {
   describe("In flight", () => {
     it("disables submission while a request is running", () => {
       renderWithMantine(
-        <SignOffForm signOff={requested} onSubmit={vi.fn()} isSubmitting />,
+        <SignOffForm
+          catalogue={TEST_FRAMEWORK_CATALOGUE}
+          signOff={requested}
+          onSubmit={vi.fn()}
+          isSubmitting
+        />,
       );
       expect(
         screen.getByRole("button", { name: "Sign off competency" }),
@@ -219,6 +311,7 @@ describe("SignOffForm", () => {
     const onCancel = vi.fn();
     renderWithMantine(
       <SignOffForm
+        catalogue={TEST_FRAMEWORK_CATALOGUE}
         signOff={requested}
         onSubmit={vi.fn()}
         onCancel={onCancel}
@@ -268,7 +361,13 @@ describe("SignOffForm", () => {
     }
 
     it("starts on the level asked for, and says it was asked for", () => {
-      renderWithMantine(<SignOffForm signOff={scaled} onSubmit={vi.fn()} />);
+      renderWithMantine(
+        <SignOffForm
+          catalogue={TEST_FRAMEWORK_CATALOGUE}
+          signOff={scaled}
+          onSubmit={vi.fn()}
+        />,
+      );
 
       expect(screen.getByRole("combobox", { name: /^Level/ })).toHaveValue(
         "Considered competent to prescribe SACT independently (consultant level)",
@@ -283,7 +382,13 @@ describe("SignOffForm", () => {
     it("signs the level asked for without asking why", async () => {
       const user = userEvent.setup();
       const onSubmit = vi.fn();
-      renderWithMantine(<SignOffForm signOff={scaled} onSubmit={onSubmit} />);
+      renderWithMantine(
+        <SignOffForm
+          catalogue={TEST_FRAMEWORK_CATALOGUE}
+          signOff={scaled}
+          onSubmit={onSubmit}
+        />,
+      );
 
       await chooseBasisAndConfirm(user);
       await user.click(
@@ -297,7 +402,13 @@ describe("SignOffForm", () => {
 
     it("needs a reason before signing a different level", async () => {
       const user = userEvent.setup();
-      renderWithMantine(<SignOffForm signOff={scaled} onSubmit={vi.fn()} />);
+      renderWithMantine(
+        <SignOffForm
+          catalogue={TEST_FRAMEWORK_CATALOGUE}
+          signOff={scaled}
+          onSubmit={vi.fn()}
+        />,
+      );
 
       await chooseBasisAndConfirm(user);
       await chooseLevel(
@@ -316,7 +427,13 @@ describe("SignOffForm", () => {
     it("sends the different level with the reason", async () => {
       const user = userEvent.setup();
       const onSubmit = vi.fn();
-      renderWithMantine(<SignOffForm signOff={scaled} onSubmit={onSubmit} />);
+      renderWithMantine(
+        <SignOffForm
+          catalogue={TEST_FRAMEWORK_CATALOGUE}
+          signOff={scaled}
+          onSubmit={onSubmit}
+        />,
+      );
 
       await chooseBasisAndConfirm(user);
       await chooseLevel(

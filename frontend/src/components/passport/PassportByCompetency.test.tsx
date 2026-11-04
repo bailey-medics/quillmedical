@@ -12,11 +12,13 @@ import {
   oncologyFrameworks,
   prescribePalliativeCompetency,
 } from "./fixtures";
+import { TEST_FRAMEWORK_CATALOGUE } from "@test/frameworkCatalogue";
 
 describe("PassportByCompetency", () => {
   it("shows a table for each framework, in the order given", () => {
     renderWithRouter(
       <PassportByCompetency
+        catalogue={TEST_FRAMEWORK_CATALOGUE}
         frameworks={oncologyFrameworks}
         competencies={oncologyCompetencies}
       />,
@@ -36,6 +38,7 @@ describe("PassportByCompetency", () => {
   it("shows the sections outside the tables, download last", () => {
     renderWithRouter(
       <PassportByCompetency
+        catalogue={TEST_FRAMEWORK_CATALOGUE}
         frameworks={[]}
         competencies={[]}
         onOpen={vi.fn<(path: string) => void>()}
@@ -55,7 +58,11 @@ describe("PassportByCompetency", () => {
 
   it("leaves sign-offs and the logbook to the tables", () => {
     renderWithRouter(
-      <PassportByCompetency frameworks={[]} competencies={[]} />,
+      <PassportByCompetency
+        catalogue={TEST_FRAMEWORK_CATALOGUE}
+        frameworks={[]}
+        competencies={[]}
+      />,
     );
 
     expect(screen.queryByText("Open sign-offs")).not.toBeInTheDocument();
@@ -66,6 +73,7 @@ describe("PassportByCompetency", () => {
     const onSelectCompetency = vi.fn<(competencyId: string) => void>();
     renderWithRouter(
       <PassportByCompetency
+        catalogue={TEST_FRAMEWORK_CATALOGUE}
         frameworks={oncologyFrameworks}
         competencies={oncologyCompetencies}
         onSelectCompetency={onSelectCompetency}
@@ -83,6 +91,7 @@ describe("PassportByCompetency", () => {
     const onOpen = vi.fn<(path: string) => void>();
     renderWithRouter(
       <PassportByCompetency
+        catalogue={TEST_FRAMEWORK_CATALOGUE}
         frameworks={[]}
         competencies={[]}
         onOpen={onOpen}

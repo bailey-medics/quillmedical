@@ -3,22 +3,24 @@
  *
  * The backend decides the order: the caller's organisations' lead
  * frameworks first, then the rest alphabetically. This starts with the
- * alphabetical list from the generated bundle, so the question can be
- * answered at once, and switches to the backend's order when it arrives.
- * If the call fails the alphabetical list stays: the order is a
- * convenience, never a precondition.
+ * catalogue's alphabetical list, so the question can be answered as soon
+ * as the frameworks have loaded, and switches to the backend's order when
+ * it arrives. If that call fails the alphabetical list stays: the order
+ * is a convenience, never a precondition.
  */
 
 import { useEffect, useState } from "react";
 import { fetchPassportFrameworks } from "./api";
-import { FRAMEWORK_OPTIONS, type FrameworkOption } from "./frameworks";
+import { useFrameworkCatalogue } from "./catalogue";
+import type { FrameworkOption } from "./frameworks";
 
 /**
  * @param enabled - Whether the page is showing the question. Nothing is
  *   fetched until it is, so a page that never asks makes no request.
  */
 export function useFrameworkChoices(enabled: boolean): FrameworkOption[] {
-  const [options, setOptions] = useState<FrameworkOption[]>(FRAMEWORK_OPTIONS);
+  const { catalogue } = useFrameworkCatalogue();
+  const [ordered, setOrdered] = useState<FrameworkOption[] | null>(null);
 
   useEffect(() => {
     if (!enabled) return;
@@ -30,7 +32,7 @@ export function useFrameworkChoices(enabled: boolean): FrameworkOption[] {
       .then(() => fetchPassportFrameworks())
       .then((choices) => {
         if (!cancelled && Array.isArray(choices) && choices.length > 0) {
-          setOptions(choices);
+          setOrdered(choices);
         }
       })
       .catch(() => {
@@ -42,5 +44,5 @@ export function useFrameworkChoices(enabled: boolean): FrameworkOption[] {
     };
   }, [enabled]);
 
-  return options;
+  return ordered ?? catalogue?.frameworks ?? [];
 }

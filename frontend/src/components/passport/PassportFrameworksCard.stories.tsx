@@ -5,14 +5,14 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { fn } from "storybook/test";
 import PassportFrameworksCard from "./PassportFrameworksCard";
-import { FRAMEWORK_OPTIONS } from "@lib/passport/frameworks";
+import { TEST_FRAMEWORK_CATALOGUE } from "@test/frameworkCatalogue";
 
 const meta: Meta<typeof PassportFrameworksCard> = {
   title: "Passport/Passport frameworks card",
   component: PassportFrameworksCard,
   parameters: { layout: "padded" },
   args: {
-    options: FRAMEWORK_OPTIONS,
+    options: TEST_FRAMEWORK_CATALOGUE.frameworks,
     onChange: fn(),
     landingView: "by_competency",
     onLandingViewChange: fn(),

@@ -34,6 +34,7 @@ import ResultMessage from "@/components/message-cards/ResultMessage";
 import StateMessage from "@/components/message-cards/StateMessage";
 import { IconFileText } from "@/components/icons/appIcons";
 import competenciesData from "@/generated/competencies.json";
+import { useFrameworkCatalogue } from "@lib/passport/catalogue";
 import { fetchMyPassport, fetchSignOffs, requestSignOff } from "@lib/passport";
 // Direct, not through the barrel, so page tests that mock the API
 // client still get the real catalogue.
@@ -105,6 +106,7 @@ const GROUPS: { status: SignOffStatus; title: string }[] = [
 ];
 
 export function Component() {
+  const { catalogue } = useFrameworkCatalogue();
   const navigate = useNavigate();
   const { state } = useAuth();
   // The passport's competencies, which the request form reads to name
@@ -227,6 +229,7 @@ export function Component() {
       {asking ? (
         <Stack gap="lg">
           <CompetencyPicker
+            catalogue={catalogue}
             frameworks={frameworks}
             value={chosen}
             onChange={setChosen}
@@ -241,8 +244,8 @@ export function Component() {
           {chosen && (
             <SignOffRequestForm
               competency={competencyForForm(chosen, competencies)}
-              levels={levelsFor(chosen)}
-              scopes={scopesFor(chosen)}
+              levels={levelsFor(catalogue, chosen)}
+              scopes={scopesFor(catalogue, chosen)}
               holderEmail={state.user?.email}
               holderUsername={state.user?.username}
               onSubmit={handleRequest}

@@ -29,6 +29,7 @@
  * ```
  */
 
+import type { FrameworkCatalogue } from "@lib/passport/catalogue";
 import { SimpleGrid, Stack } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 import ActionCard from "@/components/action-card";
@@ -75,6 +76,11 @@ const OTHER_SECTIONS = [
 ];
 
 export interface PassportByCompetencyProps {
+  /**
+   * The frameworks Quill holds, from `useFrameworkCatalogue`. Null while
+   * they load, when each table lists no rows yet.
+   */
+  catalogue: FrameworkCatalogue | null;
   /** The frameworks the holder works to, in the order they chose them */
   frameworks: FrameworkRef[];
   /** Every competency the passport holds evidence for */
@@ -91,6 +97,7 @@ export interface PassportByCompetencyProps {
  * Renders the framework tables, then the other sections as cards.
  */
 export default function PassportByCompetency({
+  catalogue,
   frameworks,
   competencies,
   onSelectCompetency,
@@ -105,6 +112,7 @@ export default function PassportByCompetency({
       {frameworks.map((framework) => (
         <CompetencyFrameworkTable
           key={framework.id}
+          catalogue={catalogue}
           framework={framework}
           competencies={competencies}
           onSelect={onSelectCompetency}
