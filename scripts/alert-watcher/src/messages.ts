@@ -65,6 +65,10 @@ export const IGNORED_SUBJECTS: readonly string[] = [
   // hand over the emoji as its text code or as the character itself.
   ":warning: GitHub rulesets changed",
   "⚠️ GitHub rulesets changed",
+  // The same reminder for infra/aws/, applied by hand with
+  // `just terraform-aws`.
+  ":warning: AWS Terraform changed",
+  "⚠️ AWS Terraform changed",
 ];
 
 export const GCP_INCIDENT_SUBJECT = "Google Cloud reports an incident affecting this project";
