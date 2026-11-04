@@ -832,6 +832,30 @@ reads the repositories, not a bucket" in Decisions.
       `definitions._entry`, and the exports. The loader in
       `backend/app/cbac/competencies.py` stops reading framework files: it
       holds permissions only.
+      **Split into three units on 4 November 2026**, because the lookups
+      are read all through the passport: `definitions.py`,
+      `frameworks.py`, the router, the service, the exports and
+      `org_units/router.py` all read the catalogue loaded at start-up,
+      and each function takes only an id. One pull request doing all of
+      it would be too big to review. In order:
+      - [x] **A reader for the stored frameworks**,
+        `backend/app/features/passport/catalogue.py`. It loads the newest
+        version of every framework from the tables, as the same
+        `Framework` and `CompetencyEntry` objects the loader makes, so the
+        code that reads them does not change shape. Five queries, one
+        for each table, not one for each competency. It caches what it
+        read, keyed on the newest version row's id: a new version always
+        takes a higher id, so the cache stays right when the sync job
+        adds one between deploys, and costs one indexed query to check.
+        A test fixture, `stored_frameworks`, fills the tables from
+        `shared/` for the tests that need them. Additive: nothing reads
+        the reader yet. Test that it gives back exactly what the files
+        hold, for every real framework.
+      - [ ] **Every framework lookup reads the reader**, with a database
+        session passed in where the function took only an id. The tests
+        that rely on the real frameworks use `stored_frameworks`.
+      - [ ] **The loader holds permissions only**, and the next step's
+        refusal comes with it.
 - [ ] **Refuse a sign-off naming a framework version the tables do not
       hold**, wherever one enters: a request, a read of the git record, and
       any import later, such as a passport moved from another app that
