@@ -959,14 +959,25 @@ reads the repositories, not a bucket" in Decisions.
         spinner. The tests and Storybook prime the real frameworks with
         `primeFrameworkCatalogue`, from `src/test/frameworkCatalogue.ts`,
         which still builds them from the bundle until the next unit.
+      - [x] **Keep test frameworks in this repository**, in a fixtures folder
+        the end-to-end stack and the unit tests sync from, so a test never
+        depends on a publisher's repository. My reading: teaching keeps a
+        whole repository for this, `eoeeta-teaching-testing`, but a handful
+        of fixture files is enough for frameworks and needs no pipeline.
+        Built on 4 November 2026 as `shared/framework-fixtures/`, holding
+        copies of the four frameworks at version 1, with a README saying
+        what reads them. `stored_frameworks`, `files_catalogue` and
+        `seed_ci.py` read the folder through `FRAMEWORK_FIXTURES_DIR` in
+        `backend/app/paths.py`. **Moved above the bundle step**: the
+        frontend's test catalogue needs framework data that is not the
+        bundle's before the bundle can stop holding frameworks. The
+        fixtures are the real frameworks for now, so the tests that name a
+        real competency keep working, and they need not follow the real
+        frameworks when those change.
+
       - [ ] **The bundle stops holding frameworks**: `yarn generate:types`
         builds permissions only, so `CompetencyId` names permissions.
 
-- [ ] **Keep test frameworks in this repository**, in a fixtures folder
-      the end-to-end stack and the unit tests sync from, so a test never
-      depends on a publisher's repository. My reading: teaching keeps a
-      whole repository for this, `eoeeta-teaching-testing`, but a handful
-      of fixture files is enough for frameworks and needs no pipeline.
 - [ ] **Update the passport backend page and the CBAC section** of
       `.github/copilot-instructions.md`, then `CLAUDE.md` through the
       sync: the catalogue folder holds permissions, and frameworks come
