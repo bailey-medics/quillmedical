@@ -668,19 +668,24 @@ def _check_may_grant(entries: list[CompetencyEntry]) -> None:
                 )
 
 
-COMPETENCIES: list[CompetencyEntry]
-FRAMEWORKS: list[Framework]
-COMPETENCIES, FRAMEWORKS = _load_catalogue(COMPETENCY_DEFINITIONS_DIR)
-
-FRAMEWORK_IDS: tuple[str, ...] = tuple(f.id for f in FRAMEWORKS)
-
-# The ids of every framework's competencies, retired ones included. They
-# are recorded in a passport and refused wherever a competency is
-# granted, since nobody should hold "can define the mechanism of action"
-# as a permission. Permissions declare no framework.
-FRAMEWORK_COMPETENCY_IDS: tuple[str, ...] = tuple(
-    c.id for c in COMPETENCIES if c.framework_id is not None
-)
+# The catalogue holds permissions only: the competencies the code names,
+# in files that declare no framework. A framework's competencies are read
+# from the framework tables by the passport, through
+# app.features.passport.catalogue, and are granted to nobody.
+#
+# Every file is still loaded, framework files included, while the
+# frameworks live in this directory. The loader's checks span the whole
+# directory: an id must be unique across every file, and no ``may_grant``
+# list may name a framework's competency. Keeping only the permissions
+# afterwards keeps those checks without anything here reading a
+# framework. Phase 8 of
+# docs/docs/plans/2026-11-01-passport-record-and-catalogue-plan.md moves
+# the framework files out, and this filter then does nothing.
+COMPETENCIES: list[CompetencyEntry] = [
+    entry
+    for entry in _load_catalogue(COMPETENCY_DEFINITIONS_DIR)[0]
+    if entry.framework_id is None
+]
 
 # Every competency id the catalogue has ever defined, retired ones
 # included. Reads and audits use this, so nothing already stored becomes
@@ -695,13 +700,6 @@ ACTIVE_COMPETENCY_IDS: tuple[str, ...] = tuple(
 
 RETIRED_COMPETENCY_IDS: tuple[str, ...] = tuple(
     c.id for c in COMPETENCIES if c.retired_on is not None
-)
-
-# The ids the clinician passport may record something new against:
-# active, and marked assessable. A record already holding an id outside
-# this set stays readable; only new writes are refused.
-ASSESSABLE_COMPETENCY_IDS: tuple[str, ...] = tuple(
-    c.id for c in COMPETENCIES if c.retired_on is None and c.assessable
 )
 
 # The competencies that manage people within a whitelist: every active
@@ -774,49 +772,6 @@ def retired_competency_ids(ids: Iterable[str]) -> list[str]:
     return sorted({i for i in ids if i in retired})
 
 
-def get_framework(framework_id: str) -> Framework | None:
-    """A framework by id, or None."""
-    for framework in FRAMEWORKS:
-        if framework.id == framework_id:
-            return framework
-
-    return None
-
-
-def framework_competencies(framework_id: str) -> list[CompetencyEntry]:
-    """A framework's items, in the order its file lists them.
-
-    Its active entries: what a clinician working to it may record.
-
-    Args:
-        framework_id: Which framework.
-
-    Returns:
-        Its items, or an empty list for an unknown framework.
-    """
-    return [
-        c
-        for c in COMPETENCIES
-        if c.framework_id == framework_id
-        and c.assessable
-        and c.retired_on is None
-    ]
-
-
-def framework_competency_ids(ids: Iterable[str]) -> list[str]:
-    """Return the ids that are a framework's competencies.
-
-    Args:
-        ids: Competency ids to check.
-
-    Returns:
-        The framework competency ids, sorted and deduplicated.
-    """
-    framework_ids = set(FRAMEWORK_COMPETENCY_IDS)
-
-    return sorted({i for i in ids if i in framework_ids})
-
-
 def validate_competency_ids(ids: Iterable[str]) -> list[str]:
     """Check that every id may be granted as a permission in the app.
 
@@ -824,20 +779,18 @@ def validate_competency_ids(ids: Iterable[str]) -> list[str]:
     Quill**: open a page, see a record, take an action. It does not mean
     signed off inside a clinician passport. A passport records that
     somebody is competent at a thing; that is evidence about a person, and
-    unlocks nothing in the app. The two share the one catalogue, which is
-    why this check exists.
+    unlocks nothing in the app.
 
     Called at a write boundary: wherever a competency is about to be
-    stored as a permission, so a bad id never reaches the database. Three
+    stored as a permission, so a bad id never reaches the database. Two
     checks, in this order, each with its own message because each means
     something different to whoever is fixing it:
 
-    - **Unknown**: not in the catalogue at all. A typo.
-    - **Retired**: in the catalogue, but no longer newly granted. People
-      who already hold it keep it.
-    - **A framework's**: a competency of a framework, such as a statement
-      from a paper form. It can be signed off in a passport and was never
-      a permission, so no user is granted it.
+    - **Unknown**: not a permission at all. A typo, or a framework's
+      competency: the catalogue holds permissions only, so a statement
+      from a paper form is refused here by what it is, with no flag.
+    - **Retired**: a permission, but no longer newly granted. People who
+      already hold it keep it.
 
     Args:
         ids: Competency ids to validate.
@@ -846,7 +799,7 @@ def validate_competency_ids(ids: Iterable[str]) -> list[str]:
         The same ids, as a list.
 
     Raises:
-        ValueError: If any id is unknown, retired or a framework's.
+        ValueError: If any id is not a permission, or is retired.
     """
     checked = list(ids)
 
@@ -858,7 +811,8 @@ def validate_competency_ids(ids: Iterable[str]) -> list[str]:
             + ("ids" if len(unknown) > 1 else "id")
             + ": "
             + ", ".join(unknown)
-            + ". Competencies are defined in shared/competency-definitions/."
+            + ". Only a permission may be granted: one defined in a file in "
+            "shared/competency-definitions/ that declares no framework."
         )
 
     retired = retired_competency_ids(checked)
@@ -871,18 +825,6 @@ def validate_competency_ids(ids: Iterable[str]) -> list[str]:
             + ", ".join(retired)
             + ". Retired competencies cannot be newly granted; existing "
             "records keep them."
-        )
-
-    in_framework = framework_competency_ids(checked)
-
-    if in_framework:
-        raise ValueError(
-            "Framework competency "
-            + ("ids" if len(in_framework) > 1 else "id")
-            + ": "
-            + ", ".join(in_framework)
-            + ". These are items of a framework, recorded in a clinician "
-            "passport, and are granted to nobody."
         )
 
     return checked

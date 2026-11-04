@@ -7,10 +7,10 @@ from pathlib import Path
 import pytest
 from sqlalchemy.orm import Session
 
-from app.cbac.competencies import FRAMEWORKS, framework_competencies
 from app.features.passport import catalogue
 from app.features.passport.catalogue import stored_catalogue
 from app.features.passport.sync import sync_frameworks
+from tests.frameworks import files_catalogue
 
 _SHEET = """\
 framework:
@@ -63,13 +63,11 @@ def test_the_real_frameworks_come_back_as_the_files_hold_them(
     """The reader must be a drop-in for the loader, framework by framework."""
     held = stored_catalogue(stored_frameworks)
 
-    assert sorted(held.frameworks) == sorted(f.id for f in FRAMEWORKS)
+    in_files = files_catalogue()
 
-    for framework in FRAMEWORKS:
-        assert held.frameworks[framework.id] == framework
-        assert held.competencies[framework.id] == framework_competencies(
-            framework.id
-        )
+    assert held.frameworks == in_files.frameworks
+    assert held.competencies == in_files.competencies
+    assert held.entries == in_files.entries
 
 
 def test_a_competency_is_found_by_its_id(stored_frameworks: Session) -> None:

@@ -4,7 +4,12 @@
 framework folder a competency is in. This module finds out. A record is
 read from wherever it was written: the store looks for
 ``frameworks/*/<competency>/``. Only a competency with no folder yet is
-placed by the catalogue, under the framework it belongs to now.
+placed by the stored frameworks, under the framework it belongs to now,
+and only by a write that is given them: the two that can file a first
+record, a sign-off request and a logbook entry. A read is never given
+them, because a competency with no folder has nothing to read, and says
+so by raising :class:`~.paths.PassportPathError`, which every read
+already treats as an empty list.
 
 With every framework's ids carrying the framework's prefix, a competency
 cannot change framework, so the looking is a safeguard rather than an
@@ -15,14 +20,30 @@ to disagree with where it was filed.
 from __future__ import annotations
 
 from pathlib import PurePosixPath
+from typing import TYPE_CHECKING
 
 import yaml
-
-from app.cbac.competencies import get_competency_details
 
 from . import paths
 from .schemas import SCHEMA_VERSION
 from .store import PassportNotFoundError, PassportStore
+
+if TYPE_CHECKING:
+    # A type only. The catalogue module reads the database, and this one
+    # must import nothing that does: tests/features_import_boundary_test.py.
+    from .catalogue import StoredCatalogue
+
+
+class NothingFiledError(paths.PassportPathError, PassportNotFoundError):
+    """A competency has no record in this passport, so nothing to find.
+
+    Raised for a read, or a change to a record, of a competency filed
+    nowhere: there is no folder to look in, and nothing has been given
+    the stored frameworks to place one. Both kinds of error, so a read
+    that lists a competency's records treats it as an empty list, as it
+    treats a malformed id, and a lookup of one record treats it as not
+    found, as it would a missing file.
+    """
 
 
 class OutdatedPassportError(PassportNotFoundError):
@@ -76,32 +97,42 @@ def _filed_under(
 
 
 def framework_for(
-    store: PassportStore, passport_id: str, competency: str
+    store: PassportStore,
+    passport_id: str,
+    competency: str,
+    catalogue: StoredCatalogue | None = None,
 ) -> str:
     """The framework folder a competency's records belong in.
 
     The folder it is already filed under, or, for its first record, the
-    framework the catalogue puts it in.
+    framework the stored frameworks put it in.
 
     Args:
         store: Where the passport lives.
         passport_id: Whose passport.
         competency: The competency id.
+        catalogue: The stored frameworks, for a write that may file the
+            competency's first record. A read passes none.
 
     Returns:
         The framework id to use as its folder.
 
     Raises:
         PassportPathError: If the id is malformed, or it is filed nowhere
-            and belongs to no framework, so nothing could be recorded
-            against it.
+            and either no catalogue was given or it belongs to no
+            framework, so nothing could be recorded against it.
     """
     filed = _filed_under(store, passport_id, competency)
 
     if filed is not None:
         return filed
 
-    entry = get_competency_details(competency)
+    if catalogue is None:
+        raise NothingFiledError(
+            f"Competency {competency!r} has no record in this passport."
+        )
+
+    entry = catalogue.entries.get(competency)
 
     if entry is None or entry.framework_id is None:
         raise paths.PassportPathError(
@@ -113,28 +144,47 @@ def framework_for(
 
 
 def sign_off_dir(
-    store: PassportStore, passport_id: str, sign_off: str
+    store: PassportStore,
+    passport_id: str,
+    sign_off: str,
+    catalogue: StoredCatalogue | None = None,
 ) -> PurePosixPath:
-    """The directory holding one sign-off, found by its id."""
+    """The directory holding one sign-off, found by its id.
+
+    *catalogue* places a competency's first sign-off: see
+    :func:`framework_for`.
+    """
     competency, _ = paths.split_sign_off_id(sign_off)
 
     return paths.sign_off_dir(
-        framework_for(store, passport_id, competency), sign_off
+        framework_for(store, passport_id, competency, catalogue), sign_off
     )
 
 
 def sign_off_file(
-    store: PassportStore, passport_id: str, sign_off: str
+    store: PassportStore,
+    passport_id: str,
+    sign_off: str,
+    catalogue: StoredCatalogue | None = None,
 ) -> PurePosixPath:
     """A sign-off's record file, found by its id."""
-    return sign_off_dir(store, passport_id, sign_off) / paths.SIGN_OFF_FILE
+    return (
+        sign_off_dir(store, passport_id, sign_off, catalogue)
+        / paths.SIGN_OFF_FILE
+    )
 
 
 def sign_off_reflection(
-    store: PassportStore, passport_id: str, sign_off: str
+    store: PassportStore,
+    passport_id: str,
+    sign_off: str,
+    catalogue: StoredCatalogue | None = None,
 ) -> PurePosixPath:
     """The holder's narrative beside a sign-off, found by its id."""
-    return sign_off_dir(store, passport_id, sign_off) / paths.REFLECTION_FILE
+    return (
+        sign_off_dir(store, passport_id, sign_off, catalogue)
+        / paths.REFLECTION_FILE
+    )
 
 
 def sign_off_assessment(
@@ -189,20 +239,33 @@ def sign_off_ids(store: PassportStore, passport_id: str) -> list[str]:
 
 
 def logbook_dir(
-    store: PassportStore, passport_id: str, competency: str
+    store: PassportStore,
+    passport_id: str,
+    competency: str,
+    catalogue: StoredCatalogue | None = None,
 ) -> PurePosixPath:
-    """The directory holding one competency's logbook entries."""
+    """The directory holding one competency's logbook entries.
+
+    *catalogue* places a competency's first entry: see
+    :func:`framework_for`.
+    """
     return paths.logbook_dir(
-        framework_for(store, passport_id, competency), competency
+        framework_for(store, passport_id, competency, catalogue), competency
     )
 
 
 def logbook_entry(
-    store: PassportStore, passport_id: str, competency: str, filename: str
+    store: PassportStore,
+    passport_id: str,
+    competency: str,
+    filename: str,
+    catalogue: StoredCatalogue | None = None,
 ) -> PurePosixPath:
     """One logbook entry, found by its competency and filename."""
     return paths.logbook_entry(
-        framework_for(store, passport_id, competency), competency, filename
+        framework_for(store, passport_id, competency, catalogue),
+        competency,
+        filename,
     )
 
 

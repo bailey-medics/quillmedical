@@ -15,11 +15,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
-from app.cbac.competencies import (
-    COMPETENCY_DEFINITIONS_DIR,
-    FRAMEWORK_IDS,
-    FRAMEWORKS,
-)
+from app.cbac.competencies import COMPETENCY_DEFINITIONS_DIR
 from app.features.passport import frameworks, schemas
 from app.features.passport.frameworks import frameworks_for
 from app.features.passport.models import OrgUnitPassportFramework
@@ -119,8 +115,8 @@ def _ids(db: Session, user: User, **filters: str) -> list[str]:
 
 class TestTheCatalogue:
     def test_the_two_existing_files_are_frameworks(self) -> None:
-        assert GENERAL in FRAMEWORK_IDS
-        assert ONCOLOGY in FRAMEWORK_IDS
+        assert GENERAL in tuple(files_catalogue().frameworks)
+        assert ONCOLOGY in tuple(files_catalogue().frameworks)
 
 
 class TestWhatAHolderIsOffered:
@@ -135,7 +131,7 @@ class TestWhatAHolderIsOffered:
         names = [choice.framework.name for choice in offered]
         assert names == sorted(names, key=str.casefold)
         assert {choice.framework.id for choice in offered} == set(
-            FRAMEWORK_IDS
+            tuple(files_catalogue().frameworks)
         )
         assert not any(choice.lead for choice in offered)
 
@@ -185,9 +181,13 @@ class TestSearchAndFilter:
         self, db_session: Session
     ) -> None:
         holder = _make_user(db_session, "holder")
-        publisher = FRAMEWORKS[0].publisher.split()[0]
+        publisher = list(files_catalogue().frameworks.values())[
+            0
+        ].publisher.split()[0]
 
-        assert FRAMEWORKS[0].id in _ids(db_session, holder, query=publisher)
+        assert list(files_catalogue().frameworks.values())[0].id in _ids(
+            db_session, holder, query=publisher
+        )
 
     def test_every_word_must_match(self, db_session: Session) -> None:
         holder = _make_user(db_session, "holder")
@@ -199,7 +199,9 @@ class TestSearchAndFilter:
     ) -> None:
         holder = _make_user(db_session, "holder")
 
-        assert set(_ids(db_session, holder, query="  ")) == set(FRAMEWORK_IDS)
+        assert set(_ids(db_session, holder, query="  ")) == set(
+            tuple(files_catalogue().frameworks)
+        )
 
     def test_a_specialty_keeps_its_frameworks(
         self, db_session: Session
@@ -395,7 +397,11 @@ class TestTheHoldersRoutes:
         """
         holder_client.post("/api/passport", json={"frameworks": [ONCOLOGY]})
         source = COMPETENCY_DEFINITIONS_DIR / f"{ONCOLOGY}.yaml"
-        framework = next(f for f in FRAMEWORKS if f.id == ONCOLOGY)
+        framework = next(
+            f
+            for f in list(files_catalogue().frameworks.values())
+            if f.id == ONCOLOGY
+        )
         text = source.read_text().replace(
             f'name: "{framework.name}"', 'name: "A renamed framework"'
         )
