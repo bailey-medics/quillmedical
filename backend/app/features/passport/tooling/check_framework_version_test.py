@@ -216,6 +216,23 @@ def test_only_gloucestershire_is_started_again() -> None:
     }
 
 
+def test_a_dropped_scope_is_refused_even_with_a_new_version(
+    repo: Path,
+) -> None:
+    """A sign-off may name it, so it is never removed."""
+    _write(
+        repo,
+        _SHEET.format(version=2).replace(
+            '      - id: lung\n        name: "Lung"\n', ""
+        ),
+    )
+
+    result = check_framework_versions(repo / "definitions", "main")
+
+    assert not result.passed
+    assert any("scope lung was removed" in v for v in result.violations)
+
+
 def test_a_comment_alone_needs_no_new_version(repo: Path) -> None:
     _write(
         repo,
