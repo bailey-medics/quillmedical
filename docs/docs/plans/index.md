@@ -129,3 +129,4 @@
 - [Landing Bucket UK](2026-11-01-landing-bucket-uk-plan.md)
 - [Passport Record and Catalogue](2026-11-01-passport-record-and-catalogue-plan.md)
 - [Tmux Survives an Alert Watcher Restart](2026-11-04-tmux-survives-an-alert-watcher-restart-plan.md)
+- [Alert Watcher Never Types Into a Dialog](2026-11-04-alert-watcher-never-types-into-a-dialog-plan.md)

@@ -24,6 +24,19 @@
 # person to start it again. Remote Control is on from the start, under the
 # worktree's name, as quill-sessions does for the others.
 #
+# The session must never stop to ask anything, because the watcher types
+# into the pane blind: on 4 November 2026 two alerts were typed into an
+# open dialog and lost. So it runs in auto mode, given explicitly because
+# `defaultMode: auto` in the project settings does not take effect from a
+# project file, which decides each tool call rather than prompting. The
+# ways auto mode still asks are closed: AskUserQuestion is refused, so a
+# run writes its assumption in the thread instead; reads outside the
+# working directories are refused rather than asked about, through
+# session-settings.json; and the feedback survey is off. That file also
+# switches off the tips and suggestions drawn in the pane, so what the
+# watcher reads there is the prompt and nothing else. It is passed with
+# --settings, so it applies to this session and no other worktree.
+#
 # CLOUDSDK_CONFIG gives the session gcloud settings of its own, holding the
 # log reader's key and nothing else. The watcher runs as the same user as
 # everything else on the box, so the key activated in the ordinary place
@@ -92,6 +105,8 @@ main() {
     local worktree="${ALERT_WATCHER_WORKTREE:-${HOME}/github/quillmedical-5}"
     local state="${QUILL_ALERT_WATCHER_STATE:-${XDG_STATE_HOME:-${HOME}/.local/state}/quill-alert-watcher}"
     local gcloud_config="${HOME}/.config/quill-alert-watcher/gcloud"
+    local settings
+    settings="$(cd -- "${BASH_SOURCE[0]%/*}" && pwd)/session-settings.json"
 
     # `=` asks for that exact name, so a session called q50 does not
     # count as this one.
@@ -109,8 +124,11 @@ main() {
     chmod 0700 "${state}" "${state}/alerts"
 
     local command
-    command="export QUILL_ALERT_WATCHER=true CLOUDSDK_CONFIG=$(printf '%q' "${gcloud_config}"); claude --add-dir $(printf '%q' "${state}/alerts")"
+    command="export QUILL_ALERT_WATCHER=true CLOUDSDK_CONFIG=$(printf '%q' "${gcloud_config}") CLAUDE_CODE_DISABLE_FEEDBACK_SURVEY=1; claude --add-dir $(printf '%q' "${state}/alerts")"
     command+=" --remote-control $(printf '%q' "$(basename "${worktree}")")"
+    command+=" --permission-mode auto"
+    command+=" --settings $(printf '%q' "${settings}")"
+    command+=" --disallowedTools AskUserQuestion"
     command+=" --allowedTools $(printf '%q ' "${ALLOWED_TOOLS[@]}")"
     command+="; exec bash -l"
 
