@@ -248,6 +248,7 @@ class TestLogbook:
                     setting="Bristol Royal Infirmary",
                     outcome="Successful",
                 ),
+                catalogue=files_catalogue(),
             )
 
         output = render.render(store, PASSPORT_ID)
@@ -265,6 +266,7 @@ class TestLogbook:
             holder,
             COMPETENCY,
             LogbookEntry(performed_on=date(2026, 3, 12)),
+            catalogue=files_catalogue(),
         )
         records.confirm_logbook_entry(
             store,
@@ -290,6 +292,7 @@ class TestLogbook:
             holder,
             COMPETENCY,
             LogbookEntry(performed_on=date(2026, 3, 12)),
+            catalogue=files_catalogue(),
         )
 
         assert "confirmed by" not in render.render(store, PASSPORT_ID)
@@ -307,6 +310,7 @@ class TestLogbook:
             holder,
             COMPETENCY,
             LogbookEntry(performed_on=date(2026, 3, 12)),
+            catalogue=files_catalogue(),
         )
         _sign_off(store, holder, assessor)
         service.request_sign_off(
@@ -339,6 +343,7 @@ class TestLogbook:
                 holder,
                 COMPETENCY,
                 LogbookEntry(performed_on=date(2026, 3, day)),
+                catalogue=files_catalogue(),
             )
 
         output = render.render(store, PASSPORT_ID)
@@ -356,6 +361,7 @@ class TestLogbook:
             holder,
             COMPETENCY,
             LogbookEntry(performed_on=date(2026, 3, 12)),
+            catalogue=files_catalogue(),
         )
 
         output = render.render(store, PASSPORT_ID).lower()

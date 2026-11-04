@@ -136,6 +136,7 @@ def populated(
             supervision="supervised",
             outcome="Successful",
         ),
+        catalogue=files_catalogue(),
         now=datetime(2026, 3, 13, 9, 0, tzinfo=UTC),
     )
     records.add_certificate(

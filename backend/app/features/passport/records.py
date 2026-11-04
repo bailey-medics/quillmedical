@@ -29,6 +29,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from datetime import UTC, date, datetime, timedelta
 from pathlib import PurePosixPath
+from typing import TYPE_CHECKING
 
 from . import ids, index, layout, paths, serialise
 from .commits import Actor, CommitAction, fit_summary
@@ -44,6 +45,11 @@ from .schemas import (
     Reflection,
 )
 from .store import PassportHead, PassportNotFoundError, PassportStore
+
+if TYPE_CHECKING:
+    # A type only. The catalogue module reads the database, and this one
+    # must import nothing that does: tests/features_import_boundary_test.py.
+    from .catalogue import StoredCatalogue
 
 
 class RecordNotFoundError(Exception):
@@ -448,6 +454,7 @@ def add_logbook_entry(
     competency: str,
     entry: LogbookEntry,
     *,
+    catalogue: StoredCatalogue,
     now: datetime | None = None,
 ) -> tuple[str, str]:
     """Log one procedure.
@@ -458,13 +465,16 @@ def add_logbook_entry(
         actor: The holder.
         competency: Which competency it counts towards.
         entry: What happened.
+        catalogue: The stored frameworks, to file a first entry.
         now: For tests.
 
     Returns:
         The filename stem and the commit id.
     """
     moment = now if now is not None else datetime.now(UTC)
-    directory = layout.logbook_dir(store, passport_id, competency)
+    # The catalogue places the competency's first entry; any later one
+    # goes where the first was filed.
+    directory = layout.logbook_dir(store, passport_id, competency, catalogue)
     stem = _next_entry_filename(store, passport_id, directory, moment)
 
     commit = _write(
@@ -475,7 +485,7 @@ def add_logbook_entry(
         f"log a {competency} procedure",
         {
             layout.logbook_entry(
-                store, passport_id, competency, stem
+                store, passport_id, competency, stem, catalogue
             ): serialise.to_yaml(
                 entry,
                 comment=(
@@ -518,7 +528,7 @@ def amend_logbook_entry(
     Raises:
         RecordNotFoundError: If there is no such entry.
     """
-    path = layout.logbook_entry(store, passport_id, competency, stem)
+    path = _filed_entry(store, passport_id, competency, stem)
     _require(store, passport_id, path, "logbook entry")
 
     return _write(
@@ -574,7 +584,7 @@ def confirm_logbook_entry(
         AlreadyConfirmedError: If somebody has confirmed it already.
     """
     moment = now if now is not None else datetime.now(UTC)
-    path = layout.logbook_entry(store, passport_id, competency, stem)
+    path = _filed_entry(store, passport_id, competency, stem)
     _require(store, passport_id, path, "logbook entry")
 
     entry = serialise.from_yaml(LogbookEntry, store.read(passport_id, path))
@@ -633,7 +643,7 @@ def remove_logbook_entry(
     Raises:
         RecordNotFoundError: If there is no such entry.
     """
-    path = layout.logbook_entry(store, passport_id, competency, stem)
+    path = _filed_entry(store, passport_id, competency, stem)
     _require(store, passport_id, path, "logbook entry")
 
     return _write(
@@ -1045,6 +1055,25 @@ def remove_cpd_entry(
         delete=(path,),
         now=now,
     )
+
+
+def _filed_entry(
+    store: PassportStore, passport_id: str, competency: str, stem: str
+) -> PurePosixPath:
+    """Where an existing logbook entry is, or refuse as not found.
+
+    A competency with nothing filed has no folder to look in, so it has
+    no such entry either.
+
+    Raises:
+        RecordNotFoundError: If the competency has nothing filed.
+    """
+    try:
+        return layout.logbook_entry(store, passport_id, competency, stem)
+    except layout.NothingFiledError as error:
+        raise RecordNotFoundError(
+            f"No logbook entry {stem} for {competency}."
+        ) from error
 
 
 def _require(

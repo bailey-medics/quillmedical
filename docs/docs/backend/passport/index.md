@@ -248,9 +248,17 @@ gives back the newest version of each framework, as the same `Framework`
 and `CompetencyEntry` objects the file loader makes, and caches them
 until a new version is stored. A route reads it once and passes it to
 `definitions.py`, `frameworks.py` and the service, so one request never
-mixes two versions. One lookup still reads the files: `framework_for` in
-`layout.py`, which files a competency's first record, until the loader
-stops holding frameworks.
+mixes two versions. `framework_for` in `layout.py`, which files a
+competency's first record, is given the catalogue only by the two writes
+that can make one: a sign-off request and a logbook entry. A read is
+never given it, because a competency with no folder has nothing to read.
+
+**The catalogue in `app.cbac.competencies` holds permissions only.** It
+still loads every file in `shared/competency-definitions/`, so an id
+stays unique across them all and no `may_grant` list can name a
+framework's competency, then keeps only the files that declare no
+framework. So `validate_competency_ids` refuses a framework's
+competency as "not a permission", by what it is, with no flag.
 
 A refused skip names each missing version. A version the sync never saw
 is in no file any more, so every later sync would refuse the same way:

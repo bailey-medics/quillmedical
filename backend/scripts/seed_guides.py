@@ -436,6 +436,7 @@ def seed_passport(db: Session, org_unit_id: int, operator: User) -> None:
             indication="Suspected subarachnoid haemorrhage",
             outcome="Successful at first pass",
         ),
+        catalogue=held,
         now=made + timedelta(days=17),
     )
 

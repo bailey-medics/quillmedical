@@ -137,6 +137,7 @@ class TestItProducesARealPdf:
             holder,
             COMPETENCY,
             LogbookEntry(performed_on=date(2026, 3, 12)),
+            catalogue=files_catalogue(),
         )
         records.add_certificate(
             store,
@@ -469,6 +470,7 @@ class TestLogbookTotals:
                 holder,
                 COMPETENCY,
                 LogbookEntry(performed_on=day),
+                catalogue=files_catalogue(),
             )
 
         counts = pdf._counts_by_year(store, PASSPORT_ID, COMPETENCY)
@@ -485,6 +487,7 @@ class TestLogbookTotals:
                 holder,
                 COMPETENCY,
                 LogbookEntry(performed_on=day),
+                catalogue=files_catalogue(),
             )
 
         story = pdf._logbook_totals(
@@ -520,6 +523,7 @@ class TestLogbookTotals:
             holder,
             COMPETENCY,
             LogbookEntry(performed_on=date(2026, 3, 12)),
+            catalogue=files_catalogue(),
         )
 
         story = pdf._logbook_totals(

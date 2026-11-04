@@ -704,6 +704,7 @@ class TestOneStatePerScope:
                 schemas.LogbookEntry(
                     performed_on=date(2026, 3, day), scope=scope
                 ),
+                catalogue=files_catalogue(),
                 now=NOW,
             )
 

@@ -827,7 +827,7 @@ reads the repositories, not a bucket" in Decisions.
 
 ## Phase 7: Read frameworks from the database
 
-- [ ] **Point the backend's framework lookups at the tables**:
+- [x] **Point the backend's framework lookups at the tables**:
       `frameworks.get_framework` and `current_name`, the passport index,
       `definitions._entry`, and the exports. The loader in
       `backend/app/cbac/competencies.py` stops reading framework files: it
@@ -868,13 +868,30 @@ reads the repositories, not a bucket" in Decisions.
           from the files, through `files_catalogue` in
           `backend/tests/frameworks.py`, which reads them as the sync
           does. Route tests use `stored_frameworks`.
-      - [ ] **The loader holds permissions only**, and the next step's
+      - [x] **The loader holds permissions only**, and the next step's
         refusal comes with it. `layout.framework_for`, which files a
         competency's first record under its framework, moves with it: it
         still asks the loader, because it is reached through 21 path
         helpers in `records.py` and the service that take only the
         store, and threading the catalogue through them is a change of
         its own.
+        Built on 4 November 2026. The loader still loads every file, then
+        keeps those that declare no framework, so its checks across the
+        directory still run while the frameworks live there. Only the two
+        writes that can file a first record, a sign-off request and a
+        logbook entry, give `framework_for` the catalogue; a read that
+        meets a competency with no folder finds nothing, as it did. The
+        names that held frameworks, `FRAMEWORKS`, `FRAMEWORK_IDS`,
+        `FRAMEWORK_COMPETENCY_IDS`, `ASSESSABLE_COMPETENCY_IDS`,
+        `get_framework`, `framework_competencies` and
+        `framework_competency_ids`, are gone, and nothing outside the
+        tests used them.
+- [x] **Refuse a framework competency wherever a competency is granted,
+      by what it is rather than by a flag.** Once the loader holds
+      permissions only, `validate_competency_ids` refuses any id that is
+      not a permission, which already covers every framework competency.
+      Built with the loader's change above, on 4 November 2026, so it
+      comes before the next step, though the plan first listed it after.
 - [ ] **Refuse a sign-off naming a framework version the tables do not
       hold**, wherever one enters: a request, a read of the git record, and
       any import later, such as a passport moved from another app that
@@ -884,10 +901,6 @@ reads the repositories, not a bucket" in Decisions.
       words it was not signed against is the error this guards. Test a
       sign-off for a version one above the newest, and one for version
       0, below the version 1 every framework starts at.
-- [ ] **Refuse a framework competency wherever a competency is granted,
-      by what it is rather than by a flag.** Once the loader holds
-      permissions only, `validate_competency_ids` refuses any id that is
-      not a permission, which already covers every framework competency.
 - [ ] **Serve the frameworks to the frontend**, through a typed route
       under `/api/passport/`, with each framework's current version, its
       competencies, levels and scopes, and the retired competencies of
