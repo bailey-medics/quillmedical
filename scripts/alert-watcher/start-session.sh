@@ -30,6 +30,14 @@
 # would become the account for every gcloud command there, and a later
 # `gcloud auth login` would quietly take it back.
 #
+# The tmux server is started in a systemd scope of its own,
+# quill-tmux-server.scope, never in this service's process group. Whichever
+# `tmux new-session` runs first starts the server, and at boot that is this
+# script, run by quill-alert-watcher.service. A server started in the
+# service's group is killed with it, so a restart of the watcher once closed
+# every session on the box, q1 to q6, and every Claude in them. See
+# docs/docs/plans/2026-11-04-tmux-survives-an-alert-watcher-restart-plan.md.
+#
 # ALERT_WATCHER_TMUX_TARGET, ALERT_WATCHER_WORKTREE and
 # QUILL_ALERT_WATCHER_STATE change the session name, the worktree and the
 # state folder, as they do for the daemon.
@@ -49,6 +57,35 @@ readonly ALLOWED_TOOLS=(
     "Bash(gcloud logging read:*)"
     "Bash(scripts/slack-reply.sh:*)"
 )
+
+# The scope the tmux server runs in, so `systemctl --user status
+# quill-tmux-server.scope` finds it.
+readonly TMUX_SCOPE="quill-tmux-server"
+
+# Runs a tmux command that may start the server, in a scope of its own.
+#
+# If no server is running, the command starts one inside the scope, and the
+# scope lasts as long as the server. If one is already running, the command
+# only asks it for a session, and the scope ends when the command returns.
+# Either way the server is outside this service.
+#
+# systemd refuses a scope name already in use, so while the scope is active,
+# which means the server is already in it, tmux runs as it is. Without
+# systemd-run, as in the tests' container, it runs as it is too.
+# --collect lets a failed scope go, so it never holds the name.
+start_tmux() {
+    if ! command -v systemd-run >/dev/null 2>&1; then
+        tmux "$@"
+        return
+    fi
+
+    if systemctl --user is-active --quiet "${TMUX_SCOPE}.scope" 2>/dev/null; then
+        tmux "$@"
+        return
+    fi
+
+    systemd-run --user --scope --quiet --collect --unit="${TMUX_SCOPE}" tmux "$@"
+}
 
 main() {
     local session="${ALERT_WATCHER_TMUX_TARGET:-q5}"
@@ -77,7 +114,7 @@ main() {
     command+=" --allowedTools $(printf '%q ' "${ALLOWED_TOOLS[@]}")"
     command+="; exec bash -l"
 
-    tmux new-session -d -s "${session}" -c "${worktree}" bash -lc "${command}"
+    start_tmux new-session -d -s "${session}" -c "${worktree}" bash -lc "${command}"
     echo "Started the tmux session ${session} in ${worktree}."
 }
 
