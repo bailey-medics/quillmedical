@@ -289,6 +289,14 @@ Like `/me`, it needs no place with the passport switched on, because a
 holder who belongs nowhere still reads their own record, and its pages
 name every competency from the catalogue.
 
+**An operator can start the framework sync by hand**, from
+`/admin/passport`, through `POST /api/passport/admin/framework-sync`. It
+starts the framework sync job as configured, with no overrides, for when
+the framework pipeline's own start failed; one run catches up on every
+version missing. `GET` on the same path says whether a job is set up here
+and how the last run ended. Two runs never overlap: each takes an advisory
+lock until its transaction ends, so a second waits, then writes nothing.
+
 **The catalogue in `app.cbac.competencies` holds permissions only.** It
 still loads every file in `shared/competency-definitions/`, so an id
 stays unique across them all and no `may_grant` list can name a

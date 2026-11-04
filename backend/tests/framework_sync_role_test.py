@@ -90,3 +90,36 @@ def test_the_role_cannot_sign_in_by_itself(as_the_role: Connection) -> None:
     ).scalar_one()
 
     assert can_login is False
+
+
+def test_the_role_takes_the_lock_that_keeps_two_syncs_apart(
+    as_the_role: Connection,
+) -> None:
+    """A second sync waits while one holds the lock, whoever started it.
+
+    The job runs as this role, so the lock must be one it may take, and
+    another connection must find it held. ``pg_try_advisory_xact_lock``
+    answers at once, so a lock that did nothing fails here, not hangs.
+    """
+    from app.features.passport.sync import (
+        SYNC_LOCK_KEY,
+        SYNC_LOCK_NAMESPACE,
+        _one_sync_at_a_time,
+    )
+
+    _one_sync_at_a_time(
+        Session(bind=as_the_role, join_transaction_mode="create_savepoint")
+    )
+
+    engine = create_engine(settings.CORE_DATABASE_URL)
+    try:
+        with engine.connect() as other:
+            taken = other.execute(
+                text("SELECT pg_try_advisory_xact_lock(:namespace, :key)"),
+                {"namespace": SYNC_LOCK_NAMESPACE, "key": SYNC_LOCK_KEY},
+            ).scalar_one()
+            other.rollback()
+    finally:
+        engine.dispose()
+
+    assert taken is False
