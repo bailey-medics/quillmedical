@@ -16,7 +16,7 @@
 # It runs nothing in the shell. Whatever is wanted is typed there.
 #
 # A session of its own, rather than a window in a q session, keeps `just c`
-# landing on Claude, and keeps it out of the alert watcher's way: the
+# landing on Claude, and keeps it out of Owl's way: the
 # watcher types into whichever window of q5 is active.
 
 set -euo pipefail

@@ -1,7 +1,7 @@
 <!-- cspell:words dontAsk NONESSENTIAL -->
 # Alert watcher never types into a dialog plan
 
-On 4 November 2026 two App production alerts were lost. The alert watcher
+On 4 November 2026 two App production alerts were lost. Owl
 typed `/clear` and `/alert <file>` into worktree 5's tmux pane, but Claude
 Code had a dialog open in front of its prompt, so the keystrokes went into
 the dialog and no run started. The watcher waited out its start grace,
@@ -19,7 +19,7 @@ never went busy as a failure, said in the thread, rather than as done.
 
 - [x] **Refuse `AskUserQuestion`**, by adding
       `--disallowedTools AskUserQuestion` to the `claude` command in
-      `scripts/alert-watcher/start-session.sh`. A selection question is a
+      `scripts/owl/start-session.sh`. A selection question is a
       dialog that waits for a person, and an alert run has none. With the
       tool refused, the run states its assumption in the Slack thread and
       carries on, which the `/alert` skill already expects of it.
@@ -43,7 +43,7 @@ never went busy as a failure, said in the thread, rather than as done.
       mode", so the `/alert` skill's refusals of `git push` and
       `gh pr merge` still hold.
 - [x] **Switch off what can be switched off**, in
-      `scripts/alert-watcher/session-settings.json`, passed with
+      `scripts/owl/session-settings.json`, passed with
       `--settings` so it applies to this session only. From the settings
       and environment variable references:
       `permissions.blockReadsOutsideWorkingDirectories` (a read outside
@@ -68,7 +68,7 @@ never went busy as a failure, said in the thread, rather than as done.
 
 ## Phase 2: Look at the pane before typing
 
-- [ ] **Add `isAtPrompt()` to `scripts/alert-watcher/src/session.ts`**,
+- [ ] **Add `isAtPrompt()` to `scripts/owl/src/session.ts`**,
       which reads the pane with `tmux capture-pane -p -t <target>` and
       answers whether Claude Code is at an empty, idle prompt. This
       depends on Claude Code's screen text, which can change between
@@ -77,7 +77,7 @@ never went busy as a failure, said in the thread, rather than as done.
       permission prompt, half-typed text), and fail closed: anything not
       recognised as idle counts as not ready.
 - [ ] **Only start a run at an idle prompt**, in `startNext` in
-      `scripts/alert-watcher/src/watcher.ts`. If the pane is not ready,
+      `scripts/owl/src/watcher.ts`. If the pane is not ready,
       leave the alert queued and check again on the next tick, exactly as
       it does for the busy flag. Post once in the thread, "Waiting:
       worktree 5 has a prompt open that needs a person", so whoever
@@ -90,7 +90,7 @@ never went busy as a failure, said in the thread, rather than as done.
 ## Phase 3: A run that never started is a failure
 
 - [ ] **Treat `sawBusy=false` after the start grace as not picked up**, in
-      `followRun` in `scripts/alert-watcher/src/watcher.ts`. Log
+      `followRun` in `scripts/owl/src/watcher.ts`. Log
       `not-picked-up` rather than `finished`, reply in the thread "Not
       picked up: worktree 5 did not start the run. A person needs to
       look", and leave the fingerprint out of the ledger, so the next post
@@ -99,7 +99,7 @@ never went busy as a failure, said in the thread, rather than as done.
       of the queue once, so a brief dialog that has since been dismissed
       costs a few minutes rather than the alert. A second failure leaves
       it to the person the thread has already told.
-- [ ] **Tests in `scripts/alert-watcher/src/watcher.test.ts`** for: a pane
+- [ ] **Tests in `scripts/owl/src/watcher.test.ts`** for: a pane
       not at its prompt holds the queue; a run that never went busy posts
       once, is retried once, and is not in the ledger; and a run that goes
       busy is recorded as before.

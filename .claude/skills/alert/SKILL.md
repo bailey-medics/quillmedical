@@ -8,9 +8,9 @@ disallowed-tools: Bash(gh pr merge:*), Bash(gh stack merge:*), Bash(git rebase:*
 
 # Investigate one App production alert
 
-The alert watcher on the home box ("Watch App production and open a pull
+Owl, the alert watcher on the home box ("Watch App production and open a pull
 request for each fault" in
-`docs/docs/plans/2026-10-19-remote-dev-machine-plan.md`) types
+`docs/docs/plans/2026-10-19-remote-dev-machine-plan.md`), types
 `/alert <file>` into worktree 5 when a Cloud Monitoring alert or a failed
 deploy lands in `#quill-medical-cicd`. This skill is what happens next:
 find out what broke and why, say so in the alert's Slack thread, and, when
@@ -54,7 +54,7 @@ there is nowhere to report.
 
 ## Before anything else
 
-1. **Check whether you may commit.** Run `echo "$QUILL_ALERT_WATCHER"`.
+1. **Check whether you may commit.** Run `echo "$QUILL_OWL"`.
    Only `true` carries the standing permission in `CLAUDE.md` to open a
    pull request. Anything else means a person started this by hand, on a
    pasted alert: do the investigation, report it in the session (and in the
@@ -83,7 +83,7 @@ fix.
 - **It is not**, such as a report, a reminder for a person, or a notice
   that something worked: post one message and stop, opening no pull
   request. Say what the post is, and suggest adding it to the watcher's
-  ignore list in `scripts/alert-watcher/src/messages.ts`, naming the words
+  ignore list in `scripts/owl/src/messages.ts`, naming the words
   that would match it:
 
   ```bash
@@ -203,7 +203,7 @@ could not reproduce, not a fault) is one message in place of the last two.
 5. **Run the targeted tests**: `just ub -k "<name>"` or
    `just uf <file>`. Never the full suite.
 6. **Open the pull request** with `/crpd ready`, only when
-   `QUILL_ALERT_WATCHER=true` (see "Before anything else"). The stack key is
+   `QUILL_OWL=true` (see "Before anything else"). The stack key is
    always `alert`, so the branch is `feature/alert-<what-it-fixes>` and the
    title `Alert: <what it fixes>`; use it even when another alert's pull
    request is still open, since each alert is a stack of its own. The pull

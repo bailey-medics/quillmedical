@@ -170,7 +170,7 @@ run_in() {
 
     WATCHER_ENABLED=1 SESSION_EXISTS=1 run_in "${BATS_TEST_TMPDIR}/quillmedical-5"
     [ "$status" -eq 1 ]
-    [[ "$output" == *"systemctl --user restart quill-alert-watcher"* ]]
+    [[ "$output" == *"systemctl --user restart quill-owl"* ]]
     [ "$(grep -c -e send-keys -e attach "$CALLS")" -eq 0 ]
 }
 

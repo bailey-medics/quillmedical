@@ -13,14 +13,14 @@ import { Session } from "./session.ts";
 import { checkWorktree, type Run } from "./worktree.ts";
 
 function temporaryDirectory(): string {
-  return mkdtempSync(join(tmpdir(), "alert-watcher-"));
+  return mkdtempSync(join(tmpdir(), "owl-"));
 }
 
 const GOOD_ENV = {
   HOME: "/home/watcher",
   SLACK_APP_TOKEN: "xapp-1",
   SLACK_BOT_TOKEN: "xoxb-1",
-  ALERT_WATCHER_CHANNEL: "C0123456789",
+  OWL_CHANNEL: "C0123456789",
 };
 
 describe("readConfig", () => {
@@ -29,13 +29,13 @@ describe("readConfig", () => {
 
     assert.equal(config.worktree, "/home/watcher/github/quillmedical-5");
     assert.equal(config.tmuxTarget, "q5");
-    assert.equal(config.stateDirectory, "/home/watcher/.local/state/quill-alert-watcher");
-    assert.equal(config.certificatePath, "/home/watcher/.config/quill-alert-watcher/pki/watcher.crt");
+    assert.equal(config.stateDirectory, "/home/watcher/.local/state/quill-owl");
+    assert.equal(config.certificatePath, "/home/watcher/.config/quill-owl/pki/watcher.crt");
     assert.equal(config.recordEvents, false);
   });
 
   it("refuses a channel given by name rather than id", () => {
-    assert.throws(() => readConfig({ ...GOOD_ENV, ALERT_WATCHER_CHANNEL: "#quill-medical-cicd" }), ConfigError);
+    assert.throws(() => readConfig({ ...GOOD_ENV, OWL_CHANNEL: "#quill-medical-cicd" }), ConfigError);
   });
 
   it("refuses the tokens the wrong way round", () => {

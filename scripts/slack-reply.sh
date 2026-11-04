@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Posts one message into an alert's Slack thread, for the alert watcher's
+# Posts one message into an alert's Slack thread, for Owl's
 # `/alert` skill.
 #
 # Usage: slack-reply.sh <alert-file> <message|->
@@ -11,7 +11,7 @@
 #
 # The bot token is SLACK_BOT_TOKEN from the environment, or the
 # SLACK_BOT_TOKEN line of the watcher's env file
-# (~/.config/quill-alert-watcher/env, or QUILL_ALERT_WATCHER_ENV). The file
+# (~/.config/quill-owl/env, or OWL_ENV). The file
 # is read, never sourced, so nothing else in it runs. The token reaches
 # curl through a header on standard input rather than on the command line,
 # so it never shows in `ps`.
@@ -43,7 +43,7 @@ header_value() {
 
 # Prints the bot token from the environment or the env file, or nothing.
 bot_token() {
-    local env_file="${QUILL_ALERT_WATCHER_ENV:-${HOME}/.config/quill-alert-watcher/env}"
+    local env_file="${OWL_ENV:-${HOME}/.config/quill-owl/env}"
 
     if [ -n "${SLACK_BOT_TOKEN:-}" ]; then
         printf '%s' "${SLACK_BOT_TOKEN}"

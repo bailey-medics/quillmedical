@@ -102,11 +102,11 @@ only sign in Slack of an incident in europe-west2 was our own alerts firing
 hourly, each looking like a fault of ours.
 
 The post carries the incident's title, products, locations, start time and
-a `State:` line. The alert watcher below reads the policy's documentation subject, which is
+a `State:` line. Owl below reads the policy's documentation subject, which is
 what Google's Slack post shows as its title, and that line, so keep both as
 they are in `infra/modules/monitoring/main.tf`.
 
-## The alert watcher
+## Owl, the alert watcher
 
 A daemon on the home box reads `#quill-medical-cicd` and, when an alert or a
 failed deploy is posted there, types `/alert <file>` into the Claude Code
@@ -115,20 +115,20 @@ in the alert's thread, and opens a pull request ready for review when the
 fault is ours. A person reviews and merges it, or closes it. The design is
 the watcher phase of the
 [remote dev machine plan](../plans/2026-10-19-remote-dev-machine-plan.md),
-and the program is in `scripts/alert-watcher/`.
+and the program is in `scripts/owl/`.
 
 - **Which posts it acts on**: every post by an app that is not on its ignore
   list: success posts opening with ✅, the four-weekly alert route test, the
   retention decision, and the closing post of a known alert. A Cloud
   Monitoring post never names its policy; its bold title is the policy's
   documentation `subject`, so that is what
-  `scripts/alert-watcher/src/messages.ts` lists, and a policy added to
+  `scripts/owl/src/messages.ts` lists, and a policy added to
   `main.tf` fails the watcher's tests until its subject is listed there.
-- **Its log**: `journalctl --user -u quill-alert-watcher` on the box. It
+- **Its log**: `journalctl --user -u quill-owl` on the box. It
   records fingerprints and outcomes, never alert text.
-- **Its state**: `~/.local/state/quill-alert-watcher/`, holding the busy flag,
+- **Its state**: `~/.local/state/quill-owl/`, holding the busy flag,
   the alert files and the ledger of what it has handled.
-- **Installing it again**: `just alert-watcher-install` from worktree 5.
+- **Installing it again**: `just owl-install` from worktree 5.
 
 ### Checking it after a change
 
@@ -154,7 +154,7 @@ policy, and before trusting the watcher for the first time.
    fault.
 
 If either goes wrong because a post was read wrongly, set
-`ALERT_WATCHER_RECORD_EVENTS=1` in `~/.config/quill-alert-watcher/env`,
+`OWL_RECORD_EVENTS=1` in `~/.config/quill-owl/env`,
 restart the service, and repeat. The raw events land in `events/` in the
 state folder, to check against `messages.ts`. Turn it off afterwards, since
 those files hold alert text.

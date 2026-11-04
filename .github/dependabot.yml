@@ -24,10 +24,10 @@ updates:
     open-pull-requests-limit: 0
     target-branch: "main"
 
-  # The alert watcher (scripts/alert-watcher/), a Node program of its own
+  # Owl, the alert watcher (scripts/owl/), a Node program of its own
   # that runs on the home box
   - package-ecosystem: "npm"
-    directory: "/scripts/alert-watcher"
+    directory: "/scripts/owl"
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 0
