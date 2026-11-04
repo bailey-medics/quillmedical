@@ -28,14 +28,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@slack/types@npm:^3.2.0":
-  version: 3.2.0
-  resolution: "@slack/types@npm:3.2.0"
-  checksum: 10c0/348ba8fcf2831982dd46642810daf29223b21c5a3a0a205def4b8a5ddbeb7c57cadfa056be5767b35166886bc592db3d79875f5828897325cdee2da80e69411f
+"@slack/types@npm:^3.2.0, @slack/types@npm:^3.3.0":
+  version: 3.3.0
+  resolution: "@slack/types@npm:3.3.0"
+  checksum: 10c0/26b84d1c9d6f68e70a4bd137d7770f271b3954f90cc39d09bec8fa02aba120d954ddf41c19c848b78fafe1735f7c83fda3dad6ec0ac3469d803b0239895602ad
   languageName: node
   linkType: hard
 
-"@slack/web-api@npm:8.2.0, @slack/web-api@npm:^8.2.0":
+"@slack/web-api@npm:8.2.0":
   version: 8.2.0
   resolution: "@slack/web-api@npm:8.2.0"
   dependencies:
@@ -51,12 +51,37 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/node@npm:26.6.5, @types/node@npm:>=20":
+"@slack/web-api@npm:^8.2.0":
+  version: 8.3.0
+  resolution: "@slack/web-api@npm:8.3.0"
+  dependencies:
+    "@slack/logger": "npm:^5.0.0"
+    "@slack/types": "npm:^3.3.0"
+    "@types/node": "npm:>=20"
+    "@types/retry": "npm:0.12.5"
+    eventemitter3: "npm:^5.0.1"
+    p-queue: "npm:^6.6.2"
+    p-retry: "npm:^4.6.2"
+    retry: "npm:^0.13.1"
+  checksum: 10c0/bb2973f48301c490ca70b29b378b6c2812a90cd2f0859cf931e66b97149be7d591f360f42fa56f168cacb6ad37328e054ceb1a53870810562a34a84b1d5da7fb
+  languageName: node
+  linkType: hard
+
+"@types/node@npm:26.6.5":
   version: 26.6.5
   resolution: "@types/node@npm:26.6.5"
   dependencies:
     undici-types: "npm:~8.9.0"
   checksum: 10c0/4f791f69466ace7842c09e7bef96cb1ddbb65cf3db916ef7e84f0e2b2a17220b6b816dc7539d01520cadfb17ed7169b8214910900493e0a83be8bc7d124ec20a
+  languageName: node
+  linkType: hard
+
+"@types/node@npm:>=20":
+  version: 26.6.6
+  resolution: "@types/node@npm:26.6.6"
+  dependencies:
+    undici-types: "npm:~8.9.0"
+  checksum: 10c0/5cb63f644f6e85a257a9cd2403cbcbe196760e2a35fd3ec9fb8b5cff663e14cc832b198cc17b53f870a2e30900ed45a1fb3f53e6589aba26b8e8c484aa672053
   languageName: node
   linkType: hard
 
