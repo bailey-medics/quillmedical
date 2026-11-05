@@ -61,19 +61,22 @@ rewrite_old_path() {
 }
 
 # Stops and unlinks the service under its old name, answering 0 when there
-# was one. Its unit file moved with the code, so the link is dangling and
-# is removed by hand.
+# was one. Its unit file moved with the code, so the links are dangling
+# and are removed by hand: `systemctl disable` cannot find the unit to
+# undo its own default.target.wants link either.
 retire_old_service() {
     local units="$1"
     local link="${units}/${OLD_NAME}.service"
+    local wanted="${units}/default.target.wants/${OLD_NAME}.service"
 
-    if [ ! -L "${link}" ] && ! systemctl --user is-active --quiet "${OLD_NAME}.service"; then
+    if [ ! -L "${link}" ] && [ ! -L "${wanted}" ] \
+        && ! systemctl --user is-active --quiet "${OLD_NAME}.service"; then
         return 1
     fi
 
     systemctl --user stop "${OLD_NAME}.service" || true
     systemctl --user disable "${OLD_NAME}.service" 2>/dev/null || true
-    rm -f "${link}"
+    rm -f "${link}" "${wanted}"
     systemctl --user daemon-reload
     echo "Stopped and removed ${OLD_NAME}.service."
 }
