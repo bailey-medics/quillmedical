@@ -1,4 +1,4 @@
-<!-- cspell:words boto -->
+<!-- cspell:words boto fileexists -->
 # The alert watcher is called Owl plan
 
 The alert watcher posts in `#quill-medical-cicd` as Owl, and that is the
@@ -100,12 +100,20 @@ stop.
 
 ## Phase 2: Terraform says Owl, and Google Cloud keeps its IDs
 
-- [ ] **Move `infra/alert-watcher.tf` to `infra/owl.tf`**, renaming the
+- [x] **Move `infra/alert-watcher.tf` to `infra/owl.tf`**, renaming the
       resource addresses (`google_service_account.alert_watcher_logs` to
       `google_service_account.owl_logs`, and so on) with a `moved` block
       for each, so Terraform sees the same resources under new names
-      rather than destroying and creating them.
-- [ ] **Keep every ID Google Cloud holds.** The service account's
+      rather than destroying and creating them. The two `import` blocks
+      that first adopted the pool and its provider point at the new
+      addresses; with the resources already in the state they do
+      nothing. The certificate authority moves with it, from
+      `infra/environments/app/alert-watcher-ca.pem` to `owl-ca.pem`. That
+      path matters more than it looks: the pool's `count` is
+      `fileexists()` on it, so a path left pointing at the old name
+      would destroy the pool. `terraform validate` passes on the
+      result.
+- [x] **Keep every ID Google Cloud holds.** The service account's
       `account_id` (`alert-watcher-logs`), the workload identity pool's
       ID (`alert-watcher`) and the certificate's subject
       (`quill-alert-watcher`) all stay. Each one is part of an identity:
