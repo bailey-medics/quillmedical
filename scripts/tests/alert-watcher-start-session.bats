@@ -66,12 +66,44 @@ EOF
 
 @test "the session runs claude as the watcher, and may read the alert files" {
     run "$SCRIPT"
-    grep -q "export QUILL_ALERT_WATCHER=true CLOUDSDK_CONFIG=${HOME}/.config/quill-alert-watcher/gcloud; claude --add-dir ${QUILL_ALERT_WATCHER_STATE}/alerts" "$CALLS"
+    grep -q "export QUILL_ALERT_WATCHER=true CLOUDSDK_CONFIG=${HOME}/.config/quill-alert-watcher/gcloud CLAUDE_CODE_DISABLE_FEEDBACK_SURVEY=1; claude --add-dir ${QUILL_ALERT_WATCHER_STATE}/alerts" "$CALLS"
+}
+
+@test "the session runs in auto mode, so tool calls are decided rather than asked about" {
+    run "$SCRIPT"
+    grep -q -- "--permission-mode auto " "$CALLS"
+}
+
+@test "the session may not ask a question, since nobody is there to answer it" {
+    run "$SCRIPT"
+    grep -q -- "--disallowedTools AskUserQuestion " "$CALLS"
+}
+
+@test "the session loads its own settings, from beside the script" {
+    local settings
+
+    settings="$(cd "${BATS_TEST_DIRNAME}/../alert-watcher" && pwd)/session-settings.json"
+
+    run "$SCRIPT"
+    grep -qF -- "--settings ${settings} " "$CALLS"
+}
+
+@test "the session settings refuse reads outside the worktree rather than asking" {
+    local settings="${BATS_TEST_DIRNAME}/../alert-watcher/session-settings.json"
+
+    run python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print(d["permissions"]["blockReadsOutsideWorkingDirectories"])' "$settings"
+    [ "$status" -eq 0 ]
+    [ "$output" = "True" ]
+}
+
+@test "the feedback survey is off in the session" {
+    run "$SCRIPT"
+    grep -q "CLAUDE_CODE_DISABLE_FEEDBACK_SURVEY=1;" "$CALLS"
 }
 
 @test "the session keeps gcloud settings of its own, apart from the user's" {
     run "$SCRIPT"
-    grep -q "CLOUDSDK_CONFIG=${HOME}/.config/quill-alert-watcher/gcloud;" "$CALLS"
+    grep -q "CLOUDSDK_CONFIG=${HOME}/.config/quill-alert-watcher/gcloud " "$CALLS"
     [ "$(grep -c "CLOUDSDK_CONFIG=${HOME}/.config/gcloud" "$CALLS")" -eq 0 ]
 }
 
