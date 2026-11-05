@@ -74,10 +74,7 @@ backend/app/deps.py      - has_competency(), FastAPI dependencies
 
 shared/
 ├── competency-definitions/  - All competency definitions, merged at load
-│   ├── clinical.yaml        - What may be done in the care of a patient
-│   ├── uk_sact_board_2023.yaml        - Passport framework
-│   ├── ruh_sact_passport.yaml         - Passport framework
-│   ├── ghnft_radiotherapy_record.yaml - Passport framework
+│   ├── clinical-permissions.yaml - What may be done in the care of a patient
 │   ├── clinical-admin.yaml  - Running the clinical service
 │   ├── admin.yaml           - Administering a place
 │   ├── teaching.yaml        - Who may use the teaching feature
@@ -136,12 +133,11 @@ Defines all available competencies in the system. Located at
 `shared/competency-definitions/`, a directory whose files are merged into
 one flat catalogue at load time.
 
-The split is by kind, for the reader: `clinical.yaml` holds
+The split is by kind, for the reader: `clinical-permissions.yaml` holds
 what may be done in the care of a patient; `clinical-admin.yaml`,
 `admin.yaml`, `teaching.yaml`, `passport.yaml` and `safety.yaml` hold what
-may be done to Quill itself; `uk_sact_board_2023.yaml`,
-`ruh_sact_passport.yaml` and `ghnft_radiotherapy_record.yaml` are passport
-frameworks. The code sees one catalogue and the id is what everything
+may be done to Quill itself. The passport frameworks are not here: each
+lives in its publisher's own repository. The code sees one catalogue and the id is what everything
 references, so moving an entry between files changes nothing to access
 control. The one meaning a file carries is to the passport: a file that
 declares a `framework:` block is a framework, and its assessable entries are
@@ -168,7 +164,7 @@ competencies:
 
 An entry may carry no other field: the loader refuses anything else.
 
-**Competency Categories** (comment headings in `clinical.yaml`, not a field):
+**Competency Categories** (comment headings in `clinical-permissions.yaml`, not a field):
 
 - `prescribing`: Medication prescribing authorities
 - `certification`: Medical certifications (death, fitness to work, etc.)

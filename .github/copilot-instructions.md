@@ -221,15 +221,18 @@ profession.
   framework, one published document as a set of competencies, and every
   entry in it is that framework's. Anybody may publish one: a trust, a
   college, a national board, or Quill, whose "General clinical skills" is
-  `clinical.yaml`. Every entry is assessable and its id starts with the
+  `clinical`. Each lives in its publisher's own repository, such as
+  `bailey-medics/general-clinical-skills-quill-medical-framework`, as
+  `frameworks/<id>.yaml`. Every entry is assessable and its id starts with the
   framework's id and an underscore, so the same procedure under two
   frameworks is two competencies. Quill never maps one framework's
   competency onto another's. **The app reads the frameworks from the
   framework tables**, which the framework sync fills: the backend through
   `stored_catalogue` in `backend/app/features/passport/catalogue.py`, and
   the frontend through `GET /api/passport/catalogue` and
-  `useFrameworkCatalogue`. The four framework files still in this folder
-  move to their publishers' repositories. Tests read
+  `useFrameworkCatalogue`. No framework file lives in this repository:
+  each deploy and each framework repository's merge sync the tables from
+  the repositories. Tests and the dev stack read
   `shared/framework-fixtures/`.
 - **Permissions are code; framework competencies are content.** A
   permission, such as `manage_users` or `prescribe_controlled_schedule_2`,
