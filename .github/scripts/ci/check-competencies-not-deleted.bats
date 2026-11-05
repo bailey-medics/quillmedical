@@ -96,6 +96,50 @@ YAML
   [[ "$output" == *"certify_death"* ]]
 }
 
+# A framework lives in its publisher's repository, whose own pipeline
+# refuses a deleted competency. Here a framework file is not a permission,
+# so the check leaves it out on both sides.
+add_a_framework_file() {
+  cat > shared/competency-definitions/sheet.yaml <<'YAML'
+framework:
+  id: sheet
+  name: "A sheet"
+  version: 1
+
+competencies:
+  - id: sheet_refer
+    display_name: "Refer a patient"
+YAML
+  commit_all "add a framework"
+  git branch -q -f base-ref
+}
+
+@test "deleting a framework file passes" {
+  add_a_framework_file
+  git rm -q shared/competency-definitions/sheet.yaml
+  commit_all "the framework moves to its own repository"
+
+  run bash "$SCRIPT" base-ref
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"No competency was removed"* ]]
+}
+
+@test "a permission deleted beside a framework file is still caught" {
+  add_a_framework_file
+  git rm -q shared/competency-definitions/sheet.yaml
+  grep -v "certify_death" shared/competency-definitions/clinical.yaml \
+    | grep -v 'display_name: "Certify Death"' > tmp.yaml
+  mv tmp.yaml shared/competency-definitions/clinical.yaml
+  commit_all "delete a framework and a permission"
+
+  run bash "$SCRIPT" base-ref
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"certify_death"* ]]
+  [[ "$output" != *"sheet_refer"* ]]
+}
+
 @test "the failure explains how to retire instead" {
   grep -v "certify_death" shared/competency-definitions/clinical.yaml \
     | grep -v 'display_name: "Certify Death"' > tmp.yaml

@@ -19,12 +19,25 @@ CATALOGUE="shared/competency-definitions"
 # a competency moved between files is not a deletion. Concatenating every file
 # before comparing is what makes that true: the check is about ids leaving the
 # catalogue, never about which file holds them.
+#
+# A file that declares a `framework:` block is left out. A framework lives in
+# its publisher's repository, whose own pipeline refuses a deleted
+# competency, and its competencies are never permissions. So moving one out
+# of this folder is not a deletion. Phase 8 of
+# docs/docs/plans/2026-11-01-passport-record-and-catalogue-plan.md.
 files_at_ref() {
   local ref="$1"
+  local file
 
-  git ls-tree -r --name-only "${ref}" -- "${CATALOGUE}" 2>/dev/null \
-    | grep -E '\.ya?ml$' \
-    | sort
+  while IFS= read -r file; do
+    if ! git show "${ref}:${file}" 2>/dev/null | grep -q '^framework:'; then
+      echo "${file}"
+    fi
+  done < <(
+    git ls-tree -r --name-only "${ref}" -- "${CATALOGUE}" 2>/dev/null \
+      | grep -E '\.ya?ml$' \
+      | sort
+  )
 }
 
 # Every competency in one revision of the catalogue, as "<id><TAB>active" or

@@ -1078,12 +1078,23 @@ reads the repositories, not a bucket" in Decisions.
       prints "not set" and carries on, with the tables as they were.
       `just migrate-local` still syncs the dev stack from the files; the
       next step changes that, since it deletes them.
-- [ ] **Delete the framework files from this repository**, in a later
+- [x] **Delete the framework files from this repository**, in a later
       deploy than the one that points the deploy's sync at the
       repositories, so App production
       never runs without a source. `check-competencies-not-deleted.sh` is
       narrowed to permissions in the same pull request, because the
       framework repositories now carry that check.
+      **Built on 5 November 2026.** The four files are gone from
+      `shared/competency-definitions/`. `check-competencies-not-deleted.sh`
+      leaves out any file that declares `framework:`, on both refs, so
+      the move is not a deletion while a permission deleted beside it is
+      still caught. The folder sync, `python -m app.features.passport.sync`
+      with no folder, now reads `shared/framework-fixtures/`, which were
+      identical to the four files below their first line, so
+      `just migrate-local` fills the dev stack as the CI seed does.
+      **Merge it only once #2394 has deployed and a deploy log shows the
+      sync reading the repositories**, so App production never goes a
+      deploy without a source.
 - [ ] **Remove what only served framework files here**: the
       one-framework-change-per-stack message from Phase 3, and the
       framework half of the header comments.

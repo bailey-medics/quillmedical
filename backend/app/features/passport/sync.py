@@ -12,9 +12,10 @@ rather than retired, a version that skips or goes down, and a framework
 changed with no new version. One refusal stops the run and writes
 nothing, so the tables never hold half a sync.
 
-Until the frameworks move out it reads ``shared/competency-definitions/``,
-from the pre-deploy migrations job, the CI seed and the dev migrate
-recipe. The passport reads them through :mod:`.catalogue`. See Phase 5 of
+The frameworks live in their publishers' repositories, so this folder form
+reads ``shared/framework-fixtures/`` by default: the CI seed and the dev
+migrate recipe fill the tables from it, and every deploy reads the
+repositories instead. The passport reads them through :mod:`.catalogue`. See Phase 5 of
 docs/docs/plans/2026-11-01-passport-record-and-catalogue-plan.md.
 
 Usage::
@@ -22,7 +23,8 @@ Usage::
     python -m app.features.passport.sync [<definitions-directory>]
     python -m app.features.passport.sync --versions <folder>
 
-The second form reads a folder of versions written by hand, one folder
+The first reads ``shared/framework-fixtures/`` when given no folder. The
+second form reads a folder of versions written by hand, one folder
 per framework and one file per version, and catches up on every version
 the tables lack. The framework sync job uses a third,
 :func:`sync_from_repositories`, which reads each framework repository's
@@ -49,13 +51,13 @@ from sqlalchemy.orm import Session
 
 from app.cbac.competencies import (
     COMPETENCIES,
-    COMPETENCY_DEFINITIONS_DIR,
     MAX_FRAMEWORK_FILE_BYTES,
     CompetencyEntry,
     Framework,
     _load_catalogue,
     load_framework_text,
 )
+from app.paths import FRAMEWORK_FIXTURES_DIR
 
 from .models import (
     PassportFramework,
@@ -532,12 +534,12 @@ def _recorded_run(
 
 
 def sync_frameworks(
-    db: Session, directory: Path = COMPETENCY_DEFINITIONS_DIR
+    db: Session, directory: Path = FRAMEWORK_FIXTURES_DIR
 ) -> FrameworkSyncResult:
     """Read every framework in *directory* into the database.
 
     *directory* holds each framework as it stands now, one file each, as
-    ``shared/competency-definitions/`` does. Either every new version is
+    ``shared/framework-fixtures/`` does. Either every new version is
     written or none is. The caller commits.
 
     Args:
@@ -1061,7 +1063,7 @@ def main(argv: list[str] | None = None) -> int:
 
         return _report(result)
 
-    directory = Path(args[0]) if args else COMPETENCY_DEFINITIONS_DIR
+    directory = Path(args[0]) if args else FRAMEWORK_FIXTURES_DIR
 
     with CoreSessionLocal() as db:
         result = sync_frameworks(db, directory)

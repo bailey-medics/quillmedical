@@ -274,9 +274,10 @@ _migrate-running-stack:
         echo "Database migrated ${before} → ${after}"
     fi
 
-    # The framework tables, as the pre-deploy job fills them after its
-    # migrations. Safe to run every time: an unchanged framework writes
-    # nothing.
+    # The framework tables, from the framework fixtures, as the CI seed
+    # fills them. The frameworks themselves live in their publishers'
+    # repositories, which each deploy reads. Safe to run every time: an
+    # unchanged framework writes nothing.
     docker exec quill_backend sh -lc 'python -m app.features.passport.sync'
 
 
