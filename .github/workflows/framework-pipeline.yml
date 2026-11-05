@@ -245,6 +245,11 @@ jobs:
   #
   # Called by full path: this workflow runs under the framework
   # repository, so `./` would look for the file there.
+  #
+  # The deploy job fails in one of two places, and the notice says which.
+  # Its execution output is empty until the sync job has started, so an
+  # empty one means it failed before then, signing in or starting the job,
+  # and no version was looked at.
   notify-deploy-failure:
     needs: deploy
     if: always() && needs.deploy.result == 'failure'
@@ -261,7 +266,7 @@ jobs:
         *Author:* ${{ github.actor }}
         *Run:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View run>
 
-        *Sync job:* ${{ needs.deploy.outputs.execution != '' && format('<{0}|{1}>', needs.deploy.outputs.log_url, needs.deploy.outputs.execution) || 'not started, see the run' }}
-        A refused version is named in its log.
+        *Sync job:* ${{ needs.deploy.outputs.execution != '' && format('<{0}|{1}>', needs.deploy.outputs.log_url, needs.deploy.outputs.execution) || 'not started' }}
+        ${{ needs.deploy.outputs.execution != '' && 'The sync job ran and failed. A refused version is named in its log.' || 'The run failed before the sync job started, while signing in to Google or starting the job. The framework version was not looked at. The run says which step failed.' }}
     secrets:
       SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
