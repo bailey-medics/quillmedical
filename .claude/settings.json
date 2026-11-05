@@ -52,6 +52,15 @@
             "timeout": 600
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/tab-topic.sh reset",
+            "timeout": 5
+          }
+        ]
       }
     ],
     "Stop": [
@@ -103,6 +112,12 @@
             "type": "command",
             "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/owl-busy.sh set",
             "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/tab-topic.sh prompt",
+            "timeout": 90,
+            "async": true
           }
         ]
       }
