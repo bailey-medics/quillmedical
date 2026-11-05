@@ -612,6 +612,30 @@ def test_the_repository_sync_stores_every_version_it_read(
     assert result.versions_written == 2
 
 
+def test_repositories_that_hold_no_framework_yet_say_so(
+    db_session: Session, local_clones: Path
+) -> None:
+    """Each repository is made empty, before its first framework merges."""
+    _repository(local_clones / "owner", "sheet-framework")
+
+    result = sync_from_repositories(
+        db_session, {"owner/sheet-framework": ["sheet"]}
+    )
+
+    assert not result.succeeded
+    assert result.error == (
+        "The framework repositories hold no frameworks yet, so nothing "
+        "was stored."
+    )
+
+
+def test_no_repositories_set_up_says_so(db_session: Session) -> None:
+    result = sync_from_repositories(db_session, {})
+
+    assert not result.succeeded
+    assert result.error == "No framework repositories are set up here."
+
+
 class _Dialect:
     def __init__(self, name: str) -> None:
         self.name = name

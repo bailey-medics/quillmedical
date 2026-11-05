@@ -1001,10 +1001,42 @@ def sync_from_repositories(
             db,
             lambda permission_ids: _catch_up(
                 db,
-                read_repositories(repositories, Path(scratch)),
+                _versions_in(repositories, Path(scratch)),
                 permission_ids,
             ),
         )
+
+
+#: Said where ``FRAMEWORK_REPOSITORIES`` names none.
+NO_REPOSITORIES = "No framework repositories are set up here."
+
+#: Said where every repository is still empty, as each is before its first
+#: framework merges. ``_catch_up``'s own refusal names no repository, and
+#: read here it looks like a fault.
+NOTHING_IN_THE_REPOSITORIES = (
+    "The framework repositories hold no frameworks yet, so nothing was "
+    "stored."
+)
+
+
+def _versions_in(
+    repositories: Mapping[str, Sequence[str]], scratch: Path
+) -> dict[str, dict[int, str]]:
+    """What :func:`read_repositories` finds, or refuse as having nothing.
+
+    Raises:
+        FrameworkSyncError: Where no repository is set up, or none holds a
+            framework yet.
+    """
+    if not repositories:
+        raise FrameworkSyncError(NO_REPOSITORIES)
+
+    versions = read_repositories(repositories, scratch)
+
+    if not versions:
+        raise FrameworkSyncError(NOTHING_IN_THE_REPOSITORIES)
+
+    return versions
 
 
 def main(argv: list[str] | None = None) -> int:
