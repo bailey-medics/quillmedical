@@ -126,7 +126,7 @@ class TestThePatientBecomingStaff:
         assert response.status_code == 200, response.text
         db_session.refresh(starter)
         held = starter.get_final_competencies()
-        assert "perform_venepuncture" in held
+        assert "access_patient_records" in held
         assert starter.base_profession == "healthcare_assistant"
 
     def test_they_keep_their_own_records_competency(
@@ -162,7 +162,7 @@ class TestThePatientBecomingStaff:
         db_session.refresh(starter)
         held = starter.get_final_competencies()
         assert "access_own_patient_records" in held
-        assert "perform_venepuncture" in held
+        assert "access_patient_records" in held
 
     def test_individual_competencies_can_be_granted_too(
         self,
@@ -189,7 +189,7 @@ class TestThePatientBecomingStaff:
         db_session.refresh(starter)
         held = starter.get_final_competencies()
         assert "take_teaching_modules" in held
-        assert "perform_venepuncture" in held
+        assert "access_patient_records" in held
 
     def test_competencies_alone_without_a_profession(
         self,
@@ -351,7 +351,7 @@ class TestTheSameAtASite:
         assert response.status_code == 200, response.text
         db_session.refresh(starter)
         held = starter.get_final_competencies()
-        assert "perform_venepuncture" in held
+        assert "access_patient_records" in held
         # Additive here too: their own record survives.
         assert "access_own_patient_records" in held
 
@@ -413,7 +413,7 @@ class TestTheSameAtASite:
         assert second.status_code == 200, second.text
         assert second.json()["status"] == "updated"
         db_session.refresh(member)
-        assert "perform_venepuncture" in member.get_final_competencies()
+        assert "access_patient_records" in member.get_final_competencies()
 
     def test_an_unknown_profession_is_refused(
         self,

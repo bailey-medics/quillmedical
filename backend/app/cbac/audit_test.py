@@ -31,7 +31,7 @@ NEXT_MONTH = NOW + timedelta(days=30)
 #: What the patient profession seeds, and so what a new patient holds.
 OWN_RECORD = "access_own_patient_records"
 REAL = "certify_death"
-ALSO_REAL = "perform_venepuncture"
+ALSO_REAL = "take_informed_consent"
 #: Retired in the shipped catalogue: still known, no longer granted.
 RETIRED = "access_clinician_passport"
 MADE_UP = "prescribe_moonbeams"

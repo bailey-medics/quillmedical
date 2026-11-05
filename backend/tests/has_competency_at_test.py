@@ -26,7 +26,7 @@ from app.models import OrgUnit, PractisingCompetency, User
 from app.security import hash_password
 from tests.competencies import withhold
 
-COMPETENCY = "perform_venepuncture"
+COMPETENCY = "take_informed_consent"
 
 
 def _user(
@@ -224,7 +224,7 @@ class TestWhatARefusalSays:
     ) -> None:
         """404 over 403, and nothing in the body to work backwards from.
 
-        Saying "you lack perform_venepuncture here" would confirm the ward
+        Saying "you lack take_informed_consent here" would confirm the ward
         exists and name what is practised there.
         """
         user = _user(db_session, "quiet-refusal")

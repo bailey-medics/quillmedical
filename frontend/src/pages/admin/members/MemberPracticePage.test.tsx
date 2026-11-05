@@ -22,10 +22,10 @@ const practice: MemberPractice = {
   full_name: "Anita Patel",
   org_unit_id: 3,
   org_unit_name: "Ward A",
-  qualified: ["perform_venepuncture", "certify_death"],
+  qualified: ["take_informed_consent", "certify_death"],
   authorised: [
     {
-      competency: "perform_venepuncture",
+      competency: "take_informed_consent",
       authorised_at: "2026-09-01T09:00:00Z",
       authorised_by: "Admin User",
     },
@@ -103,7 +103,7 @@ describe("MemberPracticePage", () => {
     );
     await user.click(
       screen.getByRole("switch", {
-        name: "Perform Venepuncture: may practise here",
+        name: "Take Informed Consent: may practise here",
       }),
     );
     expect(authorise).not.toHaveBeenCalled();
@@ -115,7 +115,7 @@ describe("MemberPracticePage", () => {
       "Certify Death - authorise",
     );
     expect(within(dialog).getByText(/withdraw$/)).toHaveTextContent(
-      "Perform Venepuncture - withdraw",
+      "Take Informed Consent - withdraw",
     );
     expect(authorise).not.toHaveBeenCalled();
 
@@ -127,7 +127,7 @@ describe("MemberPracticePage", () => {
         competency: "certify_death",
       }),
     );
-    expect(withdraw).toHaveBeenCalledWith(3, 4, "perform_venepuncture");
+    expect(withdraw).toHaveBeenCalledWith(3, 4, "take_informed_consent");
     await waitFor(() => expect(read).toHaveBeenCalledTimes(2));
     expect(await screen.findByText("Practice updated")).toBeInTheDocument();
   });

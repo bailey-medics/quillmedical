@@ -47,7 +47,7 @@ from tests.places import administers
 PASSWORD = "Password123!"
 
 #: A competency a consultant holds from their profession.
-HELD = "perform_venepuncture"
+HELD = "take_informed_consent"
 #: One a teaching admin may grant.
 TEACHING = "view_teaching_analytics"
 #: One a teaching admin may not grant.

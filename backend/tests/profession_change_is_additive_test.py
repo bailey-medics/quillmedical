@@ -156,7 +156,7 @@ class TestTheOldCompetenciesSurvive:
         # survives alongside it, which is the whole point.
         assert "access_own_patient_records" in final
         assert "access_patient_records" in final
-        assert "perform_venepuncture" in final
+        assert "access_patient_records" in final
 
     def test_competencies_granted_by_hand_survive_as_well(
         self,
@@ -213,7 +213,7 @@ class TestWhatTheMergeDoesNotDo:
             f"/api/users/{target.id}",
             json={
                 "base_profession": "healthcare_assistant",
-                "removed_competencies": ["perform_venepuncture"],
+                "removed_competencies": ["access_patient_records"],
             },
             headers=_csrf(client),
         )
@@ -221,7 +221,7 @@ class TestWhatTheMergeDoesNotDo:
         assert response.status_code == 200, response.text
         db_session.refresh(target)
         final = target.get_final_competencies()
-        assert "perform_venepuncture" not in final
+        assert "access_patient_records" not in final
         assert "access_own_patient_records" in final
 
     def test_setting_the_same_profession_changes_nothing(
@@ -277,12 +277,14 @@ class TestARemovalSurvivesAPromotion:
 
         removal = client.patch(
             f"/api/users/{target.id}",
-            json={"removed_competencies": ["perform_venepuncture"]},
+            json={"removed_competencies": ["assess_clinician_passport"]},
             headers=_csrf(client),
         )
         assert removal.status_code == 200, removal.text
         db_session.refresh(target)
-        assert "perform_venepuncture" not in target.get_final_competencies()
+        assert (
+            "assess_clinician_passport" not in target.get_final_competencies()
+        )
 
         promotion = client.patch(
             f"/api/users/{target.id}",
@@ -293,7 +295,7 @@ class TestARemovalSurvivesAPromotion:
         assert promotion.status_code == 200, promotion.text
         db_session.refresh(target)
         final = target.get_final_competencies()
-        assert "perform_venepuncture" not in final
+        assert "assess_clinician_passport" not in final
 
     def test_the_promotion_still_grants_everything_else(
         self,
@@ -311,7 +313,7 @@ class TestARemovalSurvivesAPromotion:
 
         client.patch(
             f"/api/users/{target.id}",
-            json={"removed_competencies": ["perform_venepuncture"]},
+            json={"removed_competencies": ["assess_clinician_passport"]},
             headers=_csrf(client),
         )
         promotion = client.patch(

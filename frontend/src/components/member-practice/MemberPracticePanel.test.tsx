@@ -20,10 +20,10 @@ const practice: MemberPractice = {
   full_name: "Anita Patel",
   org_unit_id: 3,
   org_unit_name: "Ward A",
-  qualified: ["perform_venepuncture", "certify_death"],
+  qualified: ["take_informed_consent", "certify_death"],
   authorised: [
     {
-      competency: "perform_venepuncture",
+      competency: "take_informed_consent",
       authorised_at: "2026-09-01T09:00:00Z",
       authorised_by: "Admin User",
     },
@@ -58,7 +58,7 @@ describe("MemberPracticePanel", () => {
     it("lists each held competency with its switch set from the rows", () => {
       renderPanel();
 
-      expect(switchFor("Perform Venepuncture").checked).toBe(true);
+      expect(switchFor("Take Informed Consent").checked).toBe(true);
       expect(switchFor("Certify Death").checked).toBe(false);
     });
 
@@ -67,10 +67,10 @@ describe("MemberPracticePanel", () => {
       const { onSave, onWithdraw } = renderPanel();
 
       await user.click(switchFor("Certify Death"));
-      await user.click(switchFor("Perform Venepuncture"));
+      await user.click(switchFor("Take Informed Consent"));
 
       expect(switchFor("Certify Death").checked).toBe(true);
-      expect(switchFor("Perform Venepuncture").checked).toBe(false);
+      expect(switchFor("Take Informed Consent").checked).toBe(false);
       expect(onSave).not.toHaveBeenCalled();
       expect(onWithdraw).not.toHaveBeenCalled();
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
@@ -81,7 +81,7 @@ describe("MemberPracticePanel", () => {
       const { onSave } = renderPanel();
 
       await user.click(switchFor("Certify Death"));
-      await user.click(switchFor("Perform Venepuncture"));
+      await user.click(switchFor("Take Informed Consent"));
       await user.click(screen.getByRole("button", { name: "Save changes" }));
 
       const dialog = await screen.findByRole("dialog");
@@ -91,7 +91,7 @@ describe("MemberPracticePanel", () => {
 
       expect(onSave).toHaveBeenCalledWith({
         authorise: ["certify_death"],
-        withdraw: ["perform_venepuncture"],
+        withdraw: ["take_informed_consent"],
       });
       expect(await screen.findByText("Practice updated")).toBeInTheDocument();
     });
@@ -304,7 +304,7 @@ describe("MemberPracticePanel", () => {
     // grant. Everything the person holds is still shown.
     const teaching = {
       qualified: [
-        "perform_venepuncture",
+        "take_informed_consent",
         "certify_death",
         "take_teaching_modules",
       ],
@@ -319,7 +319,7 @@ describe("MemberPracticePanel", () => {
       renderPanel(teaching);
 
       expect(switchFor("Certify Death")).toBeDisabled();
-      expect(switchFor("Perform Venepuncture")).toBeDisabled();
+      expect(switchFor("Take Informed Consent")).toBeDisabled();
       expect(switchFor("Take Teaching Modules")).toBeEnabled();
     });
 
