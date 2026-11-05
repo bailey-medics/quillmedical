@@ -7,7 +7,7 @@
 # produces.
 #
 # These say who may use a part of Quill, never what may be done in the
-# care of a patient. The clinical set lives in clinical.yaml.
+# care of a patient. The clinical set lives in clinical-permissions.yaml.
 #
 # Every file in this directory is merged into one catalogue at load
 # time, so ids must be unique across the whole directory, not just

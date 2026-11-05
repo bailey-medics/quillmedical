@@ -34,9 +34,10 @@
 # competencies of Quill's "General clinical skills" framework, so one id
 # was both a permission the code checks, such as
 # prescribe_controlled_schedule_2 in has_competency(), and a line a
-# passport records. The framework now lives in clinical.yaml under ids of
-# its own, each starting clinical_, so a passport sign-off can never be
-# mistaken for a permission. See
+# passport records. The framework now has ids of its own, each starting
+# clinical_, so a passport sign-off can never be mistaken for a
+# permission, and since 5 November 2026 it lives in its own repository,
+# bailey-medics/general-clinical-skills-quill-medical-framework. See
 # docs/docs/plans/2026-11-01-passport-record-and-catalogue-plan.md.
 
 competencies:

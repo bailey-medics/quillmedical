@@ -8,9 +8,9 @@
 #
 # Feature-admin in kind, like the teaching set in teaching.yaml:
 # these say who may use a part of Quill, never what may be done in the
-# care of a patient. The competencies a passport *records* are clinical
-# and live in clinical.yaml; this file holds only the gate on the
-# feature itself.
+# care of a patient. The competencies a passport *records* belong to the
+# frameworks, each in its publisher's own repository; this file holds
+# only the gate on the feature itself.
 #
 # Every file in this directory is merged into one catalogue at load
 # time, so ids must be unique across the whole directory, not just

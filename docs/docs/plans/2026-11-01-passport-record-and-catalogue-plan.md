@@ -692,13 +692,15 @@ still in this repository, so nothing changes for anybody until it works.
       later, was refused `iam.serviceAccounts.getAccessToken` while the
       new bindings took effect; the next, four minutes on, started
       `quill-framework-sync-app`, which wrote nothing new.
-- [ ] **The `workflow` scope is needed only for a push over HTTPS.**
+- [x] **The `workflow` scope is needed only for a push over HTTPS.**
       GitHub refuses a push that adds a file under `.github/workflows/`
       through a token without that scope. This machine pushes over SSH,
       which the scope does not govern: #2329 changed `ci.yml` that way on
       2 November 2026. So clone the four repositories over SSH and skip
       this step; run `gh auth refresh -s workflow` only on a machine that
-      pushes over HTTPS.
+      pushes over HTTPS. **Confirmed on 5 November 2026**: the four starter
+      commits, each adding `.github/workflows/framework.yml`, were cloned
+      and pushed over SSH with no change to the token.
 
 - [x] **Document the repositories and the pipeline**, in a framework page
       beside the teaching ones in `docs/docs/teaching/`, or under the
@@ -1095,14 +1097,29 @@ reads the repositories, not a bucket" in Decisions.
       **Merge it only once #2394 has deployed and a deploy log shows the
       sync reading the repositories**, so App production never goes a
       deploy without a source.
-- [ ] **Remove what only served framework files here**: the
+- [x] **Remove what only served framework files here**: the
       one-framework-change-per-stack message from Phase 3, and the
       framework half of the header comments.
-- [ ] **Update the docs** to say where each framework lives and how a
-      publisher changes one.
-- [ ] **Tests**: the backend starts and serves every framework with no
+      **Built on 5 November 2026.** The version check's jump message no
+      longer mentions a stack, because a framework repository has none.
+      `ci.yml`'s catalogue job no longer runs the version check over
+      `shared/competency-definitions/`, which holds no framework now; each
+      framework repository runs it through `framework-pipeline.yml`. The
+      permission files' headers that still named `clinical.yaml` for the
+      clinical permissions now name `clinical-permissions.yaml`, a slip
+      left from 2 November.
+- [x] **Update the docs** to say where each framework lives and how a
+      publisher changes one. Built on 5 November 2026: `CLAUDE.md` and its
+      source `.github/copilot-instructions.md`, `docs/docs/concepts/cbac.md`,
+      the passport backend page and the security page. How a publisher
+      changes one is in each repository's README.
+- [x] **Tests**: the backend starts and serves every framework with no
       framework file in `shared/`; a change merged in a framework
       repository reaches the tables through the sync.
+      The full backend and frontend suites passed with the files gone, on
+      5 November 2026. The merge in a framework repository reaching the
+      tables was shown for real the same day: its `deploy` job started
+      `quill-framework-sync-app`, which read all four repositories.
 
 ## Phase 9: Show the record's words where they differ
 

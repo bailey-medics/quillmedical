@@ -133,7 +133,8 @@ def test_a_renamed_framework_needs_a_new_version(repo: Path) -> None:
     assert not check_framework_versions(repo / "definitions", "main").passed
 
 
-def test_a_jump_of_two_is_refused_and_names_the_stack(repo: Path) -> None:
+def test_a_jump_of_two_is_refused(repo: Path) -> None:
+    """A framework repository has no stacks, so the message names none."""
     _write(
         repo,
         _SHEET.format(version=3).replace("Refer a patient", "Refer"),
@@ -142,8 +143,9 @@ def test_a_jump_of_two_is_refused_and_names_the_stack(repo: Path) -> None:
     result = check_framework_versions(repo / "definitions", "main")
 
     assert not result.passed
-    assert "jumped from 1 to 3" in result.violations[0]
-    assert "stack" in result.violations[0]
+    assert result.violations[0].endswith(
+        "version jumped from 1 to 3; it goes up by exactly one."
+    )
 
 
 def test_a_version_going_down_is_refused(repo: Path) -> None:

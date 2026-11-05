@@ -312,9 +312,7 @@ def check_file(
     elif version > old_version + 1:
         result.violations.append(
             f"{rel_path}: version jumped from {old_version} to {version}; "
-            "it goes up by exactly one. If a branch below this one in its "
-            "stack also changes this framework, land that one first: this "
-            "check compares with main."
+            "it goes up by exactly one."
         )
     elif changed and version == old_version:
         result.violations.append(

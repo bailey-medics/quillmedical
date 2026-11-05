@@ -134,7 +134,7 @@ and site membership plus competencies; only `superadmin` stood alone. See
 Healthcare-specific authorisation layer for clinical operations. Rather than simple role-based permissions, CBAC checks whether a user has a specific clinical competency (e.g. "can prescribe controlled drugs") before allowing an action.
 
 - **Competency resolution**: `final_competencies = base_profession_competencies + additional_competencies - removed_competencies`
-- **Configuration**: Defined in `shared/competency-definitions/` (a directory split by kind - `clinical.yaml` for what may be done to a patient, `admin.yaml` for administering a place, and feature files such as `teaching.yaml` and `passport.yaml` - merged into one catalogue at load time) and `shared/base-professions.yaml` (profession templates).
+- **Configuration**: Defined in `shared/competency-definitions/` (a directory split by kind - `clinical-permissions.yaml` for what may be done to a patient, `admin.yaml` for administering a place, and feature files such as `teaching.yaml` and `passport.yaml` - merged into one catalogue at load time) and `shared/base-professions.yaml` (profession templates).
 - **Enforcement**: `has_competency("competency_id")` FastAPI dependency - raises 403 if the user lacks the required competency.
 - **Self-modification blocked**: Only a superadmin (platform role) can modify their own competencies via `PATCH /cbac/my-competencies`; everyone else is changed by a holder of `manage_users` through `PATCH /users/{user_id}`.
 

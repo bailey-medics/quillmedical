@@ -97,8 +97,7 @@ A passport records skills, never software permissions. Two separate
 mechanisms decide what a holder is offered, and only the first refuses
 anything.
 
-- **`assessable: true` on a competency** in `shared/competency-definitions/`
-  says somebody could watch it being done and sign it off. Every
+- **`assessable: true` on a competency** in a framework file says somebody could watch it being done and sign it off. Every
   framework's competency carries it, and no permission does: a permission
   such as `manage_users` or `prescribe_non_controlled` is checked by the code,
   while what a passport records is a framework's own copy, such as
@@ -111,9 +110,9 @@ anything.
 - **A holder's frameworks** decide which competencies they are offered.
   A framework is one published document as a set of competencies: a
   national curriculum, or one hospital's own sign-off sheet. Each is a
-  file in `shared/competency-definitions/` that declares a `framework:`
-  block, loaded and checked with the catalogue, and its items are the
-  assessable entries of that file. A holder chooses the frameworks they
+  file that declares a `framework:` block, in its publisher's repository
+  as `frameworks/<id>.yaml`, checked with the catalogue's own loader, and
+  its items are the assessable entries of that file. A holder chooses the frameworks they
   work to, and `_offered_refs` in `router.py` refuses a new record
   against a competency in none of them. There is no way round: somebody
   who wants one adds its framework first. The choice lives in
@@ -127,7 +126,9 @@ anything.
   keeps the words it was signed under.
 - **Every framework's competencies are recorded in a passport and granted
   to nobody.** Anybody may publish a framework, Quill included: its
-  "General clinical skills" is `clinical.yaml`. Every entry is assessable
+  "General clinical skills" is `clinical`, in
+  `bailey-medics/general-clinical-skills-quill-medical-framework`. Every
+  framework lives in its publisher's repository. Every entry is assessable
   and starts with its framework's id and an underscore, which the loader
   checks, so the same procedure under two frameworks is two competencies.
   `validate_competency_ids` refuses them wherever a competency is granted,
@@ -159,8 +160,8 @@ See the [passport registrar portfolios plan](../../plans/2026-10-07-passport-reg
 A passport reads from two places, and each answers its own question.
 Neither replaces the other.
 
-- **The catalogue says what a framework asks for today.** It is
-  `shared/competency-definitions/`: which rows a framework's table lists,
+- **The catalogue says what a framework asks for today.** It is the
+  framework tables, filled from the framework repositories: which rows a framework's table lists,
   what each competency is called now, and what the framework is called.
 - **The record says what was signed off, in what words, on that day.** A
   sign-off stores its competency's id and words (`CompetencyRef`), its
@@ -395,9 +396,10 @@ own under `bailey-medics`, named from the framework's title and ending
 - **`uk-sact-board-prescribing-framework`** - the UK SACT Board.
 - **`general-clinical-skills-quill-medical-framework`** - Quill Medical.
 
-Each holds one file per framework in `frameworks/`, written exactly as the
-files in `shared/competency-definitions/` are, with a README and the
-publisher's licence for the wording. There are no stacks there: each
+Each holds one file per framework in `frameworks/`, with a README and the
+publisher's licence for the wording, which is Quill's own licence until
+the publisher gives one. The files were moved there on 5 November 2026,
+and none is left in `shared/competency-definitions/`. There are no stacks there: each
 change is one branch off `main` and one pull request.
 
 **The pipeline is Quill's**, `.github/workflows/framework-pipeline.yml`,

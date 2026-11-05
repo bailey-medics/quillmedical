@@ -5,8 +5,9 @@
 # Competencies for running the clinical service rather than caring for a
 # patient - administration that is patient centric, which is what
 # distinguishes this file from admin.yaml. Held through the same
-# mechanism as the clinical set in clinical.yaml, and deliberately kept
-# in a separate file because they are a different kind of thing.
+# mechanism as the clinical set in clinical-permissions.yaml, and
+# deliberately kept in a separate file because they are a different kind
+# of thing.
 # Reading them interleaved makes the distinction hard to see and invites
 # the wrong judgement about risk.
 #
@@ -41,7 +42,7 @@ competencies:
   # Which patients are cared for at the holder's organisation. It adds
   # and removes rows in organisation_patient_member, and nothing else -
   # it grants no access to a patient's record, which is
-  # access_patient_records in clinical.yaml.
+  # access_patient_records in clinical-permissions.yaml.
   #
   # Separate from manage_users because a patient is not a user. A user is
   # an account in the core database; a patient is a record FHIR owns, and
