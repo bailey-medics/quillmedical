@@ -105,4 +105,38 @@ describe("CompetencyFrameworkTable", () => {
 
     expect(onSelect).toHaveBeenCalledWith(prescribePalliativeCompetency.id);
   });
+
+  it("shows what a sign-off recorded where the framework reworded it", () => {
+    renderWithMantine(
+      <CompetencyFrameworkTable
+        catalogue={TEST_FRAMEWORK_CATALOGUE}
+        framework={radiotherapy}
+        competencies={[
+          {
+            ...referPalliativeCompetency,
+            name: "Refer for palliative radiotherapy",
+          },
+        ]}
+      />,
+    );
+
+    expect(
+      screen.getByText("Signed off as: Refer for palliative radiotherapy"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(referPalliativeCompetency.name),
+    ).toBeInTheDocument();
+  });
+
+  it("says nothing more where the words still match", () => {
+    renderWithMantine(
+      <CompetencyFrameworkTable
+        catalogue={TEST_FRAMEWORK_CATALOGUE}
+        framework={radiotherapy}
+        competencies={[referPalliativeCompetency]}
+      />,
+    );
+
+    expect(screen.queryByText(/Signed off as:/)).not.toBeInTheDocument();
+  });
 });

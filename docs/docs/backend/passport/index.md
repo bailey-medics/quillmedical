@@ -253,6 +253,14 @@ competency's first record, is given the catalogue only by the two writes
 that can make one: a sign-off request and a logbook entry. A read is
 never given it, because a competency with no folder has nothing to read.
 
+**The page shows both wordings where they differ.** A sign-off keeps the
+words it was signed under. Where the framework has reworded the
+competency or its level since, or moved to a newer version, a row in the
+framework table shows today's words, then "Signed off as", "Signed off at
+level" and "Signed off under version" with what the sign-off recorded.
+Each index entry carries `framework_version` from its latest sign-off for
+this.
+
 **`GET /api/passport/catalogue` serves the frameworks to the frontend**,
 every framework Quill holds at its newest version, with its competencies,
 levels and scopes, and its retired competencies marked with `retired_on`.

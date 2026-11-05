@@ -1032,7 +1032,7 @@ reads the repositories, not a bucket" in Decisions.
 
 ## Phase 9: Show the record's words where they differ
 
-- [ ] **Show a sign-off's stored name beside the current one when the two
+- [x] **Show a sign-off's stored name beside the current one when the two
       differ**, in `frameworkRows` in
       `frontend/src/lib/passport/competencyTable.ts` and the table it feeds,
       `CompetencyFrameworkTable`. The page already has both: each
@@ -1041,15 +1041,22 @@ reads the repositories, not a bucket" in Decisions.
       from the catalogue's `display_name`. Today the stored one is thrown
       away. Where they differ, the row shows the current words and, under
       them, "Signed off as: " and the stored words.
-- [ ] **Do the same for the level**, where the stored `LevelRef.name` no
+- [x] **Do the same for the level**, where the stored `LevelRef.name` no
       longer matches the catalogue's level of the same id.
-- [ ] **Say which version a sign-off was given under** where it is not the
+- [x] **Say which version a sign-off was given under** where it is not the
       current one, as "Signed off under version 1".
-- [ ] **Add to the passport backend page** that the page shows both
+- [x] **Add to the passport backend page** that the page shows both
       wordings where they differ.
-- [ ] **Tests**: a matching name shows once; a differing name shows both;
+- [x] **Tests**: a matching name shows once; a differing name shows both;
       the same for a level; an older version is named. A story for
       `CompetencyFrameworkTable` showing a reworded row.
+      Built on 4 November 2026, all in one pull request. The version
+      needed one thing the page did not have, so `framework_version` was
+      added to each index entry and to `CompetencyStateOut`, from the
+      latest sign-off. Both are optional, so an index written before is
+      read as it is, and the field fills in on its next write. The words
+      are "Signed off as", "Signed off at level" and "Signed off under
+      version", each on its own line under today's name.
 
 ## Phase 10: Keep competencies that left a framework visible
 

@@ -629,6 +629,7 @@ def test_the_latest_sign_off_supplies_everything_an_entry_says() -> None:
         level=LEVEL_3,
         requested_level=LEVEL_3,
         level_change_reason=None,
+        framework_version=1,
         signed_on=date(2026, 2, 6),
         signed_off_by="Dr Ada Marsh",
         expires_on=date(2029, 2, 5),
