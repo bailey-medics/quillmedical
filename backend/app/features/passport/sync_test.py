@@ -62,8 +62,15 @@ def _count(db: Session, model: type) -> int:
     return db.scalar(select(func.count()).select_from(model)) or 0
 
 
-def test_the_real_frameworks_are_stored(db_session: Session) -> None:
-    """The four frameworks in shared/, each at its version."""
+def test_the_framework_fixtures_are_stored_by_default(
+    db_session: Session,
+) -> None:
+    """The four in shared/framework-fixtures/, each at its version.
+
+    The frameworks themselves live in their publishers' repositories, so
+    the folder form reads the fixtures when given no folder, as the dev
+    migrate recipe calls it.
+    """
     result = sync_frameworks(db_session)
 
     versions = dict(
