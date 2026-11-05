@@ -68,6 +68,7 @@ from app.email_send import (
 from app.features.passport.errors import PassportError
 from app.features.passport.layout import OutdatedPassportError
 from app.features.passport.models import Passport
+from app.features.passport.store import ConcurrentWriteError
 from app.features.teaching.ci_router import router as teaching_ci_router
 from app.features.teaching.errors import TeachingError
 from app.features.teaching.public_router import (
@@ -352,6 +353,38 @@ async def outdated_passport_handler(
             "detail": (
                 "This passport was made in an older format that Quill can "
                 "no longer read. Nothing in it has been changed."
+            )
+        },
+    )
+
+
+@app.exception_handler(ConcurrentWriteError)
+async def passport_concurrent_write_handler(
+    request: Request, exc: ConcurrentWriteError
+) -> Response:
+    """Answer a passport write that lost a race with a 409, not a 500.
+
+    The store refuses a write built on a stale read, and the bucket
+    refuses an upload onto a bundle that moved, so nothing was
+    overwritten and nothing was saved. The router's lock makes this rare:
+    it is reached only by a writer that skipped the lock, or by two Cloud
+    Run instances racing on the bucket. See
+    ``app/features/passport/locking.py``.
+
+    Not retried here, because the choice behind the write may no longer
+    make sense against what the other writer saved. The store's own
+    words name the passport, so fixed words are sent instead.
+    """
+    from fastapi.responses import JSONResponse
+
+    logger.warning("passport write refused: the passport moved during it")
+
+    return JSONResponse(
+        status_code=409,
+        content={
+            "detail": (
+                "This passport changed while you were saving. Nothing "
+                "was saved. Reload the page and try again."
             )
         },
     )

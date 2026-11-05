@@ -37,7 +37,8 @@ class RecordingSession:
 
     The unit tests run on SQLite, which has no advisory locks, so what
     can be checked here is which statement is sent and with what. That
-    a second writer really waits is Postgres's to do.
+    a second writer really waits is checked on a real Postgres, in
+    ``tests/passport_write_lock_test.py``.
 
     Args:
         dialect: The database the session says it is talking to.
