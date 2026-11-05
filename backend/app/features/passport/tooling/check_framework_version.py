@@ -51,8 +51,10 @@ _IGNORED_FRAMEWORK_FIELDS: tuple[str, ...] = ("version", "description")
 #: once the change merges, the next pull request takes it off again; git
 #: history keeps the record. Gloucestershire's record went from 2 to 1 on
 #: 4 November 2026, because its pilot edition was never numbered, and the
-#: framework tables were emptied in the same change.
-STARTED_AGAIN: frozenset[str] = frozenset({"ghnft_radiotherapy_record"})
+#: framework tables were emptied in the same change. That has merged, so
+#: the name is off again: left here, it would let the record go back to 1
+#: a second time.
+STARTED_AGAIN: frozenset[str] = frozenset()
 
 
 @dataclass(frozen=True)
