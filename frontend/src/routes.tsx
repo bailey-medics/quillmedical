@@ -761,6 +761,13 @@ export const routes: RouteObject[] = [
               </RequireOperator>
             ),
             children: [
+              // Syncing the frameworks by hand. Operator-only: frameworks
+              // belong to every organisation at once.
+              {
+                path: "passport",
+                lazy: lazyFrom(loadAdmin, "AdminPassportPage"),
+                handle: { safeForReload: true },
+              },
               {
                 path: "teaching/modules",
                 lazy: lazyFrom(loadAdmin, "AdminTeachingPage"),
