@@ -251,20 +251,97 @@ rewrite leaves the ledger valid.
   The request names them all: every pull request whose commits are on
   the history descended from `e4a5024a`.
 
+  Submitted on 5 November 2026. GitHub's support form has no option
+  for sensitive data. Repositories, then Deletes, looks closest but is
+  for deleting or purging a whole repository, and ends by asking to
+  confirm a purge that cannot be undone, so it is the wrong route. The
+  request went through Other support, as a Technical issue, with a line
+  at the top saying the repository is not to be deleted. GitHub's
+  assistant on the form confirmed the request matches its documented
+  clean-up after a history rewrite. It also gave the cost: once the
+  references go, the "Files changed" view of each of those pull
+  requests stops working. The code is untouched, since every change is
+  still in `main`'s history. Asking about only #2190 and #2207 would
+  have kept those views, but would leave the old commits reachable
+  through the other references, so garbage collection could not remove
+  them. This box is ticked when GitHub confirms the work is done.
+
+  Found after submitting: the repository did have a fork after all.
+  `turva-uk/qturva` was made at 22:19 on 4 November 2026,
+  the night before the rewrite, so the search on 1 November could not
+  have seen it. It is public, opens `e4a5024a`, and its 93 branches look
+  like untouched copies of the old ones. A fork keeps the old commits
+  reachable, so GitHub cannot garbage-collect them while it exists.
+  Mark asked its owner on 5 November to delete it and fork again (GitHub
+  allows one fork per account, so the delete comes first), and to
+  re-clone any local copy, since a push from an old clone would bring
+  the old history back. The Support ticket is to be corrected to say so,
+  and told when the fork is gone.
+
 ## Phase 5: Make the old values stale
 
-- [ ] Mark gives the box a new tailnet address in the Tailscale admin
-  console (Machines, the box, Edit machine IPv4) and a new DHCP
-  reservation on the router, then renews the lease or reboots the box.
-  Peers learn the new tailnet address on their own. Anything that
-  copied the old values before Phase 4, a search cache or somebody's
-  clone, then points at nothing. This does not depend on the other
-  phases and can be done at any time; it is last only because it is
-  the one with no repository work in it.
+Anything that copied the old values before Phase 4, a search cache or
+somebody's clone, then points at nothing. This phase does not depend on
+the others and can be done at any time; it is last only because it is
+the one with no repository work in it.
 
-- [ ] While in the router, Mark turns UPnP off. The review saw the
-  router answer UPnP and NAT-PMP requests, which lets any device or
-  container on the LAN open a port to the internet.
+Most of it can be done away from home, because the Claude session on
+the box and the alert watcher both connect outwards, to Anthropic and to
+Slack, and never use the addresses being changed. They stay up whatever
+happens to Tailscale or the LAN, and the session is the way back in if
+anything else drops. What cannot be done remotely is anything that
+could leave the box with no address at all, because then nothing
+reaches it until somebody is in the room.
+
+- [x] Mark gives the box a new tailnet address in the Tailscale admin
+  console (Machines, the box, Edit machine IPv4). Peers learn it on
+  their own. An open SSH or VS Code connection drops at the change and
+  reconnects by name, because MagicDNS is on and the box already
+  reaches the Mac by name; anything that names the box by address has
+  to be changed to its name first.
+
+  Done remotely on 5 November 2026. Checked from the box afterwards:
+  Tailscale running and healthy with every peer online, SSH from the
+  box to the Mac working, and the alert watcher active. The new
+  address appears nowhere in `e4a5024a`, the commit that published the
+  old one, which the box still holds locally until garbage collection.
+
+  The tailnet IPv6 address cannot be edited. It changes only if the box
+  is removed from the tailnet and logged in again, which leaves it off
+  the tailnet in between, so that is left for a time when somebody is
+  at home.
+
+- [x] Mark turns UPnP off on the router. The review saw the router
+  answer UPnP and NAT-PMP requests, which lets any device or container
+  on the LAN open a port to the internet without asking.
+
+  Done remotely on 5 November 2026, through the box: `ssh -L
+  8080:_gateway:80 devbox` from the Mac, or forwarding `_gateway:80` in
+  VS Code's Ports tab, puts the router's admin page at
+  `http://localhost:8080`. The box resolves `_gateway` to its default
+  gateway, so no address has to be known or typed. On this router the
+  one UPnP switch turns NAT-PMP off as well. Checked from the box
+  afterwards: an SSDP (Simple Service Discovery Protocol) `M-SEARCH` for an internet gateway device and a
+  NAT-PMP request to the router both get no answer, and nothing else on
+  the LAN answers as a gateway. The router's WAN and NAT settings stay
+  on: NAT is what keeps unasked-for traffic out, and UPnP was the
+  setting that let devices open holes through it.
+
+- [ ] Mark gives the box a new DHCP reservation on the router, at
+  home, then renews the lease with `sudo networkctl renew` on the
+  default route's interface, or reboots the box. The box's netplan
+  files set `dhcp4: true`, so the router decides the address and
+  nothing on the box needs editing. Left until Mark is at home because
+  a mistake here leaves the box with no address and nothing able to
+  reach it. A reboot ends the tmux Claude sessions, which `just c`
+  starts again; the alert watcher starts again on its own.
+
+- [ ] Mark checks the internet provider's box for UPnP too, at home.
+  Found on 5 November 2026: the router's WAN address is itself a
+  private address, so the router sits behind the provider's box, and
+  that box may have UPnP on as well. The check from the box cannot see
+  past the first router, so this one is looked at in its own admin
+  page.
 
 ## Decisions
 
