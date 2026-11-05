@@ -47,6 +47,7 @@ import type {
   CpdEntryInput,
   EvidenceScan,
   EvidenceUpload,
+  FrameworkDefinition,
   InboxItem,
   InvitePreview,
   LandingView,
@@ -178,6 +179,14 @@ export function setPassportLandingView(
  */
 export function fetchPassportFrameworks(): Promise<FrameworkChoice[]> {
   return api.get<FrameworkChoice[]>("/passport/frameworks");
+}
+
+/**
+ * Every framework Quill holds, in full, at its newest version: what the
+ * passport's pages read the frameworks from.
+ */
+export function fetchFrameworkCatalogue(): Promise<FrameworkDefinition[]> {
+  return api.get<FrameworkDefinition[]>("/passport/catalogue");
 }
 
 /**
