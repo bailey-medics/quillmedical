@@ -1,7 +1,6 @@
 // frontend/src/types/cbac.ts
 
 import competenciesData from "../generated/competencies.json";
-import frameworksData from "../generated/frameworks.json";
 import baseProfessionsData from "../generated/base-professions.json";
 
 // Infer competency types from generated JSON
@@ -80,69 +79,19 @@ export function getCompetencyDetails(id: CompetencyId): Competency | undefined {
 export const ALL_COMPETENCIES: Competency[] = competenciesData.competencies;
 
 /**
- * One published document a clinician works to, as a set of competencies:
- * a definition file that declares a `framework:` block. Its items are
- * the competencies carrying its id, each recorded in a passport and
- * granted to nobody.
- */
-export interface Framework {
-  id: string;
-  name: string;
-  publisher: string;
-  /**
-   * Quill's count of changes to the framework, from 1. Every sign-off
-   * records the version it was given under.
-   */
-  version: number;
-  /** Shown to nobody: the publisher's own edition label, and the like. */
-  description: string;
-  /** From `specialties.json`. Empty where it belongs to every specialty. */
-  specialties: string[];
-}
-
-/** Every framework, in the order the definition files sort. */
-export const ALL_FRAMEWORKS: Framework[] = frameworksData.frameworks;
-
-/**
- * Whether a competency is a framework's: recorded in a passport and
- * granted to nobody. Every framework's competencies are, so no flag on
- * the framework says it.
- */
-function isFrameworkCompetency(competency: Competency): boolean {
-  return competency.framework_id !== undefined;
-}
-
-/** Every competency that is not retired, framework ones included. */
-const CURRENT_COMPETENCIES: Competency[] = ALL_COMPETENCIES.filter(
-  (competency) => competency.retired_on === undefined,
-);
-
-/**
  * The competencies still available to grant.
  *
  * Anything offering a choice of what to grant uses this. The API refuses
  * a retired id at the write boundary, so listing one gives an admin
  * something they can select and cannot save, with a validation error
- * they can do nothing about. It refuses a framework's competency for the
- * same reason, and leaving those out is also what keeps a paper form's sixty
- * statements out of every admin picker. Mirrors what
+ * they can do nothing about. A framework's competencies are not here at
+ * all: the bundle holds permissions only, which is also what keeps a
+ * paper form's sixty statements out of every admin picker. Mirrors what
  * `validate_competency_ids` accepts in `backend/app/cbac/competencies.py`.
  */
-export const ACTIVE_COMPETENCIES: Competency[] = CURRENT_COMPETENCIES.filter(
-  (competency) => !isFrameworkCompetency(competency),
+export const ACTIVE_COMPETENCIES: Competency[] = ALL_COMPETENCIES.filter(
+  (competency) => competency.retired_on === undefined,
 );
-
-/**
- * The competencies the clinician passport may record something new
- * against: active, and marked `assessable`.
- *
- * The passport's pickers use this, so nobody is offered `manage_users`
- * to be signed off on. The API refuses anything else when a record is
- * created. Mirrors `ASSESSABLE_COMPETENCY_IDS` in
- * `backend/app/cbac/competencies.py`.
- */
-export const ASSESSABLE_COMPETENCIES: Competency[] =
-  CURRENT_COMPETENCIES.filter((competency) => competency.assessable === true);
 
 /**
  * The competencies that manage people within a whitelist: every active
