@@ -1,5 +1,6 @@
 /**
- * What a sign-off for a competency may cover, from the shared catalogue.
+ * What a sign-off for a competency may cover, from the frameworks the
+ * backend serves.
  *
  * Some competencies are signed off one part of practice at a time: a
  * tumour site, for prescribing chemotherapy. Read from the catalogue for
@@ -7,17 +8,12 @@
  * competency and the same for everybody.
  */
 
-import competenciesData from "@/generated/competencies.json";
+import type { FrameworkCatalogue } from "./catalogue";
 
 /** One thing a sign-off may cover. */
 export interface ScopeOption {
   id: string;
   name: string;
-}
-
-interface CatalogueEntry {
-  id: string;
-  scopes?: ScopeOption[];
 }
 
 /**
@@ -37,11 +33,14 @@ export function nameWithScope(
 
 /**
  * The scopes a competency declares, in the catalogue's order. Empty where
- * it is assessed as a whole, or is unknown.
+ * it is assessed as a whole, is unknown, or the catalogue has not loaded
+ * yet.
  */
-export function scopesFor(competencyId: string): ScopeOption[] {
-  const catalogue = competenciesData.competencies as CatalogueEntry[];
-  const entry = catalogue.find((item) => item.id === competencyId);
+export function scopesFor(
+  catalogue: FrameworkCatalogue | null,
+  competencyId: string,
+): ScopeOption[] {
+  const entry = catalogue?.competency(competencyId);
 
   return entry?.scopes?.map(({ id, name }) => ({ id, name })) ?? [];
 }

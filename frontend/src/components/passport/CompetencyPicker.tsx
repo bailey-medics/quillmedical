@@ -33,13 +33,18 @@
 
 import { useMemo } from "react";
 import { SelectField } from "@components/form";
-import { frameworkItems, getFramework } from "@lib/passport/frameworks";
+import type { FrameworkCatalogue } from "@lib/passport/catalogue";
 
 /** What the field says when the holder works to no framework yet. */
 export const NO_FRAMEWORKS_MESSAGE =
   "Choose the frameworks you work to in Settings, then pick from their competencies here.";
 
 export interface CompetencyPickerProps {
+  /**
+   * The frameworks Quill holds, from `useFrameworkCatalogue`. Null while
+   * they load, when the field lists nothing yet.
+   */
+  catalogue: FrameworkCatalogue | null;
   /** The chosen competency id, or null */
   value: string | null;
   /** Called with the chosen competency id */
@@ -62,6 +67,7 @@ export interface CompetencyPickerProps {
 }
 
 export default function CompetencyPicker({
+  catalogue,
   value,
   onChange,
   frameworks = [],
@@ -84,14 +90,14 @@ export default function CompetencyPicker({
       .map((id) => ({
         // A framework Quill no longer holds has no items, and is dropped
         // below with the others that list nothing.
-        group: getFramework(id)?.name ?? id,
-        items: frameworkItems(id).map((competency) => ({
+        group: catalogue?.getFramework(id)?.name ?? id,
+        items: (catalogue?.frameworkItems(id) ?? []).map((competency) => ({
           value: competency.id,
           label: competency.display_name,
         })),
       }))
       .filter((group) => group.items.length > 0);
-  }, [frameworkKey]);
+  }, [catalogue, frameworkKey]);
 
   const nothingToPick = data.length === 0;
 

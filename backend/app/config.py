@@ -168,8 +168,28 @@ class Settings(BaseSettings):
         description="Core database user",
     )
     CORE_DB_PASSWORD: SecretStr = Field(
-        ...,
-        description="Core database password",
+        SecretStr(""),
+        description=(
+            "Core database password. Required unless CORE_DB_IAM_AUTH is "
+            "set, when a token stands in for it"
+        ),
+    )
+    CORE_DB_IAM_AUTH: bool = Field(
+        False,
+        description=(
+            "Sign in to the core database with IAM (Identity and Access "
+            "Management): CORE_DB_USER is a service account's database "
+            "user, and each connection's password is an access token for "
+            "that account. Set for the framework sync job alone"
+        ),
+    )
+    FRAMEWORK_SYNC_DB_USER: str | None = Field(
+        None,
+        description=(
+            "The framework sync job's IAM database user. The migrations "
+            "job grants it the framework_sync role on every run. Unset in "
+            "CI and on a laptop, which have no such user"
+        ),
     )
     CORE_DB_HOST: str = Field(
         "postgres-core",
@@ -239,6 +259,14 @@ class Settings(BaseSettings):
     TEACHING_GCS_BUCKET: str | None = Field(
         None,
         description="GCS bucket for teaching question bank images",
+    )
+    FRAMEWORK_REPOSITORIES: dict[str, list[str]] = Field(
+        default_factory=dict,
+        description=(
+            "The framework repositories the framework sync job reads, as "
+            "JSON: each owner/name on GitHub, with the framework ids it "
+            "may publish"
+        ),
     )
     TEACHING_IMAGES_BASE_URL: str | None = Field(
         None,
@@ -475,6 +503,19 @@ class Settings(BaseSettings):
     )
 
     # --- Startup validation ---
+    @model_validator(mode="after")
+    def _validate_core_db_password(self) -> Settings:
+        """Require a password unless a token signs the connection in."""
+        if self.CORE_DB_IAM_AUTH:
+            return self
+        if not self.CORE_DB_PASSWORD.get_secret_value():
+            raise ValueError(
+                "CORE_DB_PASSWORD is required unless CORE_DB_IAM_AUTH is "
+                "true"
+            )
+
+        return self
+
     @model_validator(mode="after")
     def _validate_clinical_services(self) -> Settings:
         """Verify FHIR/EHRbase config is present when clinical services are enabled."""

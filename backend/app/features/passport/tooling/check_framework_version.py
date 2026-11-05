@@ -43,6 +43,17 @@ import yaml
 #: version is what is being checked, and the description is internal.
 _IGNORED_FRAMEWORK_FIELDS: tuple[str, ...] = ("version", "description")
 
+#: Frameworks numbered afresh from version 1, each named here by a person.
+#:
+#: The one exception to "a version never goes down", and only back to 1
+#: with nothing else changed. Empty unless a fresh start is in flight. A
+#: name here matters only while ``main`` still holds the old number, so
+#: once the change merges, the next pull request takes it off again; git
+#: history keeps the record. Gloucestershire's record went from 2 to 1 on
+#: 4 November 2026, because its pilot edition was never numbered, and the
+#: framework tables were emptied in the same change.
+STARTED_AGAIN: frozenset[str] = frozenset({"ghnft_radiotherapy_record"})
+
 
 @dataclass(frozen=True)
 class Rewording:
@@ -283,6 +294,14 @@ def check_file(
 
     changed = _comparable(old) != _comparable(new)
 
+    if (
+        version == 1
+        and old_version > 1
+        and not changed
+        and framework_id in STARTED_AGAIN
+    ):
+        return
+
     if version < old_version:
         result.violations.append(
             f"{rel_path}: version went down from {old_version} to "
@@ -305,6 +324,40 @@ def check_file(
             f"{rel_path}: the version moved to {version} but nothing else "
             f"in the framework did. Put it back to {old_version}."
         )
+
+    for dropped in _dropped_levels_and_scopes(old, new):
+        result.violations.append(
+            f"{rel_path}: {dropped} was removed. A level or scope a "
+            "sign-off may name is never removed from a competency."
+        )
+
+
+def _dropped_levels_and_scopes(
+    old: dict[str, object], new: dict[str, object]
+) -> list[str]:
+    """Each level or scope id a competency had on main that it now lacks.
+
+    Mirrors the sync's refusal, so a framework repository's own CI says
+    so before the change merges. A competency removed whole is the
+    deletion check's to refuse, not this one's.
+    """
+    before = _by_id(old.get("competencies"))
+    after = _by_id(new.get("competencies"))
+    dropped: list[str] = []
+
+    for competency_id, entry in sorted(before.items()):
+        now = after.get(competency_id)
+        if now is None:
+            continue
+
+        for kind in ("levels", "scopes"):
+            was = set(_by_id(entry.get(kind)))
+            kept = set(_by_id(now.get(kind)))
+            noun = kind[:-1]
+            for gone in sorted(was - kept):
+                dropped.append(f"{competency_id}: {noun} {gone}")
+
+    return dropped
 
 
 def _repo_root(directory: Path) -> Path | None:

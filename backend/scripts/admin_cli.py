@@ -13,7 +13,7 @@ Environment Variables:
                       send-newsletter, accessibility-reminder,
                       apply-retention, send-teaching-reminders,
                       finish-exams-out-of-time, set-records-kept,
-                      sync-teaching.
+                      sync-teaching, sync-frameworks.
     ADMIN_USERNAME:   Required.  Target username.
     ADMIN_EMAIL:      Required for create-superadmin.
     ADMIN_PASSWORD:   Required for create-superadmin.
@@ -66,6 +66,7 @@ Usage (local dev container):
 from __future__ import annotations
 
 import os
+import re
 import sys
 from collections.abc import Callable
 from typing import NoReturn
@@ -289,6 +290,9 @@ def run_migrations() -> int:
         print(f"✗ Migration failed: {exc}", file=sys.stderr)
         return 1
 
+    if grant_framework_sync_role() != 0:
+        return 1
+
     # The framework tables, read from the framework files this revision
     # ships with. Here rather than at start-up, because several instances
     # start at once and this job runs once, before any of them serve. A
@@ -296,6 +300,68 @@ def run_migrations() -> int:
     from app.features.passport import sync
 
     return sync.main([])
+
+
+#: A Cloud SQL IAM database user for a service account: its email
+#: without ".gserviceaccount.com". Checked before it is put into SQL,
+#: where a name cannot be passed as a parameter.
+_IAM_DATABASE_USER = re.compile(r"^[a-z][a-z0-9-]*@[a-z][a-z0-9-]*\.iam$")
+
+
+def grant_framework_sync_role() -> int:
+    """Grant the framework_sync role to the framework sync job's user.
+
+    Run after the migrations on every deploy, so it does not matter
+    whether Terraform made that user before or after the migration that
+    made the role. Granting a role already held changes nothing. Where
+    ``FRAMEWORK_SYNC_DB_USER`` is unset, as in CI and on a laptop, there
+    is no such user and nothing is done. Where the user does not exist
+    yet, it says so and carries on, and the next deploy grants it.
+    """
+    from sqlalchemy import text
+
+    from app.config import settings
+    from app.db.core_db import CoreSessionLocal
+
+    user = settings.FRAMEWORK_SYNC_DB_USER
+
+    if not user:
+        return 0
+
+    if not _IAM_DATABASE_USER.match(user):
+        print(
+            f"✗ FRAMEWORK_SYNC_DB_USER is not an IAM database user: {user!r}",
+            file=sys.stderr,
+        )
+        return 1
+
+    db = CoreSessionLocal()
+
+    try:
+        exists = db.execute(
+            text("SELECT 1 FROM pg_roles WHERE rolname = :name"),
+            {"name": user},
+        ).first()
+
+        if exists is None:
+            print(f"! {user} does not exist yet; the next deploy grants it.")
+            return 0
+
+        # A role name cannot be a parameter. It was checked against
+        # _IAM_DATABASE_USER above, which no quote or space passes.
+        grant = f'GRANT framework_sync TO "{user}"'  # noqa: S608  # nosec B608
+        db.execute(text(grant))
+        db.commit()
+    except Exception as exc:
+        db.rollback()
+        print(f"✗ Could not grant framework_sync: {exc}", file=sys.stderr)
+        return 1
+    finally:
+        db.close()
+
+    print(f"✓ {user} holds framework_sync")
+
+    return 0
 
 
 def show_migration() -> int:
@@ -420,6 +486,49 @@ def sync_teaching() -> int:
         print(f"✗ {failed.bank_id}: {failed.error}", file=sys.stderr)
 
     return 1 if outcome.errors else 0
+
+
+def sync_frameworks() -> int:
+    """Store every passport framework version the framework repositories
+    hold and the tables lack.
+
+    Started by the framework pipeline once a framework repository merges,
+    as ``sync-teaching`` is by the teaching pipeline. It reads every
+    repository in ``FRAMEWORK_REPOSITORIES`` from GitHub, not only the one
+    that merged, so a run that was missed is caught up by the next. Every
+    new version is written or none is, so a refusal fails the job and
+    names the version, and the pipeline run goes red.
+    """
+    from app.config import settings
+    from app.db.core_db import CoreSessionLocal
+    from app.features.passport.sync import sync_from_repositories
+
+    repositories = settings.FRAMEWORK_REPOSITORIES
+
+    if not repositories:
+        print("✗ FRAMEWORK_REPOSITORIES is not set.", file=sys.stderr)
+        return 1
+
+    db = CoreSessionLocal()
+
+    try:
+        result = sync_from_repositories(db, repositories)
+        # Commits the run record whether or not the sync succeeded.
+        db.commit()
+    except Exception as exc:
+        db.rollback()
+        print(f"✗ The framework sync did not run: {exc}", file=sys.stderr)
+        return 1
+    finally:
+        db.close()
+
+    if not result.succeeded:
+        print(f"✗ Framework sync failed: {result.error}", file=sys.stderr)
+        return 1
+
+    print(f"✓ Framework sync: {result.versions_written} version(s) written.")
+
+    return 0
 
 
 def send_newsletter() -> int:
@@ -655,8 +764,18 @@ def delete_passport() -> int:
         if not confirm:
             print(f"Holder:   {username} (user {user.id})")
             print(f"Passport: {passport.id}")
-            for label, count in _passport_counts(passport.id).items():
-                print(f"  {count:4d} {label}")
+            from app.features.passport.layout import OutdatedPassportError
+
+            # A passport in an older layout is refused by the module the
+            # counts read through. It is still named, because deleting
+            # one is exactly what this is for.
+            try:
+                counts = _passport_counts(passport.id)
+            except OutdatedPassportError:
+                print("  In an older layout, so its records were not counted")
+            else:
+                for label, count in counts.items():
+                    print(f"  {count:4d} {label}")
             print(f"  {open_requests or 0:4d} open sign-off requests")
             print(
                 "Deletable: "
@@ -761,6 +880,10 @@ ACTIONS: dict[str, tuple[Callable[[], int], str]] = {
     "sync-teaching": (
         sync_teaching,
         "Sync every teaching bank from the bucket into the database",
+    ),
+    "sync-frameworks": (
+        sync_frameworks,
+        "Store every new passport framework version, read from GitHub",
     ),
     "finish-exams-out-of-time": (
         finish_exams_out_of_time,

@@ -95,6 +95,21 @@ def _sign_offs(
     return found
 
 
+def sign_off_records(
+    store: PassportStore, passport_id: str
+) -> list[tuple[str, SignOff]]:
+    """Every sign-off in the passport, with its folder name.
+
+    For a whole-passport read that must check each record before it is
+    shown, as the exports do.
+    """
+    return [
+        pair
+        for records in _sign_offs(store, passport_id).values()
+        for pair in records
+    ]
+
+
 def _logbook_counts(
     store: PassportStore, passport_id: str
 ) -> tuple[dict[EntryKey, int], dict[EntryKey, ScopeRef]]:
@@ -276,6 +291,7 @@ def _entry(
         level=latest.level,
         requested_level=latest.requested_level,
         level_change_reason=latest.comments if changed else None,
+        framework_version=latest.framework_version,
         signed_on=signed_on,
         signed_off_by=assessor,
         expires_on=latest.expires_on,

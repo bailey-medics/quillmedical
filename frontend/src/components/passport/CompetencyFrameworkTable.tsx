@@ -33,6 +33,7 @@ import BaseCard from "@/components/base-card/BaseCard";
 import SignOffStatusBadge from "@/components/badge/SignOffStatusBadge";
 import DataTable, { type Column } from "@components/tables/DataTable";
 import { BodyText, Heading } from "@/components/typography";
+import type { FrameworkCatalogue } from "@lib/passport/catalogue";
 import {
   frameworkRows,
   logbookLabel,
@@ -40,10 +41,55 @@ import {
 } from "@lib/passport/competencyTable";
 import type { CompetencyState, FrameworkRef } from "@lib/passport";
 
+/**
+ * The competency's name today, then whether it has left the framework,
+ * then what its sign-off recorded where the framework has moved on: its
+ * words, its level's words and its version.
+ * The record keeps the words it was signed under, so they are shown, not
+ * silently replaced.
+ */
+function competencyCell(row: CompetencyTableRow) {
+  const name = row.scope ? `${row.name} (${row.scope.name})` : row.name;
+
+  if (row.signedAs === null && !row.retired) return name;
+
+  const {
+    name: signedName,
+    level,
+    version,
+  } = row.signedAs ?? {
+    name: null,
+    level: null,
+    version: null,
+  };
+
+  return (
+    <Stack gap={0}>
+      <BodyText>{name}</BodyText>
+      {row.retired && (
+        <BodyText c="dimmed">
+          {row.retiredInVersion !== null
+            ? `Not in this framework since version ${row.retiredInVersion}`
+            : "No longer in this framework"}
+        </BodyText>
+      )}
+      {signedName !== null && (
+        <BodyText c="dimmed">Signed off as: {signedName}</BodyText>
+      )}
+      {level !== null && (
+        <BodyText c="dimmed">Signed off at level: {level}</BodyText>
+      )}
+      {version !== null && (
+        <BodyText c="dimmed">Signed off under version {version}</BodyText>
+      )}
+    </Stack>
+  );
+}
+
 const columns: Column<CompetencyTableRow>[] = [
   {
     header: "Competency",
-    render: (row) => (row.scope ? `${row.name} (${row.scope.name})` : row.name),
+    render: competencyCell,
   },
   {
     header: "Sign-off",
@@ -63,6 +109,11 @@ const columns: Column<CompetencyTableRow>[] = [
 ];
 
 export interface CompetencyFrameworkTableProps {
+  /**
+   * The frameworks Quill holds, from `useFrameworkCatalogue`. Null while
+   * they load, when the table lists no rows yet.
+   */
+  catalogue: FrameworkCatalogue | null;
   /** The framework this table shows */
   framework: FrameworkRef;
   /** Every competency the passport holds evidence for, in any framework */
@@ -77,11 +128,15 @@ export interface CompetencyFrameworkTableProps {
  * Renders the framework's name and its table in a card.
  */
 export default function CompetencyFrameworkTable({
+  catalogue,
   framework,
   competencies,
   onSelect,
 }: CompetencyFrameworkTableProps) {
-  const rows = frameworkRows(framework.id, competencies);
+  const rows =
+    catalogue === null
+      ? []
+      : frameworkRows(catalogue, framework.id, competencies);
 
   return (
     <BaseCard data-testid="competency-framework-table">

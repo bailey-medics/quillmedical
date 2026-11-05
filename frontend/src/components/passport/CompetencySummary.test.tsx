@@ -8,22 +8,37 @@ import userEvent from "@testing-library/user-event";
 import { renderWithMantine } from "@test/test-utils";
 import CompetencySummary, { NO_FRAMEWORK_GROUP } from "./CompetencySummary";
 import { competencies } from "./fixtures";
+import { TEST_FRAMEWORK_CATALOGUE } from "@test/frameworkCatalogue";
 
 describe("CompetencySummary", () => {
   describe("Content", () => {
     it("renders a row per competency", () => {
-      renderWithMantine(<CompetencySummary competencies={competencies} />);
+      renderWithMantine(
+        <CompetencySummary
+          catalogue={TEST_FRAMEWORK_CATALOGUE}
+          competencies={competencies}
+        />,
+      );
       expect(screen.getAllByTestId("competency-row")).toHaveLength(3);
     });
 
     it("renders the default heading", () => {
-      renderWithMantine(<CompetencySummary competencies={competencies} />);
+      renderWithMantine(
+        <CompetencySummary
+          catalogue={TEST_FRAMEWORK_CATALOGUE}
+          competencies={competencies}
+        />,
+      );
       expect(screen.getByText("Competencies")).toBeInTheDocument();
     });
 
     it("accepts a different heading", () => {
       renderWithMantine(
-        <CompetencySummary competencies={competencies} title="SACT passport" />,
+        <CompetencySummary
+          catalogue={TEST_FRAMEWORK_CATALOGUE}
+          competencies={competencies}
+          title="SACT passport"
+        />,
       );
       expect(screen.getByText("SACT passport")).toBeInTheDocument();
     });
@@ -33,26 +48,46 @@ describe("CompetencySummary", () => {
     it("shows no denominator, percentage or progress bar", () => {
       // A passport is not a defined set of competencies - membership is
       // local policy, so a denominator would invent one.
-      renderWithMantine(<CompetencySummary competencies={competencies} />);
+      renderWithMantine(
+        <CompetencySummary
+          catalogue={TEST_FRAMEWORK_CATALOGUE}
+          competencies={competencies}
+        />,
+      );
       expect(screen.queryByText(/of 3/)).not.toBeInTheDocument();
       expect(screen.queryByText(/%/)).not.toBeInTheDocument();
       expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
     });
 
     it("does not report how many are complete", () => {
-      renderWithMantine(<CompetencySummary competencies={competencies} />);
+      renderWithMantine(
+        <CompetencySummary
+          catalogue={TEST_FRAMEWORK_CATALOGUE}
+          competencies={competencies}
+        />,
+      );
       expect(screen.queryByText(/complete/i)).not.toBeInTheDocument();
     });
   });
 
   describe("Empty state", () => {
     it("explains what would make a competency appear", () => {
-      renderWithMantine(<CompetencySummary competencies={[]} />);
+      renderWithMantine(
+        <CompetencySummary
+          catalogue={TEST_FRAMEWORK_CATALOGUE}
+          competencies={[]}
+        />,
+      );
       expect(screen.getByText("No competencies yet")).toBeInTheDocument();
     });
 
     it("renders no rows", () => {
-      renderWithMantine(<CompetencySummary competencies={[]} />);
+      renderWithMantine(
+        <CompetencySummary
+          catalogue={TEST_FRAMEWORK_CATALOGUE}
+          competencies={[]}
+        />,
+      );
       expect(screen.queryByTestId("competency-row")).not.toBeInTheDocument();
     });
   });
@@ -64,7 +99,12 @@ describe("CompetencySummary", () => {
       // same whatever the fetch returns, so the panel changed shape
       // for no information - which read as a flicker on every first
       // visit.
-      renderWithMantine(<CompetencySummary competencies={[]} />);
+      renderWithMantine(
+        <CompetencySummary
+          catalogue={TEST_FRAMEWORK_CATALOGUE}
+          competencies={[]}
+        />,
+      );
 
       expect(screen.getByText("No competencies yet")).toBeInTheDocument();
     });
@@ -74,7 +114,11 @@ describe("CompetencySummary", () => {
     it("passes the chosen competency id up", async () => {
       const onSelect = vi.fn();
       renderWithMantine(
-        <CompetencySummary competencies={competencies} onSelect={onSelect} />,
+        <CompetencySummary
+          catalogue={TEST_FRAMEWORK_CATALOGUE}
+          competencies={competencies}
+          onSelect={onSelect}
+        />,
       );
 
       await userEvent.click(
@@ -101,6 +145,7 @@ describe("CompetencySummary", () => {
     it("puts each competency under the framework it belongs to", () => {
       renderWithMantine(
         <CompetencySummary
+          catalogue={TEST_FRAMEWORK_CATALOGUE}
           competencies={[
             {
               ...row,
@@ -129,6 +174,7 @@ describe("CompetencySummary", () => {
       // build no longer has. The record is the holder's all the same.
       renderWithMantine(
         <CompetencySummary
+          catalogue={TEST_FRAMEWORK_CATALOGUE}
           competencies={[
             { ...row, id: "not_in_the_catalogue", name: "An older skill" },
           ]}

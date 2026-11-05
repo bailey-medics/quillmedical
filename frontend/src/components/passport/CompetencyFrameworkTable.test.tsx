@@ -16,6 +16,11 @@ import {
   referPalliativeCompetency,
   referRadicalCompetency,
 } from "./fixtures";
+import {
+  TEST_FRAMEWORK_CATALOGUE,
+  TEST_FRAMEWORK_DEFINITIONS,
+} from "@test/frameworkCatalogue";
+import { FrameworkCatalogue } from "@lib/passport/catalogue";
 
 const [radiotherapy, sact] = oncologyFrameworks;
 
@@ -28,6 +33,7 @@ describe("CompetencyFrameworkTable", () => {
   it("heads the table with the framework's name", () => {
     renderWithMantine(
       <CompetencyFrameworkTable
+        catalogue={TEST_FRAMEWORK_CATALOGUE}
         framework={radiotherapy}
         competencies={oncologyCompetencies}
       />,
@@ -41,6 +47,7 @@ describe("CompetencyFrameworkTable", () => {
   it("shows each row's sign-off and logbook count", () => {
     renderWithMantine(
       <CompetencyFrameworkTable
+        catalogue={TEST_FRAMEWORK_CATALOGUE}
         framework={radiotherapy}
         competencies={oncologyCompetencies}
       />,
@@ -61,6 +68,7 @@ describe("CompetencyFrameworkTable", () => {
   it("shows no signed count under the framework's name", () => {
     renderWithMantine(
       <CompetencyFrameworkTable
+        catalogue={TEST_FRAMEWORK_CATALOGUE}
         framework={radiotherapy}
         competencies={oncologyCompetencies}
       />,
@@ -72,6 +80,7 @@ describe("CompetencyFrameworkTable", () => {
   it("names the site on each row of a scoped competency", () => {
     renderWithMantine(
       <CompetencyFrameworkTable
+        catalogue={TEST_FRAMEWORK_CATALOGUE}
         framework={sact}
         competencies={[lungCompetency, breastCompetency]}
       />,
@@ -89,6 +98,7 @@ describe("CompetencyFrameworkTable", () => {
     const onSelect = vi.fn<(competencyId: string) => void>();
     renderWithMantine(
       <CompetencyFrameworkTable
+        catalogue={TEST_FRAMEWORK_CATALOGUE}
         framework={radiotherapy}
         competencies={oncologyCompetencies}
         onSelect={onSelect}
@@ -98,5 +108,72 @@ describe("CompetencyFrameworkTable", () => {
     await userEvent.click(screen.getByText(prescribePalliativeCompetency.name));
 
     expect(onSelect).toHaveBeenCalledWith(prescribePalliativeCompetency.id);
+  });
+
+  it("shows what a sign-off recorded where the framework reworded it", () => {
+    renderWithMantine(
+      <CompetencyFrameworkTable
+        catalogue={TEST_FRAMEWORK_CATALOGUE}
+        framework={radiotherapy}
+        competencies={[
+          {
+            ...referPalliativeCompetency,
+            name: "Refer for palliative radiotherapy",
+          },
+        ]}
+      />,
+    );
+
+    expect(
+      screen.getByText("Signed off as: Refer for palliative radiotherapy"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(referPalliativeCompetency.name),
+    ).toBeInTheDocument();
+  });
+
+  it("says nothing more where the words still match", () => {
+    renderWithMantine(
+      <CompetencyFrameworkTable
+        catalogue={TEST_FRAMEWORK_CATALOGUE}
+        framework={radiotherapy}
+        competencies={[referPalliativeCompetency]}
+      />,
+    );
+
+    expect(screen.queryByText(/Signed off as:/)).not.toBeInTheDocument();
+  });
+
+  it("marks a competency that has left the framework", () => {
+    const retiring = new FrameworkCatalogue(
+      TEST_FRAMEWORK_DEFINITIONS.map((framework) =>
+        framework.id === radiotherapy.id
+          ? {
+              ...framework,
+              competencies: framework.competencies.map((competency) =>
+                competency.id === referPalliativeCompetency.id
+                  ? {
+                      ...competency,
+                      retired_on: "2026-11-01",
+                      retired_in_version: 2,
+                    }
+                  : competency,
+              ),
+            }
+          : framework,
+      ),
+    );
+
+    renderWithMantine(
+      <CompetencyFrameworkTable
+        catalogue={retiring}
+        framework={radiotherapy}
+        competencies={[referPalliativeCompetency]}
+      />,
+    );
+
+    expect(
+      screen.getByText("Not in this framework since version 2"),
+    ).toBeInTheDocument();
   });
 });

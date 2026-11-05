@@ -111,6 +111,67 @@ it is built.
       new is recorded against one, and every competency a passport can
       still record sits under a framework. Phase 4 needs no folder for
       orphans, because no record exists against one.
+      **Reversed in #2335, merged 3 November 2026, at the product owner's
+      request:** the list was deleted after all. To pass the check, #2335
+      named all sixteen ids in `REMOVED_ON_PURPOSE` in
+      `.github/scripts/ci/check-competencies-not-deleted.sh`, the check's
+      one exception, for an id already retired on the base ref.
+- [ ] **Empty `REMOVED_ON_PURPOSE` now that #2335 has merged.** The
+      sixteen ids are no longer on `main`, so the list does nothing, and
+      an exception left open is one somebody can lean on later. A pull
+      request of its own, on a new branch off `origin/main` such as
+      `feature/catalogue-empty-removed-on-purpose`, in no stack.
+      Recorded on 4 November 2026: the change was first made in the wrong
+      worktree. A copy sits uncommitted in worktree 3
+      (`~/github/quillmedical-3`, on the merged
+      `feature/catalogue-delete-the-retired-oncology-list`), and a patch
+      of it was saved on 3 November. Once this pull request is open,
+      worktree 3 drops its copy.
+      - **In `check-competencies-not-deleted.sh`**, replace the sixteen
+        ids and the comment above them with an empty list:
+
+        ```bash
+        # Empty unless a deletion is in flight. An id here matters only while it
+        # is still on the base ref, so once the deletion merges, the next pull
+        # request takes it off again; git history keeps the record. The first
+        # oncology list left this way, in pull request #2335.
+        REMOVED_ON_PURPOSE=()
+        ```
+
+        Delete the line "Entries stay after the deletion merges, as the
+        record that it happened", which now says the opposite of the
+        rule. Leave the mechanism, `removable_ids` and the check that uses
+        it, as it is: only the list's contents go.
+      - **In `check-competencies-not-deleted.bats`**, two tests put
+        `certify_death` on the list with a `sed` anchored on the line
+        `  prescribe_sact`, which will no longer exist. Add a helper above
+        `retire_and_delete`, and use it in "deleting a retired id removed
+        on purpose passes" and "a current id removed on purpose is still
+        a deletion":
+
+        ```bash
+        # Writes one id into the script's list, as a person deleting it would.
+        name_on_the_list() {
+          local id="$1"
+
+          sed -i "s/^REMOVED_ON_PURPOSE=(/REMOVED_ON_PURPOSE=(\n  ${id}\n/" "$SCRIPT"
+          grep -q "^  ${id}$" "$SCRIPT"
+        }
+        ```
+
+      - **The docs stay.** `docs/docs/concepts/cbac.md` still reads
+        correctly.
+      - **Checks**: `just ts .github/scripts/ci`, and
+        `bash .github/scripts/ci/check-competencies-not-deleted.sh origin/main`,
+        which passes because nothing is deleted.
+      - **For the product owner to choose: empty the list, or remove the
+        exception.** The steps above empty it and keep the mechanism, so a
+        retired id can still be deleted later by naming it there. An
+        earlier version went further, and deleted `REMOVED_ON_PURPOSE`,
+        `removable_ids`, their three tests and the `REMOVED_ON_PURPOSE`
+        clause in `cbac.md`. Then a retired id could never be deleted at
+        all. Emptying it is the default, because it matches the copy in
+        worktree 3 and leaves the way #2335 used open for the next time.
 - [x] **Write the rules this phase makes true**, in the passport backend
       page and in `.github/copilot-instructions.md` under CBAC, then
       `CLAUDE.md` through the sync, replacing what the CBAC section says
@@ -185,7 +246,10 @@ Frameworks copy that shape, with the same word: `version`.
       quoted `"2"` is refused.
 - [x] **Set the versions already made.** The Gloucestershire record went
       from seven competencies to fifteen, and was renamed, in #2321, so it
-      is version 2. Every other framework starts at version 1.
+      is version 2. Every other framework starts at version 1. Undone on
+      4 November 2026: the pilot was never numbered, so no version 1
+      existed anywhere, and Gloucestershire started afresh at version 1.
+      See "Every framework starts at version 1" in Decisions.
 - [x] **A new version goes live when it merges.** No admin step and no
       per-organisation pointer: the framework file deploys with the code,
       as it does today.
@@ -402,11 +466,23 @@ still in this repository, so nothing changes for anybody until it works.
       and scopes; a second run changes nothing; a higher version adds a
       version and keeps the old one; it refuses a clash with a permission,
       a deleted competency and a skipped version.
+- [x] **Name the missing version when the sync refuses a skip.** Found on
+      3 November 2026: a version the sync never saw blocks every later
+      deploy (see "Every version is kept where the sync can read it" under
+      Decisions). Until Phase 6 lets the sync catch up, its message says
+      which versions the tables lack, such as "the tables hold version 2,
+      the files version 4: version 3 is missing", and how to rebuild it from
+      git history while the frameworks still live in this repository. Test
+      the message.
 
 ## Phase 6: A repository for each publisher
 
-- [ ] **Create the four repositories**, after asking the product owner
+- [x] **Create the four repositories**, after asking the product owner
       before each, because creating one is visible outside this machine.
+      Created on 3 November 2026, all four approved together, and made
+      public the same day at the product owner's request. The frameworks
+      were already public in this repository. Each is empty, with no
+      licence, no README and no first commit yet.
       One per publisher, each ending `-framework`, as each teaching
       repository ends `-teaching`, under `bailey-medics`. Each is named
       from its framework's title, shortened to stay readable and inside
@@ -423,24 +499,90 @@ still in this repository, so nothing changes for anybody until it works.
       - **`general-clinical-skills-quill-medical-framework`** - for
         "General clinical skills", the framework half of `clinical.yaml`
         after Phase 2's split, Quill Medical.
-- [ ] **Lay each one out like a teaching repository**: a `frameworks/`
-      folder holding one file per framework, a README saying what the
-      repository is and who publishes it, the publisher's licence for the
-      wording, and the `cspell.config.json` the teaching repositories
-      carry.
-- [ ] **Protect them in Terraform**, beside `infra/github/teaching_rulesets.tf`
-      and the repository list in `infra/environments/app/terraform.tfvars`:
-      the same rules, the same required checks, and no stacks, so each
-      change is one branch off `main` and one pull request.
-- [ ] **A framework pipeline**, `.github/workflows/framework-pipeline.yml`,
+- [x] **The sync catches up on every version it lacks**, reading the
+      version files in order, from one above the newest it has stored to
+      the newest in the bucket. Each version is checked against the one
+      before it with the same rules as today, and the run still writes all
+      of them or none. A version missing from the bucket itself is still
+      refused, naming it: the next pipeline run uploads it, and the sync
+      after that succeeds. Test a run that finds two new versions, and one
+      that finds a gap in the bucket. This replaces reading only the newest
+      files, for the reason under "Every version is kept where the sync can
+      read it" in Decisions.
+      Built as `sync_framework_versions` in
+      `backend/app/features/passport/sync.py`, run as
+      `python -m app.features.passport.sync --versions <folder>`. The
+      loader requires a framework's id to be its file's name, so each
+      version file is loaded under that name from a scratch folder.
+      Every framework's first stored version is 1, and both syncs refuse
+      one that starts above it, naming the versions missing. To get
+      there, Gloucestershire went back to version 1.
+- [x] **Delete the old framework data, Gloucestershire's version 2 with
+      it**, so nothing stored still says the record began at 2. App
+      production stored it the day before, and without this the sync
+      would refuse version 1 as a version going down. The migration
+      `d906dee73f3e` empties every framework table, children first. The
+      pre-deploy job runs the sync straight after the migrations, so the
+      same deploy stores all four frameworks again from `shared/`, each
+      at version 1. The run records in `passport_framework_sync` are
+      kept as history. It takes effect when this merges and deploys.
+      The framework version check refuses a version going down, so
+      `STARTED_AGAIN` in
+      `backend/app/features/passport/tooling/check_framework_version.py`
+      names Gloucestershire: a framework on it may go back to exactly 1,
+      with nothing else changed.
+- [ ] **Empty `STARTED_AGAIN` once the fresh start has merged**, in the
+      next pull request, and its test with it. The name matters only
+      while `main` still holds version 2; after that it would let the
+      record go back to 1 a second time.
+- [ ] **Delete the passports used to try out the Gloucestershire
+      record**, with the `delete-passport` admin action, which archives
+      each one first. Their sign-offs name version 2, which no longer
+      exists, so Phase 7's refusal would stop them being read. Needs
+      the product owner: the usernames go in
+      `PASSPORT_DELETABLE_USERNAMES`.
+
+- [x] **A framework pipeline**, `.github/workflows/framework-pipeline.yml`,
       shaped like `teaching-pipeline.yml`: on a pull request it validates
       the files and runs Phase 3's version check from
       `backend/app/features/passport/tooling/`, printing every reworded
-      competency; on merge to `main` it deploys the files to GCS and starts
-      the backend's framework sync. Each repository carries a thin caller,
-      as the teaching repositories do. Its job names are fixed for the
-      same reason teaching's are: the rulesets require checks by name.
-- [ ] **A framework sync job and somewhere to deploy to**, in `infra/`,
+      competency; on merge to `main` it uploads each framework version as
+      a file of its own, `frameworks/<framework>/<version>.yaml`, and
+      starts the backend's framework sync. A version is one file, so it
+      needs no folder. A version's file is never overwritten or deleted,
+      so the bucket holds every version ever merged.
+      **The upload heals itself from git history.** A dropped or failed
+      run would otherwise leave its version out of the bucket for good.
+      So each run checks out the repository's full history, lists the
+      versions the bucket already holds, and uploads every missing one
+      from the commit on `main` that set it, not only the newest. Any
+      later run then fills the gap. Test it with a stubbed bucket: a run
+      that finds two versions missing uploads both, and a run that finds
+      none uploads nothing.
+      Each repository carries a thin caller, as the teaching repositories
+      do. Its job names are fixed for the same reason teaching's are: the
+      rulesets require checks by name.
+      Built on 3 November 2026:
+      - **Validation uses Quill's own loader**, through
+        `app.features.passport.tooling.validate_frameworks`, from a narrow
+        checkout: `backend/app/cbac`, the passport tooling and `shared/`.
+        It adds two rules for a framework repository: every file declares
+        a framework, and no id is one of Quill's permissions. pydantic and
+        PyYAML are pinned in the workflow, and `framework-pins.bats`
+        checks the pins against `backend/poetry.lock`.
+      - **`upload-versions.sh`** in `.github/scripts/framework-pipeline/`
+        walks `main`'s first-parent history and uploads the first commit
+        that set each version. A commit that changed only comments or the
+        description keeps its version, so the file already uploaded stays.
+      - **Secrets are passed by name**, never `secrets: inherit`:
+        `GCP_WORKLOAD_IDENTITY_PROVIDER`, `GCP_SERVICE_ACCOUNT`,
+        `GCP_FRAMEWORK_GCS_BUCKET` and `SLACK_WEBHOOK_URL`. Each framework
+        repository needs all four set before its first merge.
+      - **`run-sync-job.sh` takes the job's name**, defaulting to the
+        teaching one, so both pipelines share it.
+      **The upload was taken out on 4 November 2026**, before this
+      merged: see "Read the repositories, not a bucket" below.
+- [x] **A framework sync job and somewhere to deploy to**, in `infra/`,
       copying teaching's. The teaching pipeline signs in as
       `content_ci_service_account` (`infra/environments/app/terraform.tfvars`),
       writes into `quill-images-app`, and starts the `teaching-sync` Cloud
@@ -452,55 +594,425 @@ still in this repository, so nothing changes for anybody until it works.
       with an override: the role that allows overrides allows any action,
       `create-superadmin` among them. See
       `docs/docs/plans/2026-10-16-teaching-sync-without-a-github-secret-plan.md`.
+      Built on 3 November 2026 as `quill-framework-sync-app`, running the
+      `sync-frameworks` action in `backend/scripts/admin_cli.py`, which
+      copies `frameworks/` from the bucket and calls
+      `sync_framework_versions`. The versions share the teaching bucket,
+      `quill-images-app`, under `frameworks/`: the content account may
+      already write it, and the admin identity already reads it, so no new
+      grant on the bucket was needed. Each framework repository's
+      `GCP_FRAMEWORK_GCS_BUCKET` secret is that bucket's name.
+      `deploy.yml` points the job at each build through
+      `point-job-at-build.sh`, which skips the job while it does not exist
+      yet, because Terraform makes it in a workflow that runs beside the
+      deploy.
+      **The bucket was replaced on 4 November 2026**, before this
+      merged: the job reads the repositories from GitHub. See "Read the
+      repositories, not a bucket" below.
+- [x] **Protect them in Terraform**, beside `infra/github/teaching_rulesets.tf`
+      and the repository list in `infra/environments/app/terraform.tfvars`:
+      the same rules, the same required checks, and no stacks, so each
+      change is one branch off `main` and one pull request.
+      Written on 3 November 2026 as `infra/github/framework_rulesets.tf`,
+      with `local.framework_repos` beside `local.teaching_repos`.
+      **Apply it only after each repository's first commit is on `main`**,
+      with `just terraform-github`, which a person runs. An empty
+      repository has no `main` for a pull request to target, so the first
+      commit is pushed straight to `main`, and these rules refuse that
+      push.
+- [ ] **Lay each one out like a teaching repository**: a `frameworks/`
+      folder holding one file per framework, a README saying what the
+      repository is and who publishes it, the publisher's licence for the
+      wording, and the `cspell.config.json` the teaching repositories
+      carry.
+      **Moved below the pipeline on 3 November 2026.** The repositories are
+      empty, so the first commit in each is a push straight to `main`, as
+      the teaching repositories' first commits were: there is no `main`
+      yet for a pull request to target. That push, and each publisher's
+      licence for the wording, are the product owner's, so this step waits
+      for them while the parts in this repository are built.
+
 - [ ] **Let the four repositories sign in as the content account.**
-      Which repositories may do so for teaching is not in this repository's
-      Terraform, as far as a search on 2 November 2026 found: the account
-      lives in a different project from the bucket. Find where the
-      teaching repositories are allowed, and add the four beside them; if
-      it is set by hand, say so to the product owner rather than guessing.
-- [ ] **Give the login that pushes them the `workflow` scope** first:
+      **Found on 3 November 2026: it is set by hand, with `gcloud`, in
+      two places**, both in `quill-medical-app`, as the
+      environment isolation plan's Phase on workload identity recorded on
+      23 September 2026. Neither is in Terraform.
+      - **The provider's attribute condition** - `github-provider` in the
+        pool `github-pool` admits only `bailey-medics/quillmedical`,
+        `eoeeta-teaching`, `respiratory-teaching` and
+        `eoeeta-teaching-testing`. A repository not named there is refused
+        before any account is looked at.
+      - **The account's own policy** - `content-sync@quill-medical-app`
+        grants `roles/iam.workloadIdentityUser` to the principal set of
+        each of the three teaching repositories, one binding each.
+
+      The product owner runs both, because the harness refuses IAM grants.
+      Do it only once the pipeline and the sync job exist, so no
+      repository can sign in before there is anything for it to do:
+
+      ```bash
+      gcloud iam workload-identity-pools providers update-oidc github-provider \
+        --workload-identity-pool=github-pool --location=global \
+        --project=quill-medical-app \
+        --attribute-condition="assertion.repository in ['bailey-medics/quillmedical', 'bailey-medics/eoeeta-teaching', 'bailey-medics/respiratory-teaching', 'bailey-medics/eoeeta-teaching-testing'] || (assertion.repository in ['bailey-medics/gloucestershire-radiotherapy-record-framework', 'bailey-medics/royal-united-hospitals-bath-sact-passport-framework', 'bailey-medics/uk-sact-board-prescribing-framework', 'bailey-medics/general-clinical-skills-quill-medical-framework'] && assertion.ref == 'refs/heads/main')"
+
+      POOL="projects/$(gcloud projects describe quill-medical-app --format='value(projectNumber)')/locations/global/workloadIdentityPools/github-pool"
+      for R in gloucestershire-radiotherapy-record-framework \
+        royal-united-hospitals-bath-sact-passport-framework \
+        uk-sact-board-prescribing-framework \
+        general-clinical-skills-quill-medical-framework; do
+        gcloud iam service-accounts add-iam-policy-binding \
+          content-sync@quill-medical-app.iam.gserviceaccount.com \
+          --project=quill-medical-app \
+          --role=roles/iam.workloadIdentityUser \
+          --member="principalSet://iam.googleapis.com/${POOL}/attribute.repository/bailey-medics/${R}"
+      done
+      ```
+
+      The repositories are public, which is safe here: GitHub gives a
+      pull request from a fork no sign-in token, so only a merge to
+      `main`, by somebody with write access, can sign in. Moving this into
+      Terraform is left for another plan.
+- [ ] **The `workflow` scope is needed only for a push over HTTPS.**
       GitHub refuses a push that adds a file under `.github/workflows/`
-      without it, and the caller workflow is one. The product owner runs
-      `gh auth refresh -s workflow` once.
-- [ ] **Document the repositories and the pipeline**, in a framework page
+      through a token without that scope. This machine pushes over SSH,
+      which the scope does not govern: #2329 changed `ci.yml` that way on
+      2 November 2026. So clone the four repositories over SSH and skip
+      this step; run `gh auth refresh -s workflow` only on a machine that
+      pushes over HTTPS.
+
+- [x] **Document the repositories and the pipeline**, in a framework page
       beside the teaching ones in `docs/docs/teaching/`, or under the
-      passport backend page.
+      passport backend page. Done on 3 November 2026 as the "Framework
+      repositories" section of `docs/docs/backend/passport/index.md`, beside
+      the framework sync it feeds.
+
+### Read the repositories, not a bucket
+
+Agreed with the product owner on 4 November 2026, before any of the
+above merged, so each change is folded into the pull request that built
+the part it replaces: GitHub tells Google Cloud a framework repository
+has merged, and the sync job reads the repositories itself. See "The sync
+reads the repositories, not a bucket" in Decisions.
+
+- [x] **Read each version file as text, with no scratch folder**, folded
+      into the catch-up's pull request, #2338. The loader in
+      `backend/app/cbac/competencies.py` takes a file's text and the name
+      it should carry, so `_load_version` no longer copies a file into a
+      folder named for its framework. Each file is refused above a size
+      limit, and so is YAML (the file format) that uses aliases, which
+      can make a small file expand hugely in memory.
+- [x] **Compare every stored version with its file**, also in #2338.
+      The catch-up used to skip a version already stored without looking
+      at it, so a version rewritten on `main` would go unnoticed: the
+      tables would keep the old words while GitHub showed the new. A
+      stored version whose file differs is refused and named.
+- [x] **The pipeline stops uploading**, folded into #2339. On a merge to
+      `main` it only starts `quill-framework-sync-app`. `upload-versions.sh`,
+      its tests and the `GCP_FRAMEWORK_GCS_BUCKET` secret go, so each
+      framework repository needs three secrets, not four.
+- [x] **The sync job reads the framework repositories itself**, folded
+      into #2340, in place of copying a bucket.
+      - **A bare clone over HTTPS.** The repositories are public, so no
+        credential is needed. A bare clone has no working tree, so a
+        hostile repository can never place a file or a symlink, which is
+        how past git security bugs were reached. Submodules are never
+        fetched. Cloud Run holds a container's disk in memory, so the
+        clone leaves nothing behind when the job ends.
+      - **Which commit set each version** is worked out in Python, moved
+        from `upload-versions.sh`: walk `main`'s first-parent history,
+        oldest first, and take the first commit at which each version
+        appears. Each file is read with `git show`.
+      - **Each repository is paired with the framework ids it may
+        publish**, in the job's settings in Terraform, which the content
+        account cannot override. Without this, one repository could add a
+        version to another publisher's framework by naming its id. A file
+        naming any other id is refused.
+      - **A timeout on the job**, so a huge or hostile repository stops
+        one run and nothing else.
+      - `download_versions` and the `FRAMEWORK_GCS_BUCKET` setting go.
+- [x] **The docs describe the clone, and only `main` may sign in**,
+      folded into #2341. The sign-in command above admits the four
+      framework repositories from `refs/heads/main` alone, so a workflow
+      pushed to another branch cannot start the sync job or write to the
+      teaching bucket the same account may write.
+- [x] **The sync gets its own database role**, a new pull request on
+      top. It runs today as the admin identity, the one that runs
+      migrations, so the sync's own code is all that stands between a bug
+      and the whole database. Its own database user may read the
+      `passport_framework*` tables, insert into them, and write its run
+      records in `passport_framework_sync`, and nothing else.
+      **Signed in with IAM (Identity and Access Management), not a
+      password**, the product owner's choice on 4 November 2026:
+      - **A new service account, `framework-sync`**, which the job runs
+        as in place of the admin identity, with
+        `roles/cloudsql.instanceUser`. Google's guide says
+        `roles/cloudsql.client` is needed only for the Auth Proxy and its
+        connector libraries, and the job connects to the private address
+        directly, so it does not get it.
+      - **An IAM database user for it**, `google_sql_user` of type
+        `CLOUD_IAM_SERVICE_ACCOUNT`, on an instance with the
+        `cloudsql.iam_authentication` flag on. Unlike a user made with a
+        password through Cloud SQL, an IAM user is not made a member of
+        `cloudsqlsuperuser`, so it holds nothing until it is granted.
+      - **The grants in a migration**: a role with no sign-in of its own,
+        `framework_sync`, given `SELECT` and `INSERT` on the framework
+        tables, `SELECT`, `INSERT` and `UPDATE` on
+        `passport_framework_sync`, and `USAGE` on their id sequences. The
+        migration then grants that role to the IAM user named in a
+        setting, and skips that last step where the setting is unset, as
+        in CI and on a laptop, which keep the one user they have now.
+      - **The job connects with a token as its password**: it asks
+        Google for an access token for its own account, which lasts an
+        hour, longer than the job. No password exists to leak.
+      - **A test that the role can do no more**, against Postgres in the
+        `migration` test tier: as `framework_sync`, a sync succeeds, and
+        a `DELETE` or a read of `users` is refused.
+
+      Built on 4 November 2026. What was found while building it:
+      - **Google's guide confirms an IAM user starts with nothing**: "that
+        new account is granted no privileges on any databases, by
+        default". Its name is the account's email without
+        `.gserviceaccount.com`.
+      - **Switching `cloudsql.iam_authentication` on restarts the
+        instance**, as Google's flag table marks it. The Terraform apply
+        that brings this in restarts App production's core database, so
+        it is applied at a quiet time, chosen by the product owner.
+      - **The grant to the user is not in the migration.** Terraform makes
+        the user in a workflow that runs beside the deploy, so it may not
+        exist when the migration runs. `grant_framework_sync_role` in
+        `backend/scripts/admin_cli.py` grants it after the migrations on
+        every deploy, and says so where the user does not exist yet.
+      - **The settings insist on a JWT signing key**, which the sync never
+        uses, so the job is given a random key nothing accepts, not the
+        real one.
+- [ ] **Reading a private framework repository, when there is one: a
+      GitHub App.** Every framework repository is public today, so the
+      sync job needs no credential to clone, and nothing here is built
+      until the first private repository arrives. Agreed with the product
+      owner on 4 November 2026. When one does:
+      - **Register one GitHub App for Quill**, owned by `bailey-medics`,
+        with one permission, read-only access to repository contents,
+        and no webhook.
+      - **Install it on the framework repositories alone**, choosing
+        each by name rather than "all repositories", so it can read
+        nothing else in the organisation.
+      - **Keep its private key in Secret Manager**, readable by the
+        `framework-sync` service account alone. The key is kept where it
+        is used, by the sync job, never in GitHub.
+      - **Mint a token at each run.** The job signs a short request with
+        the key and swaps it for an installation token, which lasts an
+        hour and reads only the repositories the app is installed on.
+        Nothing long-lived ever reaches git.
+      - **Hand the token to git through its environment**, as an HTTP
+        header set by `GIT_CONFIG_COUNT`, `GIT_CONFIG_KEY_0` and
+        `GIT_CONFIG_VALUE_0`, never in the clone URL or the command line.
+        So it is never in a log, and never in an error message.
+      - **Public repositories keep cloning with no token**, so a public
+        framework works the same as today.
+      - **Test it with the token fetch stubbed**: the token reaches git
+        only through the environment, and an error from git never
+        contains it.
+
+      Two other ways were considered and turned down. A read-only deploy
+      key on each repository is simpler, but it is one SSH key a
+      repository, so four keys to rotate and a new key for every new
+      repository. A fine-grained personal access token is tied to one
+      person's account and expires on a fixed date.
+- [ ] **Decide whether a framework change needs an approval to merge.**
+      The rulesets require none, copied from teaching, so anybody with
+      write access can merge a change to a clinical framework alone, and
+      it goes live at once. One approval is a one-line change in
+      `infra/github/framework_rulesets.tf`. The product owner's decision.
 
 ## Phase 7: Read frameworks from the database
 
-- [ ] **Point the backend's framework lookups at the tables**:
+- [x] **Point the backend's framework lookups at the tables**:
       `frameworks.get_framework` and `current_name`, the passport index,
       `definitions._entry`, and the exports. The loader in
       `backend/app/cbac/competencies.py` stops reading framework files: it
       holds permissions only.
-- [ ] **Refuse a framework competency wherever a competency is granted,
+      **Split into three units on 4 November 2026**, because the lookups
+      are read all through the passport: `definitions.py`,
+      `frameworks.py`, the router, the service, the exports and
+      `org_units/router.py` all read the catalogue loaded at start-up,
+      and each function takes only an id. One pull request doing all of
+      it would be too big to review. In order:
+      - [x] **A reader for the stored frameworks**,
+        `backend/app/features/passport/catalogue.py`. It loads the newest
+        version of every framework from the tables, as the same
+        `Framework` and `CompetencyEntry` objects the loader makes, so the
+        code that reads them does not change shape. Five queries, one
+        for each table, not one for each competency. It caches what it
+        read, keyed on the newest version row's id: a new version always
+        takes a higher id, so the cache stays right when the sync job
+        adds one between deploys, and costs one indexed query to check.
+        A test fixture, `stored_frameworks`, fills the tables from
+        `shared/` for the tests that need them. Additive: nothing reads
+        the reader yet. Test that it gives back exactly what the files
+        hold, for every real framework.
+      - [x] **Every framework lookup reads the reader**, with a database
+        session passed in where the function took only an id. The tests
+        that rely on the real frameworks use `stored_frameworks`.
+        Built on 4 November 2026, with three choices made while building:
+        - **Each function takes the catalogue, not a session.** A route
+          reads it once with `stored_catalogue(db)` and passes it down,
+          so `definitions.py` and the service stay free of the database,
+          which `tests/features_import_boundary_test.py` requires, and one
+          request never mixes two versions of a framework.
+        - **A permission is now unknown to the passport**, where it was
+          known and refused as not assessable, because the stored
+          frameworks hold framework competencies only. A route answers
+          404 for one, not 400.
+        - **Tests that never touch the database** read the same catalogue
+          from the files, through `files_catalogue` in
+          `backend/tests/frameworks.py`, which reads them as the sync
+          does. Route tests use `stored_frameworks`.
+      - [x] **The loader holds permissions only**, and the next step's
+        refusal comes with it. `layout.framework_for`, which files a
+        competency's first record under its framework, moves with it: it
+        still asks the loader, because it is reached through 21 path
+        helpers in `records.py` and the service that take only the
+        store, and threading the catalogue through them is a change of
+        its own.
+        Built on 4 November 2026. The loader still loads every file, then
+        keeps those that declare no framework, so its checks across the
+        directory still run while the frameworks live there. Only the two
+        writes that can file a first record, a sign-off request and a
+        logbook entry, give `framework_for` the catalogue; a read that
+        meets a competency with no folder finds nothing, as it did. The
+        names that held frameworks, `FRAMEWORKS`, `FRAMEWORK_IDS`,
+        `FRAMEWORK_COMPETENCY_IDS`, `ASSESSABLE_COMPETENCY_IDS`,
+        `get_framework`, `framework_competencies` and
+        `framework_competency_ids`, are gone, and nothing outside the
+        tests used them.
+- [x] **Refuse a framework competency wherever a competency is granted,
       by what it is rather than by a flag.** Once the loader holds
       permissions only, `validate_competency_ids` refuses any id that is
       not a permission, which already covers every framework competency.
-- [ ] **Serve the frameworks to the frontend**, through a typed route
+      Built with the loader's change above, on 4 November 2026, so it
+      comes before the next step, though the plan first listed it after.
+- [x] **Refuse a sign-off naming a framework version the tables do not
+      hold**, wherever one enters: a request, a read of the git record, and
+      any import later, such as a passport moved from another app that
+      uses the same frameworks. The refusal names the framework and the
+      version, so a person can find out where it came from. It is never
+      stored half-checked against the nearest version: comparing it with
+      words it was not signed against is the error this guards. Test a
+      sign-off for a version one above the newest, and one for version
+      0, below the version 1 every framework starts at.
+      Built on 4 November 2026 as `check_held_version` in
+      `backend/app/features/passport/definitions.py`, against every
+      version the tables hold, which the stored catalogue now lists.
+      Where a sign-off enters:
+      - **A request** records the newest version from the catalogue, so
+        it always names one Quill holds.
+      - **A read of the git record**: the routes that read sign-offs,
+        one or the list, and the three exports refuse with 409, naming
+        the framework and the version. The assessor's inbox leaves the
+        one record out and lists the rest, as it does for a record that
+        has gone.
+      - **An import** does not exist yet; when it does, it calls the
+        same check.
+      A sign-off for a competency no framework defines any more is let
+      through, because its framework cannot be known, and a passport
+      must stay readable when a competency leaves the catalogue.
+- [x] **Serve the frameworks to the frontend**, through a typed route
       under `/api/passport/`, with each framework's current version, its
       competencies, levels and scopes, and the retired competencies of
       earlier versions that Phase 10 needs. Additive, so it needs no
       expand-contract.
-- [ ] **Read them in the frontend from that route**, not from the build:
+      Built on 4 November 2026 as `GET /api/passport/catalogue`, behind
+      the passport feature like the framework list, answering
+      `list[FrameworkDefinitionOut]` from `backend/app/schemas/passport.py`.
+      A retired competency is served with `retired_on` and
+      `retired_in_version` set: the newest version keeps every
+      competency an earlier one held, because a competency is retired,
+      never deleted, so the newest version is all Phase 10 needs.
+      **The feature gate was waived for it on 4 November 2026**, as it is
+      for `/me`, after the end-to-end test of a holder taken off every
+      passport place failed: their own competency page could not load
+      the frameworks, so it said "not found". A framework is a published
+      document and nobody's record. Fixed in the route's own pull
+      request, #2356.
+- [x] **Read them in the frontend from that route**, not from the build:
       `frameworks.ts`, `competencyTable.ts`, the pickers,
       `FrameworkField` and `CompetencySummary`. `yarn generate:types`
       keeps building the permissions into `src/generated/`, so the
       `CompetencyId` type names permissions only, which is all the code
       names.
-- [ ] **Keep test frameworks in this repository**, in a fixtures folder
-      the end-to-end stack and the unit tests sync from, so a test never
-      depends on a publisher's repository. My reading: teaching keeps a
-      whole repository for this, `eoeeta-teaching-testing`, but a handful
-      of fixture files is enough for frameworks and needs no pipeline.
-- [ ] **Update the passport backend page and the CBAC section** of
+      **Split into three units on 4 November 2026**, because the
+      frameworks are read synchronously from the generated bundle in
+      about twenty files, and moving them to a route means loading them
+      and passing them down. In order:
+      - [x] **A catalogue module and hook**,
+        `frontend/src/lib/passport/catalogue.ts`. `FrameworkCatalogue`
+        turns the route's answer into the shapes the pages already read,
+        `FrameworkOption` and `Competency`, so a page does not change
+        shape when its source moves. `useFrameworkCatalogue` loads it
+        once for the whole app and shares it, and loads again after a
+        failure. Additive: nothing reads it yet.
+      - [x] **Every page and component reads the catalogue**, in place of
+        `ALL_FRAMEWORKS`, `ASSESSABLE_COMPETENCIES`, `FRAMEWORK_OPTIONS`,
+        `frameworkItems`, `frameworkOf` and `getFramework`, and the
+        level, scope and table helpers that read the bundle.
+        Built on 4 November 2026. Each page calls `useFrameworkCatalogue`
+        and passes the catalogue to the components that need it, as a
+        prop, so the components stay pure for Storybook and the tests.
+        `levelsFor`, `scopesFor` and `frameworkRows` take it first, as
+        the backend's lookups do. A page that must know whether a
+        competency exists, the competency page, waits for it with a
+        spinner. The tests and Storybook prime the real frameworks with
+        `primeFrameworkCatalogue`, from `src/test/frameworkCatalogue.ts`,
+        which still builds them from the bundle until the next unit.
+      - [x] **Keep test frameworks in this repository**, in a fixtures folder
+        the end-to-end stack and the unit tests sync from, so a test never
+        depends on a publisher's repository. My reading: teaching keeps a
+        whole repository for this, `eoeeta-teaching-testing`, but a handful
+        of fixture files is enough for frameworks and needs no pipeline.
+        Built on 4 November 2026 as `shared/framework-fixtures/`, holding
+        copies of the four frameworks at version 1, with a README saying
+        what reads them. `stored_frameworks`, `files_catalogue` and
+        `seed_ci.py` read the folder through `FRAMEWORK_FIXTURES_DIR` in
+        `backend/app/paths.py`. **Moved above the bundle step**: the
+        frontend's test catalogue needs framework data that is not the
+        bundle's before the bundle can stop holding frameworks. The
+        fixtures are the real frameworks for now, so the tests that name a
+        real competency keep working, and they need not follow the real
+        frameworks when those change.
+
+      - [x] **The bundle stops holding frameworks**: `yarn generate:types`
+        builds permissions only, so `CompetencyId` names permissions.
+        Built on 4 November 2026. `competencies.json` leaves out every
+        file that declares a framework, though it still checks their ids
+        for clashes, and `frameworks.json` is gone. The framework fixtures
+        are written to `framework-fixtures.json` for the unit tests and
+        Storybook alone. Three pages still read competency names from
+        `competencies.json`, which the earlier search missed, and their
+        tests caught it: the logbook, its entry and the sign-offs pages
+        now name a competency from the catalogue.
+
+- [x] **Update the passport backend page and the CBAC section** of
       `.github/copilot-instructions.md`, then `CLAUDE.md` through the
       sync: the catalogue folder holds permissions, and frameworks come
       from their repositories.
-- [ ] **Tests**: each lookup reads the tables; a framework competency is
+      Done on 4 November 2026. The passport backend page was kept up to
+      date unit by unit. The CBAC section's three bullets on the
+      catalogue, frameworks and permissions now say the catalogue holds
+      permissions only and the app reads frameworks from the tables. The
+      same text went into `CLAUDE.md` by hand, in the section the sync
+      writes, so the next `/sync-copilot-config` finds the two agreeing.
+- [x] **Tests**: each lookup reads the tables; a framework competency is
       refused as a grant with no framework file present; the route serves
       a framework with a retired competency; the pickers and table render
       from the route's data.
+      Written with each unit above: `catalogue_test.py` and the route
+      tests through `stored_frameworks`;
+      `test_the_real_framework_ids_are_refused_as_grants` and
+      `test_the_catalogue_holds_permissions_only` in
+      `competencies_test.py`; `test_the_catalogue_serves_a_retired_competency_as_retired`
+      in `frameworks_test.py`; and the component tests, which render
+      from `TEST_FRAMEWORK_CATALOGUE`, built in the route's shape.
 
 ## Phase 8: Move the frameworks out of this repository
 
@@ -526,7 +1038,7 @@ still in this repository, so nothing changes for anybody until it works.
 
 ## Phase 9: Show the record's words where they differ
 
-- [ ] **Show a sign-off's stored name beside the current one when the two
+- [x] **Show a sign-off's stored name beside the current one when the two
       differ**, in `frameworkRows` in
       `frontend/src/lib/passport/competencyTable.ts` and the table it feeds,
       `CompetencyFrameworkTable`. The page already has both: each
@@ -535,19 +1047,26 @@ still in this repository, so nothing changes for anybody until it works.
       from the catalogue's `display_name`. Today the stored one is thrown
       away. Where they differ, the row shows the current words and, under
       them, "Signed off as: " and the stored words.
-- [ ] **Do the same for the level**, where the stored `LevelRef.name` no
+- [x] **Do the same for the level**, where the stored `LevelRef.name` no
       longer matches the catalogue's level of the same id.
-- [ ] **Say which version a sign-off was given under** where it is not the
+- [x] **Say which version a sign-off was given under** where it is not the
       current one, as "Signed off under version 1".
-- [ ] **Add to the passport backend page** that the page shows both
+- [x] **Add to the passport backend page** that the page shows both
       wordings where they differ.
-- [ ] **Tests**: a matching name shows once; a differing name shows both;
+- [x] **Tests**: a matching name shows once; a differing name shows both;
       the same for a level; an older version is named. A story for
       `CompetencyFrameworkTable` showing a reworded row.
+      Built on 4 November 2026, all in one pull request. The version
+      needed one thing the page did not have, so `framework_version` was
+      added to each index entry and to `CompetencyStateOut`, from the
+      latest sign-off. Both are optional, so an index written before is
+      read as it is, and the field fills in on its next write. The words
+      are "Signed off as", "Signed off at level" and "Signed off under
+      version", each on its own line under today's name.
 
 ## Phase 10: Keep competencies that left a framework visible
 
-- [ ] **List a retired competency in its framework's table when the holder
+- [x] **List a retired competency in its framework's table when the holder
       has anything recorded against it**: a sign-off, a request or a
       logbook entry. Before Phase 7, `frameworkItems` in
       `frontend/src/lib/passport/frameworks.ts` read
@@ -556,41 +1075,97 @@ still in this repository, so nothing changes for anybody until it works.
       it, the frameworks come from the API, which serves every version the
       sync has stored, so the table adds the retired competencies the
       holder has state for after the current ones.
-- [ ] **Mark such a row** "Not in this framework since version N", from
+- [x] **Mark such a row** "Not in this framework since version N", from
       `retired_in_version`, and offer no way to ask for a new sign-off of
       it. The backend already refuses new writes against a retired id.
-- [ ] **Leave out retired competencies with nothing recorded.**
-- [ ] **Check the other views follow the same rule**: `CompetencySummary`,
+- [x] **Leave out retired competencies with nothing recorded.**
+- [x] **Check the other views follow the same rule**: `CompetencySummary`,
       the holder's summary page, and what an assessor sees.
-- [ ] **Add to the passport backend page** that a retired competency stays
+- [x] **Add to the passport backend page** that a retired competency stays
       in the table while the holder has anything recorded against it.
-- [ ] **Tests**: a retired competency with a sign-off appears, marked, with
+- [x] **Tests**: a retired competency with a sign-off appears, marked, with
       no request button; one with nothing recorded does not.
+      Built on 4 November 2026. The catalogue serves the newest version
+      only, but that holds every retired competency, because a
+      competency is retired, never deleted, so no older version is
+      needed. `DataTable` cannot turn off clicks for one row, so a
+      retired row still opens its competency page, which is read-only
+      for it: `canWrite` is false, so neither "Ask" nor "Add" shows.
+      `CompetencySummary` groups by `frameworkOf`, which knows retired
+      competencies, and an assessor reads the sign-off itself, so both
+      follow the rule already.
 
 ## Phase 11: Trace a removed level or scope
 
-- [ ] **Find out what happens when a level or scope id leaves a framework**
+- [x] **Find out what happens when a level or scope id leaves a framework**
       while a sign-off still names it. The table looks safe, because scoped
       rows use the stored `ScopeRef` and the level shown is the stored
       `LevelRef`. The write side has not been traced: re-signing, asking
       again at a higher level, and the scope picker may each look the old
       id up and fail. Write a backend test for each path.
-- [ ] **Decide from what the tests show.** If every path copes, record that
+- [x] **Decide from what the tests show.** If every path copes, record that
       here. If one fails, a level or scope is retired the way a competency
       is, never removed, and `check-competencies-not-deleted.sh` refuses a
       framework file that drops one. Either way, write the answer into the
       passport backend page.
+      Traced on 4 November 2026 in
+      `backend/tests/passport_removed_level_or_scope_test.py`, one test a
+      path, each with a sign-off made under the framework as it was and
+      the catalogue after the id has gone:
+      - **Asking again at a higher level fails.** The kind of the new
+        sign-off, a progression or a reassessment, is worked out by
+        comparing its level with the last one's place on the scale, and
+        the last one is no longer listed, so `request_sign_off` raises
+        `UnknownLevelError` naming the old level. The holder could never
+        ask again. Kept as an `xfail(strict=True)` test, so CI says when
+        it starts to pass.
+      - **Signing a request whose level or scope went while it waited
+        works**: the sign-off keeps what was asked.
+      - **Asking for a scope that has gone is refused**, which is right.
+
+      So a level or scope is never removed. Both the sync's `_check` and
+      `check_framework_version`, which every framework repository's CI
+      runs, refuse a version that drops a level or scope id from a
+      competency it keeps, naming each one. A competency removed whole is
+      still the deletion check's to refuse.
+- [x] **Retire a level or scope, the way a competency is retired**, so a
+      framework can stop offering one without removing it: a `retired_on`
+      and `retired_in_version` on `CompetencyLevel` and `CompetencyScope`,
+      kept in the tables, refused for a new request or entry, and still
+      read by `level_order` and the table. Until it is built, a level or
+      scope cannot be withdrawn at all, only kept.
+      Built on 4 November 2026. The loader holds a retired level or scope
+      to a competency's rules: `retired_in_version` with `retired_on`, no
+      later than the framework's version, and `other` is never retired.
+      Migration `cd66a15967e7` adds the two columns to the level and
+      scope tables, the sync stores and compares them, and the catalogue
+      route serves them. `level_ref` and `scope_ref` refuse a retired one
+      where something new is asked for, a request or a new logbook entry,
+      and read it anywhere else; the frontend's catalogue leaves it out
+      of what a form offers. Asking again at a higher level after the old
+      one retired now works, as a progression; dropping one is still
+      refused, so the `xfail` test of that path stays.
 
 ## Phase 12: Make the exports agree with the page
 
-- [ ] **Print the framework's current name in the exports**, in
+- [x] **Print the framework's current name in the exports**, in
       `backend/app/features/passport/pdf.py` and `render.py`, through the
       `current_name` helper the page has used since #2321.
-- [ ] **Keep the stored words for everything signed**, and print the
+- [x] **Keep the stored words for everything signed**, and print the
       current name first with "Signed off as" the stored words where they
       differ, as the page does after Phase 9. Name the version too.
-- [ ] **Tests**: an export made before a framework rename prints the new
+- [x] **Tests**: an export made before a framework rename prints the new
       name; a reworded competency prints both wordings.
+      Built on 4 November 2026. The words are worked out once, in
+      `backend/app/features/passport/wording.py`, for `render.py` and
+      `pdf.py` alike, so the two cannot drift apart. Each takes the
+      stored catalogue as an optional argument, which the three export
+      routes pass and the bundle hands on to its Markdown and PDF copies.
+      Without one, an export prints what the record stored, as before.
+      The page's `current_name` was not reused, because it lives in
+      `frameworks.py`, which imports the database. Every sign-off prints
+      "Framework version: N", which changed the pinned Markdown in
+      `export_audit_test.py`.
 
 ## Decisions
 
@@ -652,6 +1227,46 @@ still in this repository, so nothing changes for anybody until it works.
 - **A version goes live on merge.** Teaching banks do the same, and nobody
   needs a pointer to move: what protects an existing sign-off is that it
   records the version it was given under.
+
+- **Every version is kept where the sync can read it.** Agreed with the
+  product owner on 3 November 2026. Phase 5's sync reads only the files as
+  they stand, never git history, so it sees a version only if a sync runs
+  while that version is the newest. GitHub keeps one waiting run behind a
+  running one and cancels the older waiting run when another arrives, so
+  three merges during one deploy lose the middle version's deploy. The
+  next sync then sees a jump of two, refuses it, and refuses it again on
+  every deploy after, because the skipped version is in no file any more.
+  Letting the sync accept the jump was considered and turned down: a
+  sign-off can arrive from somewhere other than Quill, such as an import
+  from another app using the same frameworks, and one naming a version
+  the tables lack could be neither checked nor shown beside its words.
+  So each version is uploaded as its own file, never overwritten, the
+  pipeline uploads any version the bucket lacks from git history, and the
+  sync catches up on every version it is missing. A skipped run then
+  only delays a version, and never loses one.
+
+- **The sync reads the repositories, not a bucket.** Agreed with the
+  product owner on 4 November 2026, replacing the bucket in "Every
+  version is kept where the sync can read it" above. The bucket was a
+  second, lasting copy of every version, with its own permissions and an
+  upload step to keep right, between GitHub and the tables. The sync job
+  reads the public repositories directly instead, so the only lasting
+  copies are git history and the tables, which keep every version
+  stored. GitHub still never reaches the database: it only starts one
+  job whose action and repository list it cannot change. GitHub's API
+  was considered, to avoid even the clone in memory, and turned down:
+  without a token it allows 60 requests an hour from one address, and a
+  token is a secret for Google Cloud to keep.
+
+- **Every framework starts at version 1.** Agreed with the product owner
+  on 4 November 2026. If a framework could begin at any number, a lost
+  version 1 would look the same as a framework that began at 2, and
+  nothing could tell the two apart. Gloucestershire had begun at 2,
+  because its pilot edition was labelled rather than numbered. Rebuilding
+  the pilot as version 1 was considered, and so was a new framework under
+  a new id. Starting afresh was simpler than either: only the product
+  owner had tried the record out, so nothing real pointed at version 2,
+  and the framework tables are a copy of the files that the sync rebuilds.
 
 - **A reworded competency is shown, not gated.** Decided on 2 November
   2026, when the product owner left it to this plan. The version check

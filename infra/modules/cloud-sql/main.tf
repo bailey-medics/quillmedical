@@ -87,6 +87,15 @@ resource "google_sql_database_instance" "instance" {
       name  = "log_disconnections"
       value = "on"
     }
+
+    dynamic "database_flags" {
+      for_each = var.iam_authentication ? ["on"] : []
+
+      content {
+        name  = "cloudsql.iam_authentication"
+        value = database_flags.value
+      }
+    }
   }
 }
 

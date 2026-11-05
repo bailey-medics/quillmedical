@@ -749,6 +749,51 @@ class TestDeletePassport:
         assert self._exists(db_session, roots)
 
     @pytest.mark.usefixtures("_patch_session")
+    def test_a_dry_run_reports_a_passport_in_an_older_layout(
+        self,
+        db_session: Session,
+        holder: User,
+        roots: tuple[Path, Path],
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Its records are not counted, but the passport is still named.
+
+        A passport made before #2330 is refused by ``layout``, which the
+        counts read through. Deleting one is the reason to run this, so
+        the dry run must still say what the confirmed run would delete.
+        """
+        from app.features.passport import commits, paths
+        from app.features.passport.store import LocalPassportStore
+
+        store = LocalPassportStore(roots[0])
+        actor = commits.Actor(
+            name="Dr Test", role="Registrar", email="test@example.com"
+        )
+        store.write(
+            PASSPORT_ID,
+            {
+                paths.MANIFEST: f"passport_id: {PASSPORT_ID}\nschema_version: 1\n"
+            },
+            commits.build("amend", "an older layout", actor),
+            actor,
+            store.head(PASSPORT_ID),
+        )
+
+        result = self._run(
+            {
+                "ADMIN_USERNAME": holder.username,
+                "PASSPORT_DELETABLE_USERNAMES": holder.username,
+            },
+            roots,
+        )
+
+        assert result == 0
+        output = capsys.readouterr().out
+        assert "older layout" in output
+        assert f"CONFIRM={PASSPORT_ID}" in output
+        assert self._exists(db_session, roots)
+
+    @pytest.mark.usefixtures("_patch_session")
     def test_a_confirmed_run_archives_and_removes_the_passport(
         self, db_session: Session, holder: User, roots: tuple[Path, Path]
     ) -> None:
@@ -995,3 +1040,164 @@ class TestSyncTeaching:
         from scripts.admin_cli import ACTIONS
 
         assert "sync-teaching" in ACTIONS
+
+
+class TestGrantFrameworkSyncRole:
+    """The migrations job grants the sync job's user its one role."""
+
+    _USER = "run-framework-sync@quill-medical-app.iam"
+
+    def test_nothing_is_done_where_no_user_is_named(self) -> None:
+        """CI and a laptop have no such user."""
+        from scripts.admin_cli import grant_framework_sync_role
+
+        with (
+            patch("app.config.settings.FRAMEWORK_SYNC_DB_USER", None),
+            patch("app.db.core_db.CoreSessionLocal") as session,
+        ):
+            assert grant_framework_sync_role() == 0
+
+        session.assert_not_called()
+
+    def test_a_name_that_is_not_an_iam_user_is_refused(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """The name goes into SQL, so nothing else may reach it."""
+        from scripts.admin_cli import grant_framework_sync_role
+
+        with (
+            patch(
+                "app.config.settings.FRAMEWORK_SYNC_DB_USER",
+                'x"; DROP TABLE users; --',
+            ),
+            patch("app.db.core_db.CoreSessionLocal") as session,
+        ):
+            assert grant_framework_sync_role() == 1
+
+        session.assert_not_called()
+        assert "not an IAM database user" in capsys.readouterr().err
+
+    def test_a_user_not_made_yet_is_left_for_the_next_deploy(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        from scripts.admin_cli import grant_framework_sync_role
+
+        db = MagicMock()
+        db.execute.return_value.first.return_value = None
+
+        with (
+            patch("app.config.settings.FRAMEWORK_SYNC_DB_USER", self._USER),
+            patch("app.db.core_db.CoreSessionLocal", return_value=db),
+        ):
+            assert grant_framework_sync_role() == 0
+
+        assert db.execute.call_count == 1
+        assert "does not exist yet" in capsys.readouterr().out
+
+    def test_an_existing_user_is_granted_the_role(self) -> None:
+        from scripts.admin_cli import grant_framework_sync_role
+
+        db = MagicMock()
+        db.execute.return_value.first.return_value = (1,)
+
+        with (
+            patch("app.config.settings.FRAMEWORK_SYNC_DB_USER", self._USER),
+            patch("app.db.core_db.CoreSessionLocal", return_value=db),
+        ):
+            assert grant_framework_sync_role() == 0
+
+        granted = str(db.execute.call_args_list[1].args[0])
+        assert granted == f'GRANT framework_sync TO "{self._USER}"'
+        db.commit.assert_called_once()
+
+
+#: One repository and the framework it may publish, for the sync job.
+_REPOSITORIES = {"bailey-medics/a-framework": ["sheet"]}
+
+
+class TestSyncFrameworks:
+    """The framework sync job's one action: the repositories into the tables."""
+
+    @staticmethod
+    def _result(succeeded: bool, written: int = 0, error: str | None = None):
+        from app.features.passport.sync import FrameworkSyncResult
+
+        return FrameworkSyncResult(succeeded, written, error)
+
+    @pytest.mark.usefixtures("_patch_session")
+    def test_a_clean_sync_commits_and_passes(
+        self, db_session: Session, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        from scripts.admin_cli import sync_frameworks
+
+        with (
+            patch("app.config.settings.FRAMEWORK_REPOSITORIES", _REPOSITORIES),
+            patch(
+                "app.features.passport.sync.sync_from_repositories",
+                return_value=self._result(True, 2),
+            ) as sync,
+            patch.object(db_session, "commit") as commit,
+        ):
+            assert sync_frameworks() == 0
+
+        sync.assert_called_once_with(db_session, _REPOSITORIES)
+        commit.assert_called_once()
+        assert "2 version(s) written" in capsys.readouterr().out
+
+    @pytest.mark.usefixtures("_patch_session")
+    def test_a_refused_version_fails_the_job_and_names_it(
+        self, db_session: Session, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """The run record is still committed, so the refusal is kept."""
+        from scripts.admin_cli import sync_frameworks
+
+        with (
+            patch("app.config.settings.FRAMEWORK_REPOSITORIES", _REPOSITORIES),
+            patch(
+                "app.features.passport.sync.sync_from_repositories",
+                return_value=self._result(False, error="version 2 not found"),
+            ),
+            patch.object(db_session, "commit") as commit,
+        ):
+            assert sync_frameworks() == 1
+
+        commit.assert_called_once()
+        assert "version 2 not found" in capsys.readouterr().err
+
+    def test_no_repositories_fail_before_anything_runs(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        from scripts.admin_cli import sync_frameworks
+
+        with (
+            patch("app.config.settings.FRAMEWORK_REPOSITORIES", {}),
+            patch("app.features.passport.sync.sync_from_repositories") as sync,
+        ):
+            assert sync_frameworks() == 1
+
+        sync.assert_not_called()
+        assert "FRAMEWORK_REPOSITORIES is not set" in capsys.readouterr().err
+
+    @pytest.mark.usefixtures("_patch_session")
+    def test_a_sync_that_raises_is_rolled_back_and_fails(
+        self, db_session: Session, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        from scripts.admin_cli import sync_frameworks
+
+        with (
+            patch("app.config.settings.FRAMEWORK_REPOSITORIES", _REPOSITORIES),
+            patch(
+                "app.features.passport.sync.sync_from_repositories",
+                side_effect=RuntimeError("GitHub unreachable"),
+            ),
+            patch.object(db_session, "rollback") as rollback,
+        ):
+            assert sync_frameworks() == 1
+
+        rollback.assert_called_once()
+        assert "framework sync did not run" in capsys.readouterr().err
+
+    def test_is_listed_as_an_action(self) -> None:
+        from scripts.admin_cli import ACTIONS
+
+        assert "sync-frameworks" in ACTIONS

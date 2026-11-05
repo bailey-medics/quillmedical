@@ -35,12 +35,20 @@ class CompetencyLevel(BaseModel):
     Attributes:
         id: Stable identifier for this level, referenced by a sign-off.
         name: The framework's own wording, shown to a reader.
+        retired_on: When the framework stopped offering it. A level is
+            retired, never removed: a sign-off names it, and asking again
+            compares the new level with the last one's place on the
+            scale, so it must stay where it is.
+        retired_in_version: The framework version that first left it
+            out, set with ``retired_on``.
     """
 
     model_config = ConfigDict(extra="forbid")
 
     id: str
     name: str
+    retired_on: date | None = None
+    retired_in_version: StrictInt | None = Field(default=None, ge=2)
 
 
 class CompetencyScope(BaseModel):
@@ -59,12 +67,18 @@ class CompetencyScope(BaseModel):
     Attributes:
         id: Stable identifier for this scope, referenced by a record.
         name: What a reader is shown.
+        retired_on: When the framework stopped offering it. A scope is
+            retired, never removed, because a record names it.
+        retired_in_version: The framework version that first left it
+            out, set with ``retired_on``.
     """
 
     model_config = ConfigDict(extra="forbid")
 
     id: str
     name: str
+    retired_on: date | None = None
+    retired_in_version: StrictInt | None = Field(default=None, ge=2)
 
 
 class Specialty(BaseModel):
@@ -352,6 +366,10 @@ def _check_belongs(
             "and two frameworks describing the same act need two."
         )
 
+    for kind, parts in (("level", entry.levels), ("scope", entry.scopes)):
+        for part in parts or []:
+            _check_part_retirement(entry, kind, part, framework, path)
+
     if entry.retired_on is None:
         return
 
@@ -368,6 +386,183 @@ def _check_belongs(
             f"{entry.retired_in_version}, but {framework.id!r} is at "
             f"version {framework.version}."
         )
+
+
+def _check_part_retirement(
+    entry: CompetencyEntry,
+    kind: str,
+    part: CompetencyLevel | CompetencyScope,
+    framework: Framework,
+    path: Path,
+) -> None:
+    """Refuse a level or scope retired other than as a competency is.
+
+    Raises:
+        ValueError: If ``retired_in_version`` is set without
+            ``retired_on``, or the other way round, or names a version
+            the framework has not reached, or the scope retired is
+            ``other``, which every scope list must keep offering.
+    """
+    where = f"{kind} {part.id!r} of {entry.id!r} in {path.name}"
+
+    if part.retired_on is None:
+        if part.retired_in_version is not None:
+            raise ValueError(
+                f"The {where} has retired_in_version but is not retired. "
+                "Set retired_on too."
+            )
+        return
+
+    if kind == "scope" and part.id == OTHER_SCOPE_ID:
+        raise ValueError(
+            f"The {where} is {OTHER_SCOPE_ID!r}, which is never retired, "
+            "so nobody is blocked by a missing entry."
+        )
+
+    if part.retired_in_version is None:
+        raise ValueError(
+            f"The {where} is retired with no retired_in_version. Name the "
+            "framework version that first left it out."
+        )
+
+    if part.retired_in_version > framework.version:
+        raise ValueError(
+            f"The {where} left in version {part.retired_in_version}, but "
+            f"{framework.id!r} is at version {framework.version}."
+        )
+
+
+def _entries_of(
+    data: Any, path: Path
+) -> tuple[Framework | None, list[CompetencyEntry]]:
+    """The framework one parsed file declares, and its competencies.
+
+    Every check that needs only the one file is made here, so a file read
+    from anywhere is held to the same rules. Duplicates across files are
+    the caller's to refuse.
+
+    Args:
+        data: The parsed file.
+        path: The file, named in a refusal. Its name is the framework's.
+
+    Returns:
+        The framework, or None for a file that declares none, and the
+        competencies in the order the file lists them.
+
+    Raises:
+        ValueError: For anything the catalogue refuses.
+    """
+    framework = _framework_of(data, path)
+    entries: list[CompetencyEntry] = []
+
+    for raw in data["competencies"]:
+        if "framework_id" in raw:
+            raise ValueError(
+                f"Competency {raw.get('id')!r} in {path.name} sets "
+                "framework_id. An entry belongs to the framework its "
+                "file declares, and cannot name another."
+            )
+
+        entry = CompetencyEntry(**raw)
+        if framework is not None:
+            entry = entry.model_copy(update={"framework_id": framework.id})
+
+        _check_belongs(entry, framework, path)
+
+        # A sign-off stores the level id, so two levels sharing one
+        # would make a stored record ambiguous about which step of
+        # the scale was reached.
+        if entry.levels is not None:
+            level_ids = [lvl.id for lvl in entry.levels]
+            if len(set(level_ids)) != len(level_ids):
+                raise ValueError(
+                    f"Competency {entry.id!r} in {path.name} has "
+                    "duplicate level ids: "
+                    + ", ".join(sorted(level_ids))
+                    + "."
+                )
+            if not level_ids:
+                raise ValueError(
+                    f"Competency {entry.id!r} in {path.name} declares "
+                    "an empty level list. Omit levels entirely where a "
+                    "competency is simply signed off or not."
+                )
+
+        _check_scopes(entry, path)
+        entries.append(entry)
+
+    return framework, entries
+
+
+#: The largest framework file read as text. The biggest in
+#: shared/competency-definitions/ is under 13 KB, so this leaves room
+#: for any real framework and refuses one big enough to exhaust memory.
+MAX_FRAMEWORK_FILE_BYTES: int = 256 * 1024
+
+
+def load_framework_text(
+    text: str, framework_id: str
+) -> tuple[Framework, list[CompetencyEntry]]:
+    """Read one framework file from its text, with the catalogue's rules.
+
+    For a file that comes from outside this repository, such as a version
+    read from a framework repository's history. Held to every rule a file
+    in shared/competency-definitions/ is, and two more, because the text
+    is not ours: a size limit, and no YAML aliases, which let a small file
+    expand hugely in memory and which no framework needs.
+
+    Args:
+        text: The file's contents.
+        framework_id: The framework it must declare, as its file's name.
+
+    Returns:
+        The framework, and its competencies in the order the file lists
+        them.
+
+    Raises:
+        ValueError: For a file too large, one using an alias, one that
+            declares no framework or another one, or anything the
+            catalogue refuses.
+    """
+    path = Path(f"{framework_id}.yaml")
+
+    if len(text.encode("utf-8")) > MAX_FRAMEWORK_FILE_BYTES:
+        raise ValueError(
+            f"{path.name} is larger than {MAX_FRAMEWORK_FILE_BYTES} bytes."
+        )
+
+    for event in yaml.parse(text, Loader=yaml.SafeLoader):
+        if isinstance(event, yaml.AliasEvent):
+            raise ValueError(
+                f"{path.name} uses a YAML alias. Write each value out in "
+                "full."
+            )
+
+    data: Any = yaml.safe_load(text)
+
+    if not isinstance(data, dict) or not isinstance(
+        data.get("competencies"), list
+    ):
+        raise ValueError(f"{path.name} lists no competencies.")
+
+    framework, entries = _entries_of(data, path)
+
+    if framework is None:
+        raise ValueError(f"{path.name} declares no framework.")
+
+    ids = [entry.id for entry in entries]
+    repeated = sorted({i for i in ids if ids.count(i) > 1})
+
+    if repeated:
+        raise ValueError(
+            f"Duplicate competency ids in {path.name}: "
+            + ", ".join(repeated)
+            + "."
+        )
+
+    _check_may_grant(entries)
+
+    return framework, entries
 
 
 def _load_catalogue(
@@ -408,45 +603,11 @@ def _load_catalogue(
         with open(path) as f:
             data: Any = yaml.safe_load(f)
 
-        framework = _framework_of(data, path)
+        framework, file_entries = _entries_of(data, path)
         if framework is not None:
             frameworks.append(framework)
 
-        for raw in data["competencies"]:
-            if "framework_id" in raw:
-                raise ValueError(
-                    f"Competency {raw.get('id')!r} in {path.name} sets "
-                    "framework_id. An entry belongs to the framework its "
-                    "file declares, and cannot name another."
-                )
-
-            entry = CompetencyEntry(**raw)
-            if framework is not None:
-                entry = entry.model_copy(update={"framework_id": framework.id})
-
-            _check_belongs(entry, framework, path)
-
-            # A sign-off stores the level id, so two levels sharing one
-            # would make a stored record ambiguous about which step of
-            # the scale was reached.
-            if entry.levels is not None:
-                level_ids = [lvl.id for lvl in entry.levels]
-                if len(set(level_ids)) != len(level_ids):
-                    raise ValueError(
-                        f"Competency {entry.id!r} in {path.name} has "
-                        "duplicate level ids: "
-                        + ", ".join(sorted(level_ids))
-                        + "."
-                    )
-                if not level_ids:
-                    raise ValueError(
-                        f"Competency {entry.id!r} in {path.name} declares "
-                        "an empty level list. Omit levels entirely where a "
-                        "competency is simply signed off or not."
-                    )
-
-            _check_scopes(entry, path)
-
+        for entry in file_entries:
             if entry.id in seen:
                 raise ValueError(
                     f"Duplicate competency id {entry.id!r}: defined in "
@@ -569,19 +730,24 @@ def _check_may_grant(entries: list[CompetencyEntry]) -> None:
                 )
 
 
-COMPETENCIES: list[CompetencyEntry]
-FRAMEWORKS: list[Framework]
-COMPETENCIES, FRAMEWORKS = _load_catalogue(COMPETENCY_DEFINITIONS_DIR)
-
-FRAMEWORK_IDS: tuple[str, ...] = tuple(f.id for f in FRAMEWORKS)
-
-# The ids of every framework's competencies, retired ones included. They
-# are recorded in a passport and refused wherever a competency is
-# granted, since nobody should hold "can define the mechanism of action"
-# as a permission. Permissions declare no framework.
-FRAMEWORK_COMPETENCY_IDS: tuple[str, ...] = tuple(
-    c.id for c in COMPETENCIES if c.framework_id is not None
-)
+# The catalogue holds permissions only: the competencies the code names,
+# in files that declare no framework. A framework's competencies are read
+# from the framework tables by the passport, through
+# app.features.passport.catalogue, and are granted to nobody.
+#
+# Every file is still loaded, framework files included, while the
+# frameworks live in this directory. The loader's checks span the whole
+# directory: an id must be unique across every file, and no ``may_grant``
+# list may name a framework's competency. Keeping only the permissions
+# afterwards keeps those checks without anything here reading a
+# framework. Phase 8 of
+# docs/docs/plans/2026-11-01-passport-record-and-catalogue-plan.md moves
+# the framework files out, and this filter then does nothing.
+COMPETENCIES: list[CompetencyEntry] = [
+    entry
+    for entry in _load_catalogue(COMPETENCY_DEFINITIONS_DIR)[0]
+    if entry.framework_id is None
+]
 
 # Every competency id the catalogue has ever defined, retired ones
 # included. Reads and audits use this, so nothing already stored becomes
@@ -596,13 +762,6 @@ ACTIVE_COMPETENCY_IDS: tuple[str, ...] = tuple(
 
 RETIRED_COMPETENCY_IDS: tuple[str, ...] = tuple(
     c.id for c in COMPETENCIES if c.retired_on is not None
-)
-
-# The ids the clinician passport may record something new against:
-# active, and marked assessable. A record already holding an id outside
-# this set stays readable; only new writes are refused.
-ASSESSABLE_COMPETENCY_IDS: tuple[str, ...] = tuple(
-    c.id for c in COMPETENCIES if c.retired_on is None and c.assessable
 )
 
 # The competencies that manage people within a whitelist: every active
@@ -675,49 +834,6 @@ def retired_competency_ids(ids: Iterable[str]) -> list[str]:
     return sorted({i for i in ids if i in retired})
 
 
-def get_framework(framework_id: str) -> Framework | None:
-    """A framework by id, or None."""
-    for framework in FRAMEWORKS:
-        if framework.id == framework_id:
-            return framework
-
-    return None
-
-
-def framework_competencies(framework_id: str) -> list[CompetencyEntry]:
-    """A framework's items, in the order its file lists them.
-
-    Its active entries: what a clinician working to it may record.
-
-    Args:
-        framework_id: Which framework.
-
-    Returns:
-        Its items, or an empty list for an unknown framework.
-    """
-    return [
-        c
-        for c in COMPETENCIES
-        if c.framework_id == framework_id
-        and c.assessable
-        and c.retired_on is None
-    ]
-
-
-def framework_competency_ids(ids: Iterable[str]) -> list[str]:
-    """Return the ids that are a framework's competencies.
-
-    Args:
-        ids: Competency ids to check.
-
-    Returns:
-        The framework competency ids, sorted and deduplicated.
-    """
-    framework_ids = set(FRAMEWORK_COMPETENCY_IDS)
-
-    return sorted({i for i in ids if i in framework_ids})
-
-
 def validate_competency_ids(ids: Iterable[str]) -> list[str]:
     """Check that every id may be granted as a permission in the app.
 
@@ -725,20 +841,18 @@ def validate_competency_ids(ids: Iterable[str]) -> list[str]:
     Quill**: open a page, see a record, take an action. It does not mean
     signed off inside a clinician passport. A passport records that
     somebody is competent at a thing; that is evidence about a person, and
-    unlocks nothing in the app. The two share the one catalogue, which is
-    why this check exists.
+    unlocks nothing in the app.
 
     Called at a write boundary: wherever a competency is about to be
-    stored as a permission, so a bad id never reaches the database. Three
+    stored as a permission, so a bad id never reaches the database. Two
     checks, in this order, each with its own message because each means
     something different to whoever is fixing it:
 
-    - **Unknown**: not in the catalogue at all. A typo.
-    - **Retired**: in the catalogue, but no longer newly granted. People
-      who already hold it keep it.
-    - **A framework's**: a competency of a framework, such as a statement
-      from a paper form. It can be signed off in a passport and was never
-      a permission, so no user is granted it.
+    - **Unknown**: not a permission at all. A typo, or a framework's
+      competency: the catalogue holds permissions only, so a statement
+      from a paper form is refused here by what it is, with no flag.
+    - **Retired**: a permission, but no longer newly granted. People who
+      already hold it keep it.
 
     Args:
         ids: Competency ids to validate.
@@ -747,7 +861,7 @@ def validate_competency_ids(ids: Iterable[str]) -> list[str]:
         The same ids, as a list.
 
     Raises:
-        ValueError: If any id is unknown, retired or a framework's.
+        ValueError: If any id is not a permission, or is retired.
     """
     checked = list(ids)
 
@@ -759,7 +873,8 @@ def validate_competency_ids(ids: Iterable[str]) -> list[str]:
             + ("ids" if len(unknown) > 1 else "id")
             + ": "
             + ", ".join(unknown)
-            + ". Competencies are defined in shared/competency-definitions/."
+            + ". Only a permission may be granted: one defined in a file in "
+            "shared/competency-definitions/ that declares no framework."
         )
 
     retired = retired_competency_ids(checked)
@@ -772,18 +887,6 @@ def validate_competency_ids(ids: Iterable[str]) -> list[str]:
             + ", ".join(retired)
             + ". Retired competencies cannot be newly granted; existing "
             "records keep them."
-        )
-
-    in_framework = framework_competency_ids(checked)
-
-    if in_framework:
-        raise ValueError(
-            "Framework competency "
-            + ("ids" if len(in_framework) > 1 else "id")
-            + ": "
-            + ", ".join(in_framework)
-            + ". These are items of a framework, recorded in a clinician "
-            "passport, and are granted to nobody."
         )
 
     return checked

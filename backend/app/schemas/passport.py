@@ -313,6 +313,60 @@ class FrameworkChoiceOut(BaseModel):
     items: int = Field(ge=0)
 
 
+class FrameworkScopeOut(BaseModel):
+    """One part of practice a framework competency is signed off for.
+
+    A retired one is still listed, with ``retired_on`` set, so a record
+    naming it reads; it is not offered for anything new.
+    """
+
+    id: NonEmptyText
+    name: NonEmptyText
+    retired_on: date | None = None
+    retired_in_version: int | None = None
+
+
+class FrameworkLevelOut(LevelOptionOut):
+    """One step on a framework competency's scale, with its retirement.
+
+    A retired one is still listed, at its place on the scale, so a record
+    naming it reads and a later level can be compared with it; it is not
+    offered for anything new.
+    """
+
+    retired_on: date | None = None
+    retired_in_version: int | None = None
+
+
+class FrameworkCompetencyOut(BaseModel):
+    """One competency of a framework, as its newest version holds it.
+
+    Retired ones are listed too, with ``retired_on`` and
+    ``retired_in_version`` set, so a page can still name a record held
+    against one. Levels and scopes are in the order the framework lists
+    them, which is the scale's order.
+    """
+
+    id: CompetencyIdField
+    display_name: NonEmptyText
+    levels: list[FrameworkLevelOut] = Field(default_factory=list)
+    scopes: list[FrameworkScopeOut] = Field(default_factory=list)
+    expires_after_months: int | None = None
+    retired_on: date | None = None
+    retired_in_version: int | None = None
+
+
+class FrameworkDefinitionOut(BaseModel):
+    """One framework in full, at its newest version, as the tables hold it."""
+
+    id: CompetencyIdField
+    name: NonEmptyText
+    publisher: NonEmptyText
+    version: int = Field(ge=1)
+    specialties: list[CompetencyIdField] = Field(default_factory=list)
+    competencies: list[FrameworkCompetencyOut] = Field(default_factory=list)
+
+
 class CompetencyStateOut(BaseModel):
     """One competency's state, from the derived index.
 
@@ -333,6 +387,9 @@ class CompetencyStateOut(BaseModel):
     requested_level: LevelRefOut | None = None
     #: The assessor's reason, only where they signed a different level.
     level_change_reason: str | None = None
+    #: The framework version the latest sign-off was given under, or
+    #: null where there is none, or the index predates the field.
+    framework_version: int | None = None
     signed_on: date | None = None
     signed_off_by: str | None = None
     expires_on: date | None = None

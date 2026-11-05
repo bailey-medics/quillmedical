@@ -21,10 +21,10 @@
  * the browser uploads straight to GCS - a video is addressed by a
  * generated id, so nobody has to look inside it.
  *
- * **There is no competency catalogue or shortlist route**, though
- * schemas for both exist in `backend/app/schemas/passport.py`. Until one
- * does, the components that need a competency list read
- * `src/generated/competencies.json`.
+ * **The frameworks come from `GET /api/passport/catalogue`**, through
+ * `fetchFrameworkCatalogue`, which `useFrameworkCatalogue` in
+ * `./catalogue` loads once and shares. The generated bundle holds
+ * permissions only.
  *
  * **The feature gate is not authorisation.** Every route here sits behind
  * `requires_feature("passport")` *and* `assess_clinician_passport`, and
@@ -47,6 +47,7 @@ import type {
   CpdEntryInput,
   EvidenceScan,
   EvidenceUpload,
+  FrameworkDefinition,
   InboxItem,
   InvitePreview,
   LandingView,
@@ -178,6 +179,14 @@ export function setPassportLandingView(
  */
 export function fetchPassportFrameworks(): Promise<FrameworkChoice[]> {
   return api.get<FrameworkChoice[]>("/passport/frameworks");
+}
+
+/**
+ * Every framework Quill holds, in full, at its newest version: what the
+ * passport's pages read the frameworks from.
+ */
+export function fetchFrameworkCatalogue(): Promise<FrameworkDefinition[]> {
+  return api.get<FrameworkDefinition[]>("/passport/catalogue");
 }
 
 /**

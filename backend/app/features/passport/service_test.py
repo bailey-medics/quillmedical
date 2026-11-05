@@ -39,6 +39,7 @@ from app.features.passport.service import (
     SignOffError,
     SignOffStateError,
 )
+from tests.frameworks import files_catalogue
 
 PASSPORT_ID = "3f2a8c1e4b7d49f0a6c2e8b1d5a7f309"
 NOW = datetime(2026, 3, 14, 14, 32, tzinfo=UTC)
@@ -97,6 +98,7 @@ def _request(
         passport,
         PASSPORT_ID,
         holder,
+        catalogue=files_catalogue(),
         competency_id=competency_id,
         observed_on=observed_on,
         level_id=level_id,
@@ -124,7 +126,13 @@ def _sign(
     }
     kwargs.update(overrides)
 
-    return service.sign_off(passport, PASSPORT_ID, assessor, **kwargs)  # type: ignore[arg-type]
+    return service.sign_off(
+        passport,
+        PASSPORT_ID,
+        assessor,
+        catalogue=files_catalogue(),
+        **kwargs,  # type: ignore[arg-type]
+    )
 
 
 class TestCreatePassport:
@@ -696,6 +704,7 @@ class TestOneStatePerScope:
                 schemas.LogbookEntry(
                     performed_on=date(2026, 3, day), scope=scope
                 ),
+                catalogue=files_catalogue(),
                 now=NOW,
             )
 

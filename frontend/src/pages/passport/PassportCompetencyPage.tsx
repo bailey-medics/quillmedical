@@ -33,7 +33,7 @@ import { PageSpinner } from "@/components/loading-spinner";
 import LogbookEntryForm from "@/components/passport/LogbookEntryForm";
 import PassportCompetencyDetail from "@/components/passport/PassportCompetencyDetail";
 import SignOffRequestForm from "@/components/passport/SignOffRequestForm";
-import { ASSESSABLE_COMPETENCIES } from "@/types/cbac";
+import { useFrameworkCatalogue } from "@lib/passport/catalogue";
 import {
   addLogbookEntry,
   fetchLogbook,
@@ -43,7 +43,6 @@ import {
 } from "@lib/passport";
 // Direct, not through the barrel, so page tests that mock the API
 // client still get the real catalogue.
-import { frameworkOf } from "@lib/passport/frameworks";
 import { levelsFor } from "@lib/passport/levels";
 import { scopesFor } from "@lib/passport/scopes";
 import type {
@@ -103,16 +102,17 @@ function refusalFrom(caught: unknown, fallback: string): string {
 }
 
 export function Component() {
+  const { catalogue, failed: catalogueFailed } = useFrameworkCatalogue();
   const navigate = useNavigate();
   const { state: auth } = useAuth();
   const { competencyId = "" } = useParams<{ competencyId: string }>();
 
-  // Only an assessable competency in the catalogue has a page. Anything
-  // else is an address nobody was given, so it is not found rather than
-  // an empty page.
-  const competency = ASSESSABLE_COMPETENCIES.find(
-    (entry) => entry.id === competencyId,
-  );
+  // Only a framework competency Quill holds has a page. Anything else is
+  // an address nobody was given, so it is not found rather than an empty
+  // page. A retired one still has its page, read-only, for what is
+  // recorded against it: nothing new can be asked for or logged.
+  const competency = catalogue?.competency(competencyId);
+  const retired = competency?.retired_on !== undefined;
 
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -205,6 +205,10 @@ export function Component() {
     setRefusal(null);
   }
 
+  // The frameworks are still loading, so whether this is a competency
+  // Quill holds is not known yet.
+  if (catalogue === null && !catalogueFailed) return <PageSpinner />;
+
   if (!competency) {
     return (
       <Stack gap="lg">
@@ -243,8 +247,8 @@ export function Component() {
         {mode === "asking" ? (
           <SignOffRequestForm
             competency={formCompetency}
-            levels={levelsFor(competencyId)}
-            scopes={scopesFor(competencyId)}
+            levels={levelsFor(catalogue, competencyId)}
+            scopes={scopesFor(catalogue, competencyId)}
             holderEmail={auth.user?.email}
             holderUsername={auth.user?.username}
             onSubmit={handleRequest}
@@ -254,7 +258,7 @@ export function Component() {
         ) : (
           <LogbookEntryForm
             competency={formCompetency}
-            scopes={scopesFor(competencyId)}
+            scopes={scopesFor(catalogue, competencyId)}
             onSubmit={handleAddEntry}
             onCancel={cancel}
             isSubmitting={submitting}
@@ -267,10 +271,10 @@ export function Component() {
   return (
     <PassportCompetencyDetail
       competency={{ id: competencyId, name: competency.display_name }}
-      frameworkName={frameworkOf(competencyId)?.name}
+      frameworkName={catalogue?.frameworkOf(competencyId)?.name}
       signOffs={loaded.signOffs}
       logbook={loaded.logbook}
-      canWrite={loaded.canWrite}
+      canWrite={loaded.canWrite && !retired}
       onAskForSignOff={() => setMode("asking")}
       onAddEntry={() => setMode("adding")}
       onSelectSignOff={(name) =>

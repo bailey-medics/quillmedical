@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pytest
 
+from app.features.passport.tooling import check_framework_version
 from app.features.passport.tooling.check_framework_version import (
     check_framework_versions,
     main,
@@ -156,6 +157,80 @@ def test_a_version_going_down_is_refused(repo: Path) -> None:
     result = check_framework_versions(repo / "definitions", "main")
 
     assert "went down from 2 to 1" in result.violations[0]
+
+
+def _main_at(repo: Path, version: int) -> None:
+    """Put *version* of the sheet on main, and branch from it."""
+    _write(repo, _SHEET.format(version=version))
+    _git(repo, "commit", "-am", f"Version {version}")
+    _git(repo, "checkout", "main")
+    _git(repo, "merge", "feature/change")
+    _git(repo, "checkout", "-b", "feature/again")
+
+
+def test_a_framework_started_again_may_go_back_to_1(
+    repo: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        check_framework_version, "STARTED_AGAIN", frozenset({"sheet"})
+    )
+    _main_at(repo, 2)
+    _write(repo, _SHEET.format(version=1))
+
+    assert check_framework_versions(repo / "definitions", "main").passed
+
+
+def test_a_framework_started_again_may_go_back_to_1_only(
+    repo: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        check_framework_version, "STARTED_AGAIN", frozenset({"sheet"})
+    )
+    _main_at(repo, 3)
+    _write(repo, _SHEET.format(version=2))
+
+    result = check_framework_versions(repo / "definitions", "main")
+
+    assert "went down from 3 to 2" in result.violations[0]
+
+
+def test_a_framework_started_again_must_not_change_too(
+    repo: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A fresh start renumbers; a change of content waits for version 2."""
+    monkeypatch.setattr(
+        check_framework_version, "STARTED_AGAIN", frozenset({"sheet"})
+    )
+    _main_at(repo, 2)
+    _write(repo, _SHEET.format(version=1).replace("Refer a patient", "Refer"))
+
+    result = check_framework_versions(repo / "definitions", "main")
+
+    assert "went down from 2 to 1" in result.violations[0]
+
+
+def test_only_gloucestershire_is_started_again() -> None:
+    """Emptied again by the pull request after the fresh start merges."""
+    assert check_framework_version.STARTED_AGAIN == {
+        "ghnft_radiotherapy_record"
+    }
+
+
+def test_a_dropped_scope_is_refused_even_with_a_new_version(
+    repo: Path,
+) -> None:
+    """A sign-off may name it, so it is never removed."""
+    _write(
+        repo,
+        _SHEET.format(version=2).replace(
+            '      - id: lung\n        name: "Lung"\n', ""
+        ),
+    )
+
+    result = check_framework_versions(repo / "definitions", "main")
+
+    assert not result.passed
+    assert any("scope lung was removed" in v for v in result.violations)
 
 
 def test_a_comment_alone_needs_no_new_version(repo: Path) -> None:

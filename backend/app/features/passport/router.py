@@ -40,6 +40,7 @@ from __future__ import annotations
 
 import logging
 import re
+from collections.abc import Iterable, Iterator
 from datetime import UTC, datetime
 
 from fastapi import (
@@ -55,7 +56,6 @@ from pydantic import ValidationError
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
-from app.cbac.competencies import get_competency_details
 from app.config import settings
 from app.db import get_core_db
 from app.deps import (
@@ -99,7 +99,11 @@ from app.schemas.passport import (
     EvidenceScanOut,
     EvidenceUploadOut,
     FrameworkChoiceOut,
+    FrameworkCompetencyOut,
+    FrameworkDefinitionOut,
+    FrameworkLevelOut,
     FrameworkOut,
+    FrameworkScopeOut,
     FrameworksIn,
     InboxItemOut,
     InvitePreviewOut,
@@ -149,9 +153,11 @@ from .blobs import (
     BlobNotFoundError,
     BlobStore,
 )
+from .catalogue import StoredCatalogue, stored_catalogue
 from .commits import Actor
 from .entitlements import passport_write_ends_on
 from .gcs_store import GcsBlobStore, blob_object_key
+from .index import sign_off_records
 from .locking import lock_passport_for_write
 from .models import (
     Passport,
@@ -199,6 +205,11 @@ def _feature_unless_reading_your_own(
     inbox and the assessor search. The route's own checks still run
     afterwards, so this never widens who may read what.
 
+    Also waived for ``/catalogue``, the frameworks themselves, because
+    the pages of their own record name every competency from it. A
+    framework is a published document and nobody's record, so reading
+    one tells the caller nothing about anybody.
+
     The passport id is taken from the path and never from the query, so
     it cannot be supplied to a route that has none.
 
@@ -209,7 +220,9 @@ def _feature_unless_reading_your_own(
         user = get_current_user(request, db)
         passport_id = request.path_params.get("passport_id")
         if passport_id is None:
-            if request.url.path.endswith("/passport/me"):
+            if request.url.path.endswith(
+                ("/passport/me", "/passport/catalogue")
+            ):
                 return
         elif _PASSPORT_ID.match(passport_id):
             owner = db.scalar(
@@ -690,6 +703,32 @@ def _require_signoff_reader(
     raise HTTPException(404, "Passport not found")
 
 
+def _refuse_versions_not_held(
+    catalogue: StoredCatalogue, records: Iterable[SignOff]
+) -> None:
+    """Refuse with a 409 if a sign-off names a version Quill does not hold.
+
+    Nothing is shown against the nearest version Quill does hold: words
+    a sign-off was not given under would read as if it had been. The
+    message names the framework and the version, so a person can find
+    out where the record came from.
+    """
+    try:
+        for record in records:
+            definitions.check_held_version(
+                catalogue, record.competency.id, record.framework_version
+            )
+    except definitions.UnknownFrameworkVersionError as error:
+        raise HTTPException(409, str(error)) from None
+
+
+def _every_sign_off(
+    store: PassportStore, passport_id: str
+) -> Iterator[SignOff]:
+    """Each sign-off in a passport, for a whole-passport read to check."""
+    return (record for _, record in sign_off_records(store, passport_id))
+
+
 def _read_index(store: PassportStore, passport_id: str) -> Index:
     """The derived index, or an empty one if the passport has no commits."""
     try:
@@ -710,7 +749,9 @@ def _read_profile(store: PassportStore, passport_id: str) -> Profile:
     return from_yaml(Profile, raw)
 
 
-def _passport_out(row: Passport, profile: Profile) -> PassportOut:
+def _passport_out(
+    catalogue: StoredCatalogue, row: Passport, profile: Profile
+) -> PassportOut:
     """Describe a passport from its row and its profile file."""
     return PassportOut(
         passport_id=row.id,
@@ -725,7 +766,8 @@ def _passport_out(row: Passport, profile: Profile) -> PassportOut:
         ],
         frameworks=[
             FrameworkOut(
-                id=framework.id, name=frameworks.current_name(framework)
+                id=framework.id,
+                name=frameworks.current_name(catalogue, framework),
             )
             for framework in profile.frameworks
         ],
@@ -791,7 +833,7 @@ def _detail(
     index = _read_index(store, row.id)
 
     return PassportDetailOut(
-        passport=_passport_out(row, profile),
+        passport=_passport_out(stored_catalogue(db), row, profile),
         competencies=[
             CompetencyStateOut.model_validate(entry.model_dump(mode="json"))
             for entry in index.competencies
@@ -837,7 +879,7 @@ def create_passport(
         raise HTTPException(409, "You already have a passport")
 
     chosen_frameworks = _framework_refs(
-        body.frameworks if body is not None else []
+        stored_catalogue(db), body.frameworks if body is not None else []
     )
 
     passport_id = ids.new_passport_id()
@@ -859,17 +901,19 @@ def create_passport(
 
     profile = _read_profile(store, passport_id)
 
-    return _passport_out(row, profile)
+    return _passport_out(stored_catalogue(db), row, profile)
 
 
-def _framework_refs(framework_ids: list[str]) -> list[FrameworkRef]:
+def _framework_refs(
+    catalogue: StoredCatalogue, framework_ids: list[str]
+) -> list[FrameworkRef]:
     """Resolve chosen framework ids, or refuse with a 400.
 
     Raises:
         HTTPException: 400 if an id has no file, or appears twice.
     """
     try:
-        return frameworks.framework_refs(framework_ids)
+        return frameworks.framework_refs(catalogue, framework_ids)
     except frameworks.UnknownFrameworkError as error:
         raise HTTPException(400, str(error)) from None
 
@@ -892,13 +936,15 @@ def set_frameworks(
     Dropping a framework removes nothing recorded under it.
     """
     row = _require_writer(db, passport_id, user, store)
-    chosen = _framework_refs(body.frameworks)
+    chosen = _framework_refs(stored_catalogue(db), body.frameworks)
 
     commit = records.set_frameworks(store, row.id, _actor(user), chosen)
     row.head_commit = commit
     db.flush()
 
-    return _passport_out(row, _read_profile(store, row.id))
+    return _passport_out(
+        stored_catalogue(db), row, _read_profile(store, row.id)
+    )
 
 
 @passport_router.put(
@@ -925,7 +971,9 @@ def set_landing_view(
     row.landing_view = body.landing_view
     db.flush()
 
-    return _passport_out(row, _read_profile(store, row.id))
+    return _passport_out(
+        stored_catalogue(db), row, _read_profile(store, row.id)
+    )
 
 
 def _appraisal_periods_out(profile: Profile) -> AppraisalPeriodsOut:
@@ -1025,6 +1073,70 @@ def get_my_passport(
 
 
 # Declared before ``/{passport_id}``, which would otherwise take
+# "catalogue" for a passport id and answer 404.
+@passport_router.get(
+    "/catalogue",
+    response_model=list[FrameworkDefinitionOut],
+    dependencies=[_DEP_PASSPORT],
+)
+def get_catalogue(
+    db: Session = _DEP_SESSION,
+) -> list[FrameworkDefinitionOut]:
+    """Every framework Quill holds, in full, at its newest version.
+
+    What the passport's pages read the frameworks from, in place of the
+    copy built into the frontend. Each framework's competencies are in
+    the order its file lists them, with levels and scopes, and with its
+    retired competencies too, so a record held against one can still be
+    named. Frameworks are in name order.
+
+    The same for everybody who may use the passport: a framework is a
+    published document, not anybody's record.
+    """
+    held = stored_catalogue(db)
+
+    return [
+        FrameworkDefinitionOut(
+            id=framework.id,
+            name=framework.name,
+            publisher=framework.publisher,
+            version=framework.version,
+            specialties=list(framework.specialties),
+            competencies=[
+                FrameworkCompetencyOut(
+                    id=entry.id,
+                    display_name=entry.display_name,
+                    levels=[
+                        FrameworkLevelOut(
+                            id=lvl.id,
+                            name=lvl.name,
+                            position=i,
+                            retired_on=lvl.retired_on,
+                            retired_in_version=lvl.retired_in_version,
+                        )
+                        for i, lvl in enumerate(entry.levels or [])
+                    ],
+                    scopes=[
+                        FrameworkScopeOut(
+                            id=sc.id,
+                            name=sc.name,
+                            retired_on=sc.retired_on,
+                            retired_in_version=sc.retired_in_version,
+                        )
+                        for sc in entry.scopes or []
+                    ],
+                    expires_after_months=entry.expires_after_months,
+                    retired_on=entry.retired_on,
+                    retired_in_version=entry.retired_in_version,
+                )
+                for entry in held.competencies.get(framework.id, [])
+            ],
+        )
+        for framework in held.frameworks.values()
+    ]
+
+
+# Declared before ``/{passport_id}``, which would otherwise take
 # "frameworks" for a passport id and answer 404.
 @passport_router.get(
     "/frameworks",
@@ -1047,7 +1159,7 @@ def list_frameworks(
     """
     try:
         choices = frameworks.frameworks_for(
-            db, user.id, query=q, specialty=specialty
+            db, stored_catalogue(db), user.id, query=q, specialty=specialty
         )
     except frameworks.UnknownSpecialtyFilterError as error:
         raise HTTPException(400, str(error)) from None
@@ -1104,6 +1216,18 @@ def get_inbox(
             record = service.read_sign_off(
                 store, row.passport_id, row.signoff_id
             )
+            definitions.check_held_version(
+                stored_catalogue(db),
+                record.competency.id,
+                record.framework_version,
+            )
+        except definitions.UnknownFrameworkVersionError as error:
+            # One record Quill cannot read must not stop an assessor
+            # seeing the rest, as below.
+            logger.warning(
+                "Sign-off request %s is not listed: %s", row.id, error
+            )
+            continue
         except PassportNotFoundError:
             # The row outlived its record, which should not happen. Skip
             # it rather than failing the whole inbox: one broken request
@@ -1176,7 +1300,9 @@ def get_logbook_confirmation(
                 ),
             ),
         )
-        competency = definitions.competency_ref(request_row.competency_id)
+        competency = definitions.competency_ref(
+            stored_catalogue(db), request_row.competency_id
+        )
     except (
         PassportNotFoundError,
         paths.PassportPathError,
@@ -1290,7 +1416,10 @@ def get_passport(
 
 
 def _checked_request(
-    competency_id: str, level_id: str | None, scope_id: str | None = None
+    catalogue: StoredCatalogue,
+    competency_id: str,
+    level_id: str | None,
+    scope_id: str | None = None,
 ) -> LevelRef | None:
     """Refuse, before anybody is emailed, a request that cannot be saved.
 
@@ -1304,7 +1433,9 @@ def _checked_request(
         The level to record, or ``None`` for a competency with no scale.
     """
     try:
-        return service.check_request(competency_id, level_id, scope_id)
+        return service.check_request(
+            catalogue, competency_id, level_id, scope_id
+        )
     except definitions.UnknownCompetencyError:
         raise HTTPException(404, "Unknown competency") from None
     except definitions.UnknownScopeError as error:
@@ -1365,7 +1496,7 @@ def _email_sign_off_request(
     """
     try:
         competency_name: str | None = definitions.competency_ref(
-            competency_id
+            stored_catalogue(db), competency_id
         ).name
     except definitions.UnknownCompetencyError:
         competency_name = None
@@ -1581,9 +1712,10 @@ def request_sign_off(
     # must not reach an assessor's inbox. Nor may one the service would
     # then refuse, such as a scaled competency asked for with no level,
     # which is what an assessor was once emailed about on the live site.
-    _offered_refs(store, row.id, [competency_id])
+    catalogue = stored_catalogue(db)
+    _offered_refs(catalogue, store, row.id, [competency_id])
     requested_level = _checked_request(
-        competency_id, body.level_id, body.scope_id
+        catalogue, competency_id, body.level_id, body.scope_id
     )
     # Before the email too, and for the same reason: evidence named here
     # that is not stored against this passport refuses the request, and
@@ -1593,7 +1725,7 @@ def request_sign_off(
     attachments = _attachments(db, blobs, row.id, body.attachments)
     # Already checked, so this only fetches the wording for the email.
     requested_scope = (
-        definitions.scope_ref(competency_id, body.scope_id)
+        definitions.scope_ref(catalogue, competency_id, body.scope_id)
         if body.scope_id is not None
         else None
     )
@@ -1633,6 +1765,7 @@ def request_sign_off(
             store,
             row.id,
             _actor(user),
+            catalogue=catalogue,
             competency_id=competency_id,
             observed_on=body.observed_on,
             level_id=body.level_id,
@@ -1703,6 +1836,9 @@ def list_sign_offs(
             # index treats it too.
             continue
 
+    _refuse_versions_not_held(
+        stored_catalogue(db), (record for _, record in found)
+    )
     found.sort(key=lambda pair: (pair[1].observed_on, pair[0]), reverse=True)
 
     asked = _assessor_emails(db, row.id)
@@ -1752,6 +1888,8 @@ def get_sign_off(
         record = service.read_sign_off(store, row.id, signoff_id)
     except PassportNotFoundError, paths.PassportPathError:
         raise HTTPException(404, "Sign-off not found") from None
+
+    _refuse_versions_not_held(stored_catalogue(db), [record])
 
     out = _sign_off_out(signoff_id, record)
 
@@ -1810,6 +1948,7 @@ def sign_off(
             store,
             passport.id,
             _actor(user),
+            catalogue=stored_catalogue(db),
             name=signoff_id,
             assessor_user_id=str(user.id),
             holder_user_id=str(passport.user_id),
@@ -2014,7 +2153,9 @@ def get_competency_state(
     # So every route below requires the holder and nobody else.
 
 
-def _competency_refs(ids_given: list[str]) -> list[CompetencyRef]:
+def _competency_refs(
+    catalogue: StoredCatalogue, ids_given: list[str]
+) -> list[CompetencyRef]:
     """Resolve competency ids to id-and-name pairs.
 
     The label travels with the id into the stored record, so a
@@ -2025,12 +2166,16 @@ def _competency_refs(ids_given: list[str]) -> list[CompetencyRef]:
         HTTPException: 404 if any id is not in the catalogue.
     """
     try:
-        return [definitions.competency_ref(given) for given in ids_given]
+        return [
+            definitions.competency_ref(catalogue, given) for given in ids_given
+        ]
     except definitions.UnknownCompetencyError as error:
         raise HTTPException(404, str(error)) from None
 
 
-def _assessable_refs(ids_given: list[str]) -> list[CompetencyRef]:
+def _assessable_refs(
+    catalogue: StoredCatalogue, ids_given: list[str]
+) -> list[CompetencyRef]:
     """Resolve competency ids for a record being created.
 
     Stricter than :func:`_competency_refs`: each id must also be one the
@@ -2044,7 +2189,9 @@ def _assessable_refs(ids_given: list[str]) -> list[CompetencyRef]:
             is not assessable.
     """
     try:
-        return [definitions.assessable_ref(given) for given in ids_given]
+        return [
+            definitions.assessable_ref(catalogue, given) for given in ids_given
+        ]
     except definitions.UnknownCompetencyError as error:
         raise HTTPException(404, str(error)) from None
     except definitions.NotAssessableError as error:
@@ -2060,7 +2207,10 @@ OUTSIDE_FRAMEWORKS_MESSAGE = (
 
 
 def _offered_refs(
-    store: PassportStore, passport_id: str, ids_given: list[str]
+    catalogue: StoredCatalogue,
+    store: PassportStore,
+    passport_id: str,
+    ids_given: list[str],
 ) -> list[CompetencyRef]:
     """Resolve competency ids for a record being created in a passport.
 
@@ -2078,14 +2228,14 @@ def _offered_refs(
         HTTPException: 404 if any id is not in the catalogue, 400 if one
             is not assessable or is outside the holder's frameworks.
     """
-    refs = _assessable_refs(ids_given)
+    refs = _assessable_refs(catalogue, ids_given)
     working_to = {
         framework.id
         for framework in _read_profile(store, passport_id).frameworks
     }
 
     for ref in refs:
-        entry = get_competency_details(ref.id)
+        entry = catalogue.entries.get(ref.id)
         if entry is None or entry.framework_id not in working_to:
             raise HTTPException(400, OUTSIDE_FRAMEWORKS_MESSAGE)
 
@@ -2395,7 +2545,9 @@ def add_certificate(
         issuer=body.issuer,
         awarded_on=body.awarded_on,
         expires_on=body.expires_on,
-        competencies=_offered_refs(store, row.id, body.competencies),
+        competencies=_offered_refs(
+            stored_catalogue(db), store, row.id, body.competencies
+        ),
         description=body.description,
         attachments=_attachments(db, blobs, row.id, body.attachments),
     )
@@ -2486,7 +2638,7 @@ def amend_certificate(
         issuer=body.issuer,
         awarded_on=body.awarded_on,
         expires_on=body.expires_on,
-        competencies=_competency_refs(body.competencies),
+        competencies=_competency_refs(stored_catalogue(db), body.competencies),
         description=body.description,
         attachments=attachments,
     )
@@ -2776,7 +2928,11 @@ LOGBOOK_SCOPE_REQUIRED_MESSAGE = "Choose what this entry counts towards."
 
 
 def _logbook_scope(
-    competency_id: str, scope_id: str | None
+    catalogue: StoredCatalogue,
+    competency_id: str,
+    scope_id: str | None,
+    *,
+    adding: bool = False,
 ) -> ScopeRef | None:
     """The scope a logbook entry names, or none for a competency with none.
 
@@ -2792,11 +2948,15 @@ def _logbook_scope(
     """
     try:
         if scope_id is None:
-            if definitions.has_scopes(competency_id):
+            if definitions.has_scopes(catalogue, competency_id):
                 raise HTTPException(400, LOGBOOK_SCOPE_REQUIRED_MESSAGE)
             return None
 
-        return definitions.scope_ref(competency_id, scope_id)
+        # A new entry may not name a retired scope; correcting an old one
+        # that does may keep it.
+        return definitions.scope_ref(
+            catalogue, competency_id, scope_id, offered=adding
+        )
     except definitions.UnknownCompetencyError:
         raise HTTPException(404, "Unknown competency") from None
     except definitions.UnknownScopeError as error:
@@ -2831,8 +2991,10 @@ def add_logbook_entry(
     lives inside the file.
     """
     row = _require_writer(db, passport_id, user, store)
-    _offered_refs(store, row.id, [competency_id])
-    scope = _logbook_scope(competency_id, body.scope_id)
+    _offered_refs(stored_catalogue(db), store, row.id, [competency_id])
+    scope = _logbook_scope(
+        stored_catalogue(db), competency_id, body.scope_id, adding=True
+    )
 
     # Built before the supervisor is emailed, because building it can
     # still refuse the request: evidence that is not stored, or a field
@@ -2859,7 +3021,12 @@ def add_logbook_entry(
     )
 
     stem, commit = records.add_logbook_entry(
-        store, row.id, _actor(user), competency_id, entry
+        store,
+        row.id,
+        _actor(user),
+        competency_id,
+        entry,
+        catalogue=stored_catalogue(db),
     )
     row.head_commit = commit
 
@@ -3016,7 +3183,7 @@ def amend_logbook_entry(
     except PassportNotFoundError, paths.PassportPathError:
         raise HTTPException(404, "Logbook entry not found") from None
 
-    scope = _logbook_scope(competency_id, body.scope_id)
+    scope = _logbook_scope(stored_catalogue(db), competency_id, body.scope_id)
 
     # Built afresh from what was sent, so a confirmation on the entry is
     # not carried over: the supervisor confirmed what it said before.
@@ -3135,7 +3302,9 @@ def add_reflection(
     reflection = Reflection(
         title=body.title,
         written_on=body.written_on,
-        competencies=_offered_refs(store, row.id, body.competencies),
+        competencies=_offered_refs(
+            stored_catalogue(db), store, row.id, body.competencies
+        ),
         attachments=_attachments(db, blobs, row.id, body.attachments),
     )
 
@@ -3227,7 +3396,7 @@ def amend_reflection(
     reflection = Reflection(
         title=body.title,
         written_on=body.written_on,
-        competencies=_competency_refs(body.competencies),
+        competencies=_competency_refs(stored_catalogue(db), body.competencies),
         attachments=(
             _attachments(db, blobs, row.id, body.attachments)
             if "attachments" in body.model_fields_set
@@ -3301,7 +3470,9 @@ def add_cpd_entry(
         title=body.title,
         activity_type=body.activity_type,
         points=body.points,
-        competencies=_offered_refs(store, row.id, body.competencies),
+        competencies=_offered_refs(
+            stored_catalogue(db), store, row.id, body.competencies
+        ),
         certificate=body.certificate,
         notes=body.notes,
         attachments=_attachments(db, blobs, row.id, body.attachments),
@@ -3434,7 +3605,7 @@ def amend_cpd_entry(
         title=body.title,
         activity_type=body.activity_type,
         points=body.points,
-        competencies=_competency_refs(body.competencies),
+        competencies=_competency_refs(stored_catalogue(db), body.competencies),
         certificate=body.certificate,
         notes=body.notes,
         attachments=(
@@ -3666,7 +3837,9 @@ passport_public_router = APIRouter(
 )
 
 
-def _competency_name_or_none(competency_id: str | None) -> str | None:
+def _competency_name_or_none(
+    catalogue: StoredCatalogue, competency_id: str | None
+) -> str | None:
     """The competency's display name, or nothing.
 
     Nothing covers three cases that are all ordinary: an invitation
@@ -3677,7 +3850,7 @@ def _competency_name_or_none(competency_id: str | None) -> str | None:
         return None
 
     try:
-        return definitions.competency_ref(competency_id).name
+        return definitions.competency_ref(catalogue, competency_id).name
     except definitions.UnknownCompetencyError:
         return None
 
@@ -3729,7 +3902,9 @@ def preview_assessor_invite(
         # holding the catalogue. An id the catalogue no longer knows
         # yields nothing rather than an error: a retired competency
         # must not stop somebody accepting an invitation.
-        competency_name=_competency_name_or_none(invite.competency_id),
+        competency_name=_competency_name_or_none(
+            stored_catalogue(db), invite.competency_id
+        ),
     )
 
 
@@ -3817,7 +3992,15 @@ def export_markdown(
     row = _require_holder(db, passport_id, user)
 
     try:
-        text = render.render(store, row.id, include_reflections=reflections)
+        _refuse_versions_not_held(
+            stored_catalogue(db), _every_sign_off(store, row.id)
+        )
+        text = render.render(
+            store,
+            row.id,
+            include_reflections=reflections,
+            catalogue=stored_catalogue(db),
+        )
     except PassportNotFoundError:
         raise HTTPException(404, "Passport not found") from None
 
@@ -3854,7 +4037,15 @@ def export_pdf(
     row = _require_holder(db, passport_id, user)
 
     try:
-        data = pdf.render_pdf(store, row.id, head_commit=row.head_commit)
+        _refuse_versions_not_held(
+            stored_catalogue(db), _every_sign_off(store, row.id)
+        )
+        data = pdf.render_pdf(
+            store,
+            row.id,
+            head_commit=row.head_commit,
+            catalogue=stored_catalogue(db),
+        )
     except PassportNotFoundError:
         raise HTTPException(404, "Passport not found") from None
 
@@ -3892,9 +4083,13 @@ def export_bundle(
     row = _require_holder(db, passport_id, user)
 
     try:
+        _refuse_versions_not_held(
+            stored_catalogue(db), _every_sign_off(store, row.id)
+        )
         data = export.build_bundle(
             store,
             row.id,
+            catalogue=stored_catalogue(db),
             requested_by=str(user.id),
             head_commit=row.head_commit,
             blobs=blobs,

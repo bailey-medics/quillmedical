@@ -1,9 +1,15 @@
-"""Reading the passport's fields off the shared competency catalogue.
+"""Reading the passport's fields off the stored frameworks.
 
-The passport adds no second registry. Competencies live where they
-already live, in ``shared/competency-definitions/``, and this module is
-the narrow view of them the passport needs: does this competency have a
-scale, what are its steps called, and does a sign-off against it expire.
+The passport adds no second registry. A framework's competencies are
+read from the framework tables, as :mod:`.catalogue` gives them back,
+and this module is the narrow view of them the passport needs: does this
+competency have a scale, what are its steps called, and does a sign-off
+against it expire.
+
+**Every function takes the catalogue, read once for the request.** A
+route reads it with :func:`.catalogue.stored_catalogue` and passes it
+down, so one request never mixes two versions of a framework, even if
+the sync stores a new one while the request runs.
 
 Why a module rather than importing :mod:`app.cbac.competencies`
 directly. Two reasons, and the second is the real one:
@@ -26,14 +32,16 @@ the opposite of how a registry usually gets used, and is deliberate.
 
 from __future__ import annotations
 
-from app.cbac.competencies import (
-    ASSESSABLE_COMPETENCY_IDS,
-    CompetencyEntry,
-    get_competency_details,
-    get_framework,
-)
+from typing import TYPE_CHECKING
+
+from app.cbac.competencies import CompetencyEntry
 
 from .schemas import CompetencyRef, LevelRef, ScopeRef
+
+if TYPE_CHECKING:
+    # A type only. The catalogue module reads the database, and this one
+    # must import nothing that does: tests/features_import_boundary_test.py.
+    from .catalogue import StoredCatalogue
 
 
 class UnknownCompetencyError(ValueError):
@@ -62,6 +70,16 @@ class UnknownLevelError(ValueError):
     """
 
 
+class UnknownFrameworkVersionError(ValueError):
+    """A sign-off names a framework version Quill does not hold.
+
+    Refused rather than read against the nearest version Quill does
+    hold: comparing a sign-off with words it was not given under is the
+    error this exists to stop. The message names the framework and the
+    version, so somebody can find out where the record came from.
+    """
+
+
 class UnknownScopeError(ValueError):
     """The competency does not declare this scope.
 
@@ -71,10 +89,11 @@ class UnknownScopeError(ValueError):
     """
 
 
-def _entry(competency_id: str) -> CompetencyEntry:
+def _entry(catalogue: StoredCatalogue, competency_id: str) -> CompetencyEntry:
     """The catalogue entry, or refuse by name.
 
     Args:
+        catalogue: The stored frameworks, read once for the request.
         competency_id: The competency id.
 
     Returns:
@@ -86,21 +105,24 @@ def _entry(competency_id: str) -> CompetencyEntry:
             readable, and refusing to render an old sign-off because the
             competency has since been retired would lose the record.
     """
-    entry = get_competency_details(competency_id)
+    entry = catalogue.entries.get(competency_id)
 
     if entry is None:
         raise UnknownCompetencyError(
-            f"Unknown competency {competency_id!r}. Competencies are defined "
-            "in shared/competency-definitions/."
+            f"Unknown competency {competency_id!r}. No framework Quill "
+            "holds defines it."
         )
 
     return entry
 
 
-def competency_ref(competency_id: str) -> CompetencyRef:
+def competency_ref(
+    catalogue: StoredCatalogue, competency_id: str
+) -> CompetencyRef:
     """The id and display name to copy into a record.
 
     Args:
+        catalogue: The stored frameworks, read once for the request.
         competency_id: The competency id.
 
     Returns:
@@ -109,18 +131,19 @@ def competency_ref(competency_id: str) -> CompetencyRef:
     Raises:
         UnknownCompetencyError: If the id is not in the catalogue.
     """
-    entry = _entry(competency_id)
+    entry = _entry(catalogue, competency_id)
 
     return CompetencyRef(id=entry.id, name=entry.display_name)
 
 
-def framework_version(competency_id: str) -> int:
+def framework_version(catalogue: StoredCatalogue, competency_id: str) -> int:
     """The current version of the framework a competency belongs to.
 
     Copied into a sign-off when it is asked for, beside the words, so the
     record says which version of the framework those words came from.
 
     Args:
+        catalogue: The stored frameworks, read once for the request.
         competency_id: The competency id.
 
     Returns:
@@ -131,9 +154,9 @@ def framework_version(competency_id: str) -> int:
         NotAssessableError: If it belongs to no framework, so nothing can
             be signed off against it.
     """
-    entry = _entry(competency_id)
+    entry = _entry(catalogue, competency_id)
     framework = (
-        get_framework(entry.framework_id)
+        catalogue.frameworks.get(entry.framework_id)
         if entry.framework_id is not None
         else None
     )
@@ -147,7 +170,9 @@ def framework_version(competency_id: str) -> int:
     return framework.version
 
 
-def assessable_ref(competency_id: str) -> CompetencyRef:
+def assessable_ref(
+    catalogue: StoredCatalogue, competency_id: str
+) -> CompetencyRef:
     """The id and display name, for a record being written now.
 
     The write-time twin of :func:`competency_ref`. Reading an old record
@@ -155,6 +180,7 @@ def assessable_ref(competency_id: str) -> CompetencyRef:
     since been retired or marked not assessable stays readable.
 
     Args:
+        catalogue: The stored frameworks, read once for the request.
         competency_id: The competency id.
 
     Returns:
@@ -165,9 +191,10 @@ def assessable_ref(competency_id: str) -> CompetencyRef:
         NotAssessableError: If it is not marked ``assessable``, or has
             been retired.
     """
-    ref = competency_ref(competency_id)
+    entry = _entry(catalogue, competency_id)
+    ref = CompetencyRef(id=entry.id, name=entry.display_name)
 
-    if competency_id not in ASSESSABLE_COMPETENCY_IDS:
+    if not entry.assessable or entry.retired_on is not None:
         raise NotAssessableError(
             f"{ref.name} ({competency_id}) cannot be recorded in a "
             "passport. Only competencies somebody can be assessed on are "
@@ -177,10 +204,11 @@ def assessable_ref(competency_id: str) -> CompetencyRef:
     return ref
 
 
-def has_levels(competency_id: str) -> bool:
+def has_levels(catalogue: StoredCatalogue, competency_id: str) -> bool:
     """Whether this competency is signed off against a scale.
 
     Args:
+        catalogue: The stored frameworks, read once for the request.
         competency_id: The competency id.
 
     Returns:
@@ -190,16 +218,17 @@ def has_levels(competency_id: str) -> bool:
     Raises:
         UnknownCompetencyError: If the id is not in the catalogue.
     """
-    return bool(_entry(competency_id).levels)
+    return bool(_entry(catalogue, competency_id).levels)
 
 
-def levels(competency_id: str) -> list[LevelRef]:
+def levels(catalogue: StoredCatalogue, competency_id: str) -> list[LevelRef]:
     """This competency's scale, in order.
 
     Order is the scale: the steps are meaningful in the sequence the
     definition lists them, which is why nothing here sorts them.
 
     Args:
+        catalogue: The stored frameworks, read once for the request.
         competency_id: The competency id.
 
     Returns:
@@ -208,19 +237,28 @@ def levels(competency_id: str) -> list[LevelRef]:
     Raises:
         UnknownCompetencyError: If the id is not in the catalogue.
     """
-    entry = _entry(competency_id)
+    entry = _entry(catalogue, competency_id)
 
     return [
         LevelRef(id=level.id, name=level.name) for level in entry.levels or []
     ]
 
 
-def level_ref(competency_id: str, level_id: str) -> LevelRef:
+def level_ref(
+    catalogue: StoredCatalogue,
+    competency_id: str,
+    level_id: str,
+    *,
+    offered: bool = False,
+) -> LevelRef:
     """The level id and its wording, to copy into a record.
 
     Args:
+        catalogue: The stored frameworks, read once for the request.
         competency_id: The competency id.
         level_id: Which step of its scale.
+        offered: True for a level being asked for anew, which a retired
+            level may not be. A record already naming one still reads.
 
     Returns:
         Both halves, ready to store.
@@ -231,7 +269,7 @@ def level_ref(competency_id: str, level_id: str) -> LevelRef:
             Naming the available ones, because the caller passing a wrong
             level is nearly always using a stale scale.
     """
-    available = levels(competency_id)
+    available = levels(catalogue, competency_id)
 
     if not available:
         raise UnknownLevelError(
@@ -241,6 +279,13 @@ def level_ref(competency_id: str, level_id: str) -> LevelRef:
 
     for level in available:
         if level.id == level_id:
+            if offered and _retired_part(
+                catalogue, competency_id, "levels", level_id
+            ):
+                raise UnknownLevelError(
+                    f"Level {level_id!r} of {competency_id!r} is no longer "
+                    "offered: its framework retired it."
+                )
             return level
 
     raise UnknownLevelError(
@@ -249,7 +294,9 @@ def level_ref(competency_id: str, level_id: str) -> LevelRef:
     )
 
 
-def level_order(competency_id: str, level_id: str) -> int:
+def level_order(
+    catalogue: StoredCatalogue, competency_id: str, level_id: str
+) -> int:
     """Where a level sits on its scale, counting from zero.
 
     Used to tell a progression from a reassessment: a higher index is a
@@ -258,6 +305,7 @@ def level_order(competency_id: str, level_id: str) -> int:
     order *is* the scale.
 
     Args:
+        catalogue: The stored frameworks, read once for the request.
         competency_id: The competency id.
         level_id: Which step.
 
@@ -268,7 +316,7 @@ def level_order(competency_id: str, level_id: str) -> int:
         UnknownCompetencyError: If the competency is not in the catalogue.
         UnknownLevelError: If it does not declare that level.
     """
-    available = levels(competency_id)
+    available = levels(catalogue, competency_id)
 
     for position, level in enumerate(available):
         if level.id == level_id:
@@ -276,14 +324,15 @@ def level_order(competency_id: str, level_id: str) -> int:
 
     # level_ref raises with the available levels named, so reuse it
     # rather than writing a second, differently worded refusal.
-    level_ref(competency_id, level_id)
+    level_ref(catalogue, competency_id, level_id)
     raise AssertionError("unreachable")  # pragma: no cover
 
 
-def has_scopes(competency_id: str) -> bool:
+def has_scopes(catalogue: StoredCatalogue, competency_id: str) -> bool:
     """Whether this competency is signed off one scope at a time.
 
     Args:
+        catalogue: The stored frameworks, read once for the request.
         competency_id: The competency id.
 
     Returns:
@@ -293,13 +342,14 @@ def has_scopes(competency_id: str) -> bool:
     Raises:
         UnknownCompetencyError: If the id is not in the catalogue.
     """
-    return bool(_entry(competency_id).scopes)
+    return bool(_entry(catalogue, competency_id).scopes)
 
 
-def scopes(competency_id: str) -> list[ScopeRef]:
+def scopes(catalogue: StoredCatalogue, competency_id: str) -> list[ScopeRef]:
     """What a record for this competency may cover, in listed order.
 
     Args:
+        catalogue: The stored frameworks, read once for the request.
         competency_id: The competency id.
 
     Returns:
@@ -308,19 +358,28 @@ def scopes(competency_id: str) -> list[ScopeRef]:
     Raises:
         UnknownCompetencyError: If the id is not in the catalogue.
     """
-    entry = _entry(competency_id)
+    entry = _entry(catalogue, competency_id)
 
     return [
         ScopeRef(id=scope.id, name=scope.name) for scope in entry.scopes or []
     ]
 
 
-def scope_ref(competency_id: str, scope_id: str) -> ScopeRef:
+def scope_ref(
+    catalogue: StoredCatalogue,
+    competency_id: str,
+    scope_id: str,
+    *,
+    offered: bool = False,
+) -> ScopeRef:
     """The scope id and its wording, to copy into a record.
 
     Args:
+        catalogue: The stored frameworks, read once for the request.
         competency_id: The competency id.
         scope_id: Which scope.
+        offered: True for a scope a new record is to cover, which a
+            retired scope may not be. A record already naming one reads.
 
     Returns:
         Both halves, ready to store.
@@ -329,7 +388,7 @@ def scope_ref(competency_id: str, scope_id: str) -> ScopeRef:
         UnknownCompetencyError: If the competency is not in the catalogue.
         UnknownScopeError: If it declares no scopes, or not this one.
     """
-    available = scopes(competency_id)
+    available = scopes(catalogue, competency_id)
 
     if not available:
         raise UnknownScopeError(
@@ -339,6 +398,13 @@ def scope_ref(competency_id: str, scope_id: str) -> ScopeRef:
 
     for scope in available:
         if scope.id == scope_id:
+            if offered and _retired_part(
+                catalogue, competency_id, "scopes", scope_id
+            ):
+                raise UnknownScopeError(
+                    f"Scope {scope_id!r} of {competency_id!r} is no longer "
+                    "offered: its framework retired it."
+                )
             return scope
 
     raise UnknownScopeError(
@@ -347,7 +413,22 @@ def scope_ref(competency_id: str, scope_id: str) -> ScopeRef:
     )
 
 
-def expires_after_months(competency_id: str) -> int | None:
+def _retired_part(
+    catalogue: StoredCatalogue, competency_id: str, kind: str, part_id: str
+) -> bool:
+    """Whether a competency's level or scope has been retired."""
+    entry = _entry(catalogue, competency_id)
+    parts = entry.levels if kind == "levels" else entry.scopes
+
+    return any(
+        part.id == part_id and part.retired_on is not None
+        for part in parts or []
+    )
+
+
+def expires_after_months(
+    catalogue: StoredCatalogue, competency_id: str
+) -> int | None:
     """How long a sign-off stands before it wants revisiting.
 
     Read at write time and turned into a date on the record. Nothing acts
@@ -357,6 +438,7 @@ def expires_after_months(competency_id: str) -> int | None:
     has not been made.
 
     Args:
+        catalogue: The stored frameworks, read once for the request.
         competency_id: The competency id.
 
     Returns:
@@ -365,4 +447,43 @@ def expires_after_months(competency_id: str) -> int | None:
     Raises:
         UnknownCompetencyError: If the id is not in the catalogue.
     """
-    return _entry(competency_id).expires_after_months
+    return _entry(catalogue, competency_id).expires_after_months
+
+
+def check_held_version(
+    catalogue: StoredCatalogue, competency_id: str, version: int
+) -> None:
+    """Refuse a sign-off naming a framework version Quill does not hold.
+
+    Wherever a sign-off enters: read from a passport, and from any import
+    later, such as a passport moved from another app that uses the same
+    frameworks.
+
+    Args:
+        catalogue: The stored frameworks, read once for the request.
+        competency_id: What the sign-off is for.
+        version: The framework version it was given under.
+
+    A sign-off for a competency no framework defines any more is let
+    through: its framework cannot be known, so nothing can be checked,
+    and a passport must stay readable when a competency leaves the
+    catalogue.
+
+    Raises:
+        UnknownFrameworkVersionError: If Quill holds the competency's
+            framework, but not that version of it.
+    """
+    entry = catalogue.entries.get(competency_id)
+
+    if entry is None or entry.framework_id is None:
+        return
+
+    framework_id = entry.framework_id
+
+    if version in catalogue.versions.get(framework_id, frozenset()):
+        return
+
+    raise UnknownFrameworkVersionError(
+        f"A sign-off for {competency_id} was given under version {version} "
+        f"of framework {framework_id!r}, which Quill does not hold."
+    )

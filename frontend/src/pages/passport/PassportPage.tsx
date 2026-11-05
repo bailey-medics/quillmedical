@@ -40,6 +40,7 @@ import {
   IconPresentation,
 } from "@/components/icons/appIcons";
 import { layoutTokens } from "@/theme";
+import { useFrameworkCatalogue } from "@lib/passport/catalogue";
 import {
   collectRecords,
   createPassport,
@@ -142,6 +143,7 @@ function PassportHeader() {
 }
 
 export function Component() {
+  const { catalogue } = useFrameworkCatalogue();
   const navigate = useNavigate();
   const twoColumns = useMediaQuery(
     `(min-width: ${layoutTokens.actionCardTwoColumnMinWidth})`,
@@ -415,6 +417,7 @@ export function Component() {
       )}
       {view === "by_competency" && passport && (
         <PassportByCompetency
+          catalogue={catalogue}
           frameworks={passport.passport.frameworks ?? []}
           competencies={passport.competencies}
           onSelectCompetency={(competencyId) =>

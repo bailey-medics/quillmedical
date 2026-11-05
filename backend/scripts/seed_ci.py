@@ -58,6 +58,7 @@ from app.models import (  # noqa: E402
     User,
 )
 from app.organisations import add_org_unit_member  # noqa: E402
+from app.paths import FRAMEWORK_FIXTURES_DIR  # noqa: E402
 from app.security import hash_password  # noqa: E402
 
 # Base32 of RFC 4226's test key "12345678901234567890". Public, and only
@@ -246,9 +247,10 @@ def seed() -> None:
         # 8. An attempt whose time has run out, for e2e/tests/edges/
         seed_out_of_time_attempts(db, org.id)
 
-        # 9. The framework tables, as the pre-deploy job fills them, so the
-        # end-to-end stack holds what App production does.
-        frameworks = sync_frameworks(db)
+        # 9. The framework tables, as the pre-deploy job fills them, from
+        # the framework fixtures, so no end-to-end test depends on a
+        # publisher's repository.
+        frameworks = sync_frameworks(db, FRAMEWORK_FIXTURES_DIR)
         if not frameworks.succeeded:
             raise RuntimeError(f"Framework sync failed: {frameworks.error}")
         db.commit()

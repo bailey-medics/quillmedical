@@ -29,9 +29,12 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
-from app.features.passport import router
+from app.features.passport import commits, paths, router
 from app.features.passport.models import PassportLogbookConfirmationRequest
-from app.features.passport.store import LocalPassportStore
+from app.features.passport.store import (
+    ConcurrentWriteError,
+    LocalPassportStore,
+)
 from app.main import app
 from app.models import (
     OrgUnit,
@@ -43,6 +46,9 @@ from app.passport_storage import get_passport_store
 from app.security import hash_password
 from tests.competencies import hold
 from tests.registrations import declare
+
+# Every route here reads the frameworks from the tables.
+pytestmark = pytest.mark.usefixtures("stored_frameworks")
 
 COMPETENCY = "uk_sact_board_2023_prescribe_sact"
 # The frameworks a test holder works to. A passport offers the
@@ -1200,3 +1206,144 @@ class TestConfirmingALogbookEntry:
         assert (
             db_session.query(PassportLogbookConfirmationRequest).count() == 0
         )
+
+
+class TestAPassportInAnOlderLayout:
+    """A passport written before the layout it is read in.
+
+    #2330 moved the git record to schema version 2 and moved no passport
+    across, so a passport made before it is refused by
+    ``layout.require_current``. That must reach the holder as a refusal
+    they can read, never as a server error: on 4 November 2026 App
+    production answered 500 to the sign-offs and logbook of one.
+    """
+
+    @pytest.fixture
+    def outdated(
+        self,
+        passport: tuple[TestClient, str],
+        passport_store: LocalPassportStore,
+    ) -> tuple[TestClient, str]:
+        """The holder's passport, its manifest saying schema version 1."""
+        client, passport_id = passport
+        actor = commits.Actor(
+            name="Dr Holder", role="Registrar", email="holder@example.nhs.uk"
+        )
+        passport_store.write(
+            passport_id,
+            {
+                paths.MANIFEST: f"passport_id: {passport_id}\nschema_version: 1\n"
+            },
+            commits.build("amend", "an older layout", actor),
+            actor,
+            passport_store.head(passport_id),
+        )
+
+        return client, passport_id
+
+    @pytest.mark.parametrize("record", ["sign-offs", "logbook"])
+    def test_its_records_are_refused_in_words(
+        self, outdated: tuple[TestClient, str], record: str
+    ) -> None:
+        client, passport_id = outdated
+
+        response = client.get(f"/api/passport/{passport_id}/{record}")
+
+        assert response.status_code == 410, response.text
+        assert response.json() == {
+            "detail": (
+                "This passport was made in an older format that Quill can "
+                "no longer read. Nothing in it has been changed."
+            )
+        }
+
+    @pytest.mark.parametrize(
+        "path",
+        [
+            "/api/passport/me",
+            "/api/passport/{id}",
+            "/api/passport/{id}/sign-offs",
+            "/api/passport/{id}/logbook",
+            f"/api/passport/{{id}}/logbook/{COMPETENCY}",
+            "/api/passport/{id}/certificates",
+            "/api/passport/{id}/reflections",
+            "/api/passport/{id}/cpd",
+        ],
+    )
+    def test_no_page_of_it_is_a_server_error(
+        self, outdated: tuple[TestClient, str], path: str
+    ) -> None:
+        client, passport_id = outdated
+
+        response = client.get(path.format(id=passport_id))
+
+        assert response.status_code < 500, response.text
+
+
+class TestAWriteThatLostARace:
+    """A write refused because the passport moved underneath it.
+
+    The router's lock means one writer at a time, so this is reached only
+    if something writes without the lock: two Cloud Run instances racing
+    on the bucket, or a route added without the lock. The store then
+    refuses the write rather than overwrite the other, and the holder is
+    told to reload, not shown a server error.
+    """
+
+    @pytest.fixture
+    def losing(
+        self,
+        passport_store: LocalPassportStore,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Every write finds the passport moved since it was read."""
+
+        def _moved(passport_id: str, *args: object, **kwargs: object) -> str:
+            raise ConcurrentWriteError(
+                f"HEAD of {passport_id} moved since it was read."
+            )
+
+        monkeypatch.setattr(passport_store, "write", _moved)
+
+    def test_the_holder_is_told_to_reload_and_try_again(
+        self, passport: tuple[TestClient, str], losing: None
+    ) -> None:
+        client, passport_id = passport
+
+        response = client.post(
+            f"/api/passport/{passport_id}/logbook/{COMPETENCY}",
+            json={
+                "performed_on": "2026-03-12",
+                "scope_id": SCOPE,
+                "setting": "Bristol Royal Infirmary",
+                "supervision": "supervised",
+                "outcome": "Successful",
+            },
+        )
+
+        assert response.status_code == 409, response.text
+        assert response.json() == {
+            "detail": (
+                "This passport changed while you were saving. Nothing "
+                "was saved. Reload the page and try again."
+            )
+        }
+
+    def test_the_answer_names_no_passport(
+        self, passport: tuple[TestClient, str], losing: None
+    ) -> None:
+        """The store's own words carry the passport id, so are not sent."""
+        client, passport_id = passport
+
+        response = client.post(
+            f"/api/passport/{passport_id}/certificates",
+            json={
+                "title": "SACT administration course",
+                "issuer": "UKONS",
+                "awarded_on": "2026-02-11",
+                "competencies": [COMPETENCY],
+            },
+        )
+
+        assert response.status_code == 409, response.text
+        assert passport_id not in response.text

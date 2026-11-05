@@ -41,6 +41,7 @@ from app.features.passport.schemas import (
 )
 from app.features.passport.serialise import from_yaml
 from app.features.passport.store import LocalPassportStore
+from tests.frameworks import files_catalogue
 
 PASSPORT_ID = "3f2a8c1e4b7d49f0a6c2e8b1d5a7f309"
 COMPETENCY = "uk_sact_board_2023_prescribe_sact"
@@ -90,6 +91,7 @@ def _signed(store: LocalPassportStore, holder: Actor, assessor: Actor) -> str:
         store,
         PASSPORT_ID,
         holder,
+        catalogue=files_catalogue(),
         competency_id=COMPETENCY,
         scope_id=SCOPE,
         observed_on=date(2026, 3, 14),
@@ -99,6 +101,7 @@ def _signed(store: LocalPassportStore, holder: Actor, assessor: Actor) -> str:
         store,
         PASSPORT_ID,
         assessor,
+        catalogue=files_catalogue(),
         name=name,
         assessor_user_id="2",
         holder_user_id="1",
@@ -134,6 +137,7 @@ class TestItProducesARealPdf:
             holder,
             COMPETENCY,
             LogbookEntry(performed_on=date(2026, 3, 12)),
+            catalogue=files_catalogue(),
         )
         records.add_certificate(
             store,
@@ -181,6 +185,7 @@ class TestNothingDeniesADownload:
             store,
             PASSPORT_ID,
             holder,
+            catalogue=files_catalogue(),
             competency_id=COMPETENCY,
             scope_id=SCOPE,
             observed_on=date(2026, 3, 14),
@@ -190,6 +195,7 @@ class TestNothingDeniesADownload:
             store,
             PASSPORT_ID,
             assessor,
+            catalogue=files_catalogue(),
             name=name,
             assessor_user_id="2",
             holder_user_id="1",
@@ -228,7 +234,7 @@ class TestTheFingerprintReachesThePage:
         record = service.read_sign_off(store, PASSPORT_ID, name)
         styles = pdf._styles()
 
-        block = pdf._one_sign_off(name, record, styles)
+        block = pdf._one_sign_off(name, record, styles, None)
         text = " ".join(item.text for item in block if hasattr(item, "text"))
 
         assert record.content_hash
@@ -244,7 +250,7 @@ class TestTheFingerprintReachesThePage:
         name = _signed(store, holder, assessor)
         record = service.read_sign_off(store, PASSPORT_ID, name)
 
-        block = pdf._one_sign_off(name, record, pdf._styles())
+        block = pdf._one_sign_off(name, record, pdf._styles(), None)
         text = " ".join(item.text for item in block if hasattr(item, "text"))
 
         assert "Dr Amara Okonkwo" in text
@@ -464,6 +470,7 @@ class TestLogbookTotals:
                 holder,
                 COMPETENCY,
                 LogbookEntry(performed_on=day),
+                catalogue=files_catalogue(),
             )
 
         counts = pdf._counts_by_year(store, PASSPORT_ID, COMPETENCY)
@@ -480,6 +487,7 @@ class TestLogbookTotals:
                 holder,
                 COMPETENCY,
                 LogbookEntry(performed_on=day),
+                catalogue=files_catalogue(),
             )
 
         story = pdf._logbook_totals(
@@ -515,6 +523,7 @@ class TestLogbookTotals:
             holder,
             COMPETENCY,
             LogbookEntry(performed_on=date(2026, 3, 12)),
+            catalogue=files_catalogue(),
         )
 
         story = pdf._logbook_totals(

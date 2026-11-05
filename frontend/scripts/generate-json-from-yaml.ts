@@ -49,14 +49,17 @@ interface Competency {
 }
 
 // A file that declares a `framework:` block is a framework: one published
-// document a clinician works to. Its entries are stamped with its id, and
-// the frameworks are written to their own file. Mirrors `_framework_of()`
-// in backend/app/cbac/competencies.py, which also checks each one; this
-// only copies, since the backend refuses to start on a bad one.
+// document a clinician works to. The frontend reads frameworks from
+// GET /api/passport/catalogue, so they are left out of competencies.json,
+// which holds permissions only, and CompetencyId names permissions. The
+// one exception is the test fixtures in shared/framework-fixtures/,
+// written to framework-fixtures.json for the unit tests and Storybook.
 interface Framework {
   id: string;
   [key: string]: unknown;
 }
+
+const FRAMEWORK_FIXTURES_DIR = path.join(SHARED_DIR, "framework-fixtures");
 
 function generateCompetenciesJson(): void {
   console.log("  Processing competency-definitions/...");
@@ -73,7 +76,6 @@ function generateCompetenciesJson(): void {
   }
 
   const competencies: Competency[] = [];
-  const frameworks: Framework[] = [];
   const seen = new Map<string, string>();
 
   for (const file of files) {
@@ -83,15 +85,12 @@ function generateCompetenciesJson(): void {
       competencies: Competency[];
     };
 
-    if (data.framework !== undefined) {
-      frameworks.push(data.framework);
-    }
+    // A framework's ids are still checked for clashes with the
+    // permissions, as the backend's loader checks them, but not kept.
+    const isFramework = data.framework !== undefined;
 
     for (const raw of data.competencies) {
-      const competency: Competency =
-        data.framework !== undefined
-          ? { ...raw, framework_id: data.framework.id }
-          : raw;
+      const competency: Competency = raw;
 
       const existing = seen.get(competency.id);
       if (existing !== undefined) {
@@ -104,7 +103,7 @@ function generateCompetenciesJson(): void {
         );
       }
       seen.set(competency.id, file);
-      competencies.push(competency);
+      if (!isFramework) competencies.push(competency);
     }
   }
 
@@ -113,13 +112,30 @@ function generateCompetenciesJson(): void {
   fs.writeFileSync(outputPath, JSON.stringify({ competencies }, null, 2));
 
   console.log(`  ✓ Generated ${outputPath} (${files.length} files merged)`);
+}
 
-  const frameworksPath = path.join(FRONTEND_GENERATED_DIR, "frameworks.json");
-  fs.writeFileSync(frameworksPath, JSON.stringify({ frameworks }, null, 2));
+function generateFrameworkFixturesJson(): void {
+  console.log("  Processing framework-fixtures/...");
 
-  console.log(
-    `  ✓ Generated ${frameworksPath} (${frameworks.length} frameworks)`,
+  const fixtures = fs
+    .readdirSync(FRAMEWORK_FIXTURES_DIR)
+    .filter((f) => f.endsWith(".yaml"))
+    .sort()
+    .map(
+      (file) =>
+        yaml.load(
+          fs.readFileSync(path.join(FRAMEWORK_FIXTURES_DIR, file), "utf8"),
+        ) as { framework: Framework; competencies: Competency[] },
+    );
+
+  ensureDirectoryExists(FRONTEND_GENERATED_DIR);
+  const outputPath = path.join(
+    FRONTEND_GENERATED_DIR,
+    "framework-fixtures.json",
   );
+  fs.writeFileSync(outputPath, JSON.stringify({ fixtures }, null, 2));
+
+  console.log(`  ✓ Generated ${outputPath} (${fixtures.length} frameworks)`);
 }
 
 function ensureDirectoryExists(dir: string): void {
@@ -160,6 +176,13 @@ function main(): void {
     generateCompetenciesJson();
   } catch (error) {
     console.error("  ✗ Error processing competency-definitions/:", error);
+    process.exit(1);
+  }
+
+  try {
+    generateFrameworkFixturesJson();
+  } catch (error) {
+    console.error("  ✗ Error processing framework-fixtures/:", error);
     process.exit(1);
   }
 

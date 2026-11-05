@@ -17,21 +17,18 @@ import pytest
 from pydantic import ValidationError
 
 from app.cbac.competencies import (
-    ASSESSABLE_COMPETENCY_IDS,
     COMPETENCIES,
     COMPETENCY_DEFINITIONS_DIR,
     COMPETENCY_IDS,
-    FRAMEWORK_COMPETENCY_IDS,
-    FRAMEWORK_IDS,
-    FRAMEWORKS,
-    RETIRED_COMPETENCY_IDS,
+    MAX_FRAMEWORK_FILE_BYTES,
     CompetencyEntry,
     _load_catalogue,
-    framework_competencies,
     get_competency_details,
     is_valid_competency,
+    load_framework_text,
     validate_competency_ids,
 )
+from tests.frameworks import files_catalogue
 
 
 def test_all_real_competencies_loaded() -> None:
@@ -239,7 +236,7 @@ def test_load_rejects_scopes_with_no_other(tmp_path: Path) -> None:
 
 def test_the_real_catalogue_has_a_scoped_competency() -> None:
     """Guards the field against being quietly dropped, as for levels."""
-    scoped = [c for c in COMPETENCIES if c.scopes]
+    scoped = [c for c in files_catalogue().entries.values() if c.scopes]
 
     assert scoped, "Expected at least one competency to declare scopes"
     assert all(
@@ -258,6 +255,71 @@ _FRAMEWORK = (
     '  description: "A test sheet."\n'
     "  specialties: [oncology]\n"
 )
+
+
+_SHEET_TEXT = (
+    _FRAMEWORK
+    + "competencies:\n"
+    + '  - id: sheet_item\n    display_name: "An item"\n'
+    + "    assessable: true\n"
+)
+
+
+def test_a_framework_is_read_from_its_text() -> None:
+    """A version read from git history, with no file of its own."""
+    framework, entries = load_framework_text(_SHEET_TEXT, "sheet")
+
+    assert framework.id == "sheet"
+    assert [entry.id for entry in entries] == ["sheet_item"]
+    assert entries[0].framework_id == "sheet"
+
+
+def test_a_framework_text_must_declare_the_framework_named() -> None:
+    with pytest.raises(ValueError, match="is declared in other.yaml"):
+        load_framework_text(_SHEET_TEXT, "other")
+
+
+def test_a_framework_text_must_declare_a_framework() -> None:
+    text = 'competencies:\n  - id: manage\n    display_name: "Manage"\n'
+
+    with pytest.raises(ValueError, match="declares no framework"):
+        load_framework_text(text, "sheet")
+
+
+def test_a_framework_text_with_an_alias_is_refused() -> None:
+    """An alias lets a small file expand hugely in memory."""
+    text = _SHEET_TEXT.replace(
+        '    display_name: "An item"\n',
+        '    display_name: &words "An item"\n',
+    ) + (
+        "  - id: sheet_other\n    display_name: *words\n"
+        "    assessable: true\n"
+    )
+
+    with pytest.raises(ValueError, match="uses a YAML alias"):
+        load_framework_text(text, "sheet")
+
+
+def test_a_framework_text_too_large_is_refused() -> None:
+    text = _SHEET_TEXT + "#" * MAX_FRAMEWORK_FILE_BYTES
+
+    with pytest.raises(ValueError, match="is larger than"):
+        load_framework_text(text, "sheet")
+
+
+def test_a_framework_text_repeating_an_id_is_refused() -> None:
+    text = _SHEET_TEXT + (
+        '  - id: sheet_item\n    display_name: "Again"\n'
+        "    assessable: true\n"
+    )
+
+    with pytest.raises(ValueError, match="Duplicate competency ids"):
+        load_framework_text(text, "sheet")
+
+
+def test_a_framework_text_with_no_competencies_is_refused() -> None:
+    with pytest.raises(ValueError, match="lists no competencies"):
+        load_framework_text(_FRAMEWORK, "sheet")
 
 
 def test_a_file_with_a_framework_block_is_a_framework(tmp_path: Path) -> None:
@@ -464,27 +526,39 @@ def test_a_retired_entry_in_no_framework_names_no_version(
 
 
 def test_the_real_frameworks_versions() -> None:
-    """Gloucestershire's record changed in #2321; the rest are as made."""
-    versions = {f.id: f.version for f in FRAMEWORKS}
+    """Every framework starts at 1, Gloucestershire's record included.
+
+    Its pilot edition was never numbered, so the record started afresh at
+    version 1 on 4 November 2026 rather than at 2.
+    """
+    versions = {f.id: f.version for f in files_catalogue().frameworks.values()}
 
     assert versions == {
         "clinical": 1,
-        "ghnft_radiotherapy_record": 2,
+        "ghnft_radiotherapy_record": 1,
         "ruh_sact_passport": 1,
         "uk_sact_board_2023": 1,
     }
 
 
-def test_every_assessable_competency_is_in_a_framework() -> None:
-    """The real catalogue, since the loader would refuse to start."""
-    for competency in COMPETENCIES:
-        if competency.assessable and competency.retired_on is None:
-            assert competency.framework_id in FRAMEWORK_IDS
+def test_the_catalogue_holds_permissions_only() -> None:
+    """A framework's competencies are read from the tables, not here."""
+    assert COMPETENCIES
+    assert all(c.framework_id is None for c in COMPETENCIES)
+    assert "clinical_perform_cannulation" not in COMPETENCY_IDS
+    assert "perform_cannulation" in COMPETENCY_IDS
+
+
+def test_every_framework_competency_is_assessable() -> None:
+    """The real frameworks, since the loader would refuse to start."""
+    for entry in files_catalogue().entries.values():
+        assert entry.assessable
+        assert entry.framework_id is not None
 
 
 def test_general_clinical_skills_holds_its_own_ids() -> None:
     """The framework and the permissions no longer share an id."""
-    items = {c.id for c in framework_competencies("clinical")}
+    items = {c.id for c in files_catalogue().competencies["clinical"]}
 
     assert "clinical_perform_cannulation" in items
     assert "perform_cannulation" not in items
@@ -499,30 +573,12 @@ def test_a_permission_keeps_its_id_and_is_no_longer_assessable() -> None:
     assert permission is not None
     assert permission.framework_id is None
     assert not permission.assessable
-    assert "prescribe_controlled_schedule_2" not in ASSESSABLE_COMPETENCY_IDS
-
-
-def test_every_frameworks_competency_is_granted_to_nobody() -> None:
-    """Recorded in a passport, whoever published the framework."""
-    assert "uk_sact_board_2023_prescribe_sact" in FRAMEWORK_COMPETENCY_IDS
-    assert (
-        "ghnft_radiotherapy_record_acquaintance_with_aria"
-        in FRAMEWORK_COMPETENCY_IDS
-    )
-    assert "clinical_perform_cannulation" in FRAMEWORK_COMPETENCY_IDS
-    assert "perform_cannulation" not in FRAMEWORK_COMPETENCY_IDS
 
 
 def test_quills_own_frameworks_competency_is_refused_as_a_grant() -> None:
-    with pytest.raises(ValueError, match="granted to nobody"):
+    """Refused by what it is: it is not a permission."""
+    with pytest.raises(ValueError, match="Only a permission may be granted"):
         validate_competency_ids(["clinical_perform_cannulation"])
-
-
-def test_no_competency_a_passport_can_record_is_outside_a_framework() -> None:
-    """Only a retired one may be, and nothing new is recorded against it."""
-    for competency in COMPETENCIES:
-        if competency.id in ASSESSABLE_COMPETENCY_IDS:
-            assert competency.framework_id is not None
 
 
 def test_the_gloucestershire_record_carries_every_signed_line() -> None:
@@ -551,28 +607,22 @@ def test_the_gloucestershire_record_carries_every_signed_line() -> None:
         "acquaintance_with_referral_and_consent",
     ]
 
-    items = framework_competencies("ghnft_radiotherapy_record")
+    items = files_catalogue().competencies["ghnft_radiotherapy_record"]
 
     assert [c.id for c in items] == [prefix + e for e in expected]
-    assert all(c.id in FRAMEWORK_COMPETENCY_IDS for c in items)
+    assert all(c.id not in COMPETENCY_IDS for c in items)
 
 
 def test_the_real_framework_ids_are_refused_as_grants() -> None:
-    with pytest.raises(ValueError, match="granted to nobody"):
+    with pytest.raises(ValueError, match="Only a permission may be granted"):
         validate_competency_ids(["ruh_sact_passport_ctcae_grading"])
 
 
-def test_a_framework_id_is_refused_where_competencies_are_granted(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    from app.cbac import competencies
-
-    monkeypatch.setattr(
-        competencies, "FRAMEWORK_COMPETENCY_IDS", ("perform_cannulation",)
-    )
-
-    with pytest.raises(ValueError, match="granted to nobody"):
-        validate_competency_ids(["perform_cannulation"])
+def test_a_permission_is_still_granted() -> None:
+    """The refusal of framework ids takes nothing from the permissions."""
+    assert validate_competency_ids(["perform_cannulation"]) == [
+        "perform_cannulation"
+    ]
 
 
 def test_expires_after_months_is_read(tmp_path: Path) -> None:
@@ -592,7 +642,7 @@ def test_the_real_catalogue_has_a_levelled_competency() -> None:
     Levels reached the catalogue for the clinician passport; CBAC
     ignores them, so nothing else would notice them disappearing.
     """
-    levelled = [c for c in COMPETENCIES if c.levels]
+    levelled = [c for c in files_catalogue().entries.values() if c.levels]
 
     assert levelled, "Expected at least one competency to declare levels"
     assert all(
@@ -647,18 +697,52 @@ def test_competency_entry_is_not_assessable_unless_it_says_so() -> None:
     assert CompetencyEntry(id="x", display_name="X").assessable is False
 
 
-def test_assessable_ids_hold_skills_and_no_permissions() -> None:
-    assert "clinical_perform_cannulation" in ASSESSABLE_COMPETENCY_IDS
-    assert "uk_sact_board_2023_prescribe_sact" in ASSESSABLE_COMPETENCY_IDS
-    for permission in (
-        "perform_cannulation",
-        "manage_users",
-        "access_own_patient_records",
-        "passport_write",
-        "assess_clinician_passport",
-    ):
-        assert permission not in ASSESSABLE_COMPETENCY_IDS
+_LEVELLED_TEXT = (
+    _FRAMEWORK.replace("  version: 1\n", "  version: 2\n")
+    + "competencies:\n"
+    + '  - id: sheet_item\n    display_name: "An item"\n'
+    + "    assessable: true\n"
+    + "    levels:\n"
+    + '      - id: observed\n        name: "Observed"\n'
+    + "{retired}"
+    + '      - id: independent\n        name: "Independent"\n'
+)
 
 
-def test_assessable_ids_are_all_active() -> None:
-    assert not set(ASSESSABLE_COMPETENCY_IDS) & set(RETIRED_COMPETENCY_IDS)
+def test_a_level_is_retired_with_the_version_that_left_it_out() -> None:
+    """Retired, never removed: it keeps its place on the scale."""
+    text = _LEVELLED_TEXT.format(
+        retired="        retired_on: 2026-11-04\n"
+        "        retired_in_version: 2\n"
+    )
+
+    _, entries = load_framework_text(text, "sheet")
+
+    observed = (entries[0].levels or [])[0]
+    assert observed.retired_on is not None
+    assert observed.retired_in_version == 2
+
+
+def test_a_level_retired_with_no_version_is_refused() -> None:
+    text = _LEVELLED_TEXT.format(retired="        retired_on: 2026-11-04\n")
+
+    with pytest.raises(ValueError, match="retired with no retired_in_version"):
+        load_framework_text(text, "sheet")
+
+
+def test_the_other_scope_is_never_retired() -> None:
+    """Every scope list keeps offering it, so nobody is blocked."""
+    text = (
+        _FRAMEWORK.replace("  version: 1\n", "  version: 2\n")
+        + "competencies:\n"
+        + '  - id: sheet_item\n    display_name: "An item"\n'
+        + "    assessable: true\n"
+        + "    scopes:\n"
+        + '      - id: lung\n        name: "Lung"\n'
+        + '      - id: other\n        name: "Other"\n'
+        + "        retired_on: 2026-11-04\n"
+        + "        retired_in_version: 2\n"
+    )
+
+    with pytest.raises(ValueError, match="never retired"):
+        load_framework_text(text, "sheet")

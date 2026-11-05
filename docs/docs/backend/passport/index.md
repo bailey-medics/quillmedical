@@ -55,8 +55,14 @@ a competency is in is found by looking, in `layout.py`, and only a
 competency's first record is placed by the catalogue.
 
 The layout is `schema_version` 2 in `manifest.yaml`, since 2 November 2026.
-No real passport existed at 1, so none was moved, and a passport at 1 is
-refused as not found rather than listed as if it held nothing.
+None was moved, because no passport held real records at 1. A passport at
+1 is refused, never listed as if it held nothing: a route that catches the
+store's not-found answers 404, and any other answers 410, from
+`outdated_passport_handler` in `backend/app/main.py`, saying the passport
+is in an older format. Two passports made to try the record out were still
+at 1 in App production on 4 November 2026, and answered 500 until then.
+Both are deleted with `delete-passport`, whose dry run says a passport is
+in an older layout instead of counting its records.
 
 `competencies.yaml` is derived. Anything it says can be recomputed from the
 records beside it, so a disagreement between the two is always resolved in the
@@ -234,7 +240,180 @@ is a permission's or another framework's, a competency deleted rather
 than retired, a version that skips or goes down, and a change with no new
 version. One refusal writes nothing. It runs in the pre-deploy migrations
 job, after the migrations, so a refusal blocks the deploy; in the CI seed;
-and after `just migrate-local`. Nothing reads the tables yet.
+and after `just migrate-local`.
+
+**The passport reads the frameworks from the tables**, through
+`stored_catalogue` in `backend/app/features/passport/catalogue.py`. It
+gives back the newest version of each framework, as the same `Framework`
+and `CompetencyEntry` objects the file loader makes, and caches them
+until a new version is stored. A route reads it once and passes it to
+`definitions.py`, `frameworks.py` and the service, so one request never
+mixes two versions. `framework_for` in `layout.py`, which files a
+competency's first record, is given the catalogue only by the two writes
+that can make one: a sign-off request and a logbook entry. A read is
+never given it, because a competency with no folder has nothing to read.
+
+**The page shows both wordings where they differ.** A sign-off keeps the
+words it was signed under. Where the framework has reworded the
+competency or its level since, or moved to a newer version, a row in the
+framework table shows today's words, then "Signed off as", "Signed off at
+level" and "Signed off under version" with what the sign-off recorded.
+Each index entry carries `framework_version` from its latest sign-off for
+this.
+
+**A retired competency stays in its framework's table while the holder
+has anything recorded against it**: a sign-off, a request or a logbook
+entry. It comes after the current ones, marked "Not in this framework
+since version N", and its page is read-only, with no way to ask for a new
+sign-off or log a new entry. One with nothing recorded is left out.
+
+**A level or scope is never removed from a competency.** A sign-off
+names them by id, and asking again compares the new level with the last
+one's place on the scale, so a level gone from the framework would leave
+a holder unable to ask again. The sync and the version check both refuse
+a version that drops one. To stop offering one, retire it, as a
+competency is retired: `retired_on` and `retired_in_version` on the
+level or scope. A retired one keeps its place on the scale and still
+reads on every record, but nothing new may ask for it.
+
+**The exports name things as the page does.** The Markdown, the PDF and
+the bundle name each framework as it is today, head each sign-off with
+its competency's name today, add "Signed off as" with the stored words
+where they differ, and say which framework version it was given under.
+The words come from `wording.py`, shared by both.
+
+**`GET /api/passport/catalogue` serves the frameworks to the frontend**,
+every framework Quill holds at its newest version, with its competencies,
+levels and scopes, and its retired competencies marked with `retired_on`.
+Like `/me`, it needs no place with the passport switched on, because a
+holder who belongs nowhere still reads their own record, and its pages
+name every competency from the catalogue.
+
+**The catalogue in `app.cbac.competencies` holds permissions only.** It
+still loads every file in `shared/competency-definitions/`, so an id
+stays unique across them all and no `may_grant` list can name a
+framework's competency, then keeps only the files that declare no
+framework. So `validate_competency_ids` refuses a framework's
+competency as "not a permission", by what it is, with no flag.
+
+A refused skip names each missing version. A version the sync never saw
+is in no file any more, so every later sync would refuse the same way:
+
+- **While the frameworks live in this repository**, the refusal says how
+  to rebuild a missing version from git history.
+- **Once they live in their own repositories**, the sync catches up from
+  every version in a framework's history. `sync_version_texts` takes each
+  version's file as text, and stores every version the tables lack, in
+  order, all or none, so a skipped run only delays a version. A version
+  missing from the history is refused and named. So is a stored version
+  whose file now differs, because a stored version never changes.
+- **A file from outside this repository is read more strictly.** It
+  meets the loader's own rules, a size limit, and a ban on YAML aliases,
+  which can make a small file expand hugely in memory.
+- **For rebuilding by hand**,
+  `python -m app.features.passport.sync --versions <folder>` reads one
+  folder per framework and one file per version,
+  `<framework>/<version>.yaml`.
+
+Every framework starts at version 1, so a lost version 1 cannot pass for
+a framework that began later. Both syncs refuse a framework whose first
+version is above 1, and name the versions missing. Gloucestershire's
+record began at 2, because its pilot edition was never numbered, so on
+4 November 2026 it went back to 1 and a migration emptied the framework
+tables for the next deploy's sync to fill afresh.
+
+In App production a framework repository's pipeline starts the
+`quill-framework-sync-app` job when the repository merges, and uploads
+nothing. The job's one action, `sync-frameworks`, runs
+`sync_from_repositories`, which reads every repository in
+`FRAMEWORK_REPOSITORIES` from GitHub itself:
+
+- **A bare clone over HTTPS, with no credential**, because the
+  repositories are public. A bare clone writes no file out of the
+  repository, so a hostile one can never place a file or a symlink, and
+  no submodule is fetched. Cloud Run holds a container's disk in memory,
+  so nothing outlasts the job.
+- **The first text of each version**, walking `main`'s first-parent
+  history oldest first. A later commit that changed only comments or the
+  description keeps its version, so it is not read again.
+- **Each repository may publish only the framework ids it is paired
+  with**, in the job's settings in Terraform. A file naming any other id
+  is refused, so one publisher cannot add a version to another's
+  framework.
+- **A time limit on every git command, and on the job.** A huge or
+  hostile repository stops one run and nothing else.
+
+The pipeline's account may start that job and nothing else, so it cannot
+change which repositories are read.
+
+**The job signs in to the database as itself, and may only add framework
+rows.** It runs as its own service account, `run-framework-sync`, and
+signs in to the core database as that account's IAM (Identity and
+Access Management) database user, with an access token as the password,
+fetched for each connection. No password exists to leak. That user holds
+one role, `framework_sync`, made by migration `79b9d509f6f6`: it may read
+the framework tables and add rows to them, and record its own runs. It
+cannot delete or change a row, or read any other table, so even a bug in
+the sync cannot reach the rest of the database.
+`backend/tests/framework_sync_role_test.py` proves each limit against
+Postgres.
+
+- **The migrations job grants the role on every run**, to the user named
+  in `FRAMEWORK_SYNC_DB_USER`, so it does not matter whether Terraform
+  made the user before or after the migration.
+- **A table added to the framework needs its own grant** to
+  `framework_sync`, in the migration that adds it.
+- **Switching IAM sign-in on restarts the core database.** It is the
+  `cloudsql.iam_authentication` flag, which Google's flag table marks as
+  needing a restart.
+
+## Framework repositories
+
+Each publisher's frameworks are moving into a public repository of its
+own under `bailey-medics`, named from the framework's title and ending
+`-framework`, as each teaching repository ends `-teaching`:
+
+- **`gloucestershire-radiotherapy-record-framework`** - Gloucestershire
+  Hospitals NHS Foundation Trust.
+- **`royal-united-hospitals-bath-sact-passport-framework`** - Royal United
+  Hospitals Bath NHS Foundation Trust.
+- **`uk-sact-board-prescribing-framework`** - the UK SACT Board.
+- **`general-clinical-skills-quill-medical-framework`** - Quill Medical.
+
+Each holds one file per framework in `frameworks/`, written exactly as the
+files in `shared/competency-definitions/` are, with a README and the
+publisher's licence for the wording. There are no stacks there: each
+change is one branch off `main` and one pull request.
+
+**The pipeline is Quill's**, `.github/workflows/framework-pipeline.yml`,
+and each repository calls it from one thin workflow whose job is named
+`pipeline`. The ruleset requires the checks by name, so neither name
+changes:
+
+- **On a pull request** - `pipeline / validate` runs Quill's loader over
+  `frameworks/` through `app.features.passport.tooling.validate_frameworks`,
+  then the version check, which prints every reworded competency.
+  `pipeline / check-protection` fails while the repository has no
+  ruleset.
+- **On a merge to `main`** - `run-sync-job.sh` starts
+  `quill-framework-sync-app` and waits for it. Nothing is uploaded: the
+  job reads every framework repository's history itself.
+
+Each repository sets three secrets, passed to the pipeline by name:
+`GCP_WORKLOAD_IDENTITY_PROVIDER` and `GCP_SERVICE_ACCOUNT`, which are the
+teaching repositories' values, and `SLACK_WEBHOOK_URL`, for a failed
+deploy.
+
+**Two settings are made by hand, not by Terraform.** The workload identity
+provider names each repository allowed to sign in, and admits a
+framework repository from `main` alone, so a workflow pushed to another
+branch cannot start the sync job. The content account names each
+repository allowed to act as it. The commands are in
+Phase 6 of the
+[passport record and catalogue plan](../../plans/2026-11-01-passport-record-and-catalogue-plan.md).
+The rulesets are in `infra/github/framework_rulesets.tf`, applied with
+`just terraform-github` only after a repository's first commit is on
+`main`, because they refuse a push straight to `main`.
 
 ## Scopes
 
@@ -417,6 +596,32 @@ store cannot resolve is a broken reference.
 The bucket backend uses generation-based compare-and-swap on a git bundle
 rather than a mounted volume: the deployment has no shared filesystem, and two
 concurrent writes must not silently lose one.
+
+### Two writes to one passport at once
+
+An assessor signing off while the holder adds a logbook entry, or one holder
+saving in two tabs, are two writes to one passport. Three things keep both
+safe, and the first does nearly all the work:
+
+- **One writer at a time, per passport.** Every request that changes a
+  passport takes a Postgres advisory lock keyed on its id, held until the
+  request's transaction ends (`locking.py`). It is on the whole passport
+  router, so a new route has it too. A second writer waits, then reads the
+  passport after the first one's commit and writes on top of it. Different
+  passports never wait for each other.
+- **The store refuses a write built on a stale read.** Each write names the
+  commit it expected to be newest.
+- **The bucket refuses an upload onto a bundle that moved**, which catches two
+  Cloud Run instances writing at the same moment.
+
+A write refused by either check raises `ConcurrentWriteError`, which the
+backend answers with a 409 asking the person to reload and try again. Nothing
+is saved, and nothing the other writer saved is lost. Two tabs doing the same
+thing, such as signing the same request, meet the ordinary rules instead: the
+second finds the sign-off already signed and is refused.
+
+`backend/tests/passport_write_lock_test.py` checks the lock on a real Postgres.
+The unit tests run on SQLite, which has no advisory locks.
 
 ## Where the code is
 

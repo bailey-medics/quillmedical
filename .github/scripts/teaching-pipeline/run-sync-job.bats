@@ -70,6 +70,16 @@ states() {
   grep -q "run jobs execute quill-teaching-sync-app --project=quill-medical-app --region=europe-west2" "$CALLS"
 }
 
+@test "starts the job it is given, for the framework pipeline" {
+  states "1"
+
+  run bash "$SCRIPT" content-sync@quill-medical-app.iam.gserviceaccount.com quill-framework-sync-app
+
+  [ "$status" -eq 0 ]
+  grep -q "run jobs execute quill-framework-sync-app --project=quill-medical-app" "$CALLS"
+  run ! grep -q "quill-teaching-sync-app " "$CALLS"
+}
+
 @test "starts without --wait, so a failure still has a name" {
   states "1"
 

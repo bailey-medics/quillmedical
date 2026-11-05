@@ -40,9 +40,6 @@ declare module "@/generated/competencies.json" {
     // Whether the clinician passport may record something against it.
     // Opt-in: absent means a software permission rather than a skill.
     assessable?: boolean;
-    // The framework whose file the entry is in, stamped on by the
-    // generator. Absent for an entry in a file that declares none.
-    framework_id?: string;
     // What a holder may hand out: competency ids and base profession
     // ids. A competency carrying either list is a scoped manager.
     may_grant?: string[];
@@ -56,25 +53,42 @@ declare module "@/generated/competencies.json" {
   export default data;
 }
 
-declare module "@/generated/frameworks.json" {
-  // One per definition file that declares a `framework:` block: a
-  // published document a clinician works to. Its items are the
-  // competencies carrying its id, recorded in a passport and granted to
-  // nobody.
-  interface Framework {
+declare module "@/generated/framework-fixtures.json" {
+  // The test frameworks in shared/framework-fixtures/, for the unit tests
+  // and Storybook only. The app reads frameworks from the backend, through
+  // GET /api/passport/catalogue.
+  interface FixtureLevel {
     id: string;
     name: string;
-    publisher: string;
-    // Quill's count of changes to the framework, from 1.
-    version: number;
-    // Shown to nobody: the publisher's own edition label, and the like.
-    description: string;
-    // From specialties.json. Empty where it belongs to every specialty.
-    specialties: string[];
+    retired_on?: string;
+    retired_in_version?: number;
+  }
+
+  interface FixtureCompetency {
+    id: string;
+    display_name: string;
+    assessable?: boolean;
+    levels?: FixtureLevel[];
+    scopes?: FixtureLevel[];
+    expires_after_months?: number;
+    retired_on?: string;
+    retired_in_version?: number;
+  }
+
+  interface Fixture {
+    framework: {
+      id: string;
+      name: string;
+      publisher: string;
+      version: number;
+      description: string;
+      specialties?: string[];
+    };
+    competencies: FixtureCompetency[];
   }
 
   const data: {
-    frameworks: Framework[];
+    fixtures: Fixture[];
   };
 
   export default data;

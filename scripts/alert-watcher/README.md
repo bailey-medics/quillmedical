@@ -24,6 +24,10 @@ just alert-watcher-install
 
 That installs the packages and links `quill-alert-watcher.service` into systemd as a user service, which starts the tmux session through `start-session.sh` and then the daemon. Its log is `journalctl --user -u quill-alert-watcher`.
 
+The tmux server runs in a systemd scope of its own, `quill-tmux-server.scope`, not in the watcher's process group. At boot `start-session.sh` is usually the first `tmux new-session` on the box, so the server it starts would otherwise belong to the service, and systemd kills everything in a service's group when it stops. A restart of the watcher must never close the sessions people are working in: on 4 November 2026 one closed all of them. `systemctl --user status quill-tmux-server.scope` shows the server.
+
+The unit is linked from worktree 5, so whenever that worktree moves to a commit where the unit file differs, systemd warns that it changed on disk. `systemctl --user daemon-reload` clears it; the warning is expected.
+
 ## Settings
 
 Read from the environment, which the systemd unit loads from `~/.config/quill-alert-watcher/env`:

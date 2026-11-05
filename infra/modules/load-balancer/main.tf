@@ -338,8 +338,14 @@ resource "google_compute_backend_bucket" "landing" {
   # In this mode a response with no Cache-Control is not cached at all,
   # which is safe because the deploy gives every object one. The TTL fields
   # (`client_ttl`, `default_ttl`, `max_ttl`) must be left unset alongside it.
+  #
+  # `request_coalescing` is written out because the provider does not keep
+  # Google's value for it: left out of the block, every plan sets it to null.
+  # On, the CDN answers identical requests that arrive together with one
+  # fetch from the bucket.
   cdn_policy {
-    cache_mode = "USE_ORIGIN_HEADERS"
+    cache_mode         = "USE_ORIGIN_HEADERS"
+    request_coalescing = true
   }
 
   # Security headers for the marketing site.

@@ -142,6 +142,39 @@ def db_session() -> Generator[Session]:
         Base.metadata.drop_all(bind=engine)
 
 
+@pytest.fixture(autouse=True)
+def _forget_the_stored_catalogue() -> Generator[None]:
+    """Forget the framework tables the last test read.
+
+    The stored catalogue is cached by its newest version row's id, and
+    every test's in-memory database numbers its rows from 1, so one
+    test's frameworks would otherwise be served to the next.
+    """
+    from app.features.passport import catalogue
+
+    catalogue.clear_cache()
+    yield
+    catalogue.clear_cache()
+
+
+@pytest.fixture
+def stored_frameworks(db_session: Session) -> Session:
+    """The framework tables, filled from the framework fixtures.
+
+    For a test that reads the frameworks from the tables, as a deploy
+    fills them, from shared/framework-fixtures/. Returns the session the
+    frameworks were stored in.
+    """
+    from app.features.passport.sync import sync_frameworks
+    from app.paths import FRAMEWORK_FIXTURES_DIR
+
+    result = sync_frameworks(db_session, FRAMEWORK_FIXTURES_DIR)
+    assert result.succeeded, result.error
+    db_session.commit()
+
+    return db_session
+
+
 @pytest.fixture(scope="function")
 def test_client(db_session: Session) -> TestClient:
     """Create a test client with database session override."""

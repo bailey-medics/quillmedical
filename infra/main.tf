@@ -181,6 +181,10 @@ module "cloud_sql_core" {
   private_vpc_connection = module.networking.private_vpc_connection
   secret_depends_on      = module.secrets.secret_ids
 
+  # For the framework sync job, which signs in as its own service account.
+  # Switching this on restarts the instance.
+  iam_authentication = local.is_teaching_product
+
   # Production gets longer backup retention
   is_production         = local.is_production
   backup_retained_count = local.is_production ? 30 : 7
@@ -544,7 +548,12 @@ module "cloud_run_admin_job" {
       FRONTEND_URL  = "https://${var.lb_domains[0]}"
       EMAIL_FROM    = "info@quill-medical.com"
       EMAIL_DRY_RUN = "false"
-    }
+    },
+    # For `run-migrations`, which grants the framework sync job's database
+    # user its one role on every run.
+    local.is_teaching_product ? {
+      FRAMEWORK_SYNC_DB_USER = google_sql_user.framework_sync[0].name
+    } : {}
   )
 
   secret_env_vars = local.admin_secret_env_vars
@@ -601,6 +610,84 @@ module "cloud_run_teaching_sync_job" {
 
   depends_on = [
     google_secret_manager_secret_iam_member.runtime,
+    module.cloud_sql_core,
+  ]
+}
+
+# ---------- Cloud Run Job: framework sync (teaching only) ----------
+# The admin image, with its one action fixed: `sync-frameworks`, which
+# reads every framework repository's history from GitHub and stores each
+# passport framework version the core database lacks. The framework
+# pipeline starts it once a framework repository merges. Nothing is
+# uploaded anywhere: the repositories are public, so the job clones them
+# over HTTPS with no credential, into memory, since Cloud Run holds a
+# container's disk there.
+#
+# A job of its own, for the reason the teaching sync job is: the pipeline
+# signs in as `var.content_ci_service_account`, which needs only
+# `roles/run.invoker` on a job whose action is fixed, never the override
+# role that allows any action. So the pipeline cannot change which
+# repositories are read, either. Each repository is paired with the
+# framework ids it may publish, so one cannot add a version to another
+# publisher's framework. The timeout stops a huge or hostile repository at
+# one run. The image is set by deploy.yml. See Phase 6 of
+# docs/docs/plans/2026-11-01-passport-record-and-catalogue-plan.md.
+# The job's own database user, signed in with a token for its account. It
+# holds nothing until the migrations job grants it `framework_sync`, which
+# may only read and add framework rows. The name is the account's email
+# without ".gserviceaccount.com", as Cloud SQL requires.
+resource "google_sql_user" "framework_sync" {
+  count = local.is_teaching_product ? 1 : 0
+
+  project  = var.project_id
+  instance = module.cloud_sql_core.instance_name
+  name     = trimsuffix(google_service_account.runtime["framework-sync"].email, ".gserviceaccount.com")
+  type     = "CLOUD_IAM_SERVICE_ACCOUNT"
+}
+
+# The settings insist on a JWT signing key, which the sync never uses: it
+# serves nothing and signs nothing. So it is given a key of its own that
+# nothing accepts, rather than access to the real one.
+resource "random_password" "framework_sync_unused_jwt" {
+  count = local.is_teaching_product ? 1 : 0
+
+  length  = 48
+  special = false
+}
+
+module "cloud_run_framework_sync_job" {
+  count  = local.is_teaching_product ? 1 : 0
+  source = "./modules/cloud-run-job"
+
+  service_account_email = google_service_account.runtime["framework-sync"].email
+  project_id            = var.project_id
+  region                = var.region
+  environment           = var.environment
+
+  job_name          = "framework-sync"
+  image             = var.admin_image
+  vpc_subnetwork_id = module.networking.cloud_run_subnet_id
+  timeout           = "600s"
+
+  env_vars = {
+    ADMIN_ACTION     = "sync-frameworks"
+    CORE_DB_HOST     = module.cloud_sql_core.private_ip
+    CORE_DB_NAME     = module.cloud_sql_core.database_name
+    CORE_DB_USER     = google_sql_user.framework_sync[0].name
+    CORE_DB_IAM_AUTH = "true"
+    CORE_DB_SSLMODE  = "require"
+    JWT_SECRET       = random_password.framework_sync_unused_jwt[0].result
+    FRAMEWORK_REPOSITORIES = jsonencode({
+      "bailey-medics/gloucestershire-radiotherapy-record-framework"       = ["ghnft_radiotherapy_record"]
+      "bailey-medics/royal-united-hospitals-bath-sact-passport-framework" = ["ruh_sact_passport"]
+      "bailey-medics/uk-sact-board-prescribing-framework"                 = ["uk_sact_board_2023"]
+      "bailey-medics/general-clinical-skills-quill-medical-framework"     = ["clinical"]
+    })
+  }
+
+  # No secret: the password is a token for the job's own account.
+  depends_on = [
+    google_project_iam_member.framework_sync_signs_in_to_cloud_sql,
     module.cloud_sql_core,
   ]
 }

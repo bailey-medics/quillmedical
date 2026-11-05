@@ -3107,17 +3107,17 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@mantine/dropzone@npm:9.7.3":
-  version: 9.7.3
-  resolution: "@mantine/dropzone@npm:9.7.3"
+"@mantine/dropzone@npm:9.7.4":
+  version: 9.7.4
+  resolution: "@mantine/dropzone@npm:9.7.4"
   dependencies:
     react-dropzone: "npm:20.1.2"
   peerDependencies:
-    "@mantine/core": 9.7.3
-    "@mantine/hooks": 9.7.3
+    "@mantine/core": 9.7.4
+    "@mantine/hooks": 9.7.4
     react: ^19.2.0
     react-dom: ^19.2.0
-  checksum: 10c0/0e919ad9c537ff308b8e08cfdc5506ec0c8599e37d379588ebbc5e60371be9bf1f5645eb02baa9a95d8504f1e0f75e2985a5515d301b867318a49897b1d3967b
+  checksum: 10c0/46f7560038025ae384da3580d7be15bcaed404cafe8b617388f74db1fe308c88975f3dc85dfb59064961f9b11d11601fda8f85695f8aa1ca36f17f3b741de426
   languageName: node
   linkType: hard
 
@@ -4519,69 +4519,69 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@svta/cml-608@npm:1.0.2":
-  version: 1.0.2
-  resolution: "@svta/cml-608@npm:1.0.2"
-  checksum: 10c0/ac1fc5cbf874a65319ebefe185f48200a9583da82f124fa4cf640ae140c101714e6a5a88a5e3e96766fdabb0845f7dff4220adb4a9a6289aff73864d79315c45
+"@svta/cml-608@npm:1.1.0":
+  version: 1.1.0
+  resolution: "@svta/cml-608@npm:1.1.0"
+  checksum: 10c0/06e3ce6c565785a985cc26a93e0cb5544545a7a2adcc85b4d6a51b68b180cbc1ef3e2a99ddcadc4e4b866cdbb6efce93febd864d4e278ebaab1ac111ff1bb32b
   languageName: node
   linkType: hard
 
-"@svta/cml-cmcd@npm:2.3.2":
-  version: 2.3.2
-  resolution: "@svta/cml-cmcd@npm:2.3.2"
+"@svta/cml-cmcd@npm:2.8.2":
+  version: 2.8.2
+  resolution: "@svta/cml-cmcd@npm:2.8.2"
   peerDependencies:
-    "@svta/cml-structured-field-values": 1.1.3
-    "@svta/cml-utils": 1.5.0
-  checksum: 10c0/2e61b7bbdcbfc09181ece1e9054b9dd6902cdb8bc0645ca94f5b524498504f242dcc77b55fef2d748c2c614bc94c8a27eabecd61387a2e28f14d1987d247bce9
+    "@svta/cml-structured-field-values": 1.1.6
+    "@svta/cml-utils": 1.6.1
+  checksum: 10c0/8fa714ac53bd5712c5cf791d01e9bb5d0c41b9bc24c5c9507908677ab59d42d2ef877c5add7cf4efead2c28976511a2f90d87bce7451e29292002d4cb03457d1
   languageName: node
   linkType: hard
 
-"@svta/cml-cmsd@npm:1.0.6":
-  version: 1.0.6
-  resolution: "@svta/cml-cmsd@npm:1.0.6"
+"@svta/cml-cmsd@npm:1.1.1":
+  version: 1.1.1
+  resolution: "@svta/cml-cmsd@npm:1.1.1"
   peerDependencies:
-    "@svta/cml-cta": 1.0.6
-    "@svta/cml-structured-field-values": 1.1.3
-    "@svta/cml-utils": 1.5.0
-  checksum: 10c0/a037592ef01b987ab240836e368dc59e8e7800faf64f5e7d5d4fe4d7ec42849f6866b4e525f1960b8890eb32afa808f4619e30aae3ca6b9e6b8fc23094791d05
+    "@svta/cml-cta": 1.0.9
+    "@svta/cml-structured-field-values": 1.1.6
+    "@svta/cml-utils": 1.6.1
+  checksum: 10c0/3c993670c8b76187acaada01722d24e6a05cefd0d1d39cdab579f223b8dee614e0aec3d358839d475d4b7a57f46b1835429cfca3912679a5379a8bee3369aea9
   languageName: node
   linkType: hard
 
-"@svta/cml-dash@npm:1.0.6":
-  version: 1.0.6
-  resolution: "@svta/cml-dash@npm:1.0.6"
+"@svta/cml-dash@npm:1.0.9":
+  version: 1.0.9
+  resolution: "@svta/cml-dash@npm:1.0.9"
   peerDependencies:
-    "@svta/cml-utils": 1.5.0
-  checksum: 10c0/e9968f957a62661508a968cbdb49370d217d66db2657498ffa8ddaa033f441c41576b3ee20ab7f7e5bda8fee8972094756d1444f05d3ec4dd0f6ca8cebe61015
+    "@svta/cml-utils": 1.6.1
+  checksum: 10c0/e42e316ebb9103a83df557a8e156e3022e945ccb7f9e5d78a5819c1e7467d0f727c596adc2f19b3e7fecbbc499976a2e3f4464ede871bb4a964a99421cc268e8
   languageName: node
   linkType: hard
 
-"@svta/cml-id3@npm:1.0.6":
-  version: 1.0.6
-  resolution: "@svta/cml-id3@npm:1.0.6"
+"@svta/cml-id3@npm:1.0.9":
+  version: 1.0.9
+  resolution: "@svta/cml-id3@npm:1.0.9"
   peerDependencies:
-    "@svta/cml-utils": 1.5.0
-  checksum: 10c0/866f19b8a04389acec666d25cbfa299651191f22a87d5ffa3e2e15207e82ae40d7b02977e8c6055aa28f3fb70a8018efae62a22b759322859966e596f3a170d8
+    "@svta/cml-utils": 1.6.1
+  checksum: 10c0/0d050ffee9c2fb385dfc3f503755e3786b18bc49a96d0f97fc692d1f7abe6cc3ee4f3b99ece381b36743407c82d23ec42a245544c8f2ea8bab0fefeda698182c
   languageName: node
   linkType: hard
 
-"@svta/cml-request@npm:1.0.12":
-  version: 1.0.12
-  resolution: "@svta/cml-request@npm:1.0.12"
+"@svta/cml-request@npm:1.0.21":
+  version: 1.0.21
+  resolution: "@svta/cml-request@npm:1.0.21"
   peerDependencies:
-    "@svta/cml-cmcd": 2.3.2
-    "@svta/cml-utils": 1.5.0
-    "@svta/cml-xml": 1.1.4
-  checksum: 10c0/5e0cabb725f8712e60c06a02856440208d1a2d9cb75c494d5f8930a05e6bf8c90373f4fb8760ac40f07231d574779ad3b18e71d8657a7c1fb80a642651c92f73
+    "@svta/cml-cmcd": 2.8.2
+    "@svta/cml-utils": 1.6.1
+    "@svta/cml-xml": 1.2.1
+  checksum: 10c0/5066d36a8cfa6797fe2118fdf54a76c706e618fb3ca79f12174f827ea1906cc832f8fddc1300fbf7a836ec317764bba2ec7dec04d0bb9c77b7911705645ed3aa
   languageName: node
   linkType: hard
 
-"@svta/cml-xml@npm:1.1.4":
-  version: 1.1.4
-  resolution: "@svta/cml-xml@npm:1.1.4"
+"@svta/cml-xml@npm:1.2.1":
+  version: 1.2.1
+  resolution: "@svta/cml-xml@npm:1.2.1"
   peerDependencies:
-    "@svta/cml-utils": 1.5.0
-  checksum: 10c0/09d881f9b9398b8b8c7f21c3e9869cac0a357a1a658c104d2c97ff64cdc1babd63d1e47d8961f9b6db14ec048e4cc0446a0e868970fafe8231fb51adb4e5de10
+    "@svta/cml-utils": 1.6.1
+  checksum: 10c0/4e22a4d5d602ef29286bf74ebf5c6e70246f16a022a8e3c87628a735b825631efa88f91b815aa1341b1766d97d58e931398d9c45529c517395f6c5d5119be0dc
   languageName: node
   linkType: hard
 
@@ -6304,13 +6304,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"bcp-47-match@npm:^2.0.3":
-  version: 2.0.3
-  resolution: "bcp-47-match@npm:2.0.3"
-  checksum: 10c0/ae5c202854df8a9ad4777dc3b49562578495a69164869f365a88c1a089837a9fbbce4c0c44f6f1a5e44c7841f47e91fe6fea00306ca49ce5ec95a7eb71f839c4
-  languageName: node
-  linkType: hard
-
 "bidi-js@npm:^1.1.0":
   version: 1.1.0
   resolution: "bidi-js@npm:1.1.0"
@@ -7168,24 +7161,23 @@ __metadata:
   linkType: hard
 
 "dashjs@npm:^5.0.3":
-  version: 5.2.1
-  resolution: "dashjs@npm:5.2.1"
+  version: 5.3.0
+  resolution: "dashjs@npm:5.3.0"
   dependencies:
-    "@svta/cml-608": "npm:1.0.2"
-    "@svta/cml-cmcd": "npm:2.3.2"
-    "@svta/cml-cmsd": "npm:1.0.6"
-    "@svta/cml-dash": "npm:1.0.6"
-    "@svta/cml-id3": "npm:1.0.6"
-    "@svta/cml-request": "npm:1.0.12"
-    "@svta/cml-xml": "npm:1.1.4"
-    bcp-47-match: "npm:^2.0.3"
+    "@svta/cml-608": "npm:1.1.0"
+    "@svta/cml-cmcd": "npm:2.8.2"
+    "@svta/cml-cmsd": "npm:1.1.1"
+    "@svta/cml-dash": "npm:1.0.9"
+    "@svta/cml-id3": "npm:1.0.9"
+    "@svta/cml-request": "npm:1.0.21"
+    "@svta/cml-xml": "npm:1.2.1"
     codem-isoboxer: "npm:0.3.10"
     fast-deep-equal: "npm:3.1.3"
     html-entities: "npm:^2.6.0"
     imsc: "npm:^1.1.5"
     localforage: "npm:^1.10.0"
     path-browserify: "npm:^1.0.1"
-  checksum: 10c0/a402b0ab2c0cbfa26fbc3f0c033d4db579fd0209329d9c76887b60a57e5c2eb17d0b2823adba871228013a86d48474239fa1f169858c09c2426fe00ef826d4ef
+  checksum: 10c0/cfb660a4f9bb67928dccc6254d19302e5c4890a230e4f7975f6acfe7714897fed46a498c1cc5a7c4f9b966ad369438567ef1f5ec060a7b8924675f40a57a57f4
   languageName: node
   linkType: hard
 
@@ -7549,9 +7541,9 @@ __metadata:
   linkType: hard
 
 "electron-to-chromium@npm:^1.5.464":
-  version: 1.5.473
-  resolution: "electron-to-chromium@npm:1.5.473"
-  checksum: 10c0/ef0a3b6c0d9915028046d1673e159f148bcfa3061916d1537be901d378256e419054c15c0be7f76689b29bbc5a6d49e92851e9d87f1b9841e307dc3da4f91099
+  version: 1.5.475
+  resolution: "electron-to-chromium@npm:1.5.475"
+  checksum: 10c0/a50a7f05786ef6af397b2492c7bcc67bf04cb664c5f96785055d1aadd88ba137bfce716488bbd946042f2b2e2fee838b24afbc645fa2ef69dee32cfbfcb7d4cb
   languageName: node
   linkType: hard
 
@@ -8680,7 +8672,7 @@ __metadata:
     "@fontsource-variable/cormorant-garamond": "npm:^5.3.0"
     "@mantine/core": "npm:^9.7.2"
     "@mantine/dates": "npm:^9.7.2"
-    "@mantine/dropzone": "npm:9.7.3"
+    "@mantine/dropzone": "npm:9.7.4"
     "@mantine/hooks": "npm:^9.7.2"
     "@mantine/notifications": "npm:^9.7.2"
     "@playwright/test": "npm:^1.64.0"
@@ -9550,12 +9542,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"is-core-module@npm:^2.16.2, is-core-module@npm:^2.17.0":
-  version: 2.17.0
-  resolution: "is-core-module@npm:2.17.0"
+"is-core-module@npm:^2.16.2, is-core-module@npm:^2.18.0":
+  version: 2.18.0
+  resolution: "is-core-module@npm:2.18.0"
   dependencies:
     hasown: "npm:^2.0.4"
-  checksum: 10c0/3dc7c15ea42f846180cd2cdd57af62270e0a8d0ed31c17c85735d554089d39975e2e82e65fc7c8280a3c476ca3d0d09992d0860b4998abb769a277341feb6698
+  checksum: 10c0/2962ad96ff260241a9059ec23b467c69fc5c824168d5f24e806839e32099be69c8e32f444b5ad43854d738e7ca073b31db74c20654f870c96e721d1d785c723b
   languageName: node
   linkType: hard
 
@@ -10618,11 +10610,11 @@ __metadata:
   linkType: hard
 
 "jsdoc-type-pratt-parser@npm:^9.0.0":
-  version: 9.4.0
-  resolution: "jsdoc-type-pratt-parser@npm:9.4.0"
+  version: 9.5.0
+  resolution: "jsdoc-type-pratt-parser@npm:9.5.0"
   dependencies:
     "@types/estree": "npm:^1.0.9"
-  checksum: 10c0/4221a547be870fae67901c4b2d2c1b8b8ece4c4e03592e98e5f773e2fc6d2dd929ebc4851d05128e6dd49cd41b53ee39e9d55a29cf7715e184ff418f7a3ee858
+  checksum: 10c0/75fe54ac8ff5ac4e953b6d6f9410decdc5fa34ad57d1dde646cafe837fd9d453f6eaa2bcd99f64ccb377ce13168cfb036c807580281f603b2fbc4b491fac0e2d
   languageName: node
   linkType: hard
 
@@ -11199,9 +11191,9 @@ __metadata:
   linkType: hard
 
 "markdown-table@npm:^3.0.0":
-  version: 3.0.4
-  resolution: "markdown-table@npm:3.0.4"
-  checksum: 10c0/1257b31827629a54c24a5030a3dac952256c559174c95ce3ef89bebd6bff0cb1444b1fd667b1a1bb53307f83278111505b3e26f0c4e7b731e0060d435d2d930b
+  version: 3.1.0
+  resolution: "markdown-table@npm:3.1.0"
+  checksum: 10c0/5a31e5bd749c6d79d0cf496c2d257efb16cf45a90278408dc11dfbb40ccc7be70114e2db79bd9e8580ddd42de04dc687b5a578c9777c8cd66eea56390d78ab60
   languageName: node
   linkType: hard
 
@@ -11289,15 +11281,17 @@ __metadata:
   linkType: hard
 
 "mdast-util-gfm-table@npm:^2.0.0":
-  version: 2.0.0
-  resolution: "mdast-util-gfm-table@npm:2.0.0"
+  version: 2.0.1
+  resolution: "mdast-util-gfm-table@npm:2.0.1"
   dependencies:
     "@types/mdast": "npm:^4.0.0"
     devlop: "npm:^1.0.0"
     markdown-table: "npm:^3.0.0"
     mdast-util-from-markdown: "npm:^2.0.0"
     mdast-util-to-markdown: "npm:^2.0.0"
-  checksum: 10c0/128af47c503a53bd1c79f20642561e54a510ad5e2db1e418d28fefaf1294ab839e6c838e341aef5d7e404f9170b9ca3d1d89605f234efafde93ee51174a6e31e
+    mdast-util-to-string: "npm:^4.0.0"
+    unist-util-visit: "npm:^5.0.0"
+  checksum: 10c0/49f55be81e6a7fba40ee2c2ea4319c93e7bbeb70fa336080cb54cc6fdc95ee0e11dfeb434da5ccef442c626f5dfd3dcabbf117aa99ae7c095fab0579a0f2689a
   languageName: node
   linkType: hard
 
@@ -11339,8 +11333,8 @@ __metadata:
   linkType: hard
 
 "mdast-util-to-markdown@npm:^2.0.0":
-  version: 2.2.1
-  resolution: "mdast-util-to-markdown@npm:2.2.1"
+  version: 2.2.2
+  resolution: "mdast-util-to-markdown@npm:2.2.2"
   dependencies:
     "@types/mdast": "npm:^4.0.0"
     "@types/unist": "npm:^3.0.0"
@@ -11353,7 +11347,7 @@ __metadata:
     micromark-util-html-tag-name: "npm:^2.0.0"
     unist-util-visit: "npm:^5.0.0"
     zwitch: "npm:^2.0.0"
-  checksum: 10c0/7395b36c3608ce1d3b9a19e92cde2222e4f9dd6c82ca5a4a0c301cf5db0bef7da89d0ac2a43a15a1623ba6075e8b7ecd34892b87e072e22106a34d455bac91a7
+  checksum: 10c0/9f788f4948aa1ce4ecc0aba9104e9fa61364b643631e8450e0a708d100f783a0b6785d2db0dd7c13f675b33eab4da7c87317787e24a108fd06dd16447c61524c
   languageName: node
   linkType: hard
 
@@ -13351,16 +13345,16 @@ __metadata:
   linkType: hard
 
 "resolve@npm:^1.22.1, resolve@npm:^1.22.11, resolve@npm:^1.22.8":
-  version: 1.22.13
-  resolution: "resolve@npm:1.22.13"
+  version: 1.22.14
+  resolution: "resolve@npm:1.22.14"
   dependencies:
     es-errors: "npm:^1.3.0"
-    is-core-module: "npm:^2.17.0"
+    is-core-module: "npm:^2.18.0"
     path-parse: "npm:^1.0.7"
     supports-preserve-symlinks-flag: "npm:^1.0.0"
   bin:
     resolve: bin/resolve
-  checksum: 10c0/8dac5b33a1f9f241500fcaf42f9033cdcaf3738c908a60a50a976ff2f6129063cbc5368b4092e42d2d264ad22aa94aaff207f3efa8d0185c68454439b11a1973
+  checksum: 10c0/d661ad8d65baf92b1adff295f5992b085ffbf85136de98f32d8a5c9bade56ff4f1e8babd8f0bd352158aac6cd58e89975565203603b45937f06b5954369b4fe2
   languageName: node
   linkType: hard
 
@@ -13381,16 +13375,16 @@ __metadata:
   linkType: hard
 
 "resolve@patch:resolve@npm%3A^1.22.1#optional!builtin<compat/resolve>, resolve@patch:resolve@npm%3A^1.22.11#optional!builtin<compat/resolve>, resolve@patch:resolve@npm%3A^1.22.8#optional!builtin<compat/resolve>":
-  version: 1.22.13
-  resolution: "resolve@patch:resolve@npm%3A1.22.13#optional!builtin<compat/resolve>::version=1.22.13&hash=9bd1a5"
+  version: 1.22.14
+  resolution: "resolve@patch:resolve@npm%3A1.22.14#optional!builtin<compat/resolve>::version=1.22.14&hash=9bd1a5"
   dependencies:
     es-errors: "npm:^1.3.0"
-    is-core-module: "npm:^2.17.0"
+    is-core-module: "npm:^2.18.0"
     path-parse: "npm:^1.0.7"
     supports-preserve-symlinks-flag: "npm:^1.0.0"
   bin:
     resolve: bin/resolve
-  checksum: 10c0/bc58ee02e647a4250453eeb067796bdc087f6a89d4d5780bfe479f402ec11b9461babc155a6452020b56f3845cf49b1afd9c95fe3fc8347cba6567aa9b10c106
+  checksum: 10c0/2bf4d1318884840e57943192c1d4d904a66cf9604272351acff36fe9f106cf6c723860fff0eceb798924aa79ce6b74c65df647ba0894ef3b1e2fb17ad458c2cd
   languageName: node
   linkType: hard
 
@@ -14538,15 +14532,15 @@ __metadata:
   linkType: hard
 
 "table@npm:^6.9.0":
-  version: 6.9.0
-  resolution: "table@npm:6.9.0"
+  version: 6.9.2
+  resolution: "table@npm:6.9.2"
   dependencies:
     ajv: "npm:^8.0.1"
     lodash.truncate: "npm:^4.4.2"
     slice-ansi: "npm:^4.0.0"
     string-width: "npm:^4.2.3"
     strip-ansi: "npm:^6.0.1"
-  checksum: 10c0/35646185712bb65985fbae5975dda46696325844b78735f95faefae83e86df0a265277819a3e67d189de6e858c509b54e66ca3958ffd51bde56ef1118d455bf4
+  checksum: 10c0/7788ab712aaa78c01f17204cc19c650338778dec9f85ddeaffef1ad58e1906c6b1e07a9adf008f577dd07d06568c8c245de570040e7324c020a1db590ce167d5
   languageName: node
   linkType: hard
 

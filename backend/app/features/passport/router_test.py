@@ -28,12 +28,13 @@ the caller was told.
 
 from __future__ import annotations
 
+import dataclasses
 import hashlib
 import io
 import logging
 import zipfile
 from collections.abc import Iterator
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from unittest.mock import patch
 
@@ -48,11 +49,13 @@ from sqlalchemy.orm import Session
 from app.body_limit import limit_for
 from app.config import settings
 from app.email_send import EmailNotAllowedError, EmailRateLimitError
-from app.features.passport import definitions, router
+from app.features.passport import catalogue, definitions, router, service
 from app.features.passport.blobs import BlobStore
+from app.features.passport.commits import Actor
 from app.features.passport.models import (
     Passport,
     PassportAssessorInvite,
+    PassportFrameworkCompetency,
     PassportSignOffRequest,
 )
 from app.features.passport.store import LocalPassportStore
@@ -70,7 +73,11 @@ from app.organisations import (
 from app.passport_storage import get_blob_store, get_passport_store
 from app.security import PASSPORT_INVITE_TYPE, hash_password
 from tests.competencies import hold, lapse
+from tests.frameworks import files_catalogue
 from tests.registrations import declare
+
+# Every route here reads the frameworks from the tables.
+pytestmark = pytest.mark.usefixtures("stored_frameworks")
 
 #: From the oncology set drafted in Phase 0. Chosen because it declares
 #: the UK SACT Board's four levels, so the level paths are exercised
@@ -845,7 +852,7 @@ class TestRequestSignOff:
         assert response.status_code == 201, response.text
         level_name = next(
             level.name
-            for level in definitions.levels(COMPETENCY)
+            for level in definitions.levels(files_catalogue(), COMPETENCY)
             if level.id == LEVEL
         )
         assert level_name in bodies[0]
@@ -4842,6 +4849,21 @@ class TestAnOwnerWhoBelongsNowhereThePassportIsOn:
 
         assert response.status_code == 200
 
+    def test_they_read_the_frameworks(
+        self, removed: tuple[TestClient, str], stored_frameworks: Session
+    ) -> None:
+        """Their own record's pages name everything from the catalogue.
+
+        Without it the competency page cannot tell a competency from an
+        address nobody was given, and says "not found".
+        """
+        client, _ = removed
+
+        response = client.get("/api/passport/catalogue")
+
+        assert response.status_code == 200
+        assert response.json()
+
     def test_they_are_told_it_is_read_only(
         self, removed: tuple[TestClient, str]
     ) -> None:
@@ -4914,9 +4936,12 @@ class TestAnOwnerWhoBelongsNowhereThePassportIsOn:
 class TestOnlyAssessableCompetencies:
     """A passport records skills, never software permissions.
 
-    ``manage_users`` stands in for every competency not marked
-    ``assessable``: nobody could watch somebody "manage users" and sign
-    it off, so no route creating a record accepts it.
+    ``manage_users`` stands in for every permission: nobody could watch
+    somebody "manage users" and sign it off, so no route creating a
+    record accepts it. Since the passport reads the frameworks from the
+    tables, a permission is in none of them, so it is unknown to the
+    passport and refused with 404. Before, it was known and refused as
+    not assessable, with 400.
     """
 
     PERMISSION = "manage_users"
@@ -4943,7 +4968,7 @@ class TestOnlyAssessableCompetencies:
             },
         )
 
-        assert response.status_code == 400, response.text
+        assert response.status_code == 404, response.text
         assert self.PERMISSION in response.json()["detail"]
         assert sent == []
 
@@ -4981,7 +5006,7 @@ class TestOnlyAssessableCompetencies:
             json={"performed_on": "2026-03-14"},
         )
 
-        assert response.status_code == 400, response.text
+        assert response.status_code == 404, response.text
 
     @pytest.mark.parametrize(
         ("path", "body"),
@@ -5026,7 +5051,7 @@ class TestOnlyAssessableCompetencies:
             json={**body, "competencies": [self.PERMISSION]},
         )
 
-        assert response.status_code == 400, response.text
+        assert response.status_code == 404, response.text
 
     def test_an_assessable_competency_is_accepted(
         self, holder_client: TestClient
@@ -5043,9 +5068,9 @@ class TestOnlyAssessableCompetencies:
     def test_a_record_stays_readable_after_its_competency_is_withdrawn(
         self,
         holder_client: TestClient,
-        monkeypatch: pytest.MonkeyPatch,
+        db_session: Session,
     ) -> None:
-        """Marking a competency not assessable refuses new records only.
+        """Retiring a competency refuses new records only.
 
         A record written while it was assessable must still list and
         export, or changing one line of YAML would lose somebody's work.
@@ -5057,15 +5082,19 @@ class TestOnlyAssessableCompetencies:
         )
         assert written.status_code == 201, written.text
 
-        monkeypatch.setattr(
-            definitions,
-            "ASSESSABLE_COMPETENCY_IDS",
-            tuple(
-                competency_id
-                for competency_id in definitions.ASSESSABLE_COMPETENCY_IDS
-                if competency_id != "clinical_perform_cannulation"
-            ),
+        # Retired in the tables, as a new version of its framework would
+        # retire it. The cache is keyed on the newest version, which this
+        # does not change, so it is cleared by hand.
+        db_session.execute(
+            update(PassportFrameworkCompetency)
+            .where(
+                PassportFrameworkCompetency.competency_id
+                == "clinical_perform_cannulation"
+            )
+            .values(retired_on=date(2026, 3, 15))
         )
+        db_session.commit()
+        catalogue.clear_cache()
 
         logbook = holder_client.get(f"/api/passport/{passport_id}/logbook")
         exported = holder_client.get(f"/api/passport/{passport_id}/export.md")
@@ -5075,6 +5104,61 @@ class TestOnlyAssessableCompetencies:
             group["competency"] for group in logbook.json()["competencies"]
         ] == ["clinical_perform_cannulation"]
         assert exported.status_code == 200, exported.text
+
+
+class TestFrameworkVersionsNotHeld:
+    """A sign-off naming a framework version Quill does not hold.
+
+    Written straight into the store at a version above the newest, as a
+    passport moved from another app could carry, then read back through
+    the routes, which refuse it rather than show it against version 1.
+    """
+
+    def _sign_off_at_version_2(
+        self, passport_store: LocalPassportStore, passport_id: str
+    ) -> None:
+        held = files_catalogue()
+        newer = dataclasses.replace(
+            held,
+            frameworks={
+                **held.frameworks,
+                "uk_sact_board_2023": held.frameworks[
+                    "uk_sact_board_2023"
+                ].model_copy(update={"version": 2}),
+            },
+        )
+        service.request_sign_off(
+            passport_store,
+            passport_id,
+            Actor(name="Holder", role="Registrar", email="holder@example.com"),
+            catalogue=newer,
+            competency_id=COMPETENCY,
+            observed_on=date(2026, 3, 14),
+            level_id=LEVEL,
+            scope_id=SCOPE,
+        )
+
+    def test_its_passport_will_not_export(
+        self, holder_client: TestClient, passport_store: LocalPassportStore
+    ) -> None:
+        passport_id = _create_passport(holder_client)
+        self._sign_off_at_version_2(passport_store, passport_id)
+
+        response = holder_client.get(f"/api/passport/{passport_id}/export.md")
+
+        assert response.status_code == 409, response.text
+        assert "version 2" in response.json()["detail"]
+        assert "uk_sact_board_2023" in response.json()["detail"]
+
+    def test_its_sign_offs_will_not_list(
+        self, holder_client: TestClient, passport_store: LocalPassportStore
+    ) -> None:
+        passport_id = _create_passport(holder_client)
+        self._sign_off_at_version_2(passport_store, passport_id)
+
+        response = holder_client.get(f"/api/passport/{passport_id}/sign-offs")
+
+        assert response.status_code == 409, response.text
 
 
 class TestAppraisalPeriods:

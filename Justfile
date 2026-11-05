@@ -2961,7 +2961,7 @@ test-coverage which="all":
 
 
 alias ts := test-shell-scripts
-# Run the shell script tests where CI runs them (ubuntu-24.04 container)
+# Run the shell script tests in a Linux container like the CI runners (.github/Dockerfile)
 test-shell-scripts *ARGS:
     #!/usr/bin/env bash
     {{initialise}} "test-shell-scripts"

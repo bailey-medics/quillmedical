@@ -11,12 +11,18 @@ import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithMantine } from "@test/test-utils";
 import CompetencyPicker, { NO_FRAMEWORKS_MESSAGE } from "./CompetencyPicker";
+import { TEST_FRAMEWORK_CATALOGUE } from "@test/frameworkCatalogue";
 
 function renderPicker(
   props: Partial<React.ComponentProps<typeof CompetencyPicker>> = {},
 ) {
   return renderWithMantine(
-    <CompetencyPicker value={null} onChange={vi.fn()} {...props} />,
+    <CompetencyPicker
+      catalogue={TEST_FRAMEWORK_CATALOGUE}
+      value={null}
+      onChange={vi.fn()}
+      {...props}
+    />,
   );
 }
 

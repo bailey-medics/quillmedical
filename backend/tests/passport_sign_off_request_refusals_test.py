@@ -38,6 +38,9 @@ from app.passport_storage import get_blob_store, get_passport_store
 from app.security import hash_password
 from tests.competencies import hold
 
+# Every route here reads the frameworks from the tables.
+pytestmark = pytest.mark.usefixtures("stored_frameworks")
+
 PASSWORD = "Made-up-password-1"
 COMPETENCY = "uk_sact_board_2023_prescribe_sact"
 WORKING_TO = {"frameworks": ["clinical", "uk_sact_board_2023"]}

@@ -30,6 +30,7 @@ import SignOffCard from "@/components/passport/SignOffCard";
 import SignOffForm from "@/components/passport/SignOffForm";
 import ErrorState from "@/components/error-state/ErrorState";
 import { INBOX_PATH, inboxChanged } from "@/lib/inbox/inbox";
+import { useFrameworkCatalogue } from "@lib/passport/catalogue";
 import {
   declineSignOff,
   fetchInbox,
@@ -38,6 +39,7 @@ import {
 import type { InboxItem, SignOffInput } from "@lib/passport";
 
 export function Component() {
+  const { catalogue } = useFrameworkCatalogue();
   const { signOffId } = useParams<{ signOffId: string }>();
   const navigate = useNavigate();
   const [item, setItem] = useState<InboxItem | null>(null);
@@ -154,6 +156,7 @@ export function Component() {
         <>
           <SignOffCard signOff={item.sign_off} />
           <SignOffForm
+            catalogue={catalogue}
             signOff={item.sign_off}
             onSubmit={handleSignOff}
             onCancel={() => navigate(INBOX_PATH)}

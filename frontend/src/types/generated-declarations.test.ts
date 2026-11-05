@@ -19,7 +19,7 @@ import { describe, expect, it } from "vitest";
 import declaredBaseProfessions from "@/generated/base-professions.json";
 import declaredBrand from "@/generated/brand.json";
 import declaredCompetencies from "@/generated/competencies.json";
-import declaredFrameworks from "@/generated/frameworks.json";
+import declaredFrameworkFixtures from "@/generated/framework-fixtures.json";
 import declaredJurisdictionConfig from "@/generated/jurisdiction-config.json";
 import declaredOrgUnitTypes from "@/generated/org-unit-types.json";
 import declaredSpecialties from "@/generated/specialties.json";
@@ -27,7 +27,7 @@ import declaredSpecialties from "@/generated/specialties.json";
 import actualBaseProfessions from "../generated/base-professions.json";
 import actualBrand from "../generated/brand.json";
 import actualCompetencies from "../generated/competencies.json";
-import actualFrameworks from "../generated/frameworks.json";
+import actualFrameworkFixtures from "../generated/framework-fixtures.json";
 import actualJurisdictionConfig from "../generated/jurisdiction-config.json";
 import actualOrgUnitTypes from "../generated/org-unit-types.json";
 import actualSpecialties from "../generated/specialties.json";
@@ -88,13 +88,13 @@ describe("Generated declarations", () => {
     expect(complete).toBe(true);
   });
 
-  it("declares frameworks.json as it is generated", () => {
-    const declared: typeof declaredFrameworks = actualFrameworks;
+  it("declares framework-fixtures.json as it is generated", () => {
+    const declared: typeof declaredFrameworkFixtures = actualFrameworkFixtures;
     const complete: AllDeclared<
-      typeof actualFrameworks,
-      typeof declaredFrameworks
+      typeof actualFrameworkFixtures,
+      typeof declaredFrameworkFixtures
     > = true;
-    expect(declared).toBe(actualFrameworks);
+    expect(declared).toBe(actualFrameworkFixtures);
     expect(complete).toBe(true);
   });
 

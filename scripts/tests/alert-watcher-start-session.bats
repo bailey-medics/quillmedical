@@ -4,7 +4,10 @@
 #
 # tmux is replaced by a stub that records what it was asked and answers
 # `has-session` with whatever SESSION_EXISTS says, so no tmux server is
-# started and no claude runs.
+# started and no claude runs. systemd-run and systemctl are stubs too:
+# systemd-run records its options and runs the command after them, and
+# `systemctl is-active` answers with whatever SCOPE_ACTIVE says, so no test
+# reaches the real systemd.
 
 setup() {
     SCRIPT="${BATS_TEST_DIRNAME}/../alert-watcher/start-session.sh"
@@ -12,7 +15,8 @@ setup() {
     export ALERT_WATCHER_WORKTREE="${BATS_TEST_TMPDIR}/quillmedical-5"
     export QUILL_ALERT_WATCHER_STATE="${BATS_TEST_TMPDIR}/state"
     export HOME="${BATS_TEST_TMPDIR}/home"
-    unset ALERT_WATCHER_TMUX_TARGET SESSION_EXISTS
+    SYSTEMD_RUN_CALLS="${BATS_TEST_TMPDIR}/systemd-run-calls"
+    unset ALERT_WATCHER_TMUX_TARGET SESSION_EXISTS SCOPE_ACTIVE
 
     mkdir -p "${ALERT_WATCHER_WORKTREE}" "${BATS_TEST_TMPDIR}/bin"
     cat > "${BATS_TEST_TMPDIR}/bin/tmux" <<EOF
@@ -22,7 +26,23 @@ if [ "\$1" = "has-session" ]; then
     [ "\${SESSION_EXISTS:-}" = "1" ]
 fi
 EOF
-    chmod +x "${BATS_TEST_TMPDIR}/bin/tmux"
+    cat > "${BATS_TEST_TMPDIR}/bin/systemd-run" <<EOF
+#!/usr/bin/env bash
+printf '%s\n' "\$*" >> "${SYSTEMD_RUN_CALLS}"
+while [ "\$#" -gt 0 ] && [ "\${1#--}" != "\$1" ]; do
+    shift
+done
+exec "\$@"
+EOF
+    cat > "${BATS_TEST_TMPDIR}/bin/systemctl" <<EOF
+#!/usr/bin/env bash
+if [ "\$2" = "is-active" ]; then
+    [ "\${SCOPE_ACTIVE:-}" = "1" ]
+fi
+EOF
+    chmod +x "${BATS_TEST_TMPDIR}/bin/tmux" \
+        "${BATS_TEST_TMPDIR}/bin/systemd-run" \
+        "${BATS_TEST_TMPDIR}/bin/systemctl"
     export PATH="${BATS_TEST_TMPDIR}/bin:${PATH}"
 }
 
@@ -89,4 +109,39 @@ EOF
     run "$SCRIPT"
     [ "$status" -eq 1 ]
     [ "$(grep -c new-session "$CALLS")" -eq 0 ]
+}
+
+@test "the session starts in a systemd scope of its own, outside the service" {
+    run "$SCRIPT"
+    [ "$status" -eq 0 ]
+    grep -q -- "^--user --scope --quiet --collect --unit=quill-tmux-server tmux new-session -d -s q5 -c ${ALERT_WATCHER_WORKTREE} bash -lc " "$SYSTEMD_RUN_CALLS"
+    grep -q "^new-session -d -s q5 " "$CALLS"
+}
+
+@test "a scope already running is not asked for again" {
+    SCOPE_ACTIVE=1 run "$SCRIPT"
+    [ "$status" -eq 0 ]
+    [ ! -e "$SYSTEMD_RUN_CALLS" ]
+    grep -q "^new-session -d -s q5 " "$CALLS"
+}
+
+@test "without systemd-run, the session starts through tmux as it is" {
+    # A PATH holding the stub tmux and only the tools the script needs, so
+    # a systemd-run on the host cannot be found.
+    local tools="${BATS_TEST_TMPDIR}/tools"
+    mkdir -p "$tools"
+    cp "${BATS_TEST_TMPDIR}/bin/tmux" "$tools/"
+    for tool in bash mkdir chmod basename; do
+        ln -s "$(command -v "$tool")" "$tools/$tool"
+    done
+
+    PATH="$tools" run "$SCRIPT"
+    [ "$status" -eq 0 ]
+    [ ! -e "$SYSTEMD_RUN_CALLS" ]
+    grep -q "^new-session -d -s q5 -c ${ALERT_WATCHER_WORKTREE} bash -lc " "$CALLS"
+}
+
+@test "a session already running starts no scope" {
+    SESSION_EXISTS=1 run "$SCRIPT"
+    [ ! -e "$SYSTEMD_RUN_CALLS" ]
 }

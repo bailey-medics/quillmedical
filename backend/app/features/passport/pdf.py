@@ -39,7 +39,7 @@ from __future__ import annotations
 import io
 import logging
 from datetime import date, datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from reportlab.lib import colors  # type: ignore[import-untyped]
 from reportlab.lib.enums import TA_LEFT  # type: ignore[import-untyped]
@@ -74,6 +74,11 @@ from .schemas import (
 )
 from .serialise import from_yaml, reflection_from_markdown
 from .store import PassportNotFoundError, PassportStore
+from .wording import framework_name, sign_off_heading, version_note
+
+if TYPE_CHECKING:
+    # A type only. The catalogue module reads the database.
+    from .catalogue import StoredCatalogue
 
 logger = logging.getLogger(__name__)
 
@@ -92,6 +97,7 @@ def render_pdf(
     *,
     head_commit: str | None = None,
     generated_at: datetime | None = None,
+    catalogue: StoredCatalogue | None = None,
 ) -> bytes:
     """Render a whole passport as a PDF.
 
@@ -101,6 +107,9 @@ def render_pdf(
         head_commit: The commit this was rendered from, printed in the
             footer so a printed page can be tied to a repository state.
         generated_at: When, for tests.
+        catalogue: The stored frameworks, so a framework or competency
+            is named as it is today, with what a sign-off recorded where
+            that differs. Without them, the record's own words are used.
 
     Returns:
         The PDF bytes.
@@ -128,14 +137,14 @@ def render_pdf(
     )
 
     story: list[Any] = []
-    story.extend(_front_page(profile, index, moment, styles))
+    story.extend(_front_page(profile, index, moment, styles, catalogue))
     story.extend(_competency_table(index, styles))
     story.extend(_logbook_totals(store, passport_id, index, styles))
     story.extend(_certificates(store, passport_id, styles))
     story.extend(_cpd(store, passport_id, styles, profile))
 
     story.extend(_reflections_note(store, passport_id, styles))
-    story.extend(_sign_offs(store, passport_id, styles))
+    story.extend(_sign_offs(store, passport_id, styles, catalogue))
 
     document.build(
         story,
@@ -242,6 +251,7 @@ def _front_page(
     index: Index,
     moment: datetime,
     styles: dict[str, ParagraphStyle],
+    catalogue: StoredCatalogue | None,
 ) -> list[Any]:
     """Who this is, what they are registered as, and what this proves."""
     story: list[Any] = [
@@ -263,7 +273,8 @@ def _front_page(
             Paragraph(
                 "Frameworks: "
                 + ", ".join(
-                    _text(framework.name) for framework in profile.frameworks
+                    _text(framework_name(catalogue, framework))
+                    for framework in profile.frameworks
                 ),
                 styles["body"],
             )
@@ -711,7 +722,10 @@ def _reflections_note(
 
 
 def _sign_offs(
-    store: PassportStore, passport_id: str, styles: dict[str, ParagraphStyle]
+    store: PassportStore,
+    passport_id: str,
+    styles: dict[str, ParagraphStyle],
+    catalogue: StoredCatalogue | None,
 ) -> list[Any]:
     """Every sign-off in full, each with its own fingerprint."""
     story: list[Any] = [
@@ -737,23 +751,30 @@ def _sign_offs(
     records.sort(key=lambda item: item[1].observed_on)
 
     for name, record in records:
-        story.append(KeepTogether(_one_sign_off(name, record, styles)))
+        story.append(
+            KeepTogether(_one_sign_off(name, record, styles, catalogue))
+        )
 
     return story
 
 
 def _one_sign_off(
-    name: str, record: SignOff, styles: dict[str, ParagraphStyle]
+    name: str,
+    record: SignOff,
+    styles: dict[str, ParagraphStyle],
+    catalogue: StoredCatalogue | None,
 ) -> list[Any]:
     """One sign-off, kept on a single page where it fits."""
-    block: list[Any] = [
-        Paragraph(
-            _text(name_with_scope(record.competency.name, record.scope)),
-            styles["subheading"],
+    heading, signed_as = sign_off_heading(catalogue, record)
+    block: list[Any] = [Paragraph(_text(heading), styles["subheading"])]
+
+    if signed_as is not None:
+        block.append(
+            Paragraph(f"Signed off as: {_text(signed_as)}", styles["body"])
         )
-    ]
 
     facts = [
+        _text(version_note(record)),
         f"Status: {_text(record.status)}",
         f"Observed: {_day(record.observed_on)}",
     ]
