@@ -316,7 +316,7 @@ YAML
 name_on_the_list() {
   local id="$1"
 
-  sed -i "s/^REMOVED_ON_PURPOSE=(/REMOVED_ON_PURPOSE=(\n  ${id}/" "$SCRIPT"
+  sed -i "s/^REMOVED_ON_PURPOSE=(/REMOVED_ON_PURPOSE=(\n  ${id}\n/" "$SCRIPT"
   grep -q "^  ${id}$" "$SCRIPT"
 }
 
@@ -347,7 +347,6 @@ retire_and_delete() {
 }
 
 @test "a current id removed on purpose is still a deletion" {
-  skip "lifted for one pull request, Phase 13 of the passport record and catalogue plan"
   name_on_the_list certify_death
   grep -v "certify_death" shared/competency-definitions/clinical.yaml \
     | grep -v 'display_name: "Certify Death"' > tmp.yaml
@@ -358,21 +357,6 @@ retire_and_delete() {
 
   [ "$status" -eq 1 ]
   [[ "$output" == *"certify_death"* ]]
-}
-
-# While the rule is lifted, a current id on the list may leave. Phase 13's
-# next pull request deletes this test and un-skips the one above.
-@test "while lifted, a current id removed on purpose passes" {
-  name_on_the_list certify_death
-  grep -v "certify_death" shared/competency-definitions/clinical.yaml \
-    | grep -v 'display_name: "Certify Death"' > tmp.yaml
-  mv tmp.yaml shared/competency-definitions/clinical.yaml
-  commit_all "delete a current competency named on the list"
-
-  run bash "$SCRIPT" base-ref
-
-  [ "$status" -eq 0 ]
-  [[ "$output" == *"No competency was removed"* ]]
 }
 
 @test "a retired id not on the list is still a deletion" {
