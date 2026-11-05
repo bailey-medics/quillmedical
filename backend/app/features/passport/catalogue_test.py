@@ -148,3 +148,24 @@ def test_a_version_stored_since_is_read_at_once(
     _store(db_session, tmp_path / "d", 2, "Refer a patient")
 
     assert stored_catalogue(db_session).frameworks["sheet"].version == 2
+
+
+def test_a_retired_level_comes_back_marked(
+    db_session: Session, tmp_path: Path
+) -> None:
+    _store(db_session, tmp_path / "d", 1, "Refer")
+    folder = tmp_path / "d"
+    text = _SHEET.format(version=2, words="Refer").replace(
+        '      - id: observed\n        name: "Observed"\n',
+        '      - id: observed\n        name: "Observed"\n'
+        "        retired_on: 2026-11-04\n"
+        "        retired_in_version: 2\n",
+    )
+    (folder / "sheet.yaml").write_text(text)
+    assert sync_frameworks(db_session, folder).succeeded
+
+    refer = stored_catalogue(db_session).entries["sheet_refer"]
+
+    observed = (refer.levels or [])[0]
+    assert observed.id == "observed"
+    assert observed.retired_in_version == 2

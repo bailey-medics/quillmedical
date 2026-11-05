@@ -36,6 +36,31 @@ ASSESSOR = commits.Actor(
 )
 
 
+def _retiring(level: str) -> StoredCatalogue:
+    """The fixtures, with one level of the SACT competency retired."""
+    held = files_catalogue()
+    entry = held.entries[SACT]
+    changed = entry.model_copy(
+        update={
+            "levels": [
+                (
+                    lvl.model_copy(
+                        update={
+                            "retired_on": date(2026, 11, 4),
+                            "retired_in_version": 2,
+                        }
+                    )
+                    if lvl.id == level
+                    else lvl
+                )
+                for lvl in entry.levels or []
+            ]
+        }
+    )
+
+    return dataclasses.replace(held, entries={**held.entries, SACT: changed})
+
+
 def _without(
     *, level: str | None = None, scope: str | None = None
 ) -> StoredCatalogue:
@@ -165,6 +190,35 @@ def test_asking_for_a_scope_that_went_is_refused(
         _ask(
             passport,
             _without(scope=DROPPED_SCOPE),
+            DROPPED_LEVEL,
+            date(2026, 3, 1),
+        )
+
+
+def test_asking_again_at_a_higher_level_after_the_old_one_retired(
+    passport: store.LocalPassportStore,
+) -> None:
+    """Retired rather than removed, it keeps its place to compare with."""
+    signed = _ask(passport, files_catalogue(), DROPPED_LEVEL, date(2026, 3, 1))
+    _sign(passport, files_catalogue(), signed)
+
+    asked = _ask(
+        passport, _retiring(DROPPED_LEVEL), HIGHER_LEVEL, date(2026, 3, 10)
+    )
+
+    assert service.read_sign_off(passport, PASSPORT_ID, asked).kind == (
+        "progression"
+    )
+
+
+def test_asking_for_a_retired_level_is_refused(
+    passport: store.LocalPassportStore,
+) -> None:
+    """Nothing new may name a level the framework no longer offers."""
+    with pytest.raises(definitions.UnknownLevelError, match="no longer"):
+        _ask(
+            passport,
+            _retiring(DROPPED_LEVEL),
             DROPPED_LEVEL,
             date(2026, 3, 1),
         )

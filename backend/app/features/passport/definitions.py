@@ -245,7 +245,11 @@ def levels(catalogue: StoredCatalogue, competency_id: str) -> list[LevelRef]:
 
 
 def level_ref(
-    catalogue: StoredCatalogue, competency_id: str, level_id: str
+    catalogue: StoredCatalogue,
+    competency_id: str,
+    level_id: str,
+    *,
+    offered: bool = False,
 ) -> LevelRef:
     """The level id and its wording, to copy into a record.
 
@@ -253,6 +257,8 @@ def level_ref(
         catalogue: The stored frameworks, read once for the request.
         competency_id: The competency id.
         level_id: Which step of its scale.
+        offered: True for a level being asked for anew, which a retired
+            level may not be. A record already naming one still reads.
 
     Returns:
         Both halves, ready to store.
@@ -273,6 +279,13 @@ def level_ref(
 
     for level in available:
         if level.id == level_id:
+            if offered and _retired_part(
+                catalogue, competency_id, "levels", level_id
+            ):
+                raise UnknownLevelError(
+                    f"Level {level_id!r} of {competency_id!r} is no longer "
+                    "offered: its framework retired it."
+                )
             return level
 
     raise UnknownLevelError(
@@ -353,7 +366,11 @@ def scopes(catalogue: StoredCatalogue, competency_id: str) -> list[ScopeRef]:
 
 
 def scope_ref(
-    catalogue: StoredCatalogue, competency_id: str, scope_id: str
+    catalogue: StoredCatalogue,
+    competency_id: str,
+    scope_id: str,
+    *,
+    offered: bool = False,
 ) -> ScopeRef:
     """The scope id and its wording, to copy into a record.
 
@@ -361,6 +378,8 @@ def scope_ref(
         catalogue: The stored frameworks, read once for the request.
         competency_id: The competency id.
         scope_id: Which scope.
+        offered: True for a scope a new record is to cover, which a
+            retired scope may not be. A record already naming one reads.
 
     Returns:
         Both halves, ready to store.
@@ -379,11 +398,31 @@ def scope_ref(
 
     for scope in available:
         if scope.id == scope_id:
+            if offered and _retired_part(
+                catalogue, competency_id, "scopes", scope_id
+            ):
+                raise UnknownScopeError(
+                    f"Scope {scope_id!r} of {competency_id!r} is no longer "
+                    "offered: its framework retired it."
+                )
             return scope
 
     raise UnknownScopeError(
         f"Competency {competency_id!r} has no scope {scope_id!r}. Its "
         "scopes are: " + ", ".join(scope.id for scope in available) + "."
+    )
+
+
+def _retired_part(
+    catalogue: StoredCatalogue, competency_id: str, kind: str, part_id: str
+) -> bool:
+    """Whether a competency's level or scope has been retired."""
+    entry = _entry(catalogue, competency_id)
+    parts = entry.levels if kind == "levels" else entry.scopes
+
+    return any(
+        part.id == part_id and part.retired_on is not None
+        for part in parts or []
     )
 
 

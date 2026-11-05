@@ -35,12 +35,20 @@ class CompetencyLevel(BaseModel):
     Attributes:
         id: Stable identifier for this level, referenced by a sign-off.
         name: The framework's own wording, shown to a reader.
+        retired_on: When the framework stopped offering it. A level is
+            retired, never removed: a sign-off names it, and asking again
+            compares the new level with the last one's place on the
+            scale, so it must stay where it is.
+        retired_in_version: The framework version that first left it
+            out, set with ``retired_on``.
     """
 
     model_config = ConfigDict(extra="forbid")
 
     id: str
     name: str
+    retired_on: date | None = None
+    retired_in_version: StrictInt | None = Field(default=None, ge=2)
 
 
 class CompetencyScope(BaseModel):
@@ -59,12 +67,18 @@ class CompetencyScope(BaseModel):
     Attributes:
         id: Stable identifier for this scope, referenced by a record.
         name: What a reader is shown.
+        retired_on: When the framework stopped offering it. A scope is
+            retired, never removed, because a record names it.
+        retired_in_version: The framework version that first left it
+            out, set with ``retired_on``.
     """
 
     model_config = ConfigDict(extra="forbid")
 
     id: str
     name: str
+    retired_on: date | None = None
+    retired_in_version: StrictInt | None = Field(default=None, ge=2)
 
 
 class Specialty(BaseModel):
@@ -352,6 +366,10 @@ def _check_belongs(
             "and two frameworks describing the same act need two."
         )
 
+    for kind, parts in (("level", entry.levels), ("scope", entry.scopes)):
+        for part in parts or []:
+            _check_part_retirement(entry, kind, part, framework, path)
+
     if entry.retired_on is None:
         return
 
@@ -367,6 +385,50 @@ def _check_belongs(
             f"Competency {entry.id!r} in {path.name} left in version "
             f"{entry.retired_in_version}, but {framework.id!r} is at "
             f"version {framework.version}."
+        )
+
+
+def _check_part_retirement(
+    entry: CompetencyEntry,
+    kind: str,
+    part: CompetencyLevel | CompetencyScope,
+    framework: Framework,
+    path: Path,
+) -> None:
+    """Refuse a level or scope retired other than as a competency is.
+
+    Raises:
+        ValueError: If ``retired_in_version`` is set without
+            ``retired_on``, or the other way round, or names a version
+            the framework has not reached, or the scope retired is
+            ``other``, which every scope list must keep offering.
+    """
+    where = f"{kind} {part.id!r} of {entry.id!r} in {path.name}"
+
+    if part.retired_on is None:
+        if part.retired_in_version is not None:
+            raise ValueError(
+                f"The {where} has retired_in_version but is not retired. "
+                "Set retired_on too."
+            )
+        return
+
+    if kind == "scope" and part.id == OTHER_SCOPE_ID:
+        raise ValueError(
+            f"The {where} is {OTHER_SCOPE_ID!r}, which is never retired, "
+            "so nobody is blocked by a missing entry."
+        )
+
+    if part.retired_in_version is None:
+        raise ValueError(
+            f"The {where} is retired with no retired_in_version. Name the "
+            "framework version that first left it out."
+        )
+
+    if part.retired_in_version > framework.version:
+        raise ValueError(
+            f"The {where} left in version {part.retired_in_version}, but "
+            f"{framework.id!r} is at version {framework.version}."
         )
 
 

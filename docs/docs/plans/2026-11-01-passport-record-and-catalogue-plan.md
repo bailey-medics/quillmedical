@@ -929,6 +929,12 @@ reads the repositories, not a bucket" in Decisions.
       `retired_in_version` set: the newest version keeps every
       competency an earlier one held, because a competency is retired,
       never deleted, so the newest version is all Phase 10 needs.
+      **The feature gate was waived for it on 4 November 2026**, as it is
+      for `/me`, after the end-to-end test of a holder taken off every
+      passport place failed: their own competency page could not load
+      the frameworks, so it said "not found". A framework is a published
+      document and nobody's record. Fixed in the route's own pull
+      request, #2356.
 - [x] **Read them in the frontend from that route**, not from the build:
       `frameworks.ts`, `competencyTable.ts`, the pickers,
       `FrameworkField` and `CompetencySummary`. `yarn generate:types`
@@ -1122,12 +1128,23 @@ reads the repositories, not a bucket" in Decisions.
       runs, refuse a version that drops a level or scope id from a
       competency it keeps, naming each one. A competency removed whole is
       still the deletion check's to refuse.
-- [ ] **Retire a level or scope, the way a competency is retired**, so a
+- [x] **Retire a level or scope, the way a competency is retired**, so a
       framework can stop offering one without removing it: a `retired_on`
       and `retired_in_version` on `CompetencyLevel` and `CompetencyScope`,
       kept in the tables, refused for a new request or entry, and still
       read by `level_order` and the table. Until it is built, a level or
       scope cannot be withdrawn at all, only kept.
+      Built on 4 November 2026. The loader holds a retired level or scope
+      to a competency's rules: `retired_in_version` with `retired_on`, no
+      later than the framework's version, and `other` is never retired.
+      Migration `cd66a15967e7` adds the two columns to the level and
+      scope tables, the sync stores and compares them, and the catalogue
+      route serves them. `level_ref` and `scope_ref` refuse a retired one
+      where something new is asked for, a request or a new logbook entry,
+      and read it anywhere else; the frontend's catalogue leaves it out
+      of what a form offers. Asking again at a higher level after the old
+      one retired now works, as a progression; dropping one is still
+      refused, so the `xfail` test of that path stays.
 
 ## Phase 12: Make the exports agree with the page
 

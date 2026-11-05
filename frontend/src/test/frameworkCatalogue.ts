@@ -27,6 +27,8 @@ export const TEST_FRAMEWORK_DEFINITIONS: FrameworkDefinition[] =
       levels: (competency.levels ?? []).map((level, position) => ({
         ...level,
         position,
+        retired_on: level.retired_on ?? null,
+        retired_in_version: level.retired_in_version ?? null,
       })),
       scopes: competency.scopes ?? [],
       expires_after_months: competency.expires_after_months ?? null,
