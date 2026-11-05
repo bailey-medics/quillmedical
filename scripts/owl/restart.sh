@@ -1,21 +1,21 @@
 #!/usr/bin/env bash
-# Restarts Owl, the alert watcher, and its Claude Code session in q5.
+# Restarts Owl, the alert watcher, and its Claude Code session, owl.
 #
 # Usage: restart.sh [force]
 #
-# Run by `just owl-restart`, from worktree 5 on the home box only, as
+# Run by `just owl-restart`, from quillmedical-owl on the home box only, as
 # `just owl-install` is.
 #
 # Refuses while the busy flag is set, because an alert run may be part
-# way through, unless given `force`. Run from inside q5 itself, the flag
+# way through, unless given `force`. Run from inside the owl session, the flag
 # belongs to the turn running this, so it is not a reason to refuse.
 #
-# The restart runs detached, with systemd-run, because it kills q5: run
-# in place from inside q5, it would kill the shell running it after the
+# The restart runs detached, with systemd-run, because it kills the owl
+# session: run in place from inside it, it would kill the shell running it after the
 # kill and before the start, and leave no Owl at all. The detached job
-# stops quill-owl.service, kills q5, clears the busy flag so the new
+# stops quill-owl.service, kills the session, clears the busy flag so the new
 # session does not start out busy, and starts the service, whose
-# start-session.sh makes a fresh q5 with the current flags.
+# start-session.sh makes a fresh owl session with the current flags.
 #
 # OWL_WORKTREE, OWL_TMUX_TARGET and OWL_STATE change the worktree, the
 # session name and the state folder, as they do for the daemon.
@@ -34,8 +34,8 @@ inside_session() {
 
 main() {
     local force="${1:-}"
-    local worktree="${OWL_WORKTREE:-${HOME}/github/quillmedical-5}"
-    local session="${OWL_TMUX_TARGET:-q5}"
+    local worktree="${OWL_WORKTREE:-${HOME}/github/quillmedical-owl}"
+    local session="${OWL_TMUX_TARGET:-owl}"
     local state="${OWL_STATE:-${XDG_STATE_HOME:-${HOME}/.local/state}/quill-owl}"
     local flag="${state}/busy"
     local toplevel

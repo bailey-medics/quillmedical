@@ -12,7 +12,7 @@
 setup() {
     SCRIPT="${BATS_TEST_DIRNAME}/../owl/start-session.sh"
     CALLS="${BATS_TEST_TMPDIR}/tmux-calls"
-    export OWL_WORKTREE="${BATS_TEST_TMPDIR}/quillmedical-5"
+    export OWL_WORKTREE="${BATS_TEST_TMPDIR}/quillmedical-owl"
     export OWL_STATE="${BATS_TEST_TMPDIR}/state"
     export HOME="${BATS_TEST_TMPDIR}/home"
     SYSTEMD_RUN_CALLS="${BATS_TEST_TMPDIR}/systemd-run-calls"
@@ -55,13 +55,13 @@ EOF
 
 @test "the exact session name is asked for, not any that starts with it" {
     SESSION_EXISTS=1 run "$SCRIPT"
-    grep -qx "has-session -t =q5" "$CALLS"
+    grep -qx "has-session -t =owl" "$CALLS"
 }
 
-@test "a missing session is started in worktree 5" {
+@test "a missing session is started in Owl's worktree" {
     run "$SCRIPT"
     [ "$status" -eq 0 ]
-    grep -q "^new-session -d -s q5 -c ${OWL_WORKTREE} bash -lc " "$CALLS"
+    grep -q "^new-session -d -s owl -c ${OWL_WORKTREE} bash -lc " "$CALLS"
 }
 
 @test "the session runs claude as the watcher, and may read the alert files" {
@@ -109,7 +109,7 @@ EOF
 
 @test "the session has Remote Control on, under the worktree's name" {
     run "$SCRIPT"
-    grep -q -- "--remote-control quillmedical-5 " "$CALLS"
+    grep -q -- "--remote-control quillmedical-owl " "$CALLS"
 }
 
 @test "the allowlist names the commands the skill needs to open a pull request" {
@@ -146,15 +146,15 @@ EOF
 @test "the session starts in a systemd scope of its own, outside the service" {
     run "$SCRIPT"
     [ "$status" -eq 0 ]
-    grep -q -- "^--user --scope --quiet --collect --unit=quill-tmux-server tmux new-session -d -s q5 -c ${OWL_WORKTREE} bash -lc " "$SYSTEMD_RUN_CALLS"
-    grep -q "^new-session -d -s q5 " "$CALLS"
+    grep -q -- "^--user --scope --quiet --collect --unit=quill-tmux-server tmux new-session -d -s owl -c ${OWL_WORKTREE} bash -lc " "$SYSTEMD_RUN_CALLS"
+    grep -q "^new-session -d -s owl " "$CALLS"
 }
 
 @test "a scope already running is not asked for again" {
     SCOPE_ACTIVE=1 run "$SCRIPT"
     [ "$status" -eq 0 ]
     [ ! -e "$SYSTEMD_RUN_CALLS" ]
-    grep -q "^new-session -d -s q5 " "$CALLS"
+    grep -q "^new-session -d -s owl " "$CALLS"
 }
 
 @test "without systemd-run, the session starts through tmux as it is" {
@@ -170,7 +170,7 @@ EOF
     PATH="$tools" run "$SCRIPT"
     [ "$status" -eq 0 ]
     [ ! -e "$SYSTEMD_RUN_CALLS" ]
-    grep -q "^new-session -d -s q5 -c ${OWL_WORKTREE} bash -lc " "$CALLS"
+    grep -q "^new-session -d -s owl -c ${OWL_WORKTREE} bash -lc " "$CALLS"
 }
 
 @test "a session already running starts no scope" {

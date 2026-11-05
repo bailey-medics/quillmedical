@@ -36,9 +36,9 @@ export function readConfig(env: NodeJS.ProcessEnv): Config {
     appToken: required(env, "SLACK_APP_TOKEN", /^xapp-/, "the app-level token, starting xapp-"),
     botToken: required(env, "SLACK_BOT_TOKEN", /^xoxb-/, "the bot token, starting xoxb-"),
     channel: required(env, "OWL_CHANNEL", /^C[A-Z0-9]{8,}$/, "the channel's id, such as C0123456789, not its name"),
-    worktree: env["OWL_WORKTREE"] || join(home, "github", "quillmedical-5"),
-    // The name ~/.local/bin/quill-sessions gives worktree 5's session.
-    tmuxTarget: env["OWL_TMUX_TARGET"] || "q5",
+    worktree: env["OWL_WORKTREE"] || join(home, "github", "quillmedical-owl"),
+    // Owl's own session, which scripts/claude-session.sh also names owl.
+    tmuxTarget: env["OWL_TMUX_TARGET"] || "owl",
     // The same folder .claude/hooks/owl-busy.sh writes the flag in.
     stateDirectory: env["OWL_STATE"] || join(stateHome, "quill-owl"),
     // The client certificate the box signs in to Google with.

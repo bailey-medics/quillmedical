@@ -1173,7 +1173,7 @@ notifier-app:
 
 
 alias owi := owl-install
-# Install Owl as a systemd user service, moving the box across from the alert watcher's old names (the home box's worktree 5 only)
+# Install Owl as a systemd user service, moving the box across from the alert watcher's old names (the home box's quillmedical-owl only)
 owl-install:
     #!/usr/bin/env bash
     {{initialise}} "owl-install"
@@ -1183,7 +1183,7 @@ owl-install:
 
 
 alias owr := owl-restart
-# Restart Owl and its Claude session in q5, detached so it survives being run from q5 (the home box's worktree 5 only); `force` to restart a busy one
+# Restart Owl and its Claude session, owl, detached so it survives being run from the owl session (the home box's quillmedical-owl only); `force` to restart a busy one
 owl-restart force="":
     #!/usr/bin/env bash
     {{initialise}} "owl-restart"

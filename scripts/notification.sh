@@ -90,10 +90,21 @@ fi
 # had been kept apart and piled up for the same worktree.
 group="quill-claude-$worktree"
 
+# Spoken phrase. Directory names like "quillmedical-4" read poorly aloud, so
+# speak the trailing number on its own ("Quill Medicine 4"); the main checkout
+# has no suffix and becomes "Quill Medicine one", and Owl's worktree is
+# "Quill Medicine Owl".
+case "$worktree" in
+    quillmedical-owl) spoken="Quill Medicine Owl" ;;
+    *-[0-9]*) spoken="Quill Medicine ${worktree##*-}" ;;
+    quillmedical) spoken="Quill Medicine one" ;;
+    *) spoken="$worktree" ;;
+esac
+
 # Set QUILL_NOTIFY_DEBUG=1 to print what would be shown and stop; used by
 # the tests, and handy when a banner is not saying what you expected.
 if [ "${QUILL_NOTIFY_DEBUG:-0}" = "1" ]; then
-    printf 'title=%s\nbody=%s\ngroup=%s\n' "$title" "$body" "$group"
+    printf 'title=%s\nbody=%s\ngroup=%s\nspoken=%s\n' "$title" "$body" "$group" "$spoken"
     if [ -n "${QUILL_NOTIFY_SSH_HOST:-}" ] \
         && [ "$(uname -s 2>/dev/null)" = "Linux" ]; then
         printf 'forward=%s\nremote=%s\n' "$QUILL_NOTIFY_SSH_HOST" \
@@ -101,15 +112,6 @@ if [ "${QUILL_NOTIFY_DEBUG:-0}" = "1" ]; then
     fi
     exit 0
 fi
-
-# Spoken phrase. Directory names like "quillmedical-4" read poorly aloud, so
-# speak the trailing number on its own ("Quill Medicine 4"); the main checkout
-# has no suffix and becomes "Quill Medicine one".
-case "$worktree" in
-    *-[0-9]*) spoken="Quill Medicine ${worktree##*-}" ;;
-    quillmedical) spoken="Quill Medicine one" ;;
-    *) spoken="$worktree" ;;
-esac
 
 SHOW_SCRIPT="$SCRIPT_DIR/notification-show.sh"
 FOCUS_SCRIPT="$SCRIPT_DIR/notification-focus.sh"

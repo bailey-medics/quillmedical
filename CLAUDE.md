@@ -766,8 +766,8 @@ when asked to.
 
 ### Owl may open a pull request, and nothing more
 
-Owl, the alert watcher on the home box, types `/alert <file>` into worktree 5
-when App production raises an alert in Slack (the watcher phase of
+Owl, the alert watcher on the home box, types `/alert <file>` into its worktree,
+`quillmedical-owl`, when App production raises an alert in Slack (the watcher phase of
 `docs/docs/plans/2026-10-19-remote-dev-machine-plan.md`). Its tmux session
 starts `claude` with `QUILL_OWL=true`, and nothing else sets it.
 

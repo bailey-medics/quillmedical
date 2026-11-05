@@ -93,7 +93,7 @@ stop.
       `git mv` ran, its unit file and the busy hook's old name were gone.
       The daemon kept running from what it had loaded, but systemd could
       not restart it, and this session's hooks, now at `owl-busy.sh`,
-      look for `QUILL_OWL` and set no flag. Phase 4 is what puts the box
+      look for `QUILL_OWL` and set no flag. Phase 5 is what puts the box
       right, so it should follow straight after the merge.
 - [x] **Check nothing is left**: `git grep -iE "alert[-_ ]?watcher"`
       should find only the places listed under Decisions as kept.
@@ -153,14 +153,61 @@ stop.
       again, and `install.sh` says the same after moving the box across.
       Both now say `just owl-restart`, and the README describes it.
 
-## Phase 4: Move the box across, once Phase 1 merges
+## Phase 4: Owl's worktree is called quillmedical-owl
 
-For a person on the home box, straight after the merge, before the next
-alert arrives. The first step is the state the stack was left in on
-4 November 2026, written down because the session that built it can be
-cleared by the next alert at any moment.
+Worktree 5 belongs to Owl, but its name says only that it was the fifth
+made. Calling it `~/github/quillmedical-owl`, with its Claude Code session
+in tmux as `owl`, says whose it is wherever the name appears: in a window
+title, a banner, a tmux list or a path. About a dozen places assume
+`quillmedical-5` or the number 5, found by searching the repository and
+the box on 4 November 2026. Each is a step below.
 
-- [ ] **Know what the stack holds before merging it.** Five draft pull
+- [x] **Let the session scripts accept the new folder.**
+      `scripts/claude-session.sh` and `scripts/tmux-window.sh` accept only
+      `quillmedical` or `quillmedical-<number>`, and refuse anything else
+      as "not one of the Quill worktrees", so `acc` and `tw` would stop
+      working there. Add a `quillmedical-owl)` case to each, naming the
+      Claude session `owl` and the shell `towl`, beside `q<n>` and `t<n>`.
+      `claude-session.sh`'s refusal to start a plain Claude in Owl's
+      session moves from `q5` to `owl`. Tests in
+      `scripts/tests/claude-session.bats` and `tmux-window.bats`,
+      including one that `quillmedical-5` is an ordinary `q5` again while
+      Owl is enabled.
+- [x] **Point Owl at the new folder and session.** `quill-owl.service`
+      names `%h/github/quillmedical-5` in `WorkingDirectory`,
+      `ExecStartPre` and `ExecStart`'s folder. `OWL_WORKTREE` defaults to
+      it in `src/config.ts` and `start-session.sh`, and the guards in
+      `install.sh` and `restart.sh` check for it. `OWL_TMUX_TARGET`
+      defaults to `q5` in `src/config.ts`, `start-session.sh` and
+      `restart.sh`. All become `quillmedical-owl` and `owl`, with their
+      tests.
+- [x] **Say Owl's worktree, not worktree 5, in what Owl posts.**
+      `src/watcher.ts` writes "Worktree 5 is busy" and "Worktree 5 is in
+      use" into Slack threads. Those become "Owl's worktree", with the
+      tests in `src/watcher.test.ts` that match the text.
+- [x] **Speak the banner's name as Owl.** `scripts/notification.sh`
+      speaks a numbered worktree as "Quill Medicine 5" and gives any other
+      name to its default. Add a case so `quillmedical-owl` is spoken as
+      "Quill Medicine Owl", with a test in `notification.bats`. The
+      spoken name was worked out after the script's debug mode had
+      already printed and stopped, so no test could see it; it is now
+      worked out first and printed as `spoken=` in debug mode. Clicking
+      the banner already works: `notification-focus.sh` matches the
+      window title on the folder's name, whatever it is.
+- [x] **Change the words.** "Worktree 5" and `q5` in `CLAUDE.md`'s Owl
+      rule, the `/alert` skill, `scripts/owl/README.md` and
+      `docs/docs/infrastructure/monitoring.md` become "Owl's worktree,
+      `quillmedical-owl`" and `owl`.
+
+## Phase 5: Move the box across, once the stack merges
+
+For a person on the home box. The first steps are the state the stack was
+left in on 4 November 2026, written down because the session that built
+it can be cleared by the next alert at any moment. Merge the whole stack,
+Phase 4 included, before moving the box, so it moves once: Phase 1 alone
+on `main` would mean moving the folders now and the worktree later.
+
+- [ ] **Know what the stack holds before merging it.** Six draft pull
       requests, one stack with the key `watcher`, in worktree 5, bottom
       first:
       #2372 `feature/watcher-session-never-stops-to-ask` (Phase 1 of the
@@ -169,10 +216,13 @@ cleared by the next alert at any moment.
       fix to `just stack-new`, found while landing #2372),
       #2375 `feature/watcher-the-alert-watcher-is-called-owl` (Phase 1),
       #2376 `feature/watcher-terraform-says-owl` (Phase 2) and
-      #2377 `feature/watcher-owl-restart` (Phase 3). Merge them bottom
+      #2377 `feature/watcher-owl-restart` (Phase 3) and
+      #2378 `feature/watcher-record-the-stack-in-the-plan` (this record).
+      Phase 4 is on a seventh branch on top of #2378,
+      `feature/watcher-owls-worktree-is-quillmedical-owl`. Merge them bottom
       first, or enqueue the whole stack. Phases 2 and 3 of the dialog plan
-      are not built yet; they belong on top of #2377, and their paths are
-      already written as `scripts/owl/`.
+      are not built yet either; they belong on top too, with their paths
+      written as `scripts/owl/`.
 - [ ] **Know that Owl is fragile until this phase is done.** Building
       Phase 1 in worktree 5 moved `scripts/alert-watcher/`, so the unit
       file systemd links to is gone and the old daemon runs only from what
@@ -192,22 +242,49 @@ cleared by the next alert at any moment.
       `scripts/owl/` before `stack-submit`, and back afterwards. If a
       rebase is already stuck, `gh stack rebase --abort` restores every
       branch. This stops mattering once #2375 merges.
-- [ ] Run `just stack-fresh` in worktree 5, so it is on `main`.
-- [ ] Run `just owl-install`. It stops the old service, moves the
-      folders to their `quill-owl` names and starts `quill-owl.service`.
-- [ ] Run `tmux kill-session -t q5`, then
-      `systemctl --user restart quill-owl`, so the session starts with
-      `QUILL_OWL=true`. After Phase 3 merges, `just owl-restart` does
-      this.
-- [ ] Check `journalctl --user -u quill-owl` shows it connected to Slack.
+- [ ] **Stop the old Owl and its session.** `systemctl --user stop
+      quill-alert-watcher`, then `tmux kill-session -t q5`. Claude Code
+      is running in the folder about to move, so it goes first.
+- [ ] **Move the worktree**, from the main checkout:
+      `git worktree move ../quillmedical-5 ../quillmedical-owl`. git
+      updates its own records of the worktree, so nothing else in git
+      needs changing. Then `just stack-fresh` in the new folder, so it is
+      on `main`.
+- [ ] **Trust the new folder in Claude Code by hand.** Claude Code asks
+      whether to trust a folder it has not seen before. That is a dialog
+      in Owl's pane, the kind Owl types into blind and which lost two
+      alerts on 4 November, so start `claude` in `~/github/quillmedical-owl`
+      once, accept, and quit. Its session history stays under the old
+      path, so `--continue` starts fresh there; memory is kept under the
+      main checkout, so it is unaffected.
+- [ ] **Fix `~/.local/bin/quill-sessions`**, which is on the box and not in
+      the repository. It loops over `quillmedical-1` to `quillmedical-5`
+      and skips 5 while `quill-alert-watcher.service` is enabled, so after
+      the rename it would start a plain `q5` without Owl's flags. Loop to
+      4, and leave Owl's session to `quill-owl.service`.
+- [ ] Run `just owl-install` from `~/github/quillmedical-owl`. It removes
+      the old service's link, moves the folders to their `quill-owl`
+      names and starts `quill-owl.service`, which starts the `owl`
+      session.
+- [ ] Check `journalctl --user -u quill-owl` shows it connected to Slack,
+      and `tmux ls` shows `owl` with no `q5`.
+- [ ] **Reopen the folder in VS Code** over SSH as
+      `~/github/quillmedical-owl`. The old window points at a folder that
+      is no longer there.
 
 ## Decisions
 
 - **The `/alert` skill keeps its name.** It names what a run does,
   investigate an alert, not who starts it. Owl types `/alert`, as a
   person can by hand.
-- **The `q5` session keeps its name.** It is worktree 5's session, which
-  `quill-sessions` and `acc` find by that name. Owl borrows it.
+- **The session becomes `owl`, not `q5`.** Phase 1 first kept `q5`,
+  since it was worktree 5's session that Owl borrowed. Once Phase 4 names
+  the worktree for Owl, the session follows it, and `q5` would point at
+  a worktree that no longer exists.
+- **The new-worktree recipe is left as it is.** It counts up from 2 to
+  the first free number, so with `quillmedical-5` gone the next worktree
+  made is `quillmedical-5` again. That is a different folder with the old
+  number, which nothing assumes is Owl's once Phase 4 is done.
 - **Earlier plans are left as written.** The plans before this one record
   what was built at the time, under the names it had then. Rewriting them
   would make that history say something that was never true, so only

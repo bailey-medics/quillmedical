@@ -1,6 +1,6 @@
 # Owl, the alert watcher, as a systemd user service on the home box.
 #
-# Installed by `just owl-install` from worktree 5, which links
+# Installed by `just owl-install` from quillmedical-owl, Owl's worktree, which links
 # this file into ~/.config/systemd/user/. Read its log with
 # `journalctl --user -u quill-owl`. It logs fingerprints and
 # outcomes, never the alert text.
@@ -17,7 +17,7 @@
 # do, and they start when an alert arrives, long after boot.
 
 [Unit]
-Description=Owl, the Quill alert watcher: types App production alerts into worktree 5
+Description=Owl, the Quill alert watcher: types App production alerts into quillmedical-owl
 Wants=network-online.target
 After=network-online.target
 ConditionPathExists=%h/.config/quill-owl/env
@@ -25,8 +25,8 @@ ConditionPathExists=%h/.config/quill-owl/env
 [Service]
 Type=simple
 EnvironmentFile=%h/.config/quill-owl/env
-WorkingDirectory=%h/github/quillmedical-5/scripts/owl
-ExecStartPre=%h/github/quillmedical-5/scripts/owl/start-session.sh
+WorkingDirectory=%h/github/quillmedical-owl/scripts/owl
+ExecStartPre=%h/github/quillmedical-owl/scripts/owl/start-session.sh
 ExecStart=/usr/bin/env node src/main.ts
 Restart=always
 RestartSec=30

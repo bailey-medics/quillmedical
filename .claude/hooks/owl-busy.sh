@@ -6,7 +6,7 @@
 #
 # Wired in .claude/settings.json as a UserPromptSubmit hook (set) and a Stop
 # hook (clear). The daemon in scripts/owl/ reads the flag before it
-# types an alert into worktree 5, and queues the alert while the flag is
+# types an alert into Owl's worktree, and queues the alert while the flag is
 # there, whether the turn is an alert's or a person's. The flag holds the
 # time the turn began, in seconds since the epoch, which is how the daemon
 # tells a run that has stalled.

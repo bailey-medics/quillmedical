@@ -3,7 +3,7 @@
 // in, so this file is plain logic and its tests need none of them.
 //
 // One alert is investigated at a time. The rest wait in a queue while the
-// session is busy, with an alert or with a person, and while worktree 5 is
+// session is busy, with an alert or with a person, and while Owl's worktree is
 // in use. Each fingerprint is handled once, at most twenty investigations
 // start in a UTC day, though a failed deploy is always investigated, and
 // while a Google Cloud incident is open every other alert is treated as
@@ -144,7 +144,7 @@ export class Watcher {
     this.deps.log("queued", { fingerprint: alert.fingerprint, waiting: this.queue.length });
 
     if (this.current || this.deps.session.busySince(this.nowSeconds()) !== undefined) {
-      await this.deps.reply(this.options.channel, alert.ts, "Queued: worktree 5 is busy, and this will be picked up when it is free.");
+      await this.deps.reply(this.options.channel, alert.ts, "Queued: Owl's worktree is busy, and this will be picked up when it is free.");
     }
   }
 
@@ -208,7 +208,7 @@ export class Watcher {
       await this.deps.reply(
         this.options.channel,
         run.alert.ts,
-        `Stopped: the investigation ran past ${this.options.stallMinutes} minutes without finishing. Worktree 5 is left as it was for a person to look at.`,
+        `Stopped: the investigation ran past ${this.options.stallMinutes} minutes without finishing. Owl's worktree is left as it was for a person to look at.`,
       );
       this.deps.log("stalled", { fingerprint: run.alert.fingerprint });
       this.current = undefined;
@@ -239,7 +239,7 @@ export class Watcher {
         await this.deps.reply(
           this.options.channel,
           next.alert.ts,
-          `Worktree 5 is in use (${worktree.reason}), so this is parked until it is free again.`,
+          `Owl's worktree is in use (${worktree.reason}), so this is parked until it is free again.`,
         );
         this.deps.log("parked", { fingerprint: next.alert.fingerprint });
       }

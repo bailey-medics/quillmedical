@@ -1,6 +1,6 @@
 #!/usr/bin/env bats
 # Tests for owl-busy.sh, the hook that keeps Owl's
-# busy flag in worktree 5.
+# busy flag in Owl's worktree.
 #
 # Every test points the state folder at its own temporary directory, so
 # nothing here touches a real flag.
