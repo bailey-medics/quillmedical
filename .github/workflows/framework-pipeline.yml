@@ -10,6 +10,10 @@
 #   push to main        → start the backend's framework sync, which reads
 #                         this repository's history itself
 #
+# A caller that never starts the sync, such as the testing repository,
+# sets start_sync: false and passes no secrets: its pull requests are still
+# validated, and a merge to main does nothing more.
+#
 # Do not rename the jobs. A framework repository's ruleset requires status
 # checks called "pipeline / validate" and "pipeline / check-protection",
 # composed from the caller's job name plus the job names here, so a rename
@@ -21,16 +25,24 @@ name: Framework pipeline
 
 on:
   workflow_call:
+    inputs:
+      start_sync:
+        description: "Start the backend's framework sync on a merge to main"
+        required: false
+        type: boolean
+        default: true
+    # Optional, so a caller with start_sync false passes none. The deploy
+    # job refuses to run without the two it signs in with.
     secrets:
       GCP_WORKLOAD_IDENTITY_PROVIDER:
         description: "The provider the content account signs in through"
-        required: true
+        required: false
       GCP_SERVICE_ACCOUNT:
         description: "The content account's email"
-        required: true
+        required: false
       SLACK_WEBHOOK_URL:
         description: "Where a failed deploy is reported"
-        required: true
+        required: false
 
 permissions:
   contents: read
@@ -177,8 +189,11 @@ jobs:
   #
   # Does not re-validate: the ruleset requires "pipeline / validate" with
   # strict status checks, so the tree reaching main is the one it passed.
+  #
+  # Skipped when the caller sets start_sync false, and so is the notice
+  # below, which only runs when this job failed.
   deploy:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && inputs.start_sync
     runs-on: ubuntu-26.04
     timeout-minutes: 15
     permissions:
@@ -196,6 +211,14 @@ jobs:
           persist-credentials: false
           sparse-checkout: |
             .github/scripts
+
+      # The secrets are optional, so a caller that starts the sync but
+      # forgot one would otherwise fail inside the sign-in, unexplained.
+      - name: Check the sign-in secrets were passed
+        env:
+          PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          SERVICE_ACCOUNT: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+        run: bash tooling/.github/scripts/framework-pipeline/check-sign-in-secrets.sh "$PROVIDER" "$SERVICE_ACCOUNT"
 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
