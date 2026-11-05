@@ -51,6 +51,16 @@ locals {
   is_teaching_product = contains(
     local.teaching_product_environments, var.environment
   )
+
+  # Each framework repository, with the framework ids it may publish. Read
+  # by the framework sync job and by the admin job's run-migrations, which
+  # catches the tables up on every deploy.
+  framework_repositories = {
+    "bailey-medics/gloucestershire-radiotherapy-record-framework"       = ["ghnft_radiotherapy_record"]
+    "bailey-medics/royal-united-hospitals-bath-sact-passport-framework" = ["ruh_sact_passport"]
+    "bailey-medics/uk-sact-board-prescribing-framework"                 = ["uk_sact_board_2023"]
+    "bailey-medics/general-clinical-skills-quill-medical-framework"     = ["clinical"]
+  }
 }
 
 # ---------- Artifact Registry ----------
@@ -561,9 +571,11 @@ module "cloud_run_admin_job" {
       EMAIL_DRY_RUN = "false"
     },
     # For `run-migrations`, which grants the framework sync job's database
-    # user its one role on every run.
+    # user its one role on every run, then catches the framework tables up
+    # from the framework repositories.
     local.is_teaching_product ? {
       FRAMEWORK_SYNC_DB_USER = google_sql_user.framework_sync[0].name
+      FRAMEWORK_REPOSITORIES = jsonencode(local.framework_repositories)
     } : {}
   )
 
@@ -681,19 +693,14 @@ module "cloud_run_framework_sync_job" {
   timeout           = "600s"
 
   env_vars = {
-    ADMIN_ACTION     = "sync-frameworks"
-    CORE_DB_HOST     = module.cloud_sql_core.private_ip
-    CORE_DB_NAME     = module.cloud_sql_core.database_name
-    CORE_DB_USER     = google_sql_user.framework_sync[0].name
-    CORE_DB_IAM_AUTH = "true"
-    CORE_DB_SSLMODE  = "require"
-    JWT_SECRET       = random_password.framework_sync_unused_jwt[0].result
-    FRAMEWORK_REPOSITORIES = jsonencode({
-      "bailey-medics/gloucestershire-radiotherapy-record-framework"       = ["ghnft_radiotherapy_record"]
-      "bailey-medics/royal-united-hospitals-bath-sact-passport-framework" = ["ruh_sact_passport"]
-      "bailey-medics/uk-sact-board-prescribing-framework"                 = ["uk_sact_board_2023"]
-      "bailey-medics/general-clinical-skills-quill-medical-framework"     = ["clinical"]
-    })
+    ADMIN_ACTION           = "sync-frameworks"
+    CORE_DB_HOST           = module.cloud_sql_core.private_ip
+    CORE_DB_NAME           = module.cloud_sql_core.database_name
+    CORE_DB_USER           = google_sql_user.framework_sync[0].name
+    CORE_DB_IAM_AUTH       = "true"
+    CORE_DB_SSLMODE        = "require"
+    JWT_SECRET             = random_password.framework_sync_unused_jwt[0].result
+    FRAMEWORK_REPOSITORIES = jsonencode(local.framework_repositories)
   }
 
   # No secret: the password is a token for the job's own account.

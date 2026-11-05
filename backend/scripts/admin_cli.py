@@ -41,7 +41,8 @@ Environment Variables:
     head` against the standard CORE_DB_* connection settings, as a
     pre-deploy step run once against the shared database before the new
     app revision is created (see docs/docs/backend/alembic-migration-safety.md).
-    It then runs the framework sync, app.features.passport.sync.
+    It then runs the framework sync from the framework repositories, as
+    sync-frameworks does, and carries on if that fails.
     show-migration takes none either - it prints the revision the database
     is at (`alembic current`) and changes nothing.
 
@@ -293,13 +294,23 @@ def run_migrations() -> int:
     if grant_framework_sync_role() != 0:
         return 1
 
-    # The framework tables, read from the framework files this revision
-    # ships with. Here rather than at start-up, because several instances
-    # start at once and this job runs once, before any of them serve. A
-    # refusal blocks the deploy, as a failed migration does.
-    from app.features.passport import sync
+    # The framework tables, caught up from the framework repositories, as
+    # the framework sync job does. So a deploy heals a sync the pipeline
+    # missed. Here rather than at start-up, because several instances start
+    # at once and this job runs once, before any of them serve.
+    #
+    # A failure does not stop the deploy. The frameworks are content that
+    # lives in their own repositories, not part of this build, so a
+    # framework repository's problem is no reason to keep a new revision
+    # from serving. The run is recorded, and /admin/passport shows it.
+    if sync_frameworks() != 0:
+        print(
+            "⚠ The framework sync failed, so the frameworks are as they "
+            "were. The deploy carries on.",
+            file=sys.stderr,
+        )
 
-    return sync.main([])
+    return 0
 
 
 #: A Cloud SQL IAM database user for a service account: its email
