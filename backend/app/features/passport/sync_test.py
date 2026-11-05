@@ -234,6 +234,38 @@ def test_a_deleted_competency_is_refused(
     assert "sheet_refer" in (result.error or "")
 
 
+def test_a_version_dropping_a_scope_is_refused(
+    db_session: Session, tmp_path: Path
+) -> None:
+    """A sign-off may name it, and a holder must be able to ask again."""
+    directory = _sheet(tmp_path / "d")
+    sync_frameworks(db_session, directory)
+    text = _SHEET.format(version=2, words="Refer a patient").replace(
+        '      - id: lung\n        name: "Lung"\n', ""
+    )
+    (directory / "sheet.yaml").write_text(text)
+
+    result = sync_frameworks(db_session, directory)
+
+    assert not result.succeeded
+    assert "sheet_refer: scope lung" in (result.error or "")
+    assert "never removed" in (result.error or "")
+
+
+def test_a_version_adding_a_scope_is_stored(
+    db_session: Session, tmp_path: Path
+) -> None:
+    directory = _sheet(tmp_path / "d")
+    sync_frameworks(db_session, directory)
+    text = _SHEET.format(version=2, words="Refer a patient").replace(
+        "      - id: other\n",
+        '      - id: breast\n        name: "Breast"\n      - id: other\n',
+    )
+    (directory / "sheet.yaml").write_text(text)
+
+    assert sync_frameworks(db_session, directory).succeeded
+
+
 def test_a_permissions_id_is_refused(
     db_session: Session, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

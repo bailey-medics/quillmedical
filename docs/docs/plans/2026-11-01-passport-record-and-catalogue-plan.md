@@ -1091,17 +1091,43 @@ reads the repositories, not a bucket" in Decisions.
 
 ## Phase 11: Trace a removed level or scope
 
-- [ ] **Find out what happens when a level or scope id leaves a framework**
+- [x] **Find out what happens when a level or scope id leaves a framework**
       while a sign-off still names it. The table looks safe, because scoped
       rows use the stored `ScopeRef` and the level shown is the stored
       `LevelRef`. The write side has not been traced: re-signing, asking
       again at a higher level, and the scope picker may each look the old
       id up and fail. Write a backend test for each path.
-- [ ] **Decide from what the tests show.** If every path copes, record that
+- [x] **Decide from what the tests show.** If every path copes, record that
       here. If one fails, a level or scope is retired the way a competency
       is, never removed, and `check-competencies-not-deleted.sh` refuses a
       framework file that drops one. Either way, write the answer into the
       passport backend page.
+      Traced on 4 November 2026 in
+      `backend/tests/passport_removed_level_or_scope_test.py`, one test a
+      path, each with a sign-off made under the framework as it was and
+      the catalogue after the id has gone:
+      - **Asking again at a higher level fails.** The kind of the new
+        sign-off, a progression or a reassessment, is worked out by
+        comparing its level with the last one's place on the scale, and
+        the last one is no longer listed, so `request_sign_off` raises
+        `UnknownLevelError` naming the old level. The holder could never
+        ask again. Kept as an `xfail(strict=True)` test, so CI says when
+        it starts to pass.
+      - **Signing a request whose level or scope went while it waited
+        works**: the sign-off keeps what was asked.
+      - **Asking for a scope that has gone is refused**, which is right.
+
+      So a level or scope is never removed. Both the sync's `_check` and
+      `check_framework_version`, which every framework repository's CI
+      runs, refuse a version that drops a level or scope id from a
+      competency it keeps, naming each one. A competency removed whole is
+      still the deletion check's to refuse.
+- [ ] **Retire a level or scope, the way a competency is retired**, so a
+      framework can stop offering one without removing it: a `retired_on`
+      and `retired_in_version` on `CompetencyLevel` and `CompetencyScope`,
+      kept in the tables, refused for a new request or entry, and still
+      read by `level_order` and the table. Until it is built, a level or
+      scope cannot be withdrawn at all, only kept.
 
 ## Phase 12: Make the exports agree with the page
 
