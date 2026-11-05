@@ -29,6 +29,8 @@
       "Bash(just stack-files)",
       "Bash(just stack-files *)",
       "Bash(just ub *)",
+      "Bash(just stack-fresh)",
+      "Bash(scripts/slack-reply.sh *)",
       "Bash(just uf *)",
       "Bash(just email-preview *)"
     ],
