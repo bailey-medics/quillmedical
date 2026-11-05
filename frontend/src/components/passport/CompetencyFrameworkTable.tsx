@@ -33,6 +33,7 @@ import BaseCard from "@/components/base-card/BaseCard";
 import SignOffStatusBadge from "@/components/badge/SignOffStatusBadge";
 import DataTable, { type Column } from "@components/tables/DataTable";
 import { BodyText, Heading } from "@/components/typography";
+import type { FrameworkCatalogue } from "@lib/passport/catalogue";
 import {
   frameworkRows,
   logbookLabel,
@@ -63,6 +64,11 @@ const columns: Column<CompetencyTableRow>[] = [
 ];
 
 export interface CompetencyFrameworkTableProps {
+  /**
+   * The frameworks Quill holds, from `useFrameworkCatalogue`. Null while
+   * they load, when the table lists no rows yet.
+   */
+  catalogue: FrameworkCatalogue | null;
   /** The framework this table shows */
   framework: FrameworkRef;
   /** Every competency the passport holds evidence for, in any framework */
@@ -77,11 +83,15 @@ export interface CompetencyFrameworkTableProps {
  * Renders the framework's name and its table in a card.
  */
 export default function CompetencyFrameworkTable({
+  catalogue,
   framework,
   competencies,
   onSelect,
 }: CompetencyFrameworkTableProps) {
-  const rows = frameworkRows(framework.id, competencies);
+  const rows =
+    catalogue === null
+      ? []
+      : frameworkRows(catalogue, framework.id, competencies);
 
   return (
     <BaseCard data-testid="competency-framework-table">

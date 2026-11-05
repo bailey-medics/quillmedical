@@ -6,7 +6,7 @@
  * anything against it yet, in the order the framework's file lists them.
  */
 
-import { frameworkItems } from "./frameworks";
+import type { FrameworkCatalogue } from "./catalogue";
 import type { CompetencyState, ScopeRef } from "./types";
 
 /**
@@ -61,12 +61,13 @@ export function standingOf(state: CompetencyState): Standing {
  * for one competency may count the same procedures.
  */
 export function frameworkRows(
+  catalogue: FrameworkCatalogue,
   frameworkId: string,
   competencies: CompetencyState[],
 ): CompetencyTableRow[] {
   const rows: CompetencyTableRow[] = [];
 
-  for (const item of frameworkItems(frameworkId)) {
+  for (const item of catalogue.frameworkItems(frameworkId)) {
     const states = competencies.filter((state) => state.id === item.id);
     const scopedWithSignOff = states.filter(
       (state) => state.scope && standingOf(state) !== "not_asked",
