@@ -8,6 +8,7 @@ import { fn } from "storybook/test";
 import CompetencySummary from "./CompetencySummary";
 import { breastCompetency, competencies, lungCompetency } from "./fixtures";
 import { StoryNote } from "@/stories/variants";
+import { TEST_FRAMEWORK_CATALOGUE } from "@test/frameworkCatalogue";
 
 const meta: Meta<typeof CompetencySummary> = {
   title: "Passport/Competency summary",
@@ -46,6 +47,7 @@ export const Default: Story = {
  */
 export const Selectable: Story = {
   args: {
+    catalogue: TEST_FRAMEWORK_CATALOGUE,
     competencies,
     onSelect: fn(),
   },

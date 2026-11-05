@@ -43,7 +43,7 @@ import { useAuth } from "@/auth/AuthContext";
 import { orgUnits } from "@/domains/orgUnit";
 import ErrorState from "@/components/error-state/ErrorState";
 import PassportLeadFrameworksCard from "@/components/passport/PassportLeadFrameworksCard";
-import { FRAMEWORK_OPTIONS } from "@lib/passport/frameworks";
+import { useFrameworkCatalogue } from "@lib/passport/catalogue";
 
 /** Known features that can be toggled on an organisation. */
 const AVAILABLE_FEATURES: {
@@ -299,6 +299,7 @@ export interface OrgFeaturesPageProps {
 export default function OrgFeaturesPage({
   parentPath = "organisations",
 }: OrgFeaturesPageProps = {}) {
+  const { catalogue } = useFrameworkCatalogue();
   const { id } = useParams<{ id: string }>();
   const { reload, state } = useAuth();
   // Cover gives away the paid half of the passport, so the API lets only
@@ -502,7 +503,7 @@ export default function OrgFeaturesPage({
           afterFeatures={
             passportOn && (
               <PassportLeadFrameworksCard
-                options={FRAMEWORK_OPTIONS}
+                options={catalogue?.frameworks ?? []}
                 value={leads ?? []}
                 onChange={saveLeads}
                 disabled={leads === null}

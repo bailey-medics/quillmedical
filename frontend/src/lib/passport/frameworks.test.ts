@@ -1,28 +1,30 @@
 import { describe, expect, it } from "vitest";
-import {
-  FRAMEWORK_OPTIONS,
-  SPECIALTY_FILTER_OPTIONS,
-  filedUnder,
-  frameworkItems,
-  frameworkOf,
-  getFramework,
-} from "./frameworks";
+import { SPECIALTY_FILTER_OPTIONS, filedUnder } from "./frameworks";
+import { TEST_FRAMEWORK_CATALOGUE } from "@test/frameworkCatalogue";
 
 describe("frameworks", () => {
   it("lists every framework alphabetically by name", () => {
-    const names = FRAMEWORK_OPTIONS.map((framework) => framework.name);
+    const names = TEST_FRAMEWORK_CATALOGUE.frameworks.map(
+      (framework) => framework.name,
+    );
 
     expect(names.length).toBeGreaterThan(0);
     expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b)));
   });
 
   it("finds a framework by id, and nothing for one Quill does not hold", () => {
-    expect(getFramework("clinical")?.name).toBe("General clinical skills");
-    expect(getFramework("not_a_framework")).toBeUndefined();
+    expect(TEST_FRAMEWORK_CATALOGUE.getFramework("clinical")?.name).toBe(
+      "General clinical skills",
+    );
+    expect(
+      TEST_FRAMEWORK_CATALOGUE.getFramework("not_a_framework"),
+    ).toBeUndefined();
   });
 
   it("gives a framework's items in the order its file lists them", () => {
-    const ids = frameworkItems("clinical").map((item) => item.id);
+    const ids = TEST_FRAMEWORK_CATALOGUE.frameworkItems("clinical").map(
+      (item) => item.id,
+    );
 
     expect(ids).toContain("clinical_perform_cannulation");
     expect(ids.indexOf("clinical_perform_venepuncture")).toBeLessThan(
@@ -32,19 +34,29 @@ describe("frameworks", () => {
 
   it("leaves a file's permissions out of its framework's items", () => {
     // clinical.yaml holds permissions beside its skills.
-    const ids = frameworkItems("clinical").map((item) => item.id);
+    const ids = TEST_FRAMEWORK_CATALOGUE.frameworkItems("clinical").map(
+      (item) => item.id,
+    );
 
     expect(ids).not.toContain("access_own_patient_records");
   });
 
   it("gives nothing for an unknown framework", () => {
-    expect(frameworkItems("not_a_framework")).toEqual([]);
+    expect(TEST_FRAMEWORK_CATALOGUE.frameworkItems("not_a_framework")).toEqual(
+      [],
+    );
   });
 
   it("says which framework a competency belongs to", () => {
-    expect(frameworkOf("clinical_perform_cannulation")?.id).toBe("clinical");
-    expect(frameworkOf("manage_users")).toBeUndefined();
-    expect(frameworkOf("not_a_competency")).toBeUndefined();
+    expect(
+      TEST_FRAMEWORK_CATALOGUE.frameworkOf("clinical_perform_cannulation")?.id,
+    ).toBe("clinical");
+    expect(
+      TEST_FRAMEWORK_CATALOGUE.frameworkOf("manage_users"),
+    ).toBeUndefined();
+    expect(
+      TEST_FRAMEWORK_CATALOGUE.frameworkOf("not_a_competency"),
+    ).toBeUndefined();
   });
 
   it("lists the specialties a framework may be filed under", () => {

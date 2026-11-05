@@ -8,6 +8,7 @@ import { fn } from "storybook/test";
 import SignOffForm from "./SignOffForm";
 import { requested, requestedForLung } from "./fixtures";
 import { StoryNote } from "@/stories/variants";
+import { TEST_FRAMEWORK_CATALOGUE } from "@test/frameworkCatalogue";
 
 const meta: Meta<typeof SignOffForm> = {
   title: "Passport/Sign-off form",
@@ -20,6 +21,7 @@ type Story = StoryObj<typeof SignOffForm>;
 
 export const Default: Story = {
   args: {
+    catalogue: TEST_FRAMEWORK_CATALOGUE,
     signOff: requested,
     onSubmit: fn(),
     onCancel: fn(),

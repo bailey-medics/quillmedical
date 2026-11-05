@@ -14,6 +14,7 @@ import {
   referRadicalCompetency,
 } from "@/components/passport/fixtures";
 import { frameworkRows, logbookLabel, standingOf } from "./competencyTable";
+import { TEST_FRAMEWORK_CATALOGUE } from "@test/frameworkCatalogue";
 
 const [radiotherapy, sact] = oncologyFrameworks;
 const colorectal = { id: "colorectal", name: "Colorectal" };
@@ -45,7 +46,7 @@ describe("standingOf", () => {
 
 describe("frameworkRows", () => {
   it("lists every item in the framework, in the file's order", () => {
-    const rows = frameworkRows(radiotherapy.id, []);
+    const rows = frameworkRows(TEST_FRAMEWORK_CATALOGUE, radiotherapy.id, []);
 
     expect(rows).toHaveLength(15);
     expect(rows[0].name).toBe(
@@ -55,13 +56,17 @@ describe("frameworkRows", () => {
   });
 
   it("leaves out competencies from other frameworks", () => {
-    const rows = frameworkRows(radiotherapy.id, oncologyCompetencies);
+    const rows = frameworkRows(
+      TEST_FRAMEWORK_CATALOGUE,
+      radiotherapy.id,
+      oncologyCompetencies,
+    );
 
     expect(rows.map((row) => row.id)).not.toContain(lungCompetency.id);
   });
 
   it("makes a row for each scope that is signed off or requested", () => {
-    const rows = frameworkRows(sact.id, [
+    const rows = frameworkRows(TEST_FRAMEWORK_CATALOGUE, sact.id, [
       lungCompetency,
       { ...breastCompetency, status: "requested" },
     ]);
@@ -74,7 +79,7 @@ describe("frameworkRows", () => {
   });
 
   it("gives each scope's row that scope's own logbook count", () => {
-    const rows = frameworkRows(sact.id, [
+    const rows = frameworkRows(TEST_FRAMEWORK_CATALOGUE, sact.id, [
       lungCompetency,
       { ...breastCompetency, logbook_entries: 20 },
     ]);
@@ -86,7 +91,7 @@ describe("frameworkRows", () => {
   });
 
   it("gives no row to a scope with nothing asked", () => {
-    const rows = frameworkRows(sact.id, [
+    const rows = frameworkRows(TEST_FRAMEWORK_CATALOGUE, sact.id, [
       lungCompetency,
       { ...breastCompetency, status: "declined" },
       {
@@ -104,7 +109,7 @@ describe("frameworkRows", () => {
   });
 
   it("makes one not asked row when no scope has a sign-off", () => {
-    const rows = frameworkRows(sact.id, [
+    const rows = frameworkRows(TEST_FRAMEWORK_CATALOGUE, sact.id, [
       { ...lungCompetency, status: "declined" },
       { ...breastCompetency, status: "requested", sign_off: null },
     ]);
@@ -118,7 +123,7 @@ describe("frameworkRows", () => {
   });
 
   it("takes the largest logbook count rather than adding them up", () => {
-    const rows = frameworkRows(sact.id, [
+    const rows = frameworkRows(TEST_FRAMEWORK_CATALOGUE, sact.id, [
       { ...lungCompetency, status: "requested", sign_off: null },
       {
         ...breastCompetency,
