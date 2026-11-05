@@ -28,6 +28,7 @@ the caller was told.
 
 from __future__ import annotations
 
+import dataclasses
 import hashlib
 import io
 import logging
@@ -48,8 +49,9 @@ from sqlalchemy.orm import Session
 from app.body_limit import limit_for
 from app.config import settings
 from app.email_send import EmailNotAllowedError, EmailRateLimitError
-from app.features.passport import catalogue, definitions, router
+from app.features.passport import catalogue, definitions, router, service
 from app.features.passport.blobs import BlobStore
+from app.features.passport.commits import Actor
 from app.features.passport.models import (
     Passport,
     PassportAssessorInvite,
@@ -5087,6 +5089,61 @@ class TestOnlyAssessableCompetencies:
             group["competency"] for group in logbook.json()["competencies"]
         ] == ["clinical_perform_cannulation"]
         assert exported.status_code == 200, exported.text
+
+
+class TestFrameworkVersionsNotHeld:
+    """A sign-off naming a framework version Quill does not hold.
+
+    Written straight into the store at a version above the newest, as a
+    passport moved from another app could carry, then read back through
+    the routes, which refuse it rather than show it against version 1.
+    """
+
+    def _sign_off_at_version_2(
+        self, passport_store: LocalPassportStore, passport_id: str
+    ) -> None:
+        held = files_catalogue()
+        newer = dataclasses.replace(
+            held,
+            frameworks={
+                **held.frameworks,
+                "uk_sact_board_2023": held.frameworks[
+                    "uk_sact_board_2023"
+                ].model_copy(update={"version": 2}),
+            },
+        )
+        service.request_sign_off(
+            passport_store,
+            passport_id,
+            Actor(name="Holder", role="Registrar", email="holder@example.com"),
+            catalogue=newer,
+            competency_id=COMPETENCY,
+            observed_on=date(2026, 3, 14),
+            level_id=LEVEL,
+            scope_id=SCOPE,
+        )
+
+    def test_its_passport_will_not_export(
+        self, holder_client: TestClient, passport_store: LocalPassportStore
+    ) -> None:
+        passport_id = _create_passport(holder_client)
+        self._sign_off_at_version_2(passport_store, passport_id)
+
+        response = holder_client.get(f"/api/passport/{passport_id}/export.md")
+
+        assert response.status_code == 409, response.text
+        assert "version 2" in response.json()["detail"]
+        assert "uk_sact_board_2023" in response.json()["detail"]
+
+    def test_its_sign_offs_will_not_list(
+        self, holder_client: TestClient, passport_store: LocalPassportStore
+    ) -> None:
+        passport_id = _create_passport(holder_client)
+        self._sign_off_at_version_2(passport_store, passport_id)
+
+        response = holder_client.get(f"/api/passport/{passport_id}/sign-offs")
+
+        assert response.status_code == 409, response.text
 
 
 class TestAppraisalPeriods:

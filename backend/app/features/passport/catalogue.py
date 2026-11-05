@@ -12,7 +12,7 @@ docs/docs/plans/2026-11-01-passport-record-and-catalogue-plan.md.
 stored version, so code that reads them does not change shape when its
 source does.
 
-**It reads each table once.** Five queries for the whole catalogue, not
+**It reads each table once.** Six queries for the whole catalogue, not
 one for each competency, because every passport page reads it.
 
 **It caches what it read, and checks the cache is current on every
@@ -55,6 +55,9 @@ class StoredCatalogue:
         competencies: Each framework's competencies, by framework id, in
             the order its file lists them.
         entries: Every competency, by its id, for a lookup by id alone.
+        versions: Every version stored of each framework, by framework
+            id, so a sign-off naming a version can be checked against
+            what Quill holds.
     """
 
     frameworks: dict[str, Framework] = field(default_factory=dict)
@@ -62,6 +65,7 @@ class StoredCatalogue:
         default_factory=dict
     )
     entries: dict[str, CompetencyEntry] = field(default_factory=dict)
+    versions: dict[str, frozenset[int]] = field(default_factory=dict)
 
 
 #: What was read last, and the newest version row's id when it was read.
@@ -163,6 +167,15 @@ def _load(db: Session) -> StoredCatalogue:
             CompetencyScope(id=scope.scope_id, name=scope.name)
         )
 
+    held: dict[str, set[int]] = defaultdict(set)
+    for framework_id, number in db.execute(
+        select(
+            PassportFrameworkVersion.framework_id,
+            PassportFrameworkVersion.version,
+        )
+    ):
+        held[framework_id].add(number)
+
     framework_of = {row.id: row.framework_id for row in versions}
     competencies: dict[str, list[CompetencyEntry]] = defaultdict(list)
 
@@ -203,5 +216,9 @@ def _load(db: Session) -> StoredCatalogue:
             entry.id: entry
             for entries in competencies.values()
             for entry in entries
+        },
+        versions={
+            framework_id: frozenset(numbers)
+            for framework_id, numbers in held.items()
         },
     )

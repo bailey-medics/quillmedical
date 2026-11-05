@@ -892,7 +892,7 @@ reads the repositories, not a bucket" in Decisions.
       not a permission, which already covers every framework competency.
       Built with the loader's change above, on 4 November 2026, so it
       comes before the next step, though the plan first listed it after.
-- [ ] **Refuse a sign-off naming a framework version the tables do not
+- [x] **Refuse a sign-off naming a framework version the tables do not
       hold**, wherever one enters: a request, a read of the git record, and
       any import later, such as a passport moved from another app that
       uses the same frameworks. The refusal names the framework and the
@@ -901,6 +901,22 @@ reads the repositories, not a bucket" in Decisions.
       words it was not signed against is the error this guards. Test a
       sign-off for a version one above the newest, and one for version
       0, below the version 1 every framework starts at.
+      Built on 4 November 2026 as `check_held_version` in
+      `backend/app/features/passport/definitions.py`, against every
+      version the tables hold, which the stored catalogue now lists.
+      Where a sign-off enters:
+      - **A request** records the newest version from the catalogue, so
+        it always names one Quill holds.
+      - **A read of the git record**: the routes that read sign-offs,
+        one or the list, and the three exports refuse with 409, naming
+        the framework and the version. The assessor's inbox leaves the
+        one record out and lists the rest, as it does for a record that
+        has gone.
+      - **An import** does not exist yet; when it does, it calls the
+        same check.
+      A sign-off for a competency no framework defines any more is let
+      through, because its framework cannot be known, and a passport
+      must stay readable when a competency leaves the catalogue.
 - [ ] **Serve the frameworks to the frontend**, through a typed route
       under `/api/passport/`, with each framework's current version, its
       competencies, levels and scopes, and the retired competencies of

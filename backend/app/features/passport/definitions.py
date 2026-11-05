@@ -70,6 +70,16 @@ class UnknownLevelError(ValueError):
     """
 
 
+class UnknownFrameworkVersionError(ValueError):
+    """A sign-off names a framework version Quill does not hold.
+
+    Refused rather than read against the nearest version Quill does
+    hold: comparing a sign-off with words it was not given under is the
+    error this exists to stop. The message names the framework and the
+    version, so somebody can find out where the record came from.
+    """
+
+
 class UnknownScopeError(ValueError):
     """The competency does not declare this scope.
 
@@ -399,3 +409,42 @@ def expires_after_months(
         UnknownCompetencyError: If the id is not in the catalogue.
     """
     return _entry(catalogue, competency_id).expires_after_months
+
+
+def check_held_version(
+    catalogue: StoredCatalogue, competency_id: str, version: int
+) -> None:
+    """Refuse a sign-off naming a framework version Quill does not hold.
+
+    Wherever a sign-off enters: read from a passport, and from any import
+    later, such as a passport moved from another app that uses the same
+    frameworks.
+
+    Args:
+        catalogue: The stored frameworks, read once for the request.
+        competency_id: What the sign-off is for.
+        version: The framework version it was given under.
+
+    A sign-off for a competency no framework defines any more is let
+    through: its framework cannot be known, so nothing can be checked,
+    and a passport must stay readable when a competency leaves the
+    catalogue.
+
+    Raises:
+        UnknownFrameworkVersionError: If Quill holds the competency's
+            framework, but not that version of it.
+    """
+    entry = catalogue.entries.get(competency_id)
+
+    if entry is None or entry.framework_id is None:
+        return
+
+    framework_id = entry.framework_id
+
+    if version in catalogue.versions.get(framework_id, frozenset()):
+        return
+
+    raise UnknownFrameworkVersionError(
+        f"A sign-off for {competency_id} was given under version {version} "
+        f"of framework {framework_id!r}, which Quill does not hold."
+    )
