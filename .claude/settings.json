@@ -62,7 +62,7 @@
           },
           {
             "type": "command",
-            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/alert-watcher-busy.sh clear",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/owl-busy.sh clear",
             "timeout": 5
           }
         ]
@@ -99,7 +99,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/alert-watcher-busy.sh set",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/owl-busy.sh set",
             "timeout": 5
           }
         ]

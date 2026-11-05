@@ -1,6 +1,6 @@
-# alert-watcher.tf - the read-only identity the alert watcher reads logs as
+# owl.tf - the read-only identity Owl, the alert watcher, reads logs as
 #
-# The alert watcher on the home box (scripts/alert-watcher/, and the watcher
+# Owl on the home box (scripts/owl/, and the watcher
 # phase of docs/docs/plans/2026-10-19-remote-dev-machine-plan.md) is told
 # only which policy fired. To say why, its /alert skill reads the logs over
 # the window with `gcloud logging read`, as this account.
@@ -15,11 +15,11 @@
 # `keys create` was refused, and a key file on a home machine is what that
 # rule exists to stop. The box authenticates with a client certificate
 # instead, through the workload identity pool below.
-resource "google_service_account" "alert_watcher_logs" {
+resource "google_service_account" "owl_logs" {
   project      = var.project_id
   account_id   = "alert-watcher-logs"
-  display_name = "Alert watcher: reads logs"
-  description  = "Read by the alert watcher on the home box to find out why an alert fired. May read logs and nothing else; see infra/alert-watcher.tf."
+  display_name = "Owl: reads logs"
+  description  = "Read by Owl, the alert watcher on the home box, to find out why an alert fired. May read logs and nothing else; see infra/owl.tf."
 }
 
 # Its two grants were made by hand, as Mark, not here. They are:
@@ -38,7 +38,7 @@ resource "google_service_account" "alert_watcher_logs" {
 
 # ---------- How the box signs in: a certificate, not a key ----------
 # Workload identity federation with an X.509 certificate. The box holds a
-# client certificate and private key under ~/.config/quill-alert-watcher/pki/,
+# client certificate and private key under ~/.config/quill-owl/pki/,
 # signed by a private certificate authority made on the box with openssl.
 # The authority's public certificate is checked in beside the environment's
 # tfvars and registered here as the pool's one trust anchor, so a certificate
@@ -72,34 +72,34 @@ resource "google_service_account" "alert_watcher_logs" {
 # and extendedKeyUsage=clientAuth on the authority, and digitalSignature on
 # the client certificate; the plan step has the openssl configuration.
 locals {
-  alert_watcher_ca_path = "${path.module}/environments/${var.environment}/alert-watcher-ca.pem"
-  alert_watcher_subject = "quill-alert-watcher"
+  owl_ca_path = "${path.module}/environments/${var.environment}/owl-ca.pem"
+  owl_subject = "quill-alert-watcher"
 }
 
-resource "google_iam_workload_identity_pool" "alert_watcher" {
-  count = fileexists(local.alert_watcher_ca_path) ? 1 : 0
+resource "google_iam_workload_identity_pool" "owl" {
+  count = fileexists(local.owl_ca_path) ? 1 : 0
 
   project                   = var.project_id
   workload_identity_pool_id = "alert-watcher"
-  display_name              = "Alert watcher on the home box"
-  description               = "The home box reads App production's logs as alert-watcher-logs, authenticating with a client certificate. See infra/alert-watcher.tf."
+  display_name              = "Owl on the home box"
+  description               = "The home box reads App production's logs as alert-watcher-logs, authenticating with a client certificate. See infra/owl.tf."
 }
 
 # google.subject is the certificate's common name, and the condition admits
 # that one name only, so a second certificate from the same authority with
 # another name gets nothing until it is named here too.
-resource "google_iam_workload_identity_pool_provider" "alert_watcher_x509" {
-  count = length(google_iam_workload_identity_pool.alert_watcher)
+resource "google_iam_workload_identity_pool_provider" "owl_x509" {
+  count = length(google_iam_workload_identity_pool.owl)
 
   project                            = var.project_id
-  workload_identity_pool_id          = google_iam_workload_identity_pool.alert_watcher[0].workload_identity_pool_id
+  workload_identity_pool_id          = google_iam_workload_identity_pool.owl[0].workload_identity_pool_id
   workload_identity_pool_provider_id = "home-box-certificate"
   display_name                       = "Home box client certificate"
 
   attribute_mapping = {
     "google.subject" = "assertion.subject.dn.cn"
   }
-  attribute_condition = "assertion.subject.dn.cn == \"${local.alert_watcher_subject}\""
+  attribute_condition = "assertion.subject.dn.cn == \"${local.owl_subject}\""
 
   x509 {
     trust_store {
@@ -107,7 +107,7 @@ resource "google_iam_workload_identity_pool_provider" "alert_watcher_x509" {
         # Trimmed, because the provider was made from the certificate
         # without its final newline, and any difference here is an update
         # CI may not make.
-        pem_certificate = trimspace(file(local.alert_watcher_ca_path))
+        pem_certificate = trimspace(file(local.owl_ca_path))
       }
     }
   }
@@ -116,24 +116,50 @@ resource "google_iam_workload_identity_pool_provider" "alert_watcher_x509" {
 # The certificate's identity may act as the log reader. This is a grant on
 # the service account, not on the project, and github-actions sets grants
 # like it on other accounts already.
-resource "google_service_account_iam_member" "alert_watcher_certificate_acts_as_log_reader" {
-  count = length(google_iam_workload_identity_pool.alert_watcher)
+resource "google_service_account_iam_member" "owl_certificate_acts_as_log_reader" {
+  count = length(google_iam_workload_identity_pool.owl)
 
-  service_account_id = google_service_account.alert_watcher_logs.name
+  service_account_id = google_service_account.owl_logs.name
   role               = "roles/iam.workloadIdentityUser"
-  member             = "principal://iam.googleapis.com/projects/${data.google_project.project.number}/locations/global/workloadIdentityPools/${google_iam_workload_identity_pool.alert_watcher[0].workload_identity_pool_id}/subject/${local.alert_watcher_subject}"
+  member             = "principal://iam.googleapis.com/projects/${data.google_project.project.number}/locations/global/workloadIdentityPools/${google_iam_workload_identity_pool.owl[0].workload_identity_pool_id}/subject/${local.owl_subject}"
 }
 
 import {
-  for_each = fileexists(local.alert_watcher_ca_path) ? toset(["alert-watcher"]) : toset([])
+  for_each = fileexists(local.owl_ca_path) ? toset(["alert-watcher"]) : toset([])
 
-  to = google_iam_workload_identity_pool.alert_watcher[0]
+  to = google_iam_workload_identity_pool.owl[0]
   id = "projects/${var.project_id}/locations/global/workloadIdentityPools/${each.key}"
 }
 
 import {
-  for_each = fileexists(local.alert_watcher_ca_path) ? toset(["alert-watcher"]) : toset([])
+  for_each = fileexists(local.owl_ca_path) ? toset(["alert-watcher"]) : toset([])
 
-  to = google_iam_workload_identity_pool_provider.alert_watcher_x509[0]
+  to = google_iam_workload_identity_pool_provider.owl_x509[0]
   id = "projects/${var.project_id}/locations/global/workloadIdentityPools/${each.key}/providers/home-box-certificate"
+}
+
+
+# Renamed from the alert watcher to Owl on 4 November 2026. Each block moves
+# the resource to its new name in the state, so the plan renames it rather
+# than destroying one and creating another. The IDs Google Cloud holds, such
+# as account_id and workload_identity_pool_id, are unchanged: see
+# docs/docs/plans/2026-11-04-the-alert-watcher-is-called-owl-plan.md.
+moved {
+  from = google_service_account.alert_watcher_logs
+  to   = google_service_account.owl_logs
+}
+
+moved {
+  from = google_iam_workload_identity_pool.alert_watcher
+  to   = google_iam_workload_identity_pool.owl
+}
+
+moved {
+  from = google_iam_workload_identity_pool_provider.alert_watcher_x509
+  to   = google_iam_workload_identity_pool_provider.owl_x509
+}
+
+moved {
+  from = google_service_account_iam_member.alert_watcher_certificate_acts_as_log_reader
+  to   = google_service_account_iam_member.owl_certificate_acts_as_log_reader
 }

@@ -71,6 +71,20 @@ group_of() {
     [[ "$output" == *"title=quillmedical-4"* ]]
 }
 
+@test "a numbered worktree is spoken by its number" {
+    run shown_for "$OTHER"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"spoken=Quill Medicine 4"* ]]
+}
+
+@test "Owl's worktree is spoken as Owl" {
+    git -C "$MAIN" worktree add -q "${BATS_TEST_TMPDIR}/quillmedical-owl" -b owl
+
+    run shown_for "${BATS_TEST_TMPDIR}/quillmedical-owl"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"spoken=Quill Medicine Owl"* ]]
+}
+
 @test "on Linux, a banner is forwarded to the Mac named in QUILL_NOTIFY_SSH_HOST" {
     [ "$(uname -s)" = "Linux" ] || skip "forwarding is from the Linux dev box"
 

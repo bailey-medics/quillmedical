@@ -121,6 +121,9 @@ it is built.
       an exception left open is one somebody can lean on later. A pull
       request of its own, on a new branch off `origin/main` such as
       `feature/catalogue-empty-removed-on-purpose`, in no stack.
+      **Folded into Phase 13 on 4 November 2026**, which uses the list to
+      delete the procedure permissions and then empties it, in this
+      stack. The steps below still say how to empty it.
       Recorded on 4 November 2026: the change was first made in the wrong
       worktree. A copy sits uncommitted in worktree 3
       (`~/github/quillmedical-3`, on the merged
@@ -531,16 +534,23 @@ still in this repository, so nothing changes for anybody until it works.
       `backend/app/features/passport/tooling/check_framework_version.py`
       names Gloucestershire: a framework on it may go back to exactly 1,
       with nothing else changed.
-- [ ] **Empty `STARTED_AGAIN` once the fresh start has merged**, in the
+- [x] **Empty `STARTED_AGAIN` once the fresh start has merged**, in the
       next pull request, and its test with it. The name matters only
       while `main` still holds version 2; after that it would let the
-      record go back to 1 a second time.
-- [ ] **Delete the passports used to try out the Gloucestershire
+      record go back to 1 a second time. **Done on 5 November 2026**,
+      on top of the passport stack: `main` holds the record at version
+      1, and `test_no_framework_is_started_again` pins the empty list.
+      The three tests of the exception itself stay, each naming its own
+      framework.
+- [x] **Delete the passports used to try out the Gloucestershire
       record**, with the `delete-passport` admin action, which archives
       each one first. Their sign-offs name version 2, which no longer
       exists, so Phase 7's refusal would stop them being read. Needs
       the product owner: the usernames go in
-      `PASSPORT_DELETABLE_USERNAMES`.
+      `PASSPORT_DELETABLE_USERNAMES`. **Done on 4 November 2026**: the
+      two passports in App production, `mark.bailey.superadmin` and
+      `jessica.bailey`, were deleted by the admin job, each archived for
+      30 days first, and the passport bucket is now empty.
 
 - [x] **A framework pipeline**, `.github/workflows/framework-pipeline.yml`,
       shaped like `teaching-pipeline.yml`: on a pull request it validates
@@ -1166,6 +1176,220 @@ reads the repositories, not a bucket" in Decisions.
       `frameworks.py`, which imports the database. Every sign-off prints
       "Framework version: N", which changed the pinned Markdown in
       `export_audit_test.py`.
+
+## Phase 13: Delete the procedure permissions
+
+- [x] **Delete the five permissions that name a procedure**, at the
+      product owner's request on 4 November 2026: `perform_venepuncture`,
+      `perform_cannulation`, `perform_lumbar_puncture`,
+      `perform_chest_drain` and `perform_advanced_airway`, in
+      `shared/competency-definitions/clinical-permissions.yaml`. A
+      permission names something Quill lets a person do, and Quill cannot
+      stop anybody putting in a cannula. The most it could govern is the
+      record, whether somebody may write a procedure into a patient's
+      notes, and a permission for that, such as `document_cannulation`, is
+      added only when a feature checks it. No code checks any of the
+      five, and the passport records the procedures through the General
+      clinical skills framework, under ids of its own such as
+      `clinical_perform_cannulation`. Prescribing and certifying a death
+      stay, because Quill would issue the prescription or the certificate
+      itself. Deleted, not retired, because nothing checks them and no
+      passport records them, so there is no history to keep readable.
+      One unit, in this order:
+      - **Lift the deletion check's "retired first" rule.**
+        `removable_ids` in
+        `.github/scripts/ci/check-competencies-not-deleted.sh` lets an id
+        on `REMOVED_ON_PURPOSE` leave only if it was retired on the base
+        ref, and the five are current. For this unit it accepts every id
+        on the list that is on the base ref, with a comment saying it is
+        lifted and naming this phase. "A current id removed on purpose is
+        still a deletion" in the bats file is marked `skip` with a reason,
+        not deleted, so the next step can put it back.
+      - **Name the five in `REMOVED_ON_PURPOSE`**, and take the sixteen
+        oncology ids off it, which #2335 already removed from `main`.
+      - **Delete the five, and the "CLINICAL PROCEDURES" heading** that
+        would then head nothing.
+      - **Take them out of `shared/base-professions.yaml`**, 23 lines.
+      - **Delete every row naming one, in a migration** written by hand,
+        since no model changes: `user_competency.competency_id` and
+        `practising_competency.competency`. If any
+        `position.requires_competency` names one, stop and ask, because
+        somebody chose that requirement. The rows cannot come back, so
+        `downgrade()` says so rather than being empty, and the pull
+        request asks for the row deletion to be confirmed before merging.
+      - **Swap the five out of about 25 test files** that use them as
+        sample permissions, for one that stays, such as
+        `prescribe_non_controlled`. Only the id changes, never what a
+        test checks. Where a passport test uses `perform_cannulation` as
+        the competency recorded, it becomes
+        `clinical_perform_cannulation`. The test #2354 added that checks
+        `perform_cannulation` is still a permission is rewritten to check
+        it is gone.
+      - **Update `docs/docs/concepts/cbac.md`** and the header of
+        `clinical-permissions.yaml`, and regenerate the types with
+        `yarn generate:types`.
+      Built on 4 November 2026. Migration `f2e9632b4716` refuses to run
+      while a position requires one of the five, so the deploy stops for a
+      person to decide; its `downgrade()` logs that the rows are not
+      restored and changes nothing, because refusing would block every
+      rollback past it and the older code needs none of the rows.
+      `backend/tests/procedure_permissions_deleted_test.py` runs its
+      `upgrade()` on the unit tests' database. The tests that used
+      `perform_venepuncture` as "a clinical permission the nurse holds"
+      use `take_informed_consent`, which the registered nurse also seeds;
+      the three built on the healthcare assistant use
+      `access_patient_records`, its one other clinical competency, and the
+      promotion tests `assess_clinician_passport`; passport tests use the
+      framework's `clinical_` ids. `REMOVED_ON_PURPOSE` was emptied of the
+      sixteen oncology ids in the same change. The generated JSON is not
+      committed, so there was nothing to regenerate. The concepts page for
+      the passport still said permissions and passports share one registry
+      and one set of ids, which stopped being true on 2 November; that
+      paragraph was corrected too.
+- [ ] **Put the deletion check back**, in the next unit, once the five
+      are deleted: `removable_ids` accepts only an id retired on the base
+      ref, exactly as before; `REMOVED_ON_PURPOSE` is empty, with the
+      comment Phase 2's step gives it; the skipped test runs again; and
+      the two tests that add `certify_death` to the list use the
+      `name_on_the_list` helper Phase 2's step sets out, since their
+      `sed` is anchored on a line that is gone. An exception left open is
+      one somebody leans on later.
+      **Waits for #2380 to merge, as a pull request of its own off
+      `main`.** The catalogue check in CI compares against `origin/main`,
+      so until #2380 is there, `main` still holds the five and a branch
+      that deletes them with an empty list fails. Built on 4 November 2026
+      and held back for that reason. When it is built: `name_on_the_list`
+      must add a newline after the id, because an empty list is
+      `REMOVED_ON_PURPOSE=()` on one line.
+- [ ] **Tests**: `bash .github/scripts/ci/check-competencies-not-deleted.sh
+      origin/main` and `just ts .github/scripts/ci` after each unit, and
+      `just ub` and `just uf` in full after the first, because it changes
+      shared YAML and its generated types.
+
+## Phase 14: An admin page to sync the frameworks by hand
+
+- [x] **A page with one button, "Sync frameworks", that starts the
+      framework sync job**, for when a framework repository merged and
+      the pipeline's sync failed, as it would have during GitHub's Actions
+      outage on 4 November 2026. Asked for by the product owner that day,
+      at `/admin/passport`, shaped like the "Sync all" page at
+      `/admin/teaching/modules` (`AdminTeachingPage.tsx`) but with the
+      button alone: no schedule and no `just` recipe. A retry needs
+      nothing more than running the job again, because the job reads every
+      repository in `FRAMEWORK_REPOSITORIES` and catches up on every
+      version it lacks, and a second run changes nothing.
+      - **The button starts the job; the web app never syncs itself.**
+        The sync clones the repositories as `run-framework-sync` and
+        writes as the `framework_sync` database user, which may only add
+        framework rows, and the web app must stay unable to do either.
+        So the route calls `run_v2.JobsClient().run_job` on
+        `quill-framework-sync-<environment>` with no overrides, as
+        `backend/app/features/teaching/transcode.py` already starts its
+        job, and answers once the run has started.
+      - **The web app's service account gets `roles/run.invoker` on that
+        one job**, in `infra/runtime-identities.tf`, as the framework
+        pipeline's account has: it starts the job as configured, and
+        cannot change which repositories it reads or what it runs. Never
+        `jobsExecutorWithOverrides`, which would let it name any action.
+        The job's name reaches the backend as a setting, unset outside
+        App production.
+      - **Operators only**, behind `DEP_REQUIRE_OPERATOR`, and in the
+        `<RequireOperator>` group of admin routes in `routes.tsx` that
+        already holds `teaching/modules`, as `path: "passport"`.
+        Frameworks belong to every organisation at once, so no
+        organisation's admin may start a sync. A route under
+        `/api/passport/admin/`, with `DEP_REQUIRE_CSRF`, typed response
+        models, and a rate limit, so one person cannot start runs back to
+        back. Nothing stopped two runs overlapping: the job writes a
+        `running` row and checks for no other. And that row cannot say a
+        run is going, because a run is one transaction committed once at
+        the end, so nobody else ever sees it. So the sync takes a Postgres
+        advisory lock, `_one_sync_at_a_time` in `sync.py`, held until the
+        transaction ends: a run started from the page while the
+        pipeline's is going waits for it, then finds every version stored
+        and writes nothing. The route does not refuse while a run is
+        going, since it cannot see one.
+      - **The page says how the last run ended**, from the newest
+        `passport_framework_sync` row: started, finished, versions written,
+        and the error if it failed, refreshed while a run is going. That is
+        the "result" teaching's page shows, and nothing beyond it: no list
+        of frameworks, no settings.
+      - **Where no job is set up, the button says so.** On a developer's
+        machine and in the end-to-end stack there is no Cloud Run job, so
+        the route answers 503, "The framework sync is not set up here",
+        and the page shows it. My reading: running the sync inside the
+        web app there instead would test something App production never
+        does.
+      - **A link in the side navigation's admin section**, beside
+        Teaching's, in `SideNavContent.tsx`, shown to operators only.
+      Backend built on 4 November 2026, as its own unit:
+      `passport_admin_router` in
+      `backend/app/features/passport/admin_router.py`, mounted outside
+      the passport feature gate, with `GET` and `POST
+      /api/passport/admin/framework-sync`; `FRAMEWORK_SYNC_JOB` in
+      `config.py`, which Terraform sets; `roles/run.invoker` for the
+      backend on the one job; and the sync's lock. Starting a run answers
+      200 rather than 202, because the passport contract test requires
+      every route to answer 200 or 201 so `oasdiff` can diff it.
+      Frontend built on 4 November 2026, as the next unit:
+      `AdminPassportPage` in `frontend/src/pages/admin/passport/`, drawn
+      by `FrameworkSyncPanel` in `components/passport/`, which composes
+      `PageHeader`, `IconTextButton`, `ResultMessage` and `BaseCard`, with
+      a story for each state. After a start the page asks again every half
+      minute until a run newer than the press has finished, and gives up
+      after a quarter of an hour. The link sits in the side navigation's
+      operator-only block, beside Record retention, since that is where
+      operator-only admin links are.
+- [x] **Tests**: the route refuses anybody who is not an operator, starts
+      the job with no overrides, and answers 503 with no job set up; the
+      page shows the last run and the refusal; a story for each state; an
+      end-to-end test signs in as an operator, presses the button and reads
+      the refusal, as the end-to-end stack has no job.
+
+- [x] **Name the accessibility journeys the navigation change touches.**
+      None: the new link shows to a Quill operator only, and none of the
+      four journeys in `docs/docs/frontend/accessibility/journeys.md` is
+      made by one, so nothing joins the "Not yet run" list in
+      `testing-log.md`.
+
+## Phase 15: A framework repository for testing
+
+- [ ] **Make a framework repository for testing, `quill-medical-framework-testing`**,
+      shaped like the four publishers' repositories and run through the
+      same pipeline, so the tests pull real git material: a real clone, a
+      real first-parent history, and versions made by real merges. The
+      product owner asked for it on 4 November 2026, after reading #2359:
+      the folder of fixtures in `shared/framework-fixtures/` tests what the
+      sync does with a file, but nothing tests reading a repository's
+      history end to end. Teaching already has the same thing in
+      `eoeeta-teaching-testing`, which publishes a test module through the
+      real teaching pipeline. The name is a suggestion; it should match the
+      other repositories' `-framework` ending, with `-testing` after it as
+      teaching's does.
+      - **What it holds**: one small framework, a few competencies with a
+        level and a scope, at version 1, then a second merge that makes
+        version 2, so a catch-up across versions is real. It names itself
+        as a test framework in its `description`, and its publisher is
+        Quill.
+      - **The human steps**, as for the four repositories in Phase 6: make
+        the repository and its first push straight to `main`, add it to
+        `infra/github/` for `just terraform-github`, set its three
+        secrets, and add it to the Workload Identity provider's condition
+        with the same `refs/heads/main` rule.
+      - **The sync reads it in CI**: an integration test clones it over
+        HTTPS, as `read_repositories` does in App production, and checks
+        the versions it stores against the repository's history. That
+        replaces nothing: the unit tests and the end-to-end stack keep the
+        fixtures folder, so they run without the network.
+- [ ] **Decide whether its framework reaches App production.** Teaching's
+      test module does, behind its own organisation. A framework has no
+      organisation: once stored, the catalogue serves it to everybody, so
+      it would appear in every holder's framework picker. Either the
+      pipeline syncs it into a test environment only, or the catalogue
+      leaves out a framework marked as a test. For the product owner;
+      nothing in this phase is built before it is settled.
+- [ ] **Tests**: the integration test above, and the end-to-end stack
+      unchanged.
 
 ## Decisions
 

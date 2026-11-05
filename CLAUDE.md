@@ -764,14 +764,14 @@ Everywhere else - a local terminal session above all - the "NEVER
 auto-commit/push" rule under **Critical Rules** stands unchanged: commit only
 when asked to.
 
-### The alert watcher may open a pull request, and nothing more
+### Owl may open a pull request, and nothing more
 
-The alert watcher on the home box types `/alert <file>` into worktree 5
-when App production raises an alert in Slack (the watcher phase of
+Owl, the alert watcher on the home box, types `/alert <file>` into its worktree,
+`quillmedical-owl`, when App production raises an alert in Slack (the watcher phase of
 `docs/docs/plans/2026-10-19-remote-dev-machine-plan.md`). Its tmux session
-starts `claude` with `QUILL_ALERT_WATCHER=true`, and nothing else sets it.
+starts `claude` with `QUILL_OWL=true`, and nothing else sets it.
 
-When `QUILL_ALERT_WATCHER=true`, and only while running the `/alert` skill:
+When `QUILL_OWL=true`, and only while running the `/alert` skill:
 
 - **Run `just stack-fresh`, then `/crpd ready`** on a branch named
   `feature/alert-*`, which commits the fix, pushes it and opens its pull

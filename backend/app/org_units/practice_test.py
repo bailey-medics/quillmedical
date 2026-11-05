@@ -31,7 +31,7 @@ from tests.places import administers
 NOWHERE = 999_999
 NOBODY = 999_999
 #: Held by a consultant, from their profession.
-HELD = "perform_venepuncture"
+HELD = "take_informed_consent"
 #: Not held by a consultant.
 NOT_HELD = "manage_users"
 #: One a teaching admin may grant, and holds.
@@ -389,7 +389,7 @@ def test_a_scoped_manager_is_held_to_its_whitelist(
     assert isinstance(refusal, CompetenciesOutOfScope)
     assert refusal.status_code == 403
     assert refusal.message == (
-        "You may not grant or remove: perform_venepuncture."
+        "You may not grant or remove: take_informed_consent."
     )
 
 
@@ -610,7 +610,7 @@ def test_a_scoped_manager_may_not_grant_off_its_whitelist(
         _grant(db_session, teaching_admin, trust.id, tutor.id, HELD)
 
     assert refused.value.message == (
-        "You may not grant or remove: perform_venepuncture."
+        "You may not grant or remove: take_informed_consent."
     )
     assert HELD not in tutor.get_final_competencies()
     assert _practises(db_session, tutor, trust) == set()

@@ -100,7 +100,7 @@ anything.
 - **`assessable: true` on a competency** in `shared/competency-definitions/`
   says somebody could watch it being done and sign it off. Every
   framework's competency carries it, and no permission does: a permission
-  such as `manage_users` or `perform_cannulation` is checked by the code,
+  such as `manage_users` or `prescribe_non_controlled` is checked by the code,
   while what a passport records is a framework's own copy, such as
   `clinical_perform_cannulation`. `ASSESSABLE_COMPETENCY_IDS` holds the active ones, and
   `definitions.assessable_ref` refuses anything else when a record is
@@ -288,6 +288,14 @@ levels and scopes, and its retired competencies marked with `retired_on`.
 Like `/me`, it needs no place with the passport switched on, because a
 holder who belongs nowhere still reads their own record, and its pages
 name every competency from the catalogue.
+
+**An operator can start the framework sync by hand**, from
+`/admin/passport`, through `POST /api/passport/admin/framework-sync`. It
+starts the framework sync job as configured, with no overrides, for when
+the framework pipeline's own start failed; one run catches up on every
+version missing. `GET` on the same path says whether a job is set up here
+and how the last run ended. Two runs never overlap: each takes an advisory
+lock until its transaction ends, so a second waits, then writes nothing.
 
 **The catalogue in `app.cbac.competencies` holds permissions only.** It
 still loads every file in `shared/competency-definitions/`, so an id

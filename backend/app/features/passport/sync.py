@@ -44,6 +44,7 @@ from pathlib import Path
 
 from pydantic import ValidationError
 from sqlalchemy import select
+from sqlalchemy import text as sql_text
 from sqlalchemy.orm import Session
 
 from app.cbac.competencies import (
@@ -457,6 +458,35 @@ def _write(
     db.flush()
 
 
+#: The advisory lock every sync run takes, so two never overlap. A
+#: namespace of its own, apart from the passport's ``PASS``, so the two
+#: never wait on each other.
+SYNC_LOCK_NAMESPACE = 0x4652_4D57  # the letters F, R, M and W
+SYNC_LOCK_KEY = 1
+
+
+def _one_sync_at_a_time(db: Session) -> None:
+    """Wait for any other sync run to finish, then go on.
+
+    A run is one transaction, committed once at the end, so its ``running``
+    row is never seen by anybody else and cannot say a run is going. This
+    lock can: it lasts until the transaction ends, so a run started from
+    the admin page while the pipeline's is going waits for it, then finds
+    every version already stored and writes nothing. Postgres releases it
+    however the transaction ends.
+
+    On a database that is not Postgres this does nothing: the unit tests
+    run on SQLite, with one connection and so no second run.
+    """
+    if db.get_bind().dialect.name != "postgresql":
+        return
+
+    db.execute(
+        sql_text("SELECT pg_advisory_xact_lock(:namespace, :key)"),
+        {"namespace": SYNC_LOCK_NAMESPACE, "key": SYNC_LOCK_KEY},
+    )
+
+
 def _recorded_run(
     db: Session, work: Callable[[set[str]], int]
 ) -> FrameworkSyncResult:
@@ -473,6 +503,8 @@ def _recorded_run(
     Returns:
         How the run ended.
     """
+    _one_sync_at_a_time(db)
+
     run = PassportFrameworkSync(status="running")
     db.add(run)
     db.flush()

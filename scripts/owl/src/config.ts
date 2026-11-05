@@ -1,6 +1,6 @@
 // The watcher's settings, from the environment, checked before anything
 // connects. The systemd unit reads them from
-// ~/.config/quill-alert-watcher/env.
+// ~/.config/quill-owl/env.
 
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -35,14 +35,14 @@ export function readConfig(env: NodeJS.ProcessEnv): Config {
   return {
     appToken: required(env, "SLACK_APP_TOKEN", /^xapp-/, "the app-level token, starting xapp-"),
     botToken: required(env, "SLACK_BOT_TOKEN", /^xoxb-/, "the bot token, starting xoxb-"),
-    channel: required(env, "ALERT_WATCHER_CHANNEL", /^C[A-Z0-9]{8,}$/, "the channel's id, such as C0123456789, not its name"),
-    worktree: env["ALERT_WATCHER_WORKTREE"] || join(home, "github", "quillmedical-5"),
-    // The name ~/.local/bin/quill-sessions gives worktree 5's session.
-    tmuxTarget: env["ALERT_WATCHER_TMUX_TARGET"] || "q5",
-    // The same folder .claude/hooks/alert-watcher-busy.sh writes the flag in.
-    stateDirectory: env["QUILL_ALERT_WATCHER_STATE"] || join(stateHome, "quill-alert-watcher"),
+    channel: required(env, "OWL_CHANNEL", /^C[A-Z0-9]{8,}$/, "the channel's id, such as C0123456789, not its name"),
+    worktree: env["OWL_WORKTREE"] || join(home, "github", "quillmedical-owl"),
+    // Owl's own session, which scripts/claude-session.sh also names owl.
+    tmuxTarget: env["OWL_TMUX_TARGET"] || "owl",
+    // The same folder .claude/hooks/owl-busy.sh writes the flag in.
+    stateDirectory: env["OWL_STATE"] || join(stateHome, "quill-owl"),
     // The client certificate the box signs in to Google with.
-    certificatePath: env["ALERT_WATCHER_CERTIFICATE"] || join(home, ".config", "quill-alert-watcher", "pki", "watcher.crt"),
-    recordEvents: env["ALERT_WATCHER_RECORD_EVENTS"] === "1",
+    certificatePath: env["OWL_CERTIFICATE"] || join(home, ".config", "quill-owl", "pki", "watcher.crt"),
+    recordEvents: env["OWL_RECORD_EVENTS"] === "1",
   };
 }

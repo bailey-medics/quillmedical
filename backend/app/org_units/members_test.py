@@ -37,7 +37,7 @@ from tests.places import administers
 NOWHERE = 999_999
 NOBODY = 999_999
 #: Held by a consultant, from their profession, and by no delegate.
-CLINICAL = "perform_venepuncture"
+CLINICAL = "take_informed_consent"
 #: One a teaching admin may grant, which a delegate does not hold.
 TEACHING = "view_teaching_analytics"
 
@@ -372,7 +372,7 @@ def test_a_scoped_manager_may_not_grant_off_its_whitelist(
         )
 
     assert refused.value.message == (
-        "You may not grant or remove: perform_venepuncture."
+        "You may not grant or remove: take_informed_consent."
     )
 
 

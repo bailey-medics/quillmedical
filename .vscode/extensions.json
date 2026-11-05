@@ -12,6 +12,7 @@
     "github.vscode-github-actions",
     "ms-azuretools.vscode-docker",
     "zamerick.vscode-caddyfile-syntax",
-    "tamasfe.even-better-toml"
+    "tamasfe.even-better-toml",
+    "nefrob.vscode-just-syntax"
   ]
 }

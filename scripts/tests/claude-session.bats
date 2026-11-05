@@ -149,7 +149,7 @@ run_in() {
     [ "$status" -eq 1 ]
 }
 
-@test "worktree 5 is treated like the others while the watcher is off" {
+@test "worktree 5 is treated like the others while Owl is off" {
     git init -q "${BATS_TEST_TMPDIR}/quillmedical-5"
 
     SESSION_EXISTS=1 run_in "${BATS_TEST_TMPDIR}/quillmedical-5"
@@ -157,27 +157,43 @@ run_in() {
     grep -q "^tmux send-keys -t %7 claude --continue --ide --remote-control quillmedical-5 " "$CALLS"
 }
 
-@test "the watcher's q5 is attached to while its Claude runs" {
-    git init -q "${BATS_TEST_TMPDIR}/quillmedical-5"
+@test "quillmedical-owl is the owl session" {
+    git init -q "${BATS_TEST_TMPDIR}/quillmedical-owl"
 
-    WATCHER_ENABLED=1 SESSION_EXISTS=1 CLAUDE_RUNNING=1 run_in "${BATS_TEST_TMPDIR}/quillmedical-5"
+    SESSION_EXISTS=1 CLAUDE_RUNNING=1 run_in "${BATS_TEST_TMPDIR}/quillmedical-owl"
     [ "$status" -eq 0 ]
-    grep -qx "tmux attach -t =q5" "$CALLS"
+    grep -qx "tmux attach -t =owl" "$CALLS"
 }
 
-@test "the watcher's q5 never has a plain Claude typed into it" {
+@test "worktree 5 is an ordinary q5 while Owl is enabled" {
     git init -q "${BATS_TEST_TMPDIR}/quillmedical-5"
 
     WATCHER_ENABLED=1 SESSION_EXISTS=1 run_in "${BATS_TEST_TMPDIR}/quillmedical-5"
+    [ "$status" -eq 0 ]
+    grep -q "^tmux send-keys -t %7 claude --continue --ide --remote-control quillmedical-5 " "$CALLS"
+}
+
+@test "Owl's owl session is attached to while its Claude runs" {
+    git init -q "${BATS_TEST_TMPDIR}/quillmedical-owl"
+
+    WATCHER_ENABLED=1 SESSION_EXISTS=1 CLAUDE_RUNNING=1 run_in "${BATS_TEST_TMPDIR}/quillmedical-owl"
+    [ "$status" -eq 0 ]
+    grep -qx "tmux attach -t =owl" "$CALLS"
+}
+
+@test "Owl's owl session never has a plain Claude typed into it" {
+    git init -q "${BATS_TEST_TMPDIR}/quillmedical-owl"
+
+    WATCHER_ENABLED=1 SESSION_EXISTS=1 run_in "${BATS_TEST_TMPDIR}/quillmedical-owl"
     [ "$status" -eq 1 ]
-    [[ "$output" == *"systemctl --user restart quill-alert-watcher"* ]]
+    [[ "$output" == *"just owl-restart"* ]]
     [ "$(grep -c -e send-keys -e attach "$CALLS")" -eq 0 ]
 }
 
-@test "the watcher's q5 is never started here when it is missing" {
-    git init -q "${BATS_TEST_TMPDIR}/quillmedical-5"
+@test "Owl's owl session is never started here when it is missing" {
+    git init -q "${BATS_TEST_TMPDIR}/quillmedical-owl"
 
-    WATCHER_ENABLED=1 run_in "${BATS_TEST_TMPDIR}/quillmedical-5"
+    WATCHER_ENABLED=1 run_in "${BATS_TEST_TMPDIR}/quillmedical-owl"
     [ "$status" -eq 1 ]
     [ "$(grep -c new-session "$CALLS")" -eq 0 ]
 }

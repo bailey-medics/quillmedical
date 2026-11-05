@@ -450,52 +450,6 @@ add-role-remote env:
         --wait
 
 
-alias awi := alert-watcher-install
-# Install the alert watcher as a systemd user service (the home box's worktree 5 only)
-alert-watcher-install:
-    #!/usr/bin/env bash
-    {{initialise}} "alert-watcher-install"
-    set -euo pipefail
-
-    worktree="${HOME}/github/quillmedical-5"
-    env_file="${HOME}/.config/quill-alert-watcher/env"
-    unit="${worktree}/scripts/alert-watcher/quill-alert-watcher.service"
-
-    # The unit names worktree 5 by path, so installing it from any other
-    # checkout would run code that is not this checkout's.
-    if [ "$(uname -s)" != "Linux" ] || [ "$(git rev-parse --show-toplevel)" != "${worktree}" ]; then
-        echo "✗ Run this on the home box, from ${worktree}." >&2
-        exit 1
-    fi
-
-    # The tokens are the one thing the repository cannot supply: see the
-    # watcher phase of docs/docs/plans/2026-10-19-remote-dev-machine-plan.md.
-    if [ ! -f "${env_file}" ]; then
-        echo "✗ No ${env_file} yet. It holds SLACK_APP_TOKEN, SLACK_BOT_TOKEN and ALERT_WATCHER_CHANNEL." >&2
-        exit 1
-    fi
-
-    if [ "$(stat -c %a "${env_file}")" != "600" ]; then
-        echo "✗ ${env_file} must be mode 0600: chmod 0600 ${env_file}" >&2
-        exit 1
-    fi
-
-    (cd "${worktree}/scripts/alert-watcher" && yarn install --immutable)
-
-    # `link` rather than a copy, so a merged change to the unit file takes
-    # effect at the next daemon-reload without installing again.
-    systemctl --user link "${unit}"
-    systemctl --user daemon-reload
-    systemctl --user enable --now quill-alert-watcher.service
-
-    if ! loginctl show-user "${USER}" --property=Linger | grep -q "=yes"; then
-        echo "! Lingering is off, so the watcher stops when you log out. To start it at boot:"
-        echo "    sudo loginctl enable-linger ${USER}"
-    fi
-
-    systemctl --user --no-pager status quill-alert-watcher.service
-
-
 alias al := aws-login
 # Sign in to an AWS account from the command line (which: emails, the default, or management)
 aws-login which="emails":
@@ -1218,6 +1172,26 @@ notifier-app:
     ./scripts/build-notifier-app.sh
 
 
+alias owi := owl-install
+# Install Owl as a systemd user service, moving the box across from the alert watcher's old names (the home box's quillmedical-owl only)
+owl-install:
+    #!/usr/bin/env bash
+    {{initialise}} "owl-install"
+    set -euo pipefail
+
+    bash scripts/owl/install.sh
+
+
+alias owr := owl-restart
+# Restart Owl and its Claude session, owl, detached so it survives being run from the owl session (the home box's quillmedical-owl only); `force` to restart a busy one
+owl-restart force="":
+    #!/usr/bin/env bash
+    {{initialise}} "owl-restart"
+    set -euo pipefail
+
+    bash scripts/owl/restart.sh {{quote(force)}}
+
+
 alias psd := passport-delete
 # Delete a test holder's passport, archived for 30 days (dry run unless confirm is the passport id)
 passport-delete env username confirm="":
@@ -1806,6 +1780,27 @@ stack-new name message:
     if git show-ref --verify --quiet "refs/heads/${branch}"; then
         if [ "$(git branch --show-current)" != "${branch}" ]; then
             git switch "${branch}"
+        fi
+
+        # A run stopped after `git switch -c` and before `gh stack init`
+        # leaves the branch made but in no stack, and a re-run that skipped
+        # init would commit onto it unregistered: stack-submit then pushes
+        # nothing. Finish the init, but only for a branch with no commits
+        # of its own, which is what that half-made branch is. Exit 1 from
+        # --check means no stack here; anything else is left to the draw.
+        in_stack=0
+        python3 "{{stack_scripts}}"/stack-status.py --check >/dev/null 2>&1 || in_stack=$?
+
+        if [ "${in_stack}" -eq 1 ]; then
+            git fetch origin main --quiet || true
+
+            if [ "$(git rev-list --count origin/main..HEAD)" -ne 0 ]; then
+                echo "✗ ${branch} already has commits of its own and is in no stack." >&2
+                echo "  Start the stack from a new name, or ask what the branch holds." >&2
+                exit 1
+            fi
+
+            gh stack init "${branch}"
         fi
     else
 
@@ -2996,19 +2991,6 @@ tmux-window NUMBER="":
     @bash scripts/tmux-window.sh {{quote(NUMBER)}}
 
 
-alias uaw := unit-tests-alert-watcher
-# Run the alert watcher's type check and tests (in a throwaway container)
-unit-tests-alert-watcher *ARGS:
-    #!/usr/bin/env bash
-    {{initialise}} "unit-tests-alert-watcher"
-
-    # The watcher in scripts/alert-watcher/ is its own Node package, run on
-    # the home box rather than deployed. Same throwaway container as `uf`,
-    # with that folder mounted instead of frontend/.
-    docker compose -p "$(just _test-project)" -f compose.unit-tests.yml \
-        run --rm alert-watcher sh -lc "yarn install --immutable && yarn typecheck && yarn test {{ARGS}}"
-
-
 alias ub := unit-tests-backend
 # Run the backend unit tests (in a throwaway container mounting this worktree)
 unit-tests-backend *ARGS:
@@ -3033,6 +3015,19 @@ unit-tests-frontend *ARGS:
     # changes package.json, `just utr` resets those volumes.
     docker compose -p "$(just _test-project)" -f compose.unit-tests.yml \
         run --rm frontend sh -lc "yarn unit-test:run {{ARGS}}"
+
+
+alias uow := unit-tests-owl
+# Run Owl's type check and tests (in a throwaway container)
+unit-tests-owl *ARGS:
+    #!/usr/bin/env bash
+    {{initialise}} "unit-tests-owl"
+
+    # The watcher in scripts/owl/ is its own Node package, run on
+    # the home box rather than deployed. Same throwaway container as `uf`,
+    # with that folder mounted instead of frontend/.
+    docker compose -p "$(just _test-project)" -f compose.unit-tests.yml \
+        run --rm owl sh -lc "yarn install --immutable && yarn typecheck && yarn test {{ARGS}}"
 
 
 alias utr := unit-tests-reset

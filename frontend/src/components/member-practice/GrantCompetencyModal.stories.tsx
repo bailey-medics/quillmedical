@@ -12,7 +12,7 @@ import GrantCompetencyModal from "./GrantCompetencyModal";
 const options = [
   { id: "certify_death", name: "Certify Death" },
   { id: "manage_users", name: "Manage User Accounts" },
-  { id: "perform_venepuncture", name: "Perform Venepuncture" },
+  { id: "take_informed_consent", name: "Take Informed Consent" },
 ];
 
 const meta: Meta<typeof GrantCompetencyModal> = {

@@ -2,7 +2,7 @@
 //
 // The /alert skill reads App production's logs as alert-watcher-logs, which
 // the box signs in as by showing Google a client certificate (see
-// infra/alert-watcher.tf). The certificate lasts a year, and once it runs out
+// infra/owl.tf). The certificate lasts a year, and once it runs out
 // every investigation loses its logs without saying why. So from 30 days
 // before, the watcher posts a reminder with the renewal command, once a week
 // until the certificate is renewed.
@@ -21,7 +21,7 @@ export type Expiry = { readable: true; expires: Date } | { readable: false };
 // The authority is unchanged by it, so nothing in Terraform changes.
 const RENEWAL = [
   "```",
-  "cd ~/.config/quill-alert-watcher/pki",
+  "cd ~/.config/quill-owl/pki",
   'openssl req -new -key watcher.key -subj "/O=Quill Medical/CN=quill-alert-watcher" -config exts.cnf -out watcher.csr',
   "openssl x509 -req -in watcher.csr -CA ca.crt -CAkey ca.key -CAcreateserial -days 365 -sha256 -extfile exts.cnf -extensions leaf_exts -out watcher.crt",
   "rm watcher.csr ca.srl",
@@ -41,7 +41,7 @@ export function readExpiry(path: string): Expiry {
 // left.
 export function reminderText(expiry: Expiry, now: Date, path: string): string | undefined {
   if (!expiry.readable) {
-    return `The alert watcher cannot read its client certificate at \`${path}\`, so investigations cannot read App production's logs.`;
+    return `Owl cannot read its client certificate at \`${path}\`, so investigations cannot read App production's logs.`;
   }
 
   const daysLeft = Math.ceil((expiry.expires.getTime() - now.getTime()) / DAY_MS);
@@ -55,7 +55,7 @@ export function reminderText(expiry: Expiry, now: Date, path: string): string | 
     ? `ran out on ${date}, so investigations cannot read App production's logs`
     : `runs out in ${daysLeft} ${daysLeft === 1 ? "day" : "days"}, on ${date}`;
 
-  return `The alert watcher's client certificate ${when}. Renew it on the box:\n${RENEWAL}`;
+  return `Owl's client certificate ${when}. Renew it on the box:\n${RENEWAL}`;
 }
 
 export class CertificateReminder {

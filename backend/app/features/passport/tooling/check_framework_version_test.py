@@ -209,11 +209,9 @@ def test_a_framework_started_again_must_not_change_too(
     assert "went down from 2 to 1" in result.violations[0]
 
 
-def test_only_gloucestershire_is_started_again() -> None:
-    """Emptied again by the pull request after the fresh start merges."""
-    assert check_framework_version.STARTED_AGAIN == {
-        "ghnft_radiotherapy_record"
-    }
+def test_no_framework_is_started_again() -> None:
+    """Empty unless a fresh start is in flight, as none is now."""
+    assert check_framework_version.STARTED_AGAIN == frozenset()
 
 
 def test_a_dropped_scope_is_refused_even_with_a_new_version(

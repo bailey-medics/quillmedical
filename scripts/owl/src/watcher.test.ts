@@ -113,7 +113,7 @@ describe("Watcher", () => {
     assert.equal(fakes.started.length, 1);
   });
 
-  it("parks an alert while worktree 5 is in use, saying so once", async () => {
+  it("parks an alert while Owl's worktree is in use, saying so once", async () => {
     fakes.worktree = { free: false, reason: "it has uncommitted changes" };
 
     await watcher.onMessage(alertPost("Backend error: app.auth", "100.000001"));
@@ -122,6 +122,7 @@ describe("Watcher", () => {
 
     assert.deepEqual(fakes.started, []);
     assert.equal(fakes.replies.filter((reply) => reply.text.includes("parked")).length, 1);
+    assert.match(fakes.replies.at(-1)?.text ?? "", /^Owl's worktree is in use \(it has uncommitted changes\)/);
 
     fakes.worktree = { free: true };
     await watcher.tick();

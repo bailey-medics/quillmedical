@@ -1078,7 +1078,7 @@ describe("SideNavContent Component", () => {
     it.each([
       ["/passport/cpd/2026/2026-09-28-062503", "CPD", "Activity"],
       [
-        "/passport/logbook/perform_cannulation/20260314T1432",
+        "/passport/logbook/clinical_perform_cannulation/20260314T1432",
         "Logbook",
         "Entry",
       ],
@@ -1310,6 +1310,30 @@ describe("SideNavContent Component", () => {
       await screen.findByText("Admin");
       // Only the top-level link that opens the modal.
       expect(screen.getAllByText("Feedback")).toHaveLength(1);
+    });
+  });
+
+  describe("Passport under Admin", () => {
+    // Found by its address: the holder's own passport link has the same
+    // label.
+    const adminPassportLink = () =>
+      screen
+        .queryAllByRole("link")
+        .find((link) => link.getAttribute("href") === "/admin/passport");
+
+    it("offers it to somebody who operates Quill", async () => {
+      renderWithAuth(<SideNavContent />, "superadmin", {
+        initialRoute: "/admin",
+      });
+
+      await waitFor(() => expect(adminPassportLink()).toBeDefined());
+    });
+
+    it("hides it from an administrator who does not operate Quill", async () => {
+      renderWithAuth(<SideNavContent />, "admin", { initialRoute: "/admin" });
+
+      await screen.findByText("Admin");
+      expect(adminPassportLink()).toBeUndefined();
     });
   });
 

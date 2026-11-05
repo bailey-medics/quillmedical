@@ -1,7 +1,7 @@
-// The Claude Code session in worktree 5: whether it is busy, and typing
+// The Claude Code session in Owl's worktree: whether it is busy, and typing
 // into it.
 //
-// The busy flag is kept by .claude/hooks/alert-watcher-busy.sh, set when a
+// The busy flag is kept by .claude/hooks/owl-busy.sh, set when a
 // turn begins and cleared when it ends, and holds the time the turn began
 // in seconds since the epoch. The session is typed into with
 // `tmux send-keys`, so a person attached to the same tmux session sees

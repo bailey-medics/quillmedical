@@ -34,18 +34,18 @@ separately.
 
 ## Where they meet
 
-One competency registry, `shared/competency-definitions/`, used by both.
-
-A competency id means the same thing everywhere: `perform_lumbar_puncture` is one
-identifier whether it appears in a user's CBAC competencies or a passport
-sign-off. The passport adds optional fields to those definitions - levels,
-expiry guidance - rather than introducing a parallel framework registry. One
-name, nothing to drift, no second schema to maintain.
+Permissions and frameworks are kept apart. A permission, such as
+`prescribe_controlled_schedule_2`, is what the code checks, and lives in
+`shared/competency-definitions/`. A framework's competency, such as
+`clinical_perform_lumbar_puncture`, is what a passport records, under an id
+of its own, so a sign-off can never be mistaken for a permission. A
+procedure is never a permission: Quill cannot stop anybody performing one.
 
 What a passport offers is what the frameworks its holder works to contain. A
 framework is one published document, such as one hospital's sign-off sheet,
-kept as a file in the same registry that declares a `framework:` block. The
-holder chooses which frameworks they work to.
+kept in its publisher's own repository and read by the app from the
+framework tables, which the framework sync fills. The holder chooses which
+frameworks they work to.
 
 ## Reaching the passport at all
 

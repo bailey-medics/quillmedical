@@ -48,6 +48,7 @@ import type {
   EvidenceScan,
   EvidenceUpload,
   FrameworkDefinition,
+  FrameworkSyncStatus,
   InboxItem,
   InvitePreview,
   LandingView,
@@ -187,6 +188,23 @@ export function fetchPassportFrameworks(): Promise<FrameworkChoice[]> {
  */
 export function fetchFrameworkCatalogue(): Promise<FrameworkDefinition[]> {
   return api.get<FrameworkDefinition[]>("/passport/catalogue");
+}
+
+/**
+ * Whether the framework sync can be started here, and how its last run
+ * ended. Operators only.
+ */
+export function fetchFrameworkSync(): Promise<FrameworkSyncStatus> {
+  return api.get<FrameworkSyncStatus>("/passport/admin/framework-sync");
+}
+
+/**
+ * Start the framework sync job. It runs for up to ten minutes, so this
+ * answers as soon as the job has started, naming its execution.
+ * Operators only.
+ */
+export function startFrameworkSync(): Promise<{ execution: string }> {
+  return api.post<{ execution: string }>("/passport/admin/framework-sync");
 }
 
 /**

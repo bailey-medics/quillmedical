@@ -36,8 +36,6 @@ base_professions:
     base_competencies:
       - access_patient_records
       - modify_patient_records
-      - perform_venepuncture
-      - perform_cannulation
       - request_plain_xray
       - take_informed_consent
       - refer_specialty
@@ -52,8 +50,6 @@ base_professions:
     base_competencies:
       - access_patient_records
       - modify_patient_records
-      - perform_venepuncture
-      - perform_cannulation
       - request_plain_xray
       - request_ct_scan
       - request_mri_scan
@@ -73,8 +69,6 @@ base_professions:
     base_competencies:
       - access_patient_records
       - modify_patient_records
-      - perform_venepuncture
-      - perform_cannulation
       - request_plain_xray
       - request_ct_scan
       - request_mri_scan
@@ -97,9 +91,6 @@ base_professions:
     base_competencies:
       - access_patient_records
       - modify_patient_records
-      - perform_venepuncture
-      - perform_cannulation
-      - perform_lumbar_puncture
       - request_plain_xray
       - request_ct_scan
       - request_mri_scan
@@ -127,11 +118,6 @@ base_professions:
     base_competencies:
       - access_patient_records
       - modify_patient_records
-      - perform_venepuncture
-      - perform_cannulation
-      - perform_lumbar_puncture
-      - perform_chest_drain
-      - perform_advanced_airway
       - request_plain_xray
       - request_ct_scan
       - request_mri_scan
@@ -161,8 +147,6 @@ base_professions:
     base_competencies:
       - access_patient_records
       - modify_patient_records
-      - perform_venepuncture
-      - perform_cannulation
       - request_plain_xray
       - request_ct_scan
       - request_mri_scan
@@ -190,8 +174,6 @@ base_professions:
     base_competencies:
       - access_patient_records
       - modify_patient_records
-      - perform_venepuncture
-      - perform_cannulation
       - take_informed_consent
       - refer_specialty
       - certify_fitness_to_work  # If independent prescriber
@@ -204,8 +186,6 @@ base_professions:
     base_competencies:
       - access_patient_records
       - modify_patient_records
-      - perform_venepuncture
-      - perform_cannulation
       - request_plain_xray
       - take_informed_consent
       - assess_mental_capacity
@@ -222,7 +202,6 @@ base_professions:
     requires_clinical_services: true
     base_competencies:
       - access_patient_records
-      - perform_venepuncture  # After competency training
       - assess_clinician_passport
 
   # ==========================================================================
@@ -284,8 +263,6 @@ base_professions:
     base_competencies:
       - access_patient_records
       - modify_patient_records
-      - perform_venepuncture
-      - perform_cannulation
       - take_informed_consent
       - refer_specialty
       - prescribe_non_controlled  # If independent prescriber

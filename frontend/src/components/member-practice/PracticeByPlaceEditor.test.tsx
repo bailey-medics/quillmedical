@@ -23,8 +23,8 @@ function renderEditor(overrides: Partial<PracticeByPlaceEditorProps> = {}) {
   renderWithRouter(
     <PracticeByPlaceEditor
       places={[trust, ward]}
-      competencies={["perform_venepuncture", "certify_death"]}
-      value={{ 3: ["perform_venepuncture"], 4: [] }}
+      competencies={["take_informed_consent", "certify_death"]}
+      value={{ 3: ["take_informed_consent"], 4: [] }}
       onChange={onChange}
       {...overrides}
     />,
@@ -50,9 +50,9 @@ describe("PracticeByPlaceEditor", () => {
     it("gives each competency a switch at each org_unit, set from the value", () => {
       renderEditor();
 
-      expect(switchFor("Perform Venepuncture", "Trust").checked).toBe(true);
+      expect(switchFor("Take Informed Consent", "Trust").checked).toBe(true);
       expect(switchFor("Certify Death", "Trust").checked).toBe(false);
-      expect(switchFor("Perform Venepuncture", "Ward A").checked).toBe(false);
+      expect(switchFor("Take Informed Consent", "Ward A").checked).toBe(false);
       expect(switchFor("Certify Death", "Ward A").checked).toBe(false);
     });
 
@@ -67,7 +67,7 @@ describe("PracticeByPlaceEditor", () => {
         .map((input) => input.getAttribute("aria-label"));
       expect(names).toEqual([
         "Certify Death at Trust: may practise here",
-        "Perform Venepuncture at Trust: may practise here",
+        "Take Informed Consent at Trust: may practise here",
       ]);
     });
   });
@@ -80,7 +80,7 @@ describe("PracticeByPlaceEditor", () => {
       await user.click(switchFor("Certify Death", "Ward A"));
 
       expect(onChange).toHaveBeenCalledWith({
-        3: ["perform_venepuncture"],
+        3: ["take_informed_consent"],
         4: ["certify_death"],
       });
     });
@@ -89,7 +89,7 @@ describe("PracticeByPlaceEditor", () => {
       const user = userEvent.setup();
       const onChange = renderEditor();
 
-      await user.click(switchFor("Perform Venepuncture", "Trust"));
+      await user.click(switchFor("Take Informed Consent", "Trust"));
 
       expect(onChange).toHaveBeenCalledWith({ 3: [], 4: [] });
     });
@@ -110,8 +110,8 @@ describe("PracticeByPlaceEditor", () => {
         mayChange: (competency) => competency === "certify_death",
       });
 
-      expect(switchFor("Perform Venepuncture", "Trust")).toBeDisabled();
-      expect(switchFor("Perform Venepuncture", "Trust").checked).toBe(true);
+      expect(switchFor("Take Informed Consent", "Trust")).toBeDisabled();
+      expect(switchFor("Take Informed Consent", "Trust").checked).toBe(true);
       expect(switchFor("Certify Death", "Trust")).toBeEnabled();
     });
 
