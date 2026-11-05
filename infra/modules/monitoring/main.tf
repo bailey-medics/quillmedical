@@ -1296,7 +1296,7 @@ resource "google_monitoring_alert_policy" "alert_route_test" {
 # label extractors are Google's own, from "Configure alerts in Terraform"
 # in the Service Health docs, for "all incidents, all updates".
 #
-# The alert watcher in scripts/alert-watcher/ reads the policy's name to
+# Owl in scripts/owl/ reads the policy's name to
 # recognise the post, and the `State:` line to see the incident close, so
 # both are kept as they are here. While an incident is open it treats every
 # other alert as part of it rather than as a fault to investigate.

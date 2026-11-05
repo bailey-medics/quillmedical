@@ -130,3 +130,4 @@
 - [Passport Record and Catalogue](2026-11-01-passport-record-and-catalogue-plan.md)
 - [Tmux Survives an Alert Watcher Restart](2026-11-04-tmux-survives-an-alert-watcher-restart-plan.md)
 - [Alert Watcher Never Types Into a Dialog](2026-11-04-alert-watcher-never-types-into-a-dialog-plan.md)
+- [The Alert Watcher Is Called Owl](2026-11-04-the-alert-watcher-is-called-owl-plan.md)

@@ -23,11 +23,11 @@ MgIgIDQwQbtW7xWY+xZwCyaGtyQ1L2Ic/T5uptuRstqL4ZA=
 -----END CERTIFICATE-----
 `;
 
-const PATH = "/home/watcher/.config/quill-alert-watcher/pki/watcher.crt";
+const PATH = "/home/watcher/.config/quill-owl/pki/watcher.crt";
 const EXPIRES = new Date("2027-10-27T12:00:00Z");
 
 function temporaryDirectory(): string {
-  return mkdtempSync(join(tmpdir(), "alert-watcher-"));
+  return mkdtempSync(join(tmpdir(), "owl-"));
 }
 
 function expiring(expires: Date): () => Expiry {

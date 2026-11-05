@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Starts the alert watcher's Claude Code session in tmux, unless one is
+# Starts Owl's Claude Code session in tmux, unless one is
 # already running.
 #
 # Usage: start-session.sh
 #
-# Run by quill-alert-watcher.service before the daemon starts. A session
+# Run by quill-owl.service before the daemon starts. A session
 # that is already there is left alone, so one a person is sitting in
 # survives a restart of the daemon.
 #
@@ -14,7 +14,7 @@
 # lack the environment and the flags below, and this script would find it
 # and leave it alone.
 #
-# The session runs `claude` in worktree 5 with QUILL_ALERT_WATCHER=true,
+# The session runs `claude` in worktree 5 with QUILL_OWL=true,
 # which is what turns on the busy-flag hook and the standing permission in
 # CLAUDE.md, and nothing else sets it. It may read the alert files the
 # daemon writes (--add-dir), and runs without a prompt only the commands
@@ -46,13 +46,13 @@
 # The tmux server is started in a systemd scope of its own,
 # quill-tmux-server.scope, never in this service's process group. Whichever
 # `tmux new-session` runs first starts the server, and at boot that is this
-# script, run by quill-alert-watcher.service. A server started in the
+# script, run by quill-owl.service. A server started in the
 # service's group is killed with it, so a restart of the watcher once closed
 # every session on the box, q1 to q6, and every Claude in them. See
 # docs/docs/plans/2026-11-04-tmux-survives-an-alert-watcher-restart-plan.md.
 #
-# ALERT_WATCHER_TMUX_TARGET, ALERT_WATCHER_WORKTREE and
-# QUILL_ALERT_WATCHER_STATE change the session name, the worktree and the
+# OWL_TMUX_TARGET, OWL_WORKTREE and
+# OWL_STATE change the session name, the worktree and the
 # state folder, as they do for the daemon.
 set -euo pipefail
 
@@ -101,10 +101,10 @@ start_tmux() {
 }
 
 main() {
-    local session="${ALERT_WATCHER_TMUX_TARGET:-q5}"
-    local worktree="${ALERT_WATCHER_WORKTREE:-${HOME}/github/quillmedical-5}"
-    local state="${QUILL_ALERT_WATCHER_STATE:-${XDG_STATE_HOME:-${HOME}/.local/state}/quill-alert-watcher}"
-    local gcloud_config="${HOME}/.config/quill-alert-watcher/gcloud"
+    local session="${OWL_TMUX_TARGET:-q5}"
+    local worktree="${OWL_WORKTREE:-${HOME}/github/quillmedical-5}"
+    local state="${OWL_STATE:-${XDG_STATE_HOME:-${HOME}/.local/state}/quill-owl}"
+    local gcloud_config="${HOME}/.config/quill-owl/gcloud"
     local settings
     settings="$(cd -- "${BASH_SOURCE[0]%/*}" && pwd)/session-settings.json"
 
@@ -124,7 +124,7 @@ main() {
     chmod 0700 "${state}" "${state}/alerts"
 
     local command
-    command="export QUILL_ALERT_WATCHER=true CLOUDSDK_CONFIG=$(printf '%q' "${gcloud_config}") CLAUDE_CODE_DISABLE_FEEDBACK_SURVEY=1; claude --add-dir $(printf '%q' "${state}/alerts")"
+    command="export QUILL_OWL=true CLOUDSDK_CONFIG=$(printf '%q' "${gcloud_config}") CLAUDE_CODE_DISABLE_FEEDBACK_SURVEY=1; claude --add-dir $(printf '%q' "${state}/alerts")"
     command+=" --remote-control $(printf '%q' "$(basename "${worktree}")")"
     command+=" --permission-mode auto"
     command+=" --settings $(printf '%q' "${settings}")"
