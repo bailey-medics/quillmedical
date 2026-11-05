@@ -3974,7 +3974,12 @@ def export_markdown(
         _refuse_versions_not_held(
             stored_catalogue(db), _every_sign_off(store, row.id)
         )
-        text = render.render(store, row.id, include_reflections=reflections)
+        text = render.render(
+            store,
+            row.id,
+            include_reflections=reflections,
+            catalogue=stored_catalogue(db),
+        )
     except PassportNotFoundError:
         raise HTTPException(404, "Passport not found") from None
 
@@ -4014,7 +4019,12 @@ def export_pdf(
         _refuse_versions_not_held(
             stored_catalogue(db), _every_sign_off(store, row.id)
         )
-        data = pdf.render_pdf(store, row.id, head_commit=row.head_commit)
+        data = pdf.render_pdf(
+            store,
+            row.id,
+            head_commit=row.head_commit,
+            catalogue=stored_catalogue(db),
+        )
     except PassportNotFoundError:
         raise HTTPException(404, "Passport not found") from None
 
@@ -4058,6 +4068,7 @@ def export_bundle(
         data = export.build_bundle(
             store,
             row.id,
+            catalogue=stored_catalogue(db),
             requested_by=str(user.id),
             head_commit=row.head_commit,
             blobs=blobs,
