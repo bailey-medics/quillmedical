@@ -10,7 +10,6 @@ from types import SimpleNamespace
 import pytest
 from sqlalchemy.orm import Session
 
-from app.cbac.competencies import get_competency_details
 from app.features.passport.models import (
     Passport,
     PassportLogbookConfirmationRequest,
@@ -643,7 +642,7 @@ def test_a_reply_line_carries_neither_the_reply_nor_the_feedback(
 
 
 def test_a_competency_is_named_as_the_catalogue_names_it() -> None:
-    entry = get_competency_details(KNOWN_COMPETENCY)
+    entry = files_catalogue().entries.get(KNOWN_COMPETENCY)
 
     assert entry is not None
     assert (

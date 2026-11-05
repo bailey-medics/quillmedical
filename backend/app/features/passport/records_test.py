@@ -33,6 +33,7 @@ from app.features.passport import (
     store,
 )
 from app.features.passport.records import RecordNotFoundError
+from tests.frameworks import files_catalogue
 
 PASSPORT_ID = "3f2a8c1e4b7d49f0a6c2e8b1d5a7f309"
 NOW = datetime(2026, 3, 14, 14, 32, 7, tzinfo=UTC)
@@ -105,6 +106,7 @@ class TestOneWriteOneCommit:
             actor,
             "clinical_perform_cannulation",
             schemas.LogbookEntry(performed_on=date(2026, 3, 12)),
+            catalogue=files_catalogue(),
             now=NOW,
         )
 
@@ -120,6 +122,7 @@ class TestOneWriteOneCommit:
             actor,
             "clinical_perform_cannulation",
             schemas.LogbookEntry(performed_on=date(2026, 3, 12)),
+            catalogue=files_catalogue(),
             now=NOW,
         )
 
@@ -139,6 +142,7 @@ class TestLogbook:
             actor,
             "clinical_perform_lumbar_puncture",
             schemas.LogbookEntry(performed_on=date(2026, 3, 12)),
+            catalogue=files_catalogue(),
             now=NOW,
         )
 
@@ -164,6 +168,7 @@ class TestLogbook:
             actor,
             "clinical_perform_lumbar_puncture",
             schemas.LogbookEntry(performed_on=date(2026, 3, 12)),
+            catalogue=files_catalogue(),
             now=NOW,
         )
         second, _ = records.add_logbook_entry(
@@ -172,6 +177,7 @@ class TestLogbook:
             actor,
             "clinical_perform_lumbar_puncture",
             schemas.LogbookEntry(performed_on=date(2026, 3, 13)),
+            catalogue=files_catalogue(),
             now=NOW,
         )
 
@@ -191,6 +197,7 @@ class TestLogbook:
                 performed_on=date(2026, 3, 12),
                 also_counts_towards=["clinical_take_informed_consent"],
             ),
+            catalogue=files_catalogue(),
             now=NOW,
         )
 
@@ -221,6 +228,7 @@ class TestLogbook:
                 schemas.LogbookEntry(
                     performed_on=date(2026, 3, day), scope=scope
                 ),
+                catalogue=files_catalogue(),
                 now=NOW,
             )
 
@@ -250,6 +258,7 @@ class TestLogbook:
                     name="Upper gastrointestinal",
                 ),
             ),
+            catalogue=files_catalogue(),
             now=NOW,
         )
 
@@ -272,6 +281,7 @@ class TestLogbook:
                 scope=schemas.ScopeRef(id="lung", name="Lung"),
                 also_counts_towards=["clinical_take_informed_consent"],
             ),
+            catalogue=files_catalogue(),
             now=NOW,
         )
 
@@ -291,6 +301,7 @@ class TestLogbook:
             schemas.LogbookEntry(
                 performed_on=date(2026, 3, 12), outcome="Successful"
             ),
+            catalogue=files_catalogue(),
             now=NOW,
         )
         supervisor = commits.Actor(
@@ -336,6 +347,7 @@ class TestLogbook:
             actor,
             "clinical_perform_lumbar_puncture",
             schemas.LogbookEntry(performed_on=date(2026, 3, 12)),
+            catalogue=files_catalogue(),
             now=NOW,
         )
         confirmer = schemas.Assessor(
@@ -388,6 +400,7 @@ class TestLogbook:
             actor,
             "clinical_perform_lumbar_puncture",
             schemas.LogbookEntry(performed_on=date(2026, 3, 12)),
+            catalogue=files_catalogue(),
             now=NOW,
         )
 
@@ -421,6 +434,7 @@ class TestLogbook:
             actor,
             "clinical_perform_lumbar_puncture",
             schemas.LogbookEntry(performed_on=date(2026, 3, 12)),
+            catalogue=files_catalogue(),
             now=NOW,
         )
 
@@ -683,6 +697,7 @@ class TestIndex:
                 actor,
                 "clinical_perform_lumbar_puncture",
                 schemas.LogbookEntry(performed_on=date(2026, 3, day)),
+                catalogue=files_catalogue(),
                 now=NOW,
             )
 
@@ -715,6 +730,7 @@ class TestIndex:
             actor,
             "clinical_perform_lumbar_puncture",
             schemas.LogbookEntry(performed_on=date(2026, 3, 12)),
+            catalogue=files_catalogue(),
             now=NOW,
         )
 
@@ -746,6 +762,7 @@ class TestIndex:
             actor,
             "clinical_perform_lumbar_puncture",
             schemas.LogbookEntry(performed_on=date(2026, 3, 13)),
+            catalogue=files_catalogue(),
             now=NOW,
         )
 
@@ -763,6 +780,7 @@ class TestIndex:
             actor,
             "clinical_perform_lumbar_puncture",
             schemas.LogbookEntry(performed_on=date(2026, 3, 12)),
+            catalogue=files_catalogue(),
             now=NOW,
         )
 
@@ -784,6 +802,7 @@ class TestIndex:
                 actor,
                 competency,
                 schemas.LogbookEntry(performed_on=date(2026, 3, 12)),
+                catalogue=files_catalogue(),
                 now=NOW,
             )
 
@@ -802,6 +821,7 @@ class TestIndex:
             actor,
             "clinical_perform_lumbar_puncture",
             schemas.LogbookEntry(performed_on=date(2026, 3, 12)),
+            catalogue=files_catalogue(),
             now=NOW,
         )
 

@@ -28,6 +28,7 @@ from app.features.passport.definitions import (
     UnknownCompetencyError,
     UnknownLevelError,
 )
+from tests.frameworks import files_catalogue
 
 LEVELLED = "uk_sact_board_2023_prescribe_sact"
 # Signed off one tumour site at a time.
@@ -160,9 +161,7 @@ class TestLevels:
         self, catalogue: StoredCatalogue
     ) -> None:
         """Order is the scale, so nothing here may sort them."""
-        from app.cbac.competencies import get_competency_details
-
-        entry = get_competency_details(LEVELLED)
+        entry = files_catalogue().entries.get(LEVELLED)
         assert entry is not None and entry.levels is not None
 
         assert [lvl.id for lvl in definitions.levels(catalogue, LEVELLED)] == [
@@ -313,9 +312,7 @@ class TestTheStoredFrameworks:
     ) -> None:
         """A competency the picker offers but the write cannot find would
         be a silent hole."""
-        from app.cbac.competencies import COMPETENCIES
-
-        in_frameworks = [c for c in COMPETENCIES if c.framework_id]
+        in_frameworks = list(files_catalogue().entries.values())
 
         assert in_frameworks
         for entry in in_frameworks:

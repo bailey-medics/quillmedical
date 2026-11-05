@@ -17,23 +17,18 @@ import pytest
 from pydantic import ValidationError
 
 from app.cbac.competencies import (
-    ASSESSABLE_COMPETENCY_IDS,
     COMPETENCIES,
     COMPETENCY_DEFINITIONS_DIR,
     COMPETENCY_IDS,
-    FRAMEWORK_COMPETENCY_IDS,
-    FRAMEWORK_IDS,
-    FRAMEWORKS,
     MAX_FRAMEWORK_FILE_BYTES,
-    RETIRED_COMPETENCY_IDS,
     CompetencyEntry,
     _load_catalogue,
-    framework_competencies,
     get_competency_details,
     is_valid_competency,
     load_framework_text,
     validate_competency_ids,
 )
+from tests.frameworks import files_catalogue
 
 
 def test_all_real_competencies_loaded() -> None:
@@ -241,7 +236,7 @@ def test_load_rejects_scopes_with_no_other(tmp_path: Path) -> None:
 
 def test_the_real_catalogue_has_a_scoped_competency() -> None:
     """Guards the field against being quietly dropped, as for levels."""
-    scoped = [c for c in COMPETENCIES if c.scopes]
+    scoped = [c for c in files_catalogue().entries.values() if c.scopes]
 
     assert scoped, "Expected at least one competency to declare scopes"
     assert all(
@@ -536,7 +531,7 @@ def test_the_real_frameworks_versions() -> None:
     Its pilot edition was never numbered, so the record started afresh at
     version 1 on 4 November 2026 rather than at 2.
     """
-    versions = {f.id: f.version for f in FRAMEWORKS}
+    versions = {f.id: f.version for f in files_catalogue().frameworks.values()}
 
     assert versions == {
         "clinical": 1,
@@ -546,16 +541,24 @@ def test_the_real_frameworks_versions() -> None:
     }
 
 
-def test_every_assessable_competency_is_in_a_framework() -> None:
-    """The real catalogue, since the loader would refuse to start."""
-    for competency in COMPETENCIES:
-        if competency.assessable and competency.retired_on is None:
-            assert competency.framework_id in FRAMEWORK_IDS
+def test_the_catalogue_holds_permissions_only() -> None:
+    """A framework's competencies are read from the tables, not here."""
+    assert COMPETENCIES
+    assert all(c.framework_id is None for c in COMPETENCIES)
+    assert "clinical_perform_cannulation" not in COMPETENCY_IDS
+    assert "perform_cannulation" in COMPETENCY_IDS
+
+
+def test_every_framework_competency_is_assessable() -> None:
+    """The real frameworks, since the loader would refuse to start."""
+    for entry in files_catalogue().entries.values():
+        assert entry.assessable
+        assert entry.framework_id is not None
 
 
 def test_general_clinical_skills_holds_its_own_ids() -> None:
     """The framework and the permissions no longer share an id."""
-    items = {c.id for c in framework_competencies("clinical")}
+    items = {c.id for c in files_catalogue().competencies["clinical"]}
 
     assert "clinical_perform_cannulation" in items
     assert "perform_cannulation" not in items
@@ -570,30 +573,12 @@ def test_a_permission_keeps_its_id_and_is_no_longer_assessable() -> None:
     assert permission is not None
     assert permission.framework_id is None
     assert not permission.assessable
-    assert "prescribe_controlled_schedule_2" not in ASSESSABLE_COMPETENCY_IDS
-
-
-def test_every_frameworks_competency_is_granted_to_nobody() -> None:
-    """Recorded in a passport, whoever published the framework."""
-    assert "uk_sact_board_2023_prescribe_sact" in FRAMEWORK_COMPETENCY_IDS
-    assert (
-        "ghnft_radiotherapy_record_acquaintance_with_aria"
-        in FRAMEWORK_COMPETENCY_IDS
-    )
-    assert "clinical_perform_cannulation" in FRAMEWORK_COMPETENCY_IDS
-    assert "perform_cannulation" not in FRAMEWORK_COMPETENCY_IDS
 
 
 def test_quills_own_frameworks_competency_is_refused_as_a_grant() -> None:
-    with pytest.raises(ValueError, match="granted to nobody"):
+    """Refused by what it is: it is not a permission."""
+    with pytest.raises(ValueError, match="Only a permission may be granted"):
         validate_competency_ids(["clinical_perform_cannulation"])
-
-
-def test_no_competency_a_passport_can_record_is_outside_a_framework() -> None:
-    """Only a retired one may be, and nothing new is recorded against it."""
-    for competency in COMPETENCIES:
-        if competency.id in ASSESSABLE_COMPETENCY_IDS:
-            assert competency.framework_id is not None
 
 
 def test_the_gloucestershire_record_carries_every_signed_line() -> None:
@@ -622,28 +607,22 @@ def test_the_gloucestershire_record_carries_every_signed_line() -> None:
         "acquaintance_with_referral_and_consent",
     ]
 
-    items = framework_competencies("ghnft_radiotherapy_record")
+    items = files_catalogue().competencies["ghnft_radiotherapy_record"]
 
     assert [c.id for c in items] == [prefix + e for e in expected]
-    assert all(c.id in FRAMEWORK_COMPETENCY_IDS for c in items)
+    assert all(c.id not in COMPETENCY_IDS for c in items)
 
 
 def test_the_real_framework_ids_are_refused_as_grants() -> None:
-    with pytest.raises(ValueError, match="granted to nobody"):
+    with pytest.raises(ValueError, match="Only a permission may be granted"):
         validate_competency_ids(["ruh_sact_passport_ctcae_grading"])
 
 
-def test_a_framework_id_is_refused_where_competencies_are_granted(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    from app.cbac import competencies
-
-    monkeypatch.setattr(
-        competencies, "FRAMEWORK_COMPETENCY_IDS", ("perform_cannulation",)
-    )
-
-    with pytest.raises(ValueError, match="granted to nobody"):
-        validate_competency_ids(["perform_cannulation"])
+def test_a_permission_is_still_granted() -> None:
+    """The refusal of framework ids takes nothing from the permissions."""
+    assert validate_competency_ids(["perform_cannulation"]) == [
+        "perform_cannulation"
+    ]
 
 
 def test_expires_after_months_is_read(tmp_path: Path) -> None:
@@ -663,7 +642,7 @@ def test_the_real_catalogue_has_a_levelled_competency() -> None:
     Levels reached the catalogue for the clinician passport; CBAC
     ignores them, so nothing else would notice them disappearing.
     """
-    levelled = [c for c in COMPETENCIES if c.levels]
+    levelled = [c for c in files_catalogue().entries.values() if c.levels]
 
     assert levelled, "Expected at least one competency to declare levels"
     assert all(
@@ -716,20 +695,3 @@ def test_competency_entry_is_not_assessable_unless_it_says_so() -> None:
     """Opt-in, so a permission added for access control stays out of
     the passport until somebody decides it belongs there."""
     assert CompetencyEntry(id="x", display_name="X").assessable is False
-
-
-def test_assessable_ids_hold_skills_and_no_permissions() -> None:
-    assert "clinical_perform_cannulation" in ASSESSABLE_COMPETENCY_IDS
-    assert "uk_sact_board_2023_prescribe_sact" in ASSESSABLE_COMPETENCY_IDS
-    for permission in (
-        "perform_cannulation",
-        "manage_users",
-        "access_own_patient_records",
-        "passport_write",
-        "assess_clinician_passport",
-    ):
-        assert permission not in ASSESSABLE_COMPETENCY_IDS
-
-
-def test_assessable_ids_are_all_active() -> None:
-    assert not set(ASSESSABLE_COMPETENCY_IDS) & set(RETIRED_COMPETENCY_IDS)

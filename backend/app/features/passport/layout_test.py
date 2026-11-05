@@ -16,6 +16,7 @@ from app.features.passport import (
     schemas,
     store,
 )
+from tests.frameworks import files_catalogue
 
 PASSPORT_ID = "3f2a8c1e4b7d49f0a6c2e8b1d5a7f309"
 NOW = datetime(2026, 3, 14, 14, 32, 7, tzinfo=UTC)
@@ -68,9 +69,17 @@ def _write(
 def test_a_first_record_is_placed_by_the_catalogue(
     passport: store.LocalPassportStore,
 ) -> None:
-    assert layout.framework_for(passport, PASSPORT_ID, CANNULATION) == (
-        "clinical"
-    )
+    assert layout.framework_for(
+        passport, PASSPORT_ID, CANNULATION, files_catalogue()
+    ) == ("clinical")
+
+
+def test_a_competency_filed_nowhere_has_nothing_to_read(
+    passport: store.LocalPassportStore,
+) -> None:
+    """A read is given no catalogue, so nothing filed is nothing found."""
+    with pytest.raises(layout.NothingFiledError, match="no record"):
+        layout.framework_for(passport, PASSPORT_ID, CANNULATION)
 
 
 def test_a_competency_already_filed_is_found_where_it_is(
@@ -99,7 +108,9 @@ def test_a_permission_has_nowhere_to_be_filed(
     passport: store.LocalPassportStore,
 ) -> None:
     with pytest.raises(paths.PassportPathError, match="no framework"):
-        layout.framework_for(passport, PASSPORT_ID, "perform_cannulation")
+        layout.framework_for(
+            passport, PASSPORT_ID, "perform_cannulation", files_catalogue()
+        )
 
 
 def test_a_logbook_entry_lands_under_its_framework_and_competency(
@@ -111,6 +122,7 @@ def test_a_logbook_entry_lands_under_its_framework_and_competency(
         actor,
         CANNULATION,
         schemas.LogbookEntry(performed_on=NOW.date()),
+        catalogue=files_catalogue(),
         now=NOW,
     )
 
