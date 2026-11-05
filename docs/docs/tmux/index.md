@@ -116,8 +116,10 @@ after every message you send. It works only in a `q` session, the
 ones `just c` makes, and in Owl's `owl` session. It does nothing
 anywhere else.
 
-1. It sends the current title and your last five messages to a small
-   Claude model, Haiku.
+1. It sends the current title, your previous message and your newest
+   one to a small Claude model, Haiku. The title already sums up what
+   came before, and older messages would hold it back from noticing a
+   new goal.
 2. The model is asked: "If this conversation were starting now, would
    you name it differently?"
 3. On the first message it names the conversation in three to six
