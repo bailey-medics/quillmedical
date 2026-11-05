@@ -72,6 +72,8 @@ export type {
   EvidenceSnapshot,
   FrameworkChoice,
   FrameworkRef,
+  FrameworkSyncRun,
+  FrameworkSyncStatus,
   EvidenceScan,
   EvidenceUpload,
   InvitePreview,

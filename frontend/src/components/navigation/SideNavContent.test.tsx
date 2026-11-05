@@ -1313,6 +1313,30 @@ describe("SideNavContent Component", () => {
     });
   });
 
+  describe("Passport under Admin", () => {
+    // Found by its address: the holder's own passport link has the same
+    // label.
+    const adminPassportLink = () =>
+      screen
+        .queryAllByRole("link")
+        .find((link) => link.getAttribute("href") === "/admin/passport");
+
+    it("offers it to somebody who operates Quill", async () => {
+      renderWithAuth(<SideNavContent />, "superadmin", {
+        initialRoute: "/admin",
+      });
+
+      await waitFor(() => expect(adminPassportLink()).toBeDefined());
+    });
+
+    it("hides it from an administrator who does not operate Quill", async () => {
+      renderWithAuth(<SideNavContent />, "admin", { initialRoute: "/admin" });
+
+      await screen.findByText("Admin");
+      expect(adminPassportLink()).toBeUndefined();
+    });
+  });
+
   describe("Newsletter under Admin", () => {
     it("offers it to somebody who operates Quill", async () => {
       renderWithAuth(<SideNavContent />, "superadmin", {
