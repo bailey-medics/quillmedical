@@ -534,16 +534,23 @@ still in this repository, so nothing changes for anybody until it works.
       `backend/app/features/passport/tooling/check_framework_version.py`
       names Gloucestershire: a framework on it may go back to exactly 1,
       with nothing else changed.
-- [ ] **Empty `STARTED_AGAIN` once the fresh start has merged**, in the
+- [x] **Empty `STARTED_AGAIN` once the fresh start has merged**, in the
       next pull request, and its test with it. The name matters only
       while `main` still holds version 2; after that it would let the
-      record go back to 1 a second time.
-- [ ] **Delete the passports used to try out the Gloucestershire
+      record go back to 1 a second time. **Done on 5 November 2026**,
+      on top of the passport stack: `main` holds the record at version
+      1, and `test_no_framework_is_started_again` pins the empty list.
+      The three tests of the exception itself stay, each naming its own
+      framework.
+- [x] **Delete the passports used to try out the Gloucestershire
       record**, with the `delete-passport` admin action, which archives
       each one first. Their sign-offs name version 2, which no longer
       exists, so Phase 7's refusal would stop them being read. Needs
       the product owner: the usernames go in
-      `PASSPORT_DELETABLE_USERNAMES`.
+      `PASSPORT_DELETABLE_USERNAMES`. **Done on 4 November 2026**: the
+      two passports in App production, `mark.bailey.superadmin` and
+      `jessica.bailey`, were deleted by the admin job, each archived for
+      30 days first, and the passport bucket is now empty.
 
 - [x] **A framework pipeline**, `.github/workflows/framework-pipeline.yml`,
       shaped like `teaching-pipeline.yml`: on a pull request it validates
