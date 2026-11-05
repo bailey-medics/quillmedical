@@ -159,14 +159,16 @@ def _forget_the_stored_catalogue() -> Generator[None]:
 
 @pytest.fixture
 def stored_frameworks(db_session: Session) -> Session:
-    """The framework tables, filled from shared/ as a deploy fills them.
+    """The framework tables, filled from the framework fixtures.
 
-    For a test that reads the frameworks from the tables. Returns the
-    session the frameworks were stored in.
+    For a test that reads the frameworks from the tables, as a deploy
+    fills them, from shared/framework-fixtures/. Returns the session the
+    frameworks were stored in.
     """
     from app.features.passport.sync import sync_frameworks
+    from app.paths import FRAMEWORK_FIXTURES_DIR
 
-    result = sync_frameworks(db_session)
+    result = sync_frameworks(db_session, FRAMEWORK_FIXTURES_DIR)
     assert result.succeeded, result.error
     db_session.commit()
 

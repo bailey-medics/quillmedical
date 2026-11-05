@@ -17,7 +17,6 @@ from fastapi.testclient import TestClient
 from sqlalchemy import update
 from sqlalchemy.orm import Session
 
-from app.cbac.competencies import COMPETENCY_DEFINITIONS_DIR
 from app.features.passport import catalogue, frameworks, schemas
 from app.features.passport.frameworks import frameworks_for
 from app.features.passport.models import (
@@ -31,6 +30,7 @@ from app.main import app
 from app.models import OrgUnit, OrgUnitFeature, User
 from app.organisations import add_org_unit_member
 from app.passport_storage import get_passport_store
+from app.paths import FRAMEWORK_FIXTURES_DIR
 from app.security import hash_password
 from tests.competencies import hold
 from tests.frameworks import files_catalogue
@@ -472,7 +472,7 @@ class TestTheHoldersRoutes:
         would be after a framework repository merges.
         """
         holder_client.post("/api/passport", json={"frameworks": [ONCOLOGY]})
-        source = COMPETENCY_DEFINITIONS_DIR / f"{ONCOLOGY}.yaml"
+        source = FRAMEWORK_FIXTURES_DIR / f"{ONCOLOGY}.yaml"
         framework = next(
             f
             for f in list(files_catalogue().frameworks.values())
