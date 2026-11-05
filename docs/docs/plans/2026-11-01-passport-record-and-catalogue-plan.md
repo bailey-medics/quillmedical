@@ -116,7 +116,7 @@ it is built.
       named all sixteen ids in `REMOVED_ON_PURPOSE` in
       `.github/scripts/ci/check-competencies-not-deleted.sh`, the check's
       one exception, for an id already retired on the base ref.
-- [ ] **Empty `REMOVED_ON_PURPOSE` now that #2335 has merged.** The
+- [x] **Empty `REMOVED_ON_PURPOSE` now that #2335 has merged.** The
       sixteen ids are no longer on `main`, so the list does nothing, and
       an exception left open is one somebody can lean on later. A pull
       request of its own, on a new branch off `origin/main` such as
@@ -1246,7 +1246,7 @@ reads the repositories, not a bucket" in Decisions.
       the passport still said permissions and passports share one registry
       and one set of ids, which stopped being true on 2 November; that
       paragraph was corrected too.
-- [ ] **Put the deletion check back**, in the next unit, once the five
+- [x] **Put the deletion check back**, in the next unit, once the five
       are deleted: `removable_ids` accepts only an id retired on the base
       ref, exactly as before; `REMOVED_ON_PURPOSE` is empty, with the
       comment Phase 2's step gives it; the skipped test runs again; and
@@ -1260,8 +1260,11 @@ reads the repositories, not a bucket" in Decisions.
       that deletes them with an empty list fails. Built on 4 November 2026
       and held back for that reason. When it is built: `name_on_the_list`
       must add a newline after the id, because an empty list is
-      `REMOVED_ON_PURPOSE=()` on one line.
-- [ ] **Tests**: `bash .github/scripts/ci/check-competencies-not-deleted.sh
+      `REMOVED_ON_PURPOSE=()` on one line. **Built on 5 November 2026**,
+      once #2380 had merged, from the change held back on 4 November:
+      `removable_ids` is back to its form before #2380, and the "while
+      lifted" test is gone.
+- [x] **Tests**: `bash .github/scripts/ci/check-competencies-not-deleted.sh
       origin/main` and `just ts .github/scripts/ci` after each unit, and
       `just ub` and `just uf` in full after the first, because it changes
       shared YAML and its generated types.
@@ -1351,6 +1354,15 @@ reads the repositories, not a bucket" in Decisions.
       four journeys in `docs/docs/frontend/accessibility/journeys.md` is
       made by one, so nothing joins the "Not yet run" list in
       `testing-log.md`.
+
+- **Found on 5 November 2026: the first press said "No framework versions
+  were given."** The button starts `quill-framework-sync-app`, which reads
+  only the four framework repositories, and all four were still empty. App
+  production kept its frameworks all the same, because every deploy's
+  `run-migrations` also syncs the tables from the framework files bundled in
+  that build, `shared/competency-definitions/`, until Phase 8 moves them
+  out. The message should say the repositories hold no frameworks yet; a
+  small change still to make.
 
 ## Phase 15: A framework repository for testing
 
