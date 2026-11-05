@@ -1807,6 +1807,27 @@ stack-new name message:
         if [ "$(git branch --show-current)" != "${branch}" ]; then
             git switch "${branch}"
         fi
+
+        # A run stopped after `git switch -c` and before `gh stack init`
+        # leaves the branch made but in no stack, and a re-run that skipped
+        # init would commit onto it unregistered: stack-submit then pushes
+        # nothing. Finish the init, but only for a branch with no commits
+        # of its own, which is what that half-made branch is. Exit 1 from
+        # --check means no stack here; anything else is left to the draw.
+        in_stack=0
+        python3 "{{stack_scripts}}"/stack-status.py --check >/dev/null 2>&1 || in_stack=$?
+
+        if [ "${in_stack}" -eq 1 ]; then
+            git fetch origin main --quiet || true
+
+            if [ "$(git rev-list --count origin/main..HEAD)" -ne 0 ]; then
+                echo "✗ ${branch} already has commits of its own and is in no stack." >&2
+                echo "  Start the stack from a new name, or ask what the branch holds." >&2
+                exit 1
+            fi
+
+            gh stack init "${branch}"
+        fi
     else
 
         # A new stack is cut from wherever the checkout is, so it has to be
