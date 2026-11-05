@@ -308,8 +308,9 @@ class TestRunMigrations:
             patch.dict(os.environ, env, clear=False),
             patch("alembic.command.upgrade") as mock_upgrade,
             patch(
-                "app.features.passport.sync.main", return_value=0
-            ) as mock_sync,
+                "scripts.admin_cli.grant_framework_sync_role", return_value=0
+            ),
+            patch("scripts.admin_cli.sync_frameworks", return_value=0),
         ):
             from scripts.admin_cli import run_migrations
 
@@ -319,22 +320,51 @@ class TestRunMigrations:
         mock_upgrade.assert_called_once()
         # Second positional arg is the target revision.
         assert mock_upgrade.call_args[0][1] == "head"
-        mock_sync.assert_called_once_with([])
 
-    def test_a_refused_framework_sync_fails_the_deploy(self) -> None:
-        """As a failed migration does: the new revision must not serve."""
+    def test_the_frameworks_are_synced_from_their_repositories(self) -> None:
+        """Not from the framework files this build happens to carry."""
         env = {"ADMIN_ACTION": "run-migrations"}
 
         with (
             patch.dict(os.environ, env, clear=False),
             patch("alembic.command.upgrade"),
-            patch("app.features.passport.sync.main", return_value=1),
+            patch(
+                "scripts.admin_cli.grant_framework_sync_role", return_value=0
+            ),
+            patch(
+                "scripts.admin_cli.sync_frameworks", return_value=0
+            ) as repositories,
+            patch("app.features.passport.sync.main") as files,
+        ):
+            from scripts.admin_cli import run_migrations
+
+            run_migrations()
+
+        repositories.assert_called_once_with()
+        files.assert_not_called()
+
+    def test_a_failed_framework_sync_does_not_stop_the_deploy(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """The frameworks are content, not this build: a framework
+        repository's problem is recorded on /admin/passport, and the new
+        revision still serves."""
+        env = {"ADMIN_ACTION": "run-migrations"}
+
+        with (
+            patch.dict(os.environ, env, clear=False),
+            patch("alembic.command.upgrade"),
+            patch(
+                "scripts.admin_cli.grant_framework_sync_role", return_value=0
+            ),
+            patch("scripts.admin_cli.sync_frameworks", return_value=1),
         ):
             from scripts.admin_cli import run_migrations
 
             result = run_migrations()
 
-        assert result == 1
+        assert result == 0
+        assert "deploy carries on" in capsys.readouterr().err
 
     def test_a_failed_migration_never_syncs(self) -> None:
         env = {"ADMIN_ACTION": "run-migrations"}
@@ -345,7 +375,7 @@ class TestRunMigrations:
                 "alembic.command.upgrade",
                 side_effect=RuntimeError("lock timeout"),
             ),
-            patch("app.features.passport.sync.main") as mock_sync,
+            patch("scripts.admin_cli.sync_frameworks") as mock_sync,
         ):
             from scripts.admin_cli import run_migrations
 

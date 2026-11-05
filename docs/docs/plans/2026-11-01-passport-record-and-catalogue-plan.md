@@ -630,7 +630,7 @@ still in this repository, so nothing changes for anybody until it works.
       repository has no `main` for a pull request to target, so the first
       commit is pushed straight to `main`, and these rules refuse that
       push.
-- [ ] **Lay each one out like a teaching repository**: a `frameworks/`
+- [x] **Lay each one out like a teaching repository**: a `frameworks/`
       folder holding one file per framework, a README saying what the
       repository is and who publishes it, the publisher's licence for the
       wording, and the `cspell.config.json` the teaching repositories
@@ -642,7 +642,7 @@ still in this repository, so nothing changes for anybody until it works.
       licence for the wording, are the product owner's, so this step waits
       for them while the parts in this repository are built.
 
-- [ ] **Let the four repositories sign in as the content account.**
+- [x] **Let the four repositories sign in as the content account.**
       **Found on 3 November 2026: it is set by hand, with `gcloud`, in
       two places**, both in `quill-medical-app`, as the
       environment isolation plan's Phase on workload identity recorded on
@@ -683,6 +683,15 @@ still in this repository, so nothing changes for anybody until it works.
       pull request from a fork no sign-in token, so only a merge to
       `main`, by somebody with write access, can sign in. Moving this into
       Terraform is left for another plan.
+      **Done on 5 November 2026**, by the product owner, from a script
+      that also added the four repositories to the organisation secret
+      `SLACK_WEBHOOK_URL`. The condition kept the four repositories it
+      already admitted. `GCP_WORKLOAD_IDENTITY_PROVIDER` and
+      `GCP_SERVICE_ACCOUNT` were set in each repository with
+      `gh secret set`. The first re-run of a `deploy` job, a minute
+      later, was refused `iam.serviceAccounts.getAccessToken` while the
+      new bindings took effect; the next, four minutes on, started
+      `quill-framework-sync-app`, which wrote nothing new.
 - [ ] **The `workflow` scope is needed only for a push over HTTPS.**
       GitHub refuses a push that adds a file under `.github/workflows/`
       through a token without that scope. This machine pushes over SSH,
@@ -1026,14 +1035,52 @@ reads the repositories, not a bucket" in Decisions.
 
 ## Phase 8: Move the frameworks out of this repository
 
-- [ ] **Copy each framework into its publisher's repository**, at its
+- [x] **Copy each framework into its publisher's repository**, at its
       current version, through that repository's own pull request, and
       let the pipeline sync it. The sync already holds each version from
       Phase 5, so an unchanged file is a no-op: nothing moves for anybody.
-- [ ] **Point the sync at GCS**, where the pipeline deploys, in place of
-      `shared/competency-definitions/`, as teaching's does.
+      **Done on 5 November 2026.** Each repository's first commit, a
+      README, the licence, `cspell.config.json` and the caller
+      `.github/workflows/framework.yml`, went straight to `main` with the
+      `framework-protected-branches` ruleset switched off for the pushes
+      and on again after; the ruleset has no bypass, and an empty
+      repository cannot report the checks it requires. Then pull request
+      #1 in each added `frameworks/<id>.yaml`, identical to this
+      repository's copy below its first comment line. `validate` and
+      `check-protection` passed in all four. Each merge's `deploy` job
+      failed, because the repositories hold none of their three secrets
+      yet, and "Sync frameworks" at `/admin/passport` then said every
+      framework was up to date. The wording is under Quill's licence, the
+      GNU Affero General Public License version 3, until each publisher
+      gives its own.
+- [x] **Point the deploy's sync at the framework repositories**, in place
+      of `shared/competency-definitions/`. Rewritten on 5 November 2026:
+      this step said "point the sync at GCS", but the bucket was dropped
+      on 4 November (see "Read the repositories, not a bucket"). What is
+      left is the sync in `run-migrations`, in `backend/scripts/admin_cli.py`,
+      which every deploy runs after migrating and which still reads the
+      framework files bundled in the build. It is what kept App production's
+      frameworks through the fresh start on 4 November. It either calls
+      `sync_from_repositories` with `FRAMEWORK_REPOSITORIES`, as the
+      sync job does, or stops syncing, leaving the pipeline and the
+      "Sync frameworks" button as the only ways in. My reading is the
+      first, so a deploy still heals a missed sync.
+      **Built on 5 November 2026, as the first.** `run_migrations` calls
+      `sync_frameworks`, the job's own action, and `FRAMEWORK_REPOSITORIES`
+      moves to `local.framework_repositories` in `infra/main.tf`, read by
+      both jobs. **A failure no longer stops the deploy**, which departs
+      from Phase 5's "a refusal blocks the deploy": that rule was right
+      while the files came with the build, and a bad file meant a bad
+      build. Now a framework repository's problem says nothing about the
+      build, so the deploy prints it and carries on, and the run is on
+      `/admin/passport`. The first deploy of this change may run before
+      Terraform gives the admin job `FRAMEWORK_REPOSITORIES`; it then
+      prints "not set" and carries on, with the tables as they were.
+      `just migrate-local` still syncs the dev stack from the files; the
+      next step changes that, since it deletes them.
 - [ ] **Delete the framework files from this repository**, in a later
-      deploy than the one that points the sync at GCS, so App production
+      deploy than the one that points the deploy's sync at the
+      repositories, so App production
       never runs without a source. `check-competencies-not-deleted.sh` is
       narrowed to permissions in the same pull request, because the
       framework repositories now carry that check.
@@ -1405,6 +1452,96 @@ reads the repositories, not a bucket" in Decisions.
       nothing in this phase is built before it is settled.
 - [ ] **Tests**: the integration test above, and the end-to-end stack
       unchanged.
+
+## What happened on 5 November 2026, in order
+
+Recorded at the product owner's request, so the day reads in the order it
+was done and learnt.
+
+1. **`STARTED_AGAIN` was emptied in #2385.** `main` already held
+   Gloucestershire's record at version 1, so the list could only have let
+   it go back to 1 a second time. The step for deleting the try-out
+   passports was ticked too: the admin job had deleted the two in App
+   production on 4 November.
+
+2. **The whole passport stack had merged.** #2354 to #2382, #2367 and
+   #2385 were deployed to App production by 08:39.
+
+3. **The first press of "Sync frameworks" said "No framework versions
+   were given."** That was at 14:05. All four framework repositories were
+   still empty, with no commits at all, so the job had nothing to read.
+
+4. **App production still had its frameworks, which was not what we
+   first thought.** A logbook entry saved, and that is impossible against
+   an empty catalogue, because `framework_for` refuses a competency no
+   framework holds. Every deploy's `run-migrations` syncs the tables from
+   the framework files bundled in the build. That sync wrote all four back
+   at version 1 at 12:59 on 4 November, straight after the fresh start
+   emptied the tables. So "Sync frameworks" reads only the repositories,
+   and the deploy reads only this repository's files. Phase 8's step is
+   rewritten for this.
+
+5. **The deletion check went back, in #2389.** #2380 had merged, so
+   `removable_ids` was returned to accepting only retired ids, and
+   `REMOVED_ON_PURPOSE` was emptied. That closed Phase 13 and Phase 2's
+   step together.
+
+6. **The empty-repository message was fixed, in #2390.** It now says "The
+   framework repositories hold no frameworks yet, so nothing was stored.",
+   or "No framework repositories are set up here." where none is named.
+
+7. **The licence was settled for now.** The product owner chose Quill
+   Medical's own, the GNU Affero General Public License version 3, for all
+   four, until each publisher gives its own.
+
+8. **GitHub refused the first push to `main`.** The
+   `framework-protected-branches` ruleset requires "pipeline / validate"
+   and "pipeline / check-protection" on `main` and has no bypass. An empty
+   repository cannot report either, because the caller that runs them
+   arrives in that first commit. The harness refused to switch the ruleset
+   off, so the product owner ran a script that switched it off, pushed the
+   four starter commits and switched it back on as it ended. Each starter
+   commit was a README, the licence, `cspell.config.json` and the caller
+   `.github/workflows/framework.yml`.
+
+9. **The pipeline opened the pull requests itself.** Pushing
+   `feature/add-the-framework-at-version-1` in each repository ran
+   `auto-pr`, which opened draft pull request #1. `validate` and
+   `check-protection` passed in all four with no secrets set, because
+   neither signs in to anything. Each push to `main` failed at `deploy`,
+   which does sign in.
+
+10. **The four framework pull requests merged, and a press found nothing
+    new.** "Sync frameworks" at 15:04 said every framework was up to
+    date, so the job had cloned all four and matched version 1 of each
+    against the tables.
+
+11. **The secrets and the sign-in were set.** `GCP_WORKLOAD_IDENTITY_PROVIDER`
+    and `GCP_SERVICE_ACCOUNT` are identifiers, so they were set in each
+    repository with `gh secret set`. The harness refused the IAM change as
+    a permission grant, so the product owner ran a second script. It
+    widened `github-provider`'s condition to admit the four repositories
+    from `main` only, keeping the four it already admitted. It bound each
+    repository to `content-sync`, and it added the four to the
+    organisation secret `SLACK_WEBHOOK_URL`.
+
+12. **A new IAM binding takes a few minutes to work.** The first re-run of
+    General clinical skills' `deploy` job, a minute later, signed in
+    through the provider but was refused
+    `iam.serviceAccounts.getAccessToken`. Its Slack message said "A
+    refused version is named in its log", which is misleading when the
+    sync never started. The re-run four minutes later passed and started
+    `quill-framework-sync-app`, which wrote nothing new.
+
+What this leaves:
+
+- **The other three repositories' merge runs still show as failed.**
+  They need nothing, because their next merge signs in the same way.
+
+- **The Slack failure message names a refused version even when the sync
+  never started.** It could say which step failed. Not yet planned.
+
+- **Phase 8 comes next**, from its rewritten first step.
 
 ## Decisions
 

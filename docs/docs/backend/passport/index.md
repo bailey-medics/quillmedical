@@ -330,6 +330,13 @@ record began at 2, because its pilot edition was never numbered, so on
 4 November 2026 it went back to 1 and a migration emptied the framework
 tables for the next deploy's sync to fill afresh.
 
+Every deploy catches the tables up too. The admin job's `run-migrations`
+runs the same `sync-frameworks` action after migrating, so a merge whose
+pipeline failed to start the job is caught up by the next deploy. Its
+failure is printed and the deploy carries on, because the frameworks live
+in their own repositories and are not part of the build. Until 5 November
+2026 this step read the framework files bundled in the build instead.
+
 In App production a framework repository's pipeline starts the
 `quill-framework-sync-app` job when the repository merges, and uploads
 nothing. The job's one action, `sync-frameworks`, runs
