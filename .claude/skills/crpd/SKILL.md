@@ -711,6 +711,10 @@ to start a stack anywhere but the tip of `origin/main`, and says to run
      before.** In terms of what someone using the thing would see. Never
      a paraphrase of the title, and never a sentence that only parses if
      you already know the answer.
+   - **Name the screen, and explain the domain words.** "What someone
+     would see" means a named page or route, not "a form" or "the table".
+     A domain word the change turns on, such as a framework's "level" or
+     "scope", gets its short explanation here, the first time it appears.
    - **If you do link something - a plan, a document - use a full
      `https://github.com/…/blob/main/…` URL.** GitHub does not resolve a
      relative path in a pull request body.
@@ -734,7 +738,16 @@ to start a stack anywhere but the tip of `origin/main`, and says to run
      place, not a list.
    - **`Check for me`** - the one thing the reader must agree with before
      merging, written as a request. "Nothing in particular" is allowed for
-     a `tiny` change.
+     a `tiny` change. **It must make sense read on its own**: what
+     happens, where in the code or on which page, and the alternative you
+     did not choose, so the reader can say yes or pick the other one.
+
+     > ✗ "that asking again at a higher level, after the old level
+     > retired, counting as a progression is right."
+     >
+     > ✓ "When a level retires, a learner who asks for a sign-off at a
+     > higher level counts as a progression (`SignOffKind` in
+     > `schemas.py`). Is that right, or should it be a fresh request?"
 
    There is no review-time line: the Size line carries what the reader
    triages on.
@@ -808,17 +821,52 @@ to start a stack anywhere but the tip of `origin/main`, and says to run
 
    **Give every name three or four words saying what it is, the first
    time it appears:** "`org_unit`, a node in the governance tree: a trust,
-   a hospital or a ward". Bare after that.
+   a hospital or a ward". Bare after that. **This covers domain words as
+   well as identifiers**: "a level, the grade a sign-off is given at" is
+   as much a name as `org_unit` is, and the reader needs it just as much.
 
    **Never point at something with a bare noun phrase.** "The new list",
-   "the form", "that gate" ask the reader to guess which thing is meant.
+   "the form", "the loader", "the routes", "the tables" ask the reader to
+   guess which thing is meant.
+
+   **Each kind of thing has one way to be named:**
+
+   - **A route**: its method and path,
+     `POST /api/passport/{passport_id}/competencies/{competency_id}/requests`.
+   - **A page or form**: its on-screen title and URL, or its component
+     name.
+   - **A table or column**: `passport_framework_level.retired_on`.
+   - **A function**: its name and file, `level_ref` in
+     `backend/app/features/passport/definitions.py`.
+   - **A test**: its file and the test's name.
+   - **Another pull request**: its number, `#2365`. Never "the pull
+     request below".
+   - **A migration**: its id and what it adds.
+   - **A count**: the things counted. Not "four nullable columns" but
+     "`retired_on` and `retired_in_version`, on both tables".
 
    > ✗ "The new list is added beside the old ones."
    >
    > ✓ "`place_ids` is added beside `organisation_ids` and `site_ids`."
 
+   > ✗ "So the `xfail` test from the pull request below stays."
+   >
+   > ✓ "So `test_asking_again_at_a_higher_level_after_the_old_one_went`,
+   > the `xfail` test from #2365, stays."
+
+   > ✗ "The routes refuse a retired level or scope."
+   >
+   > ✓ "`POST /api/passport/{passport_id}/competencies/{competency_id}/requests`
+   > refuses a retired level or scope."
+
    This holds for the branch below too. A reader arrives at one pull
    request in a stack, not at all of them in order.
+
+   **Before scoring, do a "which one?" pass.** Read each sentence as if
+   it were the only one on the screen. Wherever "the X", "it", "one" or
+   "a form" leaves you asking "which?" or "what is that?", put the name
+   in, in the form above. Check the name against the diff, not your
+   memory of it.
 
    ### Punctuation and spelling
 
@@ -872,7 +920,10 @@ to start a stack anywhere but the tip of `origin/main`, and says to run
      `a guess`. No word means you are sure. Do not hedge with "may",
      "should" or "I believe". A departure from the plan opens with
      "Departed from the plan:". Following the plan is not a decision. Omit
-     the section when there genuinely were none.
+     the section when there genuinely were none. **Each bullet makes sense
+     on its own**: it names the code or the page the choice lives in, so
+     "the loader" is `_check_part_retirement` in
+     `backend/app/cbac/competencies.py`.
 
    - **`## Risks`** - security, data leaks, patient safety, anything that
      could go wrong beyond the code being incorrect. **Always present**,
@@ -920,8 +971,10 @@ to start a stack anywhere but the tip of `origin/main`, and says to run
      two bullets, and swap a long word that is not a name for a short
      one. Never change a name, a fact or a bold lead: a body that reaches
      70 by calling `GCP_DEPLOY_SERVICE_ACCOUNT` "the account" has lost
-     what the reader needed. Write the result to `attempt-2.md` and score
-     it the same way.
+     what the reader needed. **Never cut a name or its explanation to
+     raise the score.** A name added by the "which one?" pass that lowers
+     the score is correct; split the sentence it sits in instead. Write
+     the result to `attempt-2.md` and score it the same way.
    - **Still under 70, rewrite once more, then stop.** `attempt-3.md` is
      the last. Three is the ceiling because every pass costs a reading of
      the whole body, and a body full of identifiers will not reach 70 on
