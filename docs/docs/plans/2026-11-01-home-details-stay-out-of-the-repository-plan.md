@@ -154,21 +154,21 @@ the repository has no forks. `audit/ledger.tsv` records file content
 hashes, not commit hashes, and the remote-dev plan is not in it, so the
 rewrite leaves the ledger valid.
 
-- [ ] Pick a quiet moment. Nothing in the merge queue, no deploy
+- [x] Pick a quiet moment. Nothing in the merge queue, no deploy
   running, and every worktree on the box and the Mac clean, with its
   commits pushed: a local commit that was never pushed is left on the
   old history and has to be moved by hand. Open pull requests (nine on
   1 November 2026) need not be merged first, because the rewrite
   carries their branches across with everything else.
 
-- [ ] Make a fresh `git clone --mirror` in the scratch folder, never in
+- [x] Make a fresh `git clone --mirror` in the scratch folder, never in
   a worktree, and run `git filter-repo --replace-text` over it, with
   each literal mapped to the Phase 1 placeholder. The expressions file
   holds the literals, so it lives in `local/` and is deleted after.
   `filter-repo` also rewrites any short commit hash quoted in a commit
   message to the new one, so cross-references inside history survive.
 
-- [ ] Check the result before anything is pushed. `git log --all -S`
+- [x] Check the result before anything is pushed. `git log --all -S`
   for each literal finds nothing. For every branch, `git diff
   <old tip> <new tip>` is empty, because Phase 1 already changed the
   tip; any branch where it is not empty still held a literal and is
@@ -198,24 +198,45 @@ rewrite leaves the ledger valid.
   remote-dev plan, and the rewrite gives it the placeholders. Deleting
   that branch before the live run is simpler.
 
-- [ ] Mark lifts the `protected-branches` ruleset on `main`, whose
+- [x] Mark lifts the `protected-branches` ruleset on `main`, whose
   `non_fast_forward` rule refuses the force-push: in the GitHub UI, set
   its enforcement to disabled. The ruleset is managed by Terraform in
   `infra/github/branch_rules.tf`, so this is drift for the length of
   the push, and the next step puts it back.
 
-- [ ] Force-push every branch from the mirror with `git push --force
+- [x] Force-push every branch from the mirror with `git push --force
   origin 'refs/heads/*:refs/heads/*'`, not `--mirror`: GitHub refuses
   writes to the `refs/pull/*` refs a mirror carries, and the push would
   fail part-way. Then Mark sets the ruleset back to active, and a `terraform
   plan` in `infra/github` shows no change.
 
-- [ ] Bring every worktree on the box and the Mac across: `git fetch`,
+  Done on 5 November 2026, with one change: only the branches whose tip
+  the rewrite changed were pushed, each with `--force-with-lease`
+  against the tip recorded when the mirror was made, and `--atomic`.
+  The other branches were unchanged, so pushing them did nothing, and
+  the lease meant a branch moved by a merge or by Renovate in the
+  meantime would be refused rather than overwritten. The rewrite
+  covered 367 commits and changed the tips of 4 of the 71 branches,
+  `main` among them. No branch's files changed and the commit count
+  stayed at 5,932. 193 merge commits on `main` lost their signatures,
+  and 2,299 kept theirs. Afterwards all 71 branches on GitHub matched
+  the cleaned mirror. The ruleset went back to active straight after;
+  the `terraform plan` has not been run yet.
+
+- [x] Bring every worktree on the box and the Mac across: `git fetch`,
   then `git reset --hard origin/<branch>` on each branch that was clean
   and pushed, and delete local branches that no longer exist on the
   remote. Then check that `just stl` still draws each stack, because
   the stack tooling records which branch sits on which. The shared
   stash stack points at old commits and is left alone.
+
+  Done on 5 November 2026. Every worktree on both machines was clean,
+  and each moved to the new `main`, or to its own rewritten branch.
+  Local branches that had merged were deleted, and so, at Mark's
+  request, were the old ones whose work never merged. Every branch left
+  on either machine matches GitHub. The old commits are still in each
+  machine's object store until garbage collection, but nothing points
+  at them, so none can be pushed.
 
 - [ ] Mark asks GitHub Support to remove cached views of the old
   commits, naming #2190 and #2207. A pull request keeps its own
@@ -223,6 +244,12 @@ rewrite leaves the ledger valid.
   readable on GitHub until Support removes it; the force-push cannot
   reach either. GitHub's guide to removing sensitive data from a
   repository describes the request.
+
+  After the push, 180 of the repository's `refs/pull/*/head` refs still
+  pointed at the old history, not only the two for #2190 and #2207,
+  because every pull request opened since 25 October was built on it.
+  The request names them all: every pull request whose commits are on
+  the history descended from `e4a5024a`.
 
 ## Phase 5: Make the old values stale
 
