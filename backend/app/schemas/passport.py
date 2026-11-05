@@ -313,6 +313,42 @@ class FrameworkChoiceOut(BaseModel):
     items: int = Field(ge=0)
 
 
+class FrameworkScopeOut(BaseModel):
+    """One part of practice a framework competency is signed off for."""
+
+    id: NonEmptyText
+    name: NonEmptyText
+
+
+class FrameworkCompetencyOut(BaseModel):
+    """One competency of a framework, as its newest version holds it.
+
+    Retired ones are listed too, with ``retired_on`` and
+    ``retired_in_version`` set, so a page can still name a record held
+    against one. Levels and scopes are in the order the framework lists
+    them, which is the scale's order.
+    """
+
+    id: CompetencyIdField
+    display_name: NonEmptyText
+    levels: list[LevelOptionOut] = Field(default_factory=list)
+    scopes: list[FrameworkScopeOut] = Field(default_factory=list)
+    expires_after_months: int | None = None
+    retired_on: date | None = None
+    retired_in_version: int | None = None
+
+
+class FrameworkDefinitionOut(BaseModel):
+    """One framework in full, at its newest version, as the tables hold it."""
+
+    id: CompetencyIdField
+    name: NonEmptyText
+    publisher: NonEmptyText
+    version: int = Field(ge=1)
+    specialties: list[CompetencyIdField] = Field(default_factory=list)
+    competencies: list[FrameworkCompetencyOut] = Field(default_factory=list)
+
+
 class CompetencyStateOut(BaseModel):
     """One competency's state, from the derived index.
 

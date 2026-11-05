@@ -99,11 +99,15 @@ from app.schemas.passport import (
     EvidenceScanOut,
     EvidenceUploadOut,
     FrameworkChoiceOut,
+    FrameworkCompetencyOut,
+    FrameworkDefinitionOut,
     FrameworkOut,
+    FrameworkScopeOut,
     FrameworksIn,
     InboxItemOut,
     InvitePreviewOut,
     LandingViewIn,
+    LevelOptionOut,
     LogbookConfirmAnswerOut,
     LogbookConfirmationOut,
     LogbookConfirmIn,
@@ -201,6 +205,11 @@ def _feature_unless_reading_your_own(
     inbox and the assessor search. The route's own checks still run
     afterwards, so this never widens who may read what.
 
+    Also waived for ``/catalogue``, the frameworks themselves, because
+    the pages of their own record name every competency from it. A
+    framework is a published document and nobody's record, so reading
+    one tells the caller nothing about anybody.
+
     The passport id is taken from the path and never from the query, so
     it cannot be supplied to a route that has none.
 
@@ -211,7 +220,9 @@ def _feature_unless_reading_your_own(
         user = get_current_user(request, db)
         passport_id = request.path_params.get("passport_id")
         if passport_id is None:
-            if request.url.path.endswith("/passport/me"):
+            if request.url.path.endswith(
+                ("/passport/me", "/passport/catalogue")
+            ):
                 return
         elif _PASSPORT_ID.match(passport_id):
             owner = db.scalar(
@@ -1059,6 +1070,59 @@ def get_my_passport(
         raise HTTPException(404, "You do not have a passport yet")
 
     return _detail(db, row, store)
+
+
+# Declared before ``/{passport_id}``, which would otherwise take
+# "catalogue" for a passport id and answer 404.
+@passport_router.get(
+    "/catalogue",
+    response_model=list[FrameworkDefinitionOut],
+    dependencies=[_DEP_PASSPORT],
+)
+def get_catalogue(
+    db: Session = _DEP_SESSION,
+) -> list[FrameworkDefinitionOut]:
+    """Every framework Quill holds, in full, at its newest version.
+
+    What the passport's pages read the frameworks from, in place of the
+    copy built into the frontend. Each framework's competencies are in
+    the order its file lists them, with levels and scopes, and with its
+    retired competencies too, so a record held against one can still be
+    named. Frameworks are in name order.
+
+    The same for everybody who may use the passport: a framework is a
+    published document, not anybody's record.
+    """
+    held = stored_catalogue(db)
+
+    return [
+        FrameworkDefinitionOut(
+            id=framework.id,
+            name=framework.name,
+            publisher=framework.publisher,
+            version=framework.version,
+            specialties=list(framework.specialties),
+            competencies=[
+                FrameworkCompetencyOut(
+                    id=entry.id,
+                    display_name=entry.display_name,
+                    levels=[
+                        LevelOptionOut(id=lvl.id, name=lvl.name, position=i)
+                        for i, lvl in enumerate(entry.levels or [])
+                    ],
+                    scopes=[
+                        FrameworkScopeOut(id=sc.id, name=sc.name)
+                        for sc in entry.scopes or []
+                    ],
+                    expires_after_months=entry.expires_after_months,
+                    retired_on=entry.retired_on,
+                    retired_in_version=entry.retired_in_version,
+                )
+                for entry in held.competencies.get(framework.id, [])
+            ],
+        )
+        for framework in held.frameworks.values()
+    ]
 
 
 # Declared before ``/{passport_id}``, which would otherwise take
