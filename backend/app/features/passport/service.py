@@ -358,8 +358,12 @@ def request_sign_off(
         store, passport_id, competency_id, observed_on, scope_id
     )
 
+    # The catalogue places the competency's first record; any later one
+    # goes where the first was filed.
     files: dict[object, str | bytes] = {
-        layout.sign_off_file(store, passport_id, name): serialise.to_yaml(
+        layout.sign_off_file(
+            store, passport_id, name, catalogue
+        ): serialise.to_yaml(
             record,
             comment=(
                 "A requested sign-off. Immutable once signed; corrected "
@@ -369,9 +373,9 @@ def request_sign_off(
     }
 
     if reflection is not None:
-        files[layout.sign_off_reflection(store, passport_id, name)] = (
-            reflection
-        )
+        files[
+            layout.sign_off_reflection(store, passport_id, name, catalogue)
+        ] = reflection
 
     commit = _commit_with_index(
         store,

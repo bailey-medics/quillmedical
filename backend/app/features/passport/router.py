@@ -2891,7 +2891,12 @@ def add_logbook_entry(
     )
 
     stem, commit = records.add_logbook_entry(
-        store, row.id, _actor(user), competency_id, entry
+        store,
+        row.id,
+        _actor(user),
+        competency_id,
+        entry,
+        catalogue=stored_catalogue(db),
     )
     row.head_commit = commit
 

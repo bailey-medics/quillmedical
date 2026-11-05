@@ -119,6 +119,7 @@ def populated(
         holder,
         COMPETENCY,
         LogbookEntry(performed_on=date(2026, 3, 12)),
+        catalogue=files_catalogue(),
     )
     records.add_certificate(
         store,
