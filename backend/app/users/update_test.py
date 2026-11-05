@@ -42,7 +42,7 @@ from tests.competencies import hold
 from tests.places import administers
 
 #: A competency a consultant holds from their profession.
-HELD = "perform_venepuncture"
+HELD = "take_informed_consent"
 #: One a consultant does not hold, and a teaching admin may grant.
 TEACHING = "view_teaching_results"
 #: One a consultant does not hold, and a teaching admin may not grant.

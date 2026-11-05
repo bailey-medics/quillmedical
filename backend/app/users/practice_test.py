@@ -23,7 +23,7 @@ from app.users.practice import settle_practice
 from tests.places import administers
 
 #: Two competencies a consultant holds from their profession.
-HELD = "perform_venepuncture"
+HELD = "take_informed_consent"
 ALSO_HELD = "certify_death"
 #: Two a consultant does not hold.
 NOT_HELD = "manage_users"
@@ -439,7 +439,7 @@ def test_a_scoped_manager_is_held_to_its_whitelist(
 
     assert refusal.value.status_code == 403
     assert refusal.value.message == (
-        "You may not grant or remove: perform_venepuncture."
+        "You may not grant or remove: take_informed_consent."
     )
 
 
@@ -500,16 +500,16 @@ def test_the_gathered_refusal_says_each_reason_once() -> None:
     """Under the first one's status, in the order they were given."""
     refusal = PracticeRefused(
         [
-            CompetenciesOutOfScope(["perform_venepuncture"]),
+            CompetenciesOutOfScope(["take_informed_consent"]),
             CompetencyNotHeld("manage_users"),
-            CompetenciesOutOfScope(["perform_venepuncture"]),
+            CompetenciesOutOfScope(["take_informed_consent"]),
             OrgUnitNotFound(),
         ]
     )
 
     assert refusal.status_code == 403
     assert refusal.message == (
-        "You may not grant or remove: perform_venepuncture. "
+        "You may not grant or remove: take_informed_consent. "
         f"{NOT_HELD_WORDS} Place not found"
     )
     assert str(refusal) == refusal.message

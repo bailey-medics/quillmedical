@@ -79,38 +79,36 @@ ids_at_ref() {
 
 # Ids taken out of the catalogue on purpose, each named here by a person.
 #
-# The one exception to "never deleted", and only for an id already retired
-# on the base ref: an id still current cannot leave through this list.
-# Entries stay after the deletion merges, as the record that it happened.
+# The one exception to "never deleted". Empty unless a deletion is in
+# flight: an id here matters only while it is still on the base ref, so
+# once the deletion merges, the next pull request takes it off again, and
+# git history keeps the record. The first oncology list left this way in
+# #2335.
 #
-# The first oncology list, retired on 7 October 2026 and deleted on
-# 3 November 2026 at Mark's request, because no passport holds a record
-# against it.
+# The five procedure permissions, deleted on 4 November 2026 at the
+# product owner's request: a permission names something Quill lets a person
+# do, and Quill cannot stop anybody performing a procedure. See Phase 13 of
+# docs/docs/plans/2026-11-01-passport-record-and-catalogue-plan.md.
 REMOVED_ON_PURPOSE=(
-  prescribe_sact
-  assess_sact_toxicity
-  manage_sact_complications
-  define_radiotherapy_target_volume
-  deliver_radical_radiotherapy
-  deliver_palliative_radiotherapy
-  deliver_radioisotope_therapy
-  manage_brachytherapy_patients
-  manage_oncological_emergency
-  deliver_acute_oncology_take
-  manage_neutropenic_sepsis
-  manage_metastatic_cord_compression
-  contribute_to_tumour_mdt
-  consent_for_sact
-  consent_for_radiotherapy
-  manage_end_of_life_care
+  perform_venepuncture
+  perform_cannulation
+  perform_lumbar_puncture
+  perform_chest_drain
+  perform_advanced_airway
 )
 
-# Ids that were retired on the base ref and are listed in REMOVED_ON_PURPOSE.
+# Ids on the base ref that are listed in REMOVED_ON_PURPOSE.
+#
+# LIFTED FOR ONE PULL REQUEST: the rule is that an id must be retired on
+# the base ref before it may leave, and the five above are current. So for
+# the pull request that deletes them, a current id on the list may leave
+# too. The next pull request puts the rule back, with its test: see Phase
+# 13 of docs/docs/plans/2026-11-01-passport-record-and-catalogue-plan.md.
 removable_ids() {
   local base_ref="$1"
 
   comm -12 \
-    <(entries_at_ref "${base_ref}" | awk -F'\t' '$2 == "retired" { print $1 }') \
+    <(ids_at_ref "${base_ref}") \
     <(printf '%s\n' "${REMOVED_ON_PURPOSE[@]}" | sort)
 }
 

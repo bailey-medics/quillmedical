@@ -312,6 +312,14 @@ YAML
 # must not let anything else through: an id still current, or one that is
 # not on the list.
 
+# Writes one id into the script's list, as a person deleting it would.
+name_on_the_list() {
+  local id="$1"
+
+  sed -i "s/^REMOVED_ON_PURPOSE=(/REMOVED_ON_PURPOSE=(\n  ${id}/" "$SCRIPT"
+  grep -q "^  ${id}$" "$SCRIPT"
+}
+
 retire_and_delete() {
   local id="$1" name="$2"
 
@@ -329,7 +337,7 @@ retire_and_delete() {
 }
 
 @test "deleting a retired id removed on purpose passes" {
-  sed -i 's/^  prescribe_sact$/  prescribe_sact\n  certify_death/' "$SCRIPT"
+  name_on_the_list certify_death
   retire_and_delete certify_death "Certify Death"
 
   run bash "$SCRIPT" retired-ref
@@ -339,7 +347,8 @@ retire_and_delete() {
 }
 
 @test "a current id removed on purpose is still a deletion" {
-  sed -i 's/^  prescribe_sact$/  prescribe_sact\n  certify_death/' "$SCRIPT"
+  skip "lifted for one pull request, Phase 13 of the passport record and catalogue plan"
+  name_on_the_list certify_death
   grep -v "certify_death" shared/competency-definitions/clinical.yaml \
     | grep -v 'display_name: "Certify Death"' > tmp.yaml
   mv tmp.yaml shared/competency-definitions/clinical.yaml
@@ -349,6 +358,21 @@ retire_and_delete() {
 
   [ "$status" -eq 1 ]
   [[ "$output" == *"certify_death"* ]]
+}
+
+# While the rule is lifted, a current id on the list may leave. Phase 13's
+# next pull request deletes this test and un-skips the one above.
+@test "while lifted, a current id removed on purpose passes" {
+  name_on_the_list certify_death
+  grep -v "certify_death" shared/competency-definitions/clinical.yaml \
+    | grep -v 'display_name: "Certify Death"' > tmp.yaml
+  mv tmp.yaml shared/competency-definitions/clinical.yaml
+  commit_all "delete a current competency named on the list"
+
+  run bash "$SCRIPT" base-ref
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"No competency was removed"* ]]
 }
 
 @test "a retired id not on the list is still a deletion" {

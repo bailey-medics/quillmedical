@@ -26,7 +26,7 @@ from tests.places import administers
 
 PASSWORD = "Password123!"
 #: Two competencies a consultant holds from their profession.
-HELD = "perform_venepuncture"
+HELD = "take_informed_consent"
 ALSO_HELD = "certify_death"
 #: Not held by a consultant.
 NOT_HELD = "manage_users"

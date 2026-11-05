@@ -18,13 +18,13 @@ const practice: MemberPractice = {
   org_unit_id: 3,
   org_unit_name: "Ward A",
   qualified: [
-    "perform_venepuncture",
+    "take_informed_consent",
     "certify_death",
     "prescribe_controlled_schedule_2",
   ],
   authorised: [
     {
-      competency: "perform_venepuncture",
+      competency: "take_informed_consent",
       authorised_at: "2026-09-01T09:00:00Z",
       authorised_by: "Admin User",
     },

@@ -27,7 +27,7 @@ PASSWORD = "Password123!"
 NOWHERE = 999_999
 NOBODY = 999_999
 #: Held by a consultant, from their profession.
-HELD = "perform_venepuncture"
+HELD = "take_informed_consent"
 #: Not held by a consultant.
 NOT_HELD = "manage_users"
 ALSO_NOT_HELD = "manage_teaching"
@@ -35,7 +35,7 @@ ALSO_NOT_HELD = "manage_teaching"
 TEACHING = "view_teaching_analytics"
 
 NOT_FOUND = "Place not found"
-OFF_THE_WHITELIST = "You may not grant or remove: perform_venepuncture."
+OFF_THE_WHITELIST = "You may not grant or remove: take_informed_consent."
 
 
 def _person(

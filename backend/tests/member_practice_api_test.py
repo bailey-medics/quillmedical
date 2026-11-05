@@ -21,7 +21,7 @@ from app.security import hash_password
 from tests.places import administers
 
 #: Held by a consultant from their profession.
-HELD = "perform_venepuncture"
+HELD = "take_informed_consent"
 #: Not held by a consultant, and not granted by their profession.
 NOT_HELD = "manage_users"
 

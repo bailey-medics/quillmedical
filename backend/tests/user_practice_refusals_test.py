@@ -22,7 +22,7 @@ from app.security import hash_password
 from tests.places import administers
 
 #: Held by a consultant, from their profession.
-HELD = "perform_venepuncture"
+HELD = "take_informed_consent"
 
 MAY_NOT_SET_PRACTICE = "You may not set where somebody practises."
 
