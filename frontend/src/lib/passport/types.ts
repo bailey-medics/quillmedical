@@ -127,6 +127,45 @@ export interface FrameworkChoice {
   items: number;
 }
 
+/** One step on a framework competency's scale, with its place on it. */
+export interface FrameworkLevel {
+  id: string;
+  name: string;
+  /** Its place on the scale, from 0. The scale's order is this order. */
+  position: number;
+}
+
+/** One part of practice a framework competency is signed off for. */
+export interface FrameworkScopeDefinition {
+  id: string;
+  name: string;
+}
+
+/**
+ * One competency of a framework, as `GET /api/passport/catalogue` serves
+ * it. Retired ones come too, with `retired_on` set, so a record held
+ * against one can still be named.
+ */
+export interface FrameworkCompetencyDefinition {
+  id: string;
+  display_name: string;
+  levels: FrameworkLevel[];
+  scopes: FrameworkScopeDefinition[];
+  expires_after_months: number | null;
+  retired_on: string | null;
+  retired_in_version: number | null;
+}
+
+/** One framework in full, at its newest version, as the tables hold it. */
+export interface FrameworkDefinition {
+  id: string;
+  name: string;
+  publisher: string;
+  version: number;
+  specialties: string[];
+  competencies: FrameworkCompetencyDefinition[];
+}
+
 /**
  * One of the holder's appraisal years, shown to them as a "CPD date
  * range". Both dates are ISO `YYYY-MM-DD`, and `ends_on` is on or after

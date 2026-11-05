@@ -935,6 +935,24 @@ reads the repositories, not a bucket" in Decisions.
       keeps building the permissions into `src/generated/`, so the
       `CompetencyId` type names permissions only, which is all the code
       names.
+      **Split into three units on 4 November 2026**, because the
+      frameworks are read synchronously from the generated bundle in
+      about twenty files, and moving them to a route means loading them
+      and passing them down. In order:
+      - [x] **A catalogue module and hook**,
+        `frontend/src/lib/passport/catalogue.ts`. `FrameworkCatalogue`
+        turns the route's answer into the shapes the pages already read,
+        `FrameworkOption` and `Competency`, so a page does not change
+        shape when its source moves. `useFrameworkCatalogue` loads it
+        once for the whole app and shares it, and loads again after a
+        failure. Additive: nothing reads it yet.
+      - [ ] **Every page and component reads the catalogue**, in place of
+        `ALL_FRAMEWORKS`, `ASSESSABLE_COMPETENCIES`, `FRAMEWORK_OPTIONS`,
+        `frameworkItems`, `frameworkOf` and `getFramework`, and the
+        level, scope and table helpers that read the bundle.
+      - [ ] **The bundle stops holding frameworks**: `yarn generate:types`
+        builds permissions only, so `CompetencyId` names permissions.
+
 - [ ] **Keep test frameworks in this repository**, in a fixtures folder
       the end-to-end stack and the unit tests sync from, so a test never
       depends on a publisher's repository. My reading: teaching keeps a
