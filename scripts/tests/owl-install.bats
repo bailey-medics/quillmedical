@@ -95,6 +95,20 @@ new_box() {
     [ ! -L "${HOME}/.config/systemd/user/quill-alert-watcher.service" ]
 }
 
+@test "the old service's link in default.target.wants is removed too" {
+    local wants="${HOME}/.config/systemd/user/default.target.wants"
+
+    old_box
+    mkdir -p "${wants}"
+    ln -s "${OWL_WORKTREE}/scripts/alert-watcher/quill-alert-watcher.service" "${wants}/quill-alert-watcher.service"
+
+    cd "${OWL_WORKTREE}"
+    run "$SCRIPT"
+
+    [ "$status" -eq 0 ]
+    [ ! -L "${wants}/quill-alert-watcher.service" ]
+}
+
 @test "the old service is stopped before anything is moved" {
     old_box
 
