@@ -1247,6 +1247,13 @@ reads the repositories, not a bucket" in Decisions.
       `name_on_the_list` helper Phase 2's step sets out, since their
       `sed` is anchored on a line that is gone. An exception left open is
       one somebody leans on later.
+      **Waits for #2380 to merge, as a pull request of its own off
+      `main`.** The catalogue check in CI compares against `origin/main`,
+      so until #2380 is there, `main` still holds the five and a branch
+      that deletes them with an empty list fails. Built on 4 November 2026
+      and held back for that reason. When it is built: `name_on_the_list`
+      must add a newline after the id, because an empty list is
+      `REMOVED_ON_PURPOSE=()` on one line.
 - [ ] **Tests**: `bash .github/scripts/ci/check-competencies-not-deleted.sh
       origin/main` and `just ts .github/scripts/ci` after each unit, and
       `just ub` and `just uf` in full after the first, because it changes
@@ -1286,11 +1293,15 @@ reads the repositories, not a bucket" in Decisions.
         organisation's admin may start a sync. A route under
         `/api/passport/admin/`, with `DEP_REQUIRE_CSRF`, typed response
         models, and a rate limit, so one person cannot start runs back to
-        back. Nothing stops two runs overlapping today: the job writes a
-        `running` row and checks for no other. The route refuses while
-        the newest run is still `running`, and the sync takes a Postgres
-        advisory lock, as the passport's writes do, so a run started
-        from the pipeline at the same moment waits for it.
+        back. Nothing stopped two runs overlapping: the job writes a
+        `running` row and checks for no other. And that row cannot say a
+        run is going, because a run is one transaction committed once at
+        the end, so nobody else ever sees it. So the sync takes a Postgres
+        advisory lock, `_one_sync_at_a_time` in `sync.py`, held until the
+        transaction ends: a run started from the page while the
+        pipeline's is going waits for it, then finds every version stored
+        and writes nothing. The route does not refuse while a run is
+        going, since it cannot see one.
       - **The page says how the last run ended**, from the newest
         `passport_framework_sync` row: started, finished, versions written,
         and the error if it failed, refreshed while a run is going. That is
@@ -1304,6 +1315,15 @@ reads the repositories, not a bucket" in Decisions.
         does.
       - **A link in the side navigation's admin section**, beside
         Teaching's, in `SideNavContent.tsx`, shown to operators only.
+      Backend built on 4 November 2026, as its own unit:
+      `passport_admin_router` in
+      `backend/app/features/passport/admin_router.py`, mounted outside
+      the passport feature gate, with `GET` and `POST
+      /api/passport/admin/framework-sync`; `FRAMEWORK_SYNC_JOB` in
+      `config.py`, which Terraform sets; `roles/run.invoker` for the
+      backend on the one job; and the sync's lock. Starting a run answers
+      200 rather than 202, because the passport contract test requires
+      every route to answer 200 or 201 so `oasdiff` can diff it.
 - [ ] **Tests**: the route refuses anybody who is not an operator, starts
       the job with no overrides, and answers 503 with no job set up; the
       page shows the last run and the refusal; a story for each state; an

@@ -367,6 +367,29 @@ class FrameworkDefinitionOut(BaseModel):
     competencies: list[FrameworkCompetencyOut] = Field(default_factory=list)
 
 
+class FrameworkSyncRunOut(BaseModel):
+    """One finished run of the framework sync, and how it ended."""
+
+    started_at: datetime
+    finished_at: datetime | None = None
+    status: Literal["running", "succeeded", "failed"]
+    versions_written: int = Field(ge=0)
+    error: str | None = None
+
+
+class FrameworkSyncStatusOut(BaseModel):
+    """Whether the sync can be started here, and how it last went."""
+
+    configured: bool
+    last_run: FrameworkSyncRunOut | None = None
+
+
+class FrameworkSyncStartedOut(BaseModel):
+    """A sync that has been started, by its Cloud Run execution's name."""
+
+    execution: str
+
+
 class CompetencyStateOut(BaseModel):
     """One competency's state, from the derived index.
 

@@ -610,3 +610,61 @@ def test_the_repository_sync_stores_every_version_it_read(
 
     assert result.succeeded
     assert result.versions_written == 2
+
+
+class _Dialect:
+    def __init__(self, name: str) -> None:
+        self.name = name
+
+
+class _RecordingSession:
+    """Stands in for a session: keeps each statement it is sent.
+
+    The unit tests run on SQLite, which has no advisory locks, so what can
+    be checked here is the statement. That a second run really waits is
+    checked on Postgres, in ``tests/framework_sync_role_test.py``.
+    """
+
+    def __init__(self, dialect: str) -> None:
+        self.statements: list[str] = []
+        self.parameters: list[dict[str, int]] = []
+        self._dialect = _Dialect(dialect)
+
+    def get_bind(self) -> _RecordingSession:
+        return self
+
+    @property
+    def dialect(self) -> _Dialect:
+        return self._dialect
+
+    def execute(self, statement: object, parameters: dict[str, int]) -> None:
+        self.statements.append(str(statement))
+        self.parameters.append(parameters)
+
+
+def test_a_run_takes_the_sync_lock_on_postgres() -> None:
+    session = _RecordingSession("postgresql")
+
+    sync._one_sync_at_a_time(session)  # type: ignore[arg-type]
+
+    assert session.statements == [
+        "SELECT pg_advisory_xact_lock(:namespace, :key)"
+    ]
+    assert session.parameters == [
+        {"namespace": sync.SYNC_LOCK_NAMESPACE, "key": sync.SYNC_LOCK_KEY}
+    ]
+
+
+def test_the_sync_lock_is_not_the_passports() -> None:
+    """Its own namespace, so a sync never waits on a passport write."""
+    from app.features.passport.locking import LOCK_NAMESPACE
+
+    assert sync.SYNC_LOCK_NAMESPACE != LOCK_NAMESPACE
+
+
+def test_a_database_with_no_advisory_locks_is_sent_nothing() -> None:
+    session = _RecordingSession("sqlite")
+
+    sync._one_sync_at_a_time(session)  # type: ignore[arg-type]
+
+    assert session.statements == []
