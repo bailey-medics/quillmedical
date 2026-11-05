@@ -16,7 +16,11 @@ import {
   referPalliativeCompetency,
   referRadicalCompetency,
 } from "./fixtures";
-import { TEST_FRAMEWORK_CATALOGUE } from "@test/frameworkCatalogue";
+import {
+  TEST_FRAMEWORK_CATALOGUE,
+  TEST_FRAMEWORK_DEFINITIONS,
+} from "@test/frameworkCatalogue";
+import { FrameworkCatalogue } from "@lib/passport/catalogue";
 
 const [radiotherapy, sact] = oncologyFrameworks;
 
@@ -138,5 +142,38 @@ describe("CompetencyFrameworkTable", () => {
     );
 
     expect(screen.queryByText(/Signed off as:/)).not.toBeInTheDocument();
+  });
+
+  it("marks a competency that has left the framework", () => {
+    const retiring = new FrameworkCatalogue(
+      TEST_FRAMEWORK_DEFINITIONS.map((framework) =>
+        framework.id === radiotherapy.id
+          ? {
+              ...framework,
+              competencies: framework.competencies.map((competency) =>
+                competency.id === referPalliativeCompetency.id
+                  ? {
+                      ...competency,
+                      retired_on: "2026-11-01",
+                      retired_in_version: 2,
+                    }
+                  : competency,
+              ),
+            }
+          : framework,
+      ),
+    );
+
+    renderWithMantine(
+      <CompetencyFrameworkTable
+        catalogue={retiring}
+        framework={radiotherapy}
+        competencies={[referPalliativeCompetency]}
+      />,
+    );
+
+    expect(
+      screen.getByText("Not in this framework since version 2"),
+    ).toBeInTheDocument();
   });
 });

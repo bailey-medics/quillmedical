@@ -221,3 +221,50 @@ describe("a level reworded since it was signed", () => {
     expect(found?.signedAs?.level).toBe("Old words for the level");
   });
 });
+
+describe("a competency that has left its framework", () => {
+  const retiring = new FrameworkCatalogue(
+    TEST_FRAMEWORK_DEFINITIONS.map((framework) =>
+      framework.id === radiotherapy.id
+        ? {
+            ...framework,
+            version: 2,
+            competencies: framework.competencies.map((competency) =>
+              competency.id === referPalliativeCompetency.id
+                ? {
+                    ...competency,
+                    retired_on: "2026-11-01",
+                    retired_in_version: 2,
+                  }
+                : competency,
+            ),
+          }
+        : framework,
+    ),
+  );
+
+  it("stays in the table, marked, while something is recorded against it", () => {
+    const rows = frameworkRows(retiring, radiotherapy.id, [
+      referPalliativeCompetency,
+    ]);
+    const kept = rows.find((row) => row.id === referPalliativeCompetency.id);
+
+    expect(kept?.retired).toBe(true);
+    expect(kept?.retiredInVersion).toBe(2);
+    expect(rows.at(-1)?.id).toBe(referPalliativeCompetency.id);
+  });
+
+  it("is left out where nothing is recorded against it", () => {
+    const rows = frameworkRows(retiring, radiotherapy.id, []);
+
+    expect(rows.map((row) => row.id)).not.toContain(
+      referPalliativeCompetency.id,
+    );
+  });
+
+  it("leaves the current competencies unmarked", () => {
+    const rows = frameworkRows(retiring, radiotherapy.id, []);
+
+    expect(rows.every((row) => !row.retired)).toBe(true);
+  });
+});
