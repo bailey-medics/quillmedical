@@ -1131,14 +1131,24 @@ reads the repositories, not a bucket" in Decisions.
 
 ## Phase 12: Make the exports agree with the page
 
-- [ ] **Print the framework's current name in the exports**, in
+- [x] **Print the framework's current name in the exports**, in
       `backend/app/features/passport/pdf.py` and `render.py`, through the
       `current_name` helper the page has used since #2321.
-- [ ] **Keep the stored words for everything signed**, and print the
+- [x] **Keep the stored words for everything signed**, and print the
       current name first with "Signed off as" the stored words where they
       differ, as the page does after Phase 9. Name the version too.
-- [ ] **Tests**: an export made before a framework rename prints the new
+- [x] **Tests**: an export made before a framework rename prints the new
       name; a reworded competency prints both wordings.
+      Built on 4 November 2026. The words are worked out once, in
+      `backend/app/features/passport/wording.py`, for `render.py` and
+      `pdf.py` alike, so the two cannot drift apart. Each takes the
+      stored catalogue as an optional argument, which the three export
+      routes pass and the bundle hands on to its Markdown and PDF copies.
+      Without one, an export prints what the record stored, as before.
+      The page's `current_name` was not reused, because it lives in
+      `frameworks.py`, which imports the database. Every sign-off prints
+      "Framework version: N", which changed the pinned Markdown in
+      `export_audit_test.py`.
 
 ## Decisions
 

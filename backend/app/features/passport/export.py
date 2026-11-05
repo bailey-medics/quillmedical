@@ -37,6 +37,7 @@ import zipfile
 from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path, PurePosixPath
+from typing import TYPE_CHECKING
 
 from . import paths, pdf, render
 from .blobs import BlobError, BlobStore
@@ -49,6 +50,10 @@ from .store import (
     PassportNotFoundError,
     PassportStore,
 )
+
+if TYPE_CHECKING:
+    # A type only. The catalogue module reads the database.
+    from .catalogue import StoredCatalogue
 
 logger = logging.getLogger(__name__)
 
@@ -131,6 +136,7 @@ def build_bundle(
     generated_at: datetime | None = None,
     blobs: BlobStore | GcsBlobStore | None = None,
     include_evidence: Callable[[str], bool] | None = None,
+    catalogue: StoredCatalogue | None = None,
 ) -> bytes:
     """Package a whole passport as a zip.
 
@@ -151,6 +157,9 @@ def build_bundle(
             routes pass the malware scan's answer, so a file that has
             not been scanned clean stays out of the export as it stays
             off the certificate's page.
+        catalogue: The stored frameworks, for the Markdown copy inside,
+            which then names frameworks and competencies as they are
+            today. See ``render.render``.
 
     Returns:
         The zip's bytes.
@@ -177,7 +186,9 @@ def build_bundle(
 
         named = _write_record(archive, store, passport_id)
         _write_evidence(archive, blobs, passport_id, named, include_evidence)
-        _write_views(archive, store, passport_id, head_commit, moment)
+        _write_views(
+            archive, store, passport_id, head_commit, moment, catalogue
+        )
         _write_history(archive, store, passport_id)
 
     data = buffer.getvalue()
@@ -355,6 +366,7 @@ def _write_views(
     passport_id: str,
     head_commit: str | None,
     moment: datetime,
+    catalogue: StoredCatalogue | None,
 ) -> None:
     """Add the rendered Markdown and PDF.
 
@@ -365,7 +377,10 @@ def _write_views(
     the authority in any case.
     """
     try:
-        archive.writestr("passport.md", render.render(store, passport_id))
+        archive.writestr(
+            "passport.md",
+            render.render(store, passport_id, catalogue=catalogue),
+        )
     except Exception:  # noqa: BLE001 - see the docstring
         logger.exception("Could not render passport.md for the bundle")
 
@@ -377,6 +392,7 @@ def _write_views(
                 passport_id,
                 head_commit=head_commit,
                 generated_at=moment,
+                catalogue=catalogue,
             ),
         )
     except Exception:  # noqa: BLE001 - see the docstring

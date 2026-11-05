@@ -324,6 +324,7 @@ No CPD date ranges have been set, so these run June to June by convention rather
 
 **Level:** Level 2: Review and authorise administration of systemic anti-cancer therapy
 
+- Framework version: 1
 - Status: signed_off
 - Kind: initial
 - Observed: 2026-03-14
