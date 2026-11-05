@@ -40,6 +40,7 @@ from __future__ import annotations
 
 import logging
 import re
+from collections.abc import Iterable, Iterator
 from datetime import UTC, datetime
 
 from fastapi import (
@@ -152,6 +153,7 @@ from .catalogue import StoredCatalogue, stored_catalogue
 from .commits import Actor
 from .entitlements import passport_write_ends_on
 from .gcs_store import GcsBlobStore, blob_object_key
+from .index import sign_off_records
 from .locking import lock_passport_for_write
 from .models import (
     Passport,
@@ -690,6 +692,32 @@ def _require_signoff_reader(
     raise HTTPException(404, "Passport not found")
 
 
+def _refuse_versions_not_held(
+    catalogue: StoredCatalogue, records: Iterable[SignOff]
+) -> None:
+    """Refuse with a 409 if a sign-off names a version Quill does not hold.
+
+    Nothing is shown against the nearest version Quill does hold: words
+    a sign-off was not given under would read as if it had been. The
+    message names the framework and the version, so a person can find
+    out where the record came from.
+    """
+    try:
+        for record in records:
+            definitions.check_held_version(
+                catalogue, record.competency.id, record.framework_version
+            )
+    except definitions.UnknownFrameworkVersionError as error:
+        raise HTTPException(409, str(error)) from None
+
+
+def _every_sign_off(
+    store: PassportStore, passport_id: str
+) -> Iterator[SignOff]:
+    """Each sign-off in a passport, for a whole-passport read to check."""
+    return (record for _, record in sign_off_records(store, passport_id))
+
+
 def _read_index(store: PassportStore, passport_id: str) -> Index:
     """The derived index, or an empty one if the passport has no commits."""
     try:
@@ -1113,6 +1141,18 @@ def get_inbox(
             record = service.read_sign_off(
                 store, row.passport_id, row.signoff_id
             )
+            definitions.check_held_version(
+                stored_catalogue(db),
+                record.competency.id,
+                record.framework_version,
+            )
+        except definitions.UnknownFrameworkVersionError as error:
+            # One record Quill cannot read must not stop an assessor
+            # seeing the rest, as below.
+            logger.warning(
+                "Sign-off request %s is not listed: %s", row.id, error
+            )
+            continue
         except PassportNotFoundError:
             # The row outlived its record, which should not happen. Skip
             # it rather than failing the whole inbox: one broken request
@@ -1721,6 +1761,9 @@ def list_sign_offs(
             # index treats it too.
             continue
 
+    _refuse_versions_not_held(
+        stored_catalogue(db), (record for _, record in found)
+    )
     found.sort(key=lambda pair: (pair[1].observed_on, pair[0]), reverse=True)
 
     asked = _assessor_emails(db, row.id)
@@ -1770,6 +1813,8 @@ def get_sign_off(
         record = service.read_sign_off(store, row.id, signoff_id)
     except PassportNotFoundError, paths.PassportPathError:
         raise HTTPException(404, "Sign-off not found") from None
+
+    _refuse_versions_not_held(stored_catalogue(db), [record])
 
     out = _sign_off_out(signoff_id, record)
 
@@ -3862,6 +3907,9 @@ def export_markdown(
     row = _require_holder(db, passport_id, user)
 
     try:
+        _refuse_versions_not_held(
+            stored_catalogue(db), _every_sign_off(store, row.id)
+        )
         text = render.render(store, row.id, include_reflections=reflections)
     except PassportNotFoundError:
         raise HTTPException(404, "Passport not found") from None
@@ -3899,6 +3947,9 @@ def export_pdf(
     row = _require_holder(db, passport_id, user)
 
     try:
+        _refuse_versions_not_held(
+            stored_catalogue(db), _every_sign_off(store, row.id)
+        )
         data = pdf.render_pdf(store, row.id, head_commit=row.head_commit)
     except PassportNotFoundError:
         raise HTTPException(404, "Passport not found") from None
@@ -3937,6 +3988,9 @@ def export_bundle(
     row = _require_holder(db, passport_id, user)
 
     try:
+        _refuse_versions_not_held(
+            stored_catalogue(db), _every_sign_off(store, row.id)
+        )
         data = export.build_bundle(
             store,
             row.id,
