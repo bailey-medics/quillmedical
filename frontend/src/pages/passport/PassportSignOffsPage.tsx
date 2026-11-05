@@ -33,7 +33,7 @@ import ErrorState from "@/components/error-state/ErrorState";
 import ResultMessage from "@/components/message-cards/ResultMessage";
 import StateMessage from "@/components/message-cards/StateMessage";
 import { IconFileText } from "@/components/icons/appIcons";
-import competenciesData from "@/generated/competencies.json";
+import type { FrameworkCatalogue } from "@lib/passport/catalogue";
 import { useFrameworkCatalogue } from "@lib/passport/catalogue";
 import { fetchMyPassport, fetchSignOffs, requestSignOff } from "@lib/passport";
 // Direct, not through the barrel, so page tests that mock the API
@@ -58,17 +58,14 @@ import type {
  * source the picker reads, and the rest describes an empty history.
  */
 function competencyForForm(
+  catalogue: FrameworkCatalogue | null,
   competencyId: string,
   known: CompetencyState[],
 ): CompetencyState {
   const existing = known.find((entry) => entry.id === competencyId);
   if (existing) return existing;
 
-  const catalogue = competenciesData.competencies as {
-    id: string;
-    display_name: string;
-  }[];
-  const entry = catalogue.find((item) => item.id === competencyId);
+  const entry = catalogue?.competency(competencyId);
 
   return {
     id: competencyId,
@@ -243,7 +240,7 @@ export function Component() {
               offering the way back out. */}
           {chosen && (
             <SignOffRequestForm
-              competency={competencyForForm(chosen, competencies)}
+              competency={competencyForForm(catalogue, chosen, competencies)}
               levels={levelsFor(catalogue, chosen)}
               scopes={scopesFor(catalogue, chosen)}
               holderEmail={state.user?.email}
