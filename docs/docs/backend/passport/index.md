@@ -597,6 +597,32 @@ The bucket backend uses generation-based compare-and-swap on a git bundle
 rather than a mounted volume: the deployment has no shared filesystem, and two
 concurrent writes must not silently lose one.
 
+### Two writes to one passport at once
+
+An assessor signing off while the holder adds a logbook entry, or one holder
+saving in two tabs, are two writes to one passport. Three things keep both
+safe, and the first does nearly all the work:
+
+- **One writer at a time, per passport.** Every request that changes a
+  passport takes a Postgres advisory lock keyed on its id, held until the
+  request's transaction ends (`locking.py`). It is on the whole passport
+  router, so a new route has it too. A second writer waits, then reads the
+  passport after the first one's commit and writes on top of it. Different
+  passports never wait for each other.
+- **The store refuses a write built on a stale read.** Each write names the
+  commit it expected to be newest.
+- **The bucket refuses an upload onto a bundle that moved**, which catches two
+  Cloud Run instances writing at the same moment.
+
+A write refused by either check raises `ConcurrentWriteError`, which the
+backend answers with a 409 asking the person to reload and try again. Nothing
+is saved, and nothing the other writer saved is lost. Two tabs doing the same
+thing, such as signing the same request, meet the ordinary rules instead: the
+second finds the sign-off already signed and is refused.
+
+`backend/tests/passport_write_lock_test.py` checks the lock on a real Postgres.
+The unit tests run on SQLite, which has no advisory locks.
+
 ## Where the code is
 
 - `backend/app/features/passport/` - the module. `router.py` is the route list,
