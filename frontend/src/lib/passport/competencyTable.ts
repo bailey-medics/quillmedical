@@ -27,6 +27,59 @@ export interface CompetencyTableRow {
   scope: ScopeRef | null;
   standing: Standing;
   logbookEntries: number;
+  /**
+   * What the latest sign-off recorded, where it differs from the
+   * framework today, or null where nothing differs or nothing is signed.
+   */
+  signedAs: SignedAs | null;
+}
+
+/**
+ * The words and version a sign-off recorded, where the framework has
+ * moved on since. Each is null where it matches today's.
+ */
+export interface SignedAs {
+  /** The competency's name as the sign-off recorded it. */
+  name: string | null;
+  /** The level's name as the sign-off recorded it. */
+  level: string | null;
+  /** The framework version it was given under, if not the newest. */
+  version: number | null;
+}
+
+/**
+ * What a sign-off recorded that the framework no longer says, or null.
+ * Compares the entry's stored words with the catalogue's, so a reworded
+ * competency or level is shown both ways rather than silently replaced.
+ */
+function signedAsFor(
+  catalogue: FrameworkCatalogue,
+  frameworkId: string,
+  currentName: string,
+  state: CompetencyState | undefined,
+): SignedAs | null {
+  if (state === undefined || standingOf(state) === "not_asked") return null;
+
+  const currentLevel = catalogue
+    .competency(state.id)
+    ?.levels?.find((level) => level.id === state.level?.id);
+  const newest = catalogue.frameworkVersion(frameworkId);
+
+  const name = state.name !== currentName ? state.name : null;
+  const level =
+    state.level && currentLevel && state.level.name !== currentLevel.name
+      ? state.level.name
+      : null;
+  const version =
+    state.framework_version != null &&
+    newest !== undefined &&
+    state.framework_version !== newest
+      ? state.framework_version
+      : null;
+
+  return name === null && level === null && version === null
+    ? null
+    : { name, level, version };
 }
 
 /** Strongest first, for a row made from several entries. */
@@ -82,6 +135,12 @@ export function frameworkRows(
           scope: state.scope ?? null,
           standing: standingOf(state),
           logbookEntries: state.logbook_entries,
+          signedAs: signedAsFor(
+            catalogue,
+            frameworkId,
+            item.display_name,
+            state,
+          ),
         });
       }
       continue;
@@ -100,6 +159,12 @@ export function frameworkRows(
       logbookEntries: Math.max(
         0,
         ...states.map((state) => state.logbook_entries),
+      ),
+      signedAs: signedAsFor(
+        catalogue,
+        frameworkId,
+        item.display_name,
+        states.find((state) => standingOf(state) === standing),
       ),
     });
   }
