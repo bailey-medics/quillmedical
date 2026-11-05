@@ -458,6 +458,17 @@ module "cloud_run_backend" {
         "jobs", "quill-caption-${var.environment}",
       ])
 
+      # The framework sync job, which the passport admin page lets an
+      # operator start by hand when the framework pipeline's own start
+      # failed. Unset elsewhere, where the page says the sync is not set
+      # up. See Phase 14 of
+      # docs/docs/plans/2026-11-01-passport-record-and-catalogue-plan.md.
+      FRAMEWORK_SYNC_JOB = join("/", [
+        "projects", var.project_id,
+        "locations", var.region,
+        "jobs", module.cloud_run_framework_sync_job[0].job_name,
+      ])
+
 
       # Same host as the app, deliberately: the load balancer routes
       # /videos/* to the backend bucket, so the signed cookie is same-origin

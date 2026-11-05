@@ -339,6 +339,16 @@ class Settings(BaseSettings):
             "someone writes them by hand."
         ),
     )
+    FRAMEWORK_SYNC_JOB: str | None = Field(
+        None,
+        description=(
+            "Fully-qualified Cloud Run Job that syncs every framework "
+            "repository, e.g. projects/p/locations/europe-west2/jobs/"
+            "quill-framework-sync-app, which the passport admin page "
+            "starts by hand. Unset in development and the end-to-end "
+            "stack, where the page says the sync is not set up here."
+        ),
+    )
     UPLOAD_SCAN_JOB: str | None = Field(
         None,
         description=(

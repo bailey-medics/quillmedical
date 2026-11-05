@@ -346,6 +346,24 @@ resource "google_service_account_iam_member" "runtime_backend_signs_as_itself" {
 # `roles/run.developer` and `roles/run.admin` also carry it, and both
 # carry a great deal else besides. This role is the two permissions and
 # nothing more, which is what a serving application should hold.
+# ---------- The backend starts the framework sync job ----------
+# For the passport admin page, where an operator starts the sync by hand.
+# `roles/run.invoker`, which starts the job as configured and nothing
+# else, as the framework pipeline holds: the backend has nothing to
+# override, so it cannot change which repositories the job reads. Never
+# `jobsExecutorWithOverrides`, which the transcode jobs below need. On
+# that one job only. See Phase 14 of
+# docs/docs/plans/2026-11-01-passport-record-and-catalogue-plan.md.
+resource "google_cloud_run_v2_job_iam_member" "runtime_backend_starts_framework_sync" {
+  count = local.is_teaching_product ? 1 : 0
+
+  project  = var.project_id
+  location = var.region
+  name     = module.cloud_run_framework_sync_job[0].job_name
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:${google_service_account.runtime["backend"].email}"
+}
+
 resource "google_cloud_run_v2_job_iam_member" "runtime_backend_invokes" {
   for_each = merge(
     {

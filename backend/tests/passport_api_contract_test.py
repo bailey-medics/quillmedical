@@ -83,6 +83,7 @@ DOWNLOAD_MEDIA_TYPES = frozenset(
 EXPECTED_PATHS = {
     "/api/passport",
     "/api/passport/me",
+    "/api/passport/admin/framework-sync",
     "/api/passport/assessor-invites/accept",
     "/api/passport/assessor-invites/preview",
     "/api/passport/assessors/search",
