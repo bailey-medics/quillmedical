@@ -126,14 +126,18 @@ function asCompetency(
     framework_id: framework.id,
   };
 
-  if (entry.levels.length > 0) {
-    competency.levels = [...entry.levels]
-      .sort((a, b) => a.position - b.position)
-      .map(({ id, name }) => ({ id, name }));
-  }
-  if (entry.scopes.length > 0) {
-    competency.scopes = entry.scopes.map(({ id, name }) => ({ id, name }));
-  }
+  // What a form may offer: a level or scope the framework retired is
+  // left out. A record already naming one keeps its own words.
+  const levels = [...entry.levels]
+    .sort((a, b) => a.position - b.position)
+    .filter((level) => !level.retired_on)
+    .map(({ id, name }) => ({ id, name }));
+  const scopes = entry.scopes
+    .filter((scope) => !scope.retired_on)
+    .map(({ id, name }) => ({ id, name }));
+
+  if (levels.length > 0) competency.levels = levels;
+  if (scopes.length > 0) competency.scopes = scopes;
   if (entry.expires_after_months !== null) {
     competency.expires_after_months = entry.expires_after_months;
   }

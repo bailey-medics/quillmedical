@@ -154,7 +154,12 @@ def _load(db: Session) -> StoredCatalogue:
         .order_by(PassportFrameworkLevel.position)
     ):
         levels[level.competency_row_id].append(
-            CompetencyLevel(id=level.level_id, name=level.name)
+            CompetencyLevel(
+                id=level.level_id,
+                name=level.name,
+                retired_on=level.retired_on,
+                retired_in_version=level.retired_in_version,
+            )
         )
 
     scopes: dict[int, list[CompetencyScope]] = defaultdict(list)
@@ -164,7 +169,12 @@ def _load(db: Session) -> StoredCatalogue:
         .order_by(PassportFrameworkScope.position)
     ):
         scopes[scope.competency_row_id].append(
-            CompetencyScope(id=scope.scope_id, name=scope.name)
+            CompetencyScope(
+                id=scope.scope_id,
+                name=scope.name,
+                retired_on=scope.retired_on,
+                retired_in_version=scope.retired_in_version,
+            )
         )
 
     held: dict[str, set[int]] = defaultdict(set)

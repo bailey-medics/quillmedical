@@ -224,7 +224,9 @@ def check_scope(
         SignOffError: If it declares scopes and none was given.
     """
     if scope_id is not None:
-        return definitions.scope_ref(catalogue, competency_id, scope_id)
+        return definitions.scope_ref(
+            catalogue, competency_id, scope_id, offered=True
+        )
 
     if definitions.has_scopes(catalogue, competency_id):
         raise SignOffError(SCOPE_REQUIRED_MESSAGE)
@@ -269,7 +271,9 @@ def check_request(
     check_scope(catalogue, competency_id, scope_id)
 
     if level_id is not None:
-        return definitions.level_ref(catalogue, competency_id, level_id)
+        return definitions.level_ref(
+            catalogue, competency_id, level_id, offered=True
+        )
 
     if definitions.has_levels(catalogue, competency_id):
         raise SignOffError(LEVEL_REQUIRED_MESSAGE)

@@ -101,13 +101,13 @@ from app.schemas.passport import (
     FrameworkChoiceOut,
     FrameworkCompetencyOut,
     FrameworkDefinitionOut,
+    FrameworkLevelOut,
     FrameworkOut,
     FrameworkScopeOut,
     FrameworksIn,
     InboxItemOut,
     InvitePreviewOut,
     LandingViewIn,
-    LevelOptionOut,
     LogbookConfirmAnswerOut,
     LogbookConfirmationOut,
     LogbookConfirmIn,
@@ -1107,11 +1107,22 @@ def get_catalogue(
                     id=entry.id,
                     display_name=entry.display_name,
                     levels=[
-                        LevelOptionOut(id=lvl.id, name=lvl.name, position=i)
+                        FrameworkLevelOut(
+                            id=lvl.id,
+                            name=lvl.name,
+                            position=i,
+                            retired_on=lvl.retired_on,
+                            retired_in_version=lvl.retired_in_version,
+                        )
                         for i, lvl in enumerate(entry.levels or [])
                     ],
                     scopes=[
-                        FrameworkScopeOut(id=sc.id, name=sc.name)
+                        FrameworkScopeOut(
+                            id=sc.id,
+                            name=sc.name,
+                            retired_on=sc.retired_on,
+                            retired_in_version=sc.retired_in_version,
+                        )
                         for sc in entry.scopes or []
                     ],
                     expires_after_months=entry.expires_after_months,
@@ -2917,7 +2928,11 @@ LOGBOOK_SCOPE_REQUIRED_MESSAGE = "Choose what this entry counts towards."
 
 
 def _logbook_scope(
-    catalogue: StoredCatalogue, competency_id: str, scope_id: str | None
+    catalogue: StoredCatalogue,
+    competency_id: str,
+    scope_id: str | None,
+    *,
+    adding: bool = False,
 ) -> ScopeRef | None:
     """The scope a logbook entry names, or none for a competency with none.
 
@@ -2937,7 +2952,11 @@ def _logbook_scope(
                 raise HTTPException(400, LOGBOOK_SCOPE_REQUIRED_MESSAGE)
             return None
 
-        return definitions.scope_ref(catalogue, competency_id, scope_id)
+        # A new entry may not name a retired scope; correcting an old one
+        # that does may keep it.
+        return definitions.scope_ref(
+            catalogue, competency_id, scope_id, offered=adding
+        )
     except definitions.UnknownCompetencyError:
         raise HTTPException(404, "Unknown competency") from None
     except definitions.UnknownScopeError as error:
@@ -2973,7 +2992,9 @@ def add_logbook_entry(
     """
     row = _require_writer(db, passport_id, user, store)
     _offered_refs(stored_catalogue(db), store, row.id, [competency_id])
-    scope = _logbook_scope(stored_catalogue(db), competency_id, body.scope_id)
+    scope = _logbook_scope(
+        stored_catalogue(db), competency_id, body.scope_id, adding=True
+    )
 
     # Built before the supervisor is emailed, because building it can
     # still refuse the request: evidence that is not stored, or a field

@@ -82,6 +82,10 @@ class FrameworkSyncResult:
     error: str | None
 
 
+#: One level or scope: its id, its words, and when and in which version
+#: it was retired, if it was.
+_Part = tuple[str, str, date | None, int | None]
+
 #: What a framework holds, in a form both a file and the stored rows can
 #: be turned into, so the two can be compared. ``description`` is left
 #: out: it is internal, and changing it needs no new version.
@@ -96,8 +100,8 @@ _Snapshot = tuple[
             date | None,
             int | None,
             int | None,
-            tuple[tuple[str, str], ...],
-            tuple[tuple[str, str], ...],
+            tuple[_Part, ...],
+            tuple[_Part, ...],
         ],
         ...,
     ],
@@ -112,8 +116,8 @@ _CompetencyRows = tuple[
         date | None,
         int | None,
         int | None,
-        tuple[tuple[str, str], ...],
-        tuple[tuple[str, str], ...],
+        tuple[_Part, ...],
+        tuple[_Part, ...],
     ],
     ...,
 ]
@@ -134,8 +138,14 @@ def _snapshot_of_file(
                 item.retired_on,
                 item.retired_in_version,
                 item.expires_after_months,
-                tuple((lvl.id, lvl.name) for lvl in item.levels or []),
-                tuple((sc.id, sc.name) for sc in item.scopes or []),
+                tuple(
+                    (lvl.id, lvl.name, lvl.retired_on, lvl.retired_in_version)
+                    for lvl in item.levels or []
+                ),
+                tuple(
+                    (sc.id, sc.name, sc.retired_on, sc.retired_in_version)
+                    for sc in item.scopes or []
+                ),
             )
             for item in items
         ),
@@ -176,8 +186,24 @@ def _snapshot_of_rows(db: Session, row: PassportFrameworkVersion) -> _Snapshot:
                 competency.retired_on,
                 competency.retired_in_version,
                 competency.expires_after_months,
-                tuple((lvl.level_id, lvl.name) for lvl in levels),
-                tuple((sc.scope_id, sc.name) for sc in scopes),
+                tuple(
+                    (
+                        lvl.level_id,
+                        lvl.name,
+                        lvl.retired_on,
+                        lvl.retired_in_version,
+                    )
+                    for lvl in levels
+                ),
+                tuple(
+                    (
+                        sc.scope_id,
+                        sc.name,
+                        sc.retired_on,
+                        sc.retired_in_version,
+                    )
+                    for sc in scopes
+                ),
             )
         )
 
@@ -356,9 +382,9 @@ def _dropped_levels_and_scopes(
         kept_levels = {lvl.id for lvl in item.levels or []}
         kept_scopes = {sc.id for sc in item.scopes or []}
 
-        for gone in sorted({i for i, _ in levels} - kept_levels):
+        for gone in sorted({part[0] for part in levels} - kept_levels):
             dropped.append(f"{competency_id}: level {gone}")
-        for gone in sorted({i for i, _ in scopes} - kept_scopes):
+        for gone in sorted({part[0] for part in scopes} - kept_scopes):
             dropped.append(f"{competency_id}: scope {gone}")
 
     return dropped
@@ -411,6 +437,8 @@ def _write(
                     level_id=level.id,
                     name=level.name,
                     position=step,
+                    retired_on=level.retired_on,
+                    retired_in_version=level.retired_in_version,
                 )
             )
 
@@ -421,6 +449,8 @@ def _write(
                     scope_id=scope.id,
                     name=scope.name,
                     position=step,
+                    retired_on=scope.retired_on,
+                    retired_in_version=scope.retired_in_version,
                 )
             )
 

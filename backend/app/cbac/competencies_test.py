@@ -695,3 +695,54 @@ def test_competency_entry_is_not_assessable_unless_it_says_so() -> None:
     """Opt-in, so a permission added for access control stays out of
     the passport until somebody decides it belongs there."""
     assert CompetencyEntry(id="x", display_name="X").assessable is False
+
+
+_LEVELLED_TEXT = (
+    _FRAMEWORK.replace("  version: 1\n", "  version: 2\n")
+    + "competencies:\n"
+    + '  - id: sheet_item\n    display_name: "An item"\n'
+    + "    assessable: true\n"
+    + "    levels:\n"
+    + '      - id: observed\n        name: "Observed"\n'
+    + "{retired}"
+    + '      - id: independent\n        name: "Independent"\n'
+)
+
+
+def test_a_level_is_retired_with_the_version_that_left_it_out() -> None:
+    """Retired, never removed: it keeps its place on the scale."""
+    text = _LEVELLED_TEXT.format(
+        retired="        retired_on: 2026-11-04\n"
+        "        retired_in_version: 2\n"
+    )
+
+    _, entries = load_framework_text(text, "sheet")
+
+    observed = (entries[0].levels or [])[0]
+    assert observed.retired_on is not None
+    assert observed.retired_in_version == 2
+
+
+def test_a_level_retired_with_no_version_is_refused() -> None:
+    text = _LEVELLED_TEXT.format(retired="        retired_on: 2026-11-04\n")
+
+    with pytest.raises(ValueError, match="retired with no retired_in_version"):
+        load_framework_text(text, "sheet")
+
+
+def test_the_other_scope_is_never_retired() -> None:
+    """Every scope list keeps offering it, so nobody is blocked."""
+    text = (
+        _FRAMEWORK.replace("  version: 1\n", "  version: 2\n")
+        + "competencies:\n"
+        + '  - id: sheet_item\n    display_name: "An item"\n'
+        + "    assessable: true\n"
+        + "    scopes:\n"
+        + '      - id: lung\n        name: "Lung"\n'
+        + '      - id: other\n        name: "Other"\n'
+        + "        retired_on: 2026-11-04\n"
+        + "        retired_in_version: 2\n"
+    )
+
+    with pytest.raises(ValueError, match="never retired"):
+        load_framework_text(text, "sheet")

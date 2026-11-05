@@ -60,6 +60,8 @@ declare module "@/generated/framework-fixtures.json" {
   interface FixtureLevel {
     id: string;
     name: string;
+    retired_on?: string;
+    retired_in_version?: number;
   }
 
   interface FixtureCompetency {
