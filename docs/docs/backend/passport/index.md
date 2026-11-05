@@ -261,6 +261,12 @@ level" and "Signed off under version" with what the sign-off recorded.
 Each index entry carries `framework_version` from its latest sign-off for
 this.
 
+**A retired competency stays in its framework's table while the holder
+has anything recorded against it**: a sign-off, a request or a logbook
+entry. It comes after the current ones, marked "Not in this framework
+since version N", and its page is read-only, with no way to ask for a new
+sign-off or log a new entry. One with nothing recorded is left out.
+
 **`GET /api/passport/catalogue` serves the frameworks to the frontend**,
 every framework Quill holds at its newest version, with its competencies,
 levels and scopes, and its retired competencies marked with `retired_on`.

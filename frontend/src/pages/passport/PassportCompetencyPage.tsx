@@ -107,11 +107,12 @@ export function Component() {
   const { state: auth } = useAuth();
   const { competencyId = "" } = useParams<{ competencyId: string }>();
 
-  // Only an assessable competency in the catalogue has a page. Anything
-  // else is an address nobody was given, so it is not found rather than
-  // an empty page.
-  const found = catalogue?.competency(competencyId);
-  const competency = found?.retired_on === undefined ? found : undefined;
+  // Only a framework competency Quill holds has a page. Anything else is
+  // an address nobody was given, so it is not found rather than an empty
+  // page. A retired one still has its page, read-only, for what is
+  // recorded against it: nothing new can be asked for or logged.
+  const competency = catalogue?.competency(competencyId);
+  const retired = competency?.retired_on !== undefined;
 
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -273,7 +274,7 @@ export function Component() {
       frameworkName={catalogue?.frameworkOf(competencyId)?.name}
       signOffs={loaded.signOffs}
       logbook={loaded.logbook}
-      canWrite={loaded.canWrite}
+      canWrite={loaded.canWrite && !retired}
       onAskForSignOff={() => setMode("asking")}
       onAddEntry={() => setMode("adding")}
       onSelectSignOff={(name) =>

@@ -1060,7 +1060,7 @@ reads the repositories, not a bucket" in Decisions.
 
 ## Phase 10: Keep competencies that left a framework visible
 
-- [ ] **List a retired competency in its framework's table when the holder
+- [x] **List a retired competency in its framework's table when the holder
       has anything recorded against it**: a sign-off, a request or a
       logbook entry. Before Phase 7, `frameworkItems` in
       `frontend/src/lib/passport/frameworks.ts` read
@@ -1069,16 +1069,25 @@ reads the repositories, not a bucket" in Decisions.
       it, the frameworks come from the API, which serves every version the
       sync has stored, so the table adds the retired competencies the
       holder has state for after the current ones.
-- [ ] **Mark such a row** "Not in this framework since version N", from
+- [x] **Mark such a row** "Not in this framework since version N", from
       `retired_in_version`, and offer no way to ask for a new sign-off of
       it. The backend already refuses new writes against a retired id.
-- [ ] **Leave out retired competencies with nothing recorded.**
-- [ ] **Check the other views follow the same rule**: `CompetencySummary`,
+- [x] **Leave out retired competencies with nothing recorded.**
+- [x] **Check the other views follow the same rule**: `CompetencySummary`,
       the holder's summary page, and what an assessor sees.
-- [ ] **Add to the passport backend page** that a retired competency stays
+- [x] **Add to the passport backend page** that a retired competency stays
       in the table while the holder has anything recorded against it.
-- [ ] **Tests**: a retired competency with a sign-off appears, marked, with
+- [x] **Tests**: a retired competency with a sign-off appears, marked, with
       no request button; one with nothing recorded does not.
+      Built on 4 November 2026. The catalogue serves the newest version
+      only, but that holds every retired competency, because a
+      competency is retired, never deleted, so no older version is
+      needed. `DataTable` cannot turn off clicks for one row, so a
+      retired row still opens its competency page, which is read-only
+      for it: `canWrite` is false, so neither "Ask" nor "Add" shows.
+      `CompetencySummary` groups by `frameworkOf`, which knows retired
+      competencies, and an assessor reads the sign-off itself, so both
+      follow the rule already.
 
 ## Phase 11: Trace a removed level or scope
 
