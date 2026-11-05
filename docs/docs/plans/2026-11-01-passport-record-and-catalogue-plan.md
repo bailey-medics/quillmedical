@@ -1361,8 +1361,11 @@ reads the repositories, not a bucket" in Decisions.
   production kept its frameworks all the same, because every deploy's
   `run-migrations` also syncs the tables from the framework files bundled in
   that build, `shared/competency-definitions/`, until Phase 8 moves them
-  out. The message should say the repositories hold no frameworks yet; a
-  small change still to make.
+  out. Fixed the same day: `sync_from_repositories` now says "The
+  framework repositories hold no frameworks yet, so nothing was stored.",
+  or "No framework repositories are set up here." where
+  `FRAMEWORK_REPOSITORIES` names none. `_catch_up`'s own refusal is
+  unchanged, for a folder of versions given to `--versions`.
 
 ## Phase 15: A framework repository for testing
 
