@@ -1182,6 +1182,16 @@ owl-install:
     bash scripts/owl/install.sh
 
 
+alias owr := owl-restart
+# Restart Owl and its Claude session in q5, detached so it survives being run from q5 (the home box's worktree 5 only); `force` to restart a busy one
+owl-restart force="":
+    #!/usr/bin/env bash
+    {{initialise}} "owl-restart"
+    set -euo pipefail
+
+    bash scripts/owl/restart.sh {{quote(force)}}
+
+
 alias psd := passport-delete
 # Delete a test holder's passport, archived for 30 days (dry run unless confirm is the passport id)
 passport-delete env username confirm="":

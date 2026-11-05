@@ -26,6 +26,16 @@ That installs the packages and links `quill-owl.service` into systemd as a user 
 
 The tmux server runs in a systemd scope of its own, `quill-tmux-server.scope`, not in the watcher's process group. At boot `start-session.sh` is usually the first `tmux new-session` on the box, so the server it starts would otherwise belong to the service, and systemd kills everything in a service's group when it stops. A restart of the watcher must never close the sessions people are working in: on 4 November 2026 one closed all of them. `systemctl --user status quill-tmux-server.scope` shows the server.
 
+On a box that still runs `quill-alert-watcher.service`, the service's name before Owl, the same command moves it across: it stops the old service, moves `~/.config/quill-alert-watcher` and `~/.local/state/quill-alert-watcher` to their `quill-owl` names, and starts `quill-owl.service`. It is safe to run again.
+
+To restart Owl and its Claude Code session, for example to pick up a change to `start-session.sh`:
+
+```bash
+just owl-restart
+```
+
+It refuses while `q5` is busy with an alert run, unless given `force`, and runs the restart detached, so it works from inside `q5` too.
+
 The unit is linked from worktree 5, so whenever that worktree moves to a commit where the unit file differs, systemd warns that it changed on disk. `systemctl --user daemon-reload` clears it; the warning is expected.
 
 ## Settings
