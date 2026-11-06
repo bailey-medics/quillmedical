@@ -1,6 +1,6 @@
 # owl.tf - the read-only identity Owl, the alert watcher, reads logs as
 #
-# Owl on the home box (scripts/owl/) is told
+# Owl on the dev box (scripts/owl/) is told
 # only which policy fired. To say why, its /alert skill reads the logs over
 # the window with `gcloud logging read`, as this account.
 #

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Take this terminal to the worktree's Claude Code session on the home box,
+# Take this terminal to the worktree's Claude Code session on the dev box,
 # with Claude running in it, whatever state either is in.
 #
 # Each worktree has one tmux session: q1 for ~/github/quillmedical, q2 and
@@ -32,7 +32,7 @@
 set -euo pipefail
 
 if ! command -v tmux > /dev/null; then
-    echo "✗ tmux is not installed. This is for the home box." >&2
+    echo "✗ tmux is not installed. This is for the dev box." >&2
     exit 1
 fi
 

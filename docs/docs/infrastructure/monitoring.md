@@ -108,7 +108,7 @@ they are in `infra/modules/monitoring/main.tf`.
 
 ## Owl, the alert watcher
 
-A daemon on the home box reads `#quill-medical-cicd` and, when an alert or a
+A daemon on the dev box reads `#quill-medical-cicd` and, when an alert or a
 failed deploy is posted there, types `/alert <file>` into the Claude Code
 session in Owl's worktree. The `/alert` skill investigates, explains the cause
 in the alert's thread, and opens a pull request ready for review when the

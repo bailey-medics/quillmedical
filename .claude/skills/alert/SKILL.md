@@ -8,7 +8,7 @@ disallowed-tools: Bash(gh pr merge:*), Bash(gh stack merge:*), Bash(git rebase:*
 
 # Investigate one App production alert
 
-Owl, the alert watcher on the home box, types
+Owl, the alert watcher on the dev box, types
 `/alert <file>` into Owl's worktree when a Cloud Monitoring alert or a failed
 deploy lands in `#quill-medical-cicd`. This skill is what happens next:
 find out what broke and why, say so in the alert's Slack thread, and, when

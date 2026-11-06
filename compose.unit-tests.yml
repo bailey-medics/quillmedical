@@ -90,7 +90,7 @@ services:
     network_mode: none
 
   # Owl in scripts/owl/, a Node program of its own
-  # that runs on the home box. The frontend image is borrowed only for its
+  # that runs on the dev box. The frontend image is borrowed only for its
   # Node 26 and Yarn: nothing of the frontend is mounted. Its one test that
   # reads outside its folder checks the alert policies in main.tf, so that
   # folder alone is mounted beside it, read-only. It has a network, unlike

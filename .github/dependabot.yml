@@ -25,7 +25,7 @@ updates:
     target-branch: "main"
 
   # Owl, the alert watcher (scripts/owl/), a Node program of its own
-  # that runs on the home box
+  # that runs on the dev box
   - package-ecosystem: "npm"
     directory: "/scripts/owl"
     schedule:

@@ -68,7 +68,7 @@ new_box() {
     run "$SCRIPT"
 
     [ "$status" -eq 1 ]
-    [[ "$output" == *"Run this on the home box"* ]]
+    [[ "$output" == *"Run this on the dev box"* ]]
     [ "$(grep -c '^systemctl' "$CALLS" 2>/dev/null || true)" -eq 0 ]
 }
 
