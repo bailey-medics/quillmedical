@@ -61,6 +61,9 @@ set -euo pipefail
 # everywhere else in the repository: `just stack-submit` pushes the stack and
 # opens its pull requests, so neither a bare `git push` nor `gh pr create` is
 # here, and the /alert skill refuses both.
+#
+# Owl's own journal and service state are allowed too, so a question to
+# Owl about whether it is working is answered without a prompt.
 readonly ALLOWED_TOOLS=(
     "Bash(just stack-fresh:*)"
     "Bash(just stack-new:*)"
@@ -70,6 +73,9 @@ readonly ALLOWED_TOOLS=(
     "Bash(gh pr ready:*)"
     "Bash(gcloud logging read:*)"
     "Bash(scripts/slack-reply.sh:*)"
+    "Bash(journalctl --user -u quill-owl:*)"
+    "Bash(systemctl --user is-active quill-owl:*)"
+    "Bash(systemctl --user status quill-owl:*)"
 )
 
 # The scope the tmux server runs in, so `systemctl --user status
