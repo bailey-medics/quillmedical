@@ -1,4 +1,4 @@
-# Owl, the alert watcher, as a systemd user service on the home box.
+# Owl, the alert watcher, as a systemd user service on the dev box.
 #
 # Installed by `just owl-install` from quillmedical-owl, Owl's worktree, which links
 # this file into ~/.config/systemd/user/. Read its log with

@@ -83,7 +83,7 @@ Then set the variable where Claude Code passes it to hooks, in the box's
 `~/.claude/settings.json`:
 
 ```json
-"env": { "QUILL_NOTIFY_SSH_HOST": "markbailey@<the Mac's Tailscale name>" }
+"env": { "QUILL_NOTIFY_SSH_HOST": "<you>@<the Mac's Tailscale name>" }
 ```
 
 Two things are lost on the way:

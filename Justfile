@@ -492,7 +492,7 @@ aws-login which="emails":
     # email data outside the UK.
     aws configure set region eu-west-2 --profile "$profile"
 
-    # On a Linux machine with no screen, such as the home box over SSH,
+    # On a Linux machine with no screen, such as the dev box over SSH,
     # there is no browser to open, so `--remote` prints a link to open on
     # another device and asks for the code it shows. That prompt reads the
     # keyboard, so nothing is piped in: answer any overwrite question by
@@ -609,7 +609,7 @@ check-workflows:
 
 
 alias c := claude-session
-# Go to this worktree's Claude session in tmux, starting it or Claude again if needed (home box)
+# Go to this worktree's Claude session in tmux, starting it or Claude again if needed (dev box)
 claude-session:
     @bash scripts/claude-session.sh
 
@@ -799,7 +799,7 @@ gcp-login:
     # Having one valid and the other expired is the confusing case - terraform
     # fails while gcloud works - so refresh both together.
     #
-    # On a Linux machine with no screen, such as the home box over SSH,
+    # On a Linux machine with no screen, such as the dev box over SSH,
     # there is no browser to open: `--no-launch-browser` prints a link to
     # open on another device and asks for the code it shows.
     no_browser=()
@@ -1174,7 +1174,7 @@ notifier-app:
 
 
 alias owi := owl-install
-# Install Owl as a systemd user service, moving the box across from the alert watcher's old names (the home box's quillmedical-owl only)
+# Install Owl as a systemd user service, moving the box across from the alert watcher's old names (the dev box's quillmedical-owl only)
 owl-install:
     #!/usr/bin/env bash
     {{initialise}} "owl-install"
@@ -1184,7 +1184,7 @@ owl-install:
 
 
 alias owr := owl-restart
-# Restart Owl and its Claude session, owl, detached so it survives being run from the owl session (the home box's quillmedical-owl only); `force` to restart a busy one
+# Restart Owl and its Claude session, owl, detached so it survives being run from the owl session (the dev box's quillmedical-owl only); `force` to restart a busy one
 owl-restart force="":
     #!/usr/bin/env bash
     {{initialise}} "owl-restart"
@@ -2657,7 +2657,7 @@ storybook:
         echo "" >&2
     fi
 
-    # On the home box, listen on every interface so a phone on the tailnet
+    # On the dev box, listen on every interface so a phone on the tailnet
     # can open it. Safe there and nowhere else: Storybook runs on the host,
     # not in Docker, so the firewall covers it, and the box's firewall
     # drops anything that does not arrive over Tailscale. Tailscale being
@@ -2987,7 +2987,7 @@ test-shell-scripts *ARGS:
 
 
 alias tw := tmux-window
-# Go to a plain shell in tmux for this worktree, starting it if needed (home box); `just tw 2` for a second
+# Go to a plain shell in tmux for this worktree, starting it if needed (dev box); `just tw 2` for a second
 tmux-window NUMBER="":
     @bash scripts/tmux-window.sh {{quote(NUMBER)}}
 
@@ -3025,7 +3025,7 @@ unit-tests-owl *ARGS:
     {{initialise}} "unit-tests-owl"
 
     # The watcher in scripts/owl/ is its own Node package, run on
-    # the home box rather than deployed. Same throwaway container as `uf`,
+    # the dev box rather than deployed. Same throwaway container as `uf`,
     # with that folder mounted instead of frontend/.
     docker compose -p "$(just _test-project)" -f compose.unit-tests.yml \
         run --rm owl sh -lc "yarn install --immutable && yarn typecheck && yarn test {{ARGS}}"

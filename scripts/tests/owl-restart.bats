@@ -45,7 +45,7 @@ EOF
     run "$SCRIPT"
 
     [ "$status" -eq 1 ]
-    [[ "$output" == *"Run this on the home box"* ]]
+    [[ "$output" == *"Run this on the dev box"* ]]
     run ! grep -q "^systemd-run" "$CALLS"
 }
 

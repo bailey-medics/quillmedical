@@ -2,7 +2,7 @@
 // channel message to the Watcher, and moves the queue on every 30 seconds.
 // Once an hour it also checks whether the client certificate needs renewing.
 //
-// Run by quill-owl.service on the home box. Reconnecting after a
+// Run by quill-owl.service on the dev box. Reconnecting after a
 // dropped connection is @slack/socket-mode's job, not this file's.
 
 import { mkdirSync, writeFileSync } from "node:fs";

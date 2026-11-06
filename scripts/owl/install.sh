@@ -4,7 +4,7 @@
 #
 # Usage: install.sh
 #
-# Run by `just owl-install`, from quillmedical-owl on the home box only,
+# Run by `just owl-install`, from quillmedical-owl on the dev box only,
 # because the unit names that worktree by path: installing it from another checkout
 # would run code that is not that checkout's.
 #
@@ -94,7 +94,7 @@ main() {
     toplevel="$(git rev-parse --show-toplevel 2>/dev/null || true)"
 
     if [ "$(uname -s)" != "Linux" ] || [ "${toplevel}" != "${worktree}" ]; then
-        echo "✗ Run this on the home box, from ${worktree}." >&2
+        echo "✗ Run this on the dev box, from ${worktree}." >&2
         return 1
     fi
 

@@ -3,7 +3,7 @@
 #
 # Usage: restart.sh [force]
 #
-# Run by `just owl-restart`, from quillmedical-owl on the home box only, as
+# Run by `just owl-restart`, from quillmedical-owl on the dev box only, as
 # `just owl-install` is.
 #
 # Refuses while the busy flag is set, because an alert run may be part
@@ -49,7 +49,7 @@ main() {
     toplevel="$(git rev-parse --show-toplevel 2>/dev/null || true)"
 
     if [ "$(uname -s)" != "Linux" ] || [ "${toplevel}" != "${worktree}" ]; then
-        echo "✗ Run this on the home box, from ${worktree}." >&2
+        echo "✗ Run this on the dev box, from ${worktree}." >&2
         return 1
     fi
 

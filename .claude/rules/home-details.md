@@ -46,5 +46,5 @@ The hostname `devbox` and the username in paths are not refused: they
 say there is a box, not how to reach it, and `scripts/notification.sh`
 needs `devbox` to find its window.
 
-Recorded on 1 November 2026, after a security review found the dev
-box's addresses and the Mac's hostname published in a plan.
+Recorded on 1 November 2026, after a security review found a
+developer's machine addresses and hostnames published in a plan.

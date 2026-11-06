@@ -419,7 +419,7 @@ jobs:
           bash .github/scripts/ci/run-shell-tests.sh scripts/tests
 
       # Owl in scripts/owl/ is a Node package of its
-      # own, run on the home box rather than deployed. Checked here because
+      # own, run on the dev box rather than deployed. Checked here because
       # this job already has Node 26, and the watcher is tooling like the
       # scripts above. `just uow` runs the same three commands locally.
       - name: Owl type check and tests
