@@ -1,6 +1,6 @@
 # Owl, the alert watcher
 
-Watches `#quill-medical-cicd` for App production alerts and types `/alert <file>` into the Claude Code session in Owl's worktree, `quillmedical-owl`, which investigates and opens a pull request ready for review. It runs on the home box as the systemd user service `quill-owl.service`. The design, and the steps to set it up, are in the watcher phase of [the remote dev machine plan](../../docs/docs/plans/2026-10-19-remote-dev-machine-plan.md).
+Watches `#quill-medical-cicd` for App production alerts and types `/alert <file>` into the Claude Code session in Owl's worktree, `quillmedical-owl`, which investigates and opens a pull request ready for review. It runs on the dev box as the systemd user service `quill-owl.service`. The steps to set it up are below.
 
 ## What it does
 
@@ -31,7 +31,7 @@ Nobody is at the session to answer a permission prompt, so a prompt stalls a run
 
 ## Installing it
 
-from Owl's worktree on the home box, once the env file below exists:
+from Owl's worktree on the dev box, once the env file below exists:
 
 ```bash
 just owl-install
