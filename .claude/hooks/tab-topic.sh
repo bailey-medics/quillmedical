@@ -12,9 +12,9 @@
 # `set-titles-string` in ~/.tmux.conf shows it after "C<worktree number>".
 # See docs/docs/tmux/index.md for that line.
 #
-# After each prompt a small model is shown the title and the last few
-# messages, and asked whether it would name the conversation differently
-# if it were starting now. A next step towards the same goal keeps the
+# After each prompt a small model is shown the title, the person's
+# previous message and their newest one, and asked whether it would name
+# the conversation differently if it were starting now. A next step towards the same goal keeps the
 # title. A new goal is held in `@topic_pending`, and becomes the title
 # only when the next prompt agrees, so a one-message aside never renames
 # the tab.
@@ -28,7 +28,7 @@
 set -uo pipefail
 
 readonly SESSION_PATTERN='^(q[0-9]+|owl)$'
-readonly RECENT_MESSAGES=5
+readonly RECENT_MESSAGES=2
 readonly MESSAGE_CHARACTERS=400
 readonly TITLE_CHARACTERS=60
 

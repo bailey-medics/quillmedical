@@ -147,6 +147,21 @@ prompt() {
     ! grep -q "caveat" "${ASKED}"
 }
 
+@test "only the previous message and the newest one are sent" {
+    transcript="${BATS_TEST_TMPDIR}/t.jsonl"
+    for message in "oldest about copy mode" "older about docs" "previous about tab titles"; do
+        jq -cn --arg m "${message}" '{type: "user", message: {content: $m}}'
+    done >"${transcript}"
+    answer "Tab titles"
+
+    prompt "newest about Haiku" "${transcript}"
+    grep -q "1. previous about tab titles" "${ASKED}"
+    grep -q "2. newest about Haiku" "${ASKED}"
+    ! grep -q "3\\." "${ASKED}"
+    ! grep -q "oldest about copy mode" "${ASKED}"
+    ! grep -q "older about docs" "${ASKED}"
+}
+
 @test "the model runs outside tmux and marked as the hook's child" {
     answer "Tmux"
 
