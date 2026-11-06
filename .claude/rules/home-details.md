@@ -47,5 +47,4 @@ say there is a box, not how to reach it, and `scripts/notification.sh`
 needs `devbox` to find its window.
 
 Recorded on 1 November 2026, after a security review found the dev
-box's addresses and the Mac's hostname published in a plan. See
-`docs/docs/plans/2026-11-01-home-details-stay-out-of-the-repository-plan.md`.
+box's addresses and the Mac's hostname published in a plan.
