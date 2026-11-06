@@ -776,7 +776,7 @@ starts `claude` with `QUILL_OWL=true`, and nothing else sets it.
 
 When `QUILL_OWL=true`, and only while running the `/alert` skill:
 
-- **Run `just stack-fresh`, then `/crpd ready`** on a branch named
+- **Run `just stack-fresh`, then `/crpd`** on a branch named
   `feature/alert-*`, which commits the fix, pushes it and opens its pull
   request ready for review rather than as a draft. This is standing
   permission for that one act, and it overrides "NEVER auto-commit/push"

@@ -280,10 +280,11 @@ Then, for each unit in the plan:
    the tick is committed with the unit it describes rather than trailing a
    unit behind.
 
-3. **Finish the unit** with `/crpd`. It commits the work onto a **new**
-   stacked branch, cascade-rebases, pushes, and writes that branch's pull
-   request description. One unit, one branch, one pull request. Leave it a
-   draft.
+3. **Finish the unit** with `/crpd draft`. It commits the work onto a
+   **new** stacked branch, cascade-rebases, pushes, and writes that
+   branch's pull request description. One unit, one branch, one pull
+   request. Always pass `draft`: without it `/crpd` marks the pull request
+   ready.
 
 4. **Next unit**, back to step 1. Nothing to check out: the new branch is
    already the top of the stack, so the next unit builds on it.
