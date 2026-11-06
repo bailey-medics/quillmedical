@@ -96,6 +96,21 @@ EOF
     [ "$output" = "True" ]
 }
 
+@test "the session settings run the Bash guard before every Bash call" {
+    local settings="${BATS_TEST_DIRNAME}/../owl/session-settings.json"
+
+    run jq -r '.hooks.PreToolUse[] | select(.matcher == "Bash") | .hooks[].command' "$settings"
+    [ "$status" -eq 0 ]
+    [ "$output" = '$CLAUDE_PROJECT_DIR/.claude/hooks/owl-bash-guard.sh' ]
+}
+
+@test "the allowlist lets Owl read its own journal and service state" {
+    run "$SCRIPT"
+    grep -qF 'Bash\(journalctl\ --user\ -u\ quill-owl:\*\)' "$CALLS"
+    grep -qF 'Bash\(systemctl\ --user\ is-active\ quill-owl:\*\)' "$CALLS"
+    grep -qF 'Bash\(systemctl\ --user\ status\ quill-owl:\*\)' "$CALLS"
+}
+
 @test "the feedback survey is off in the session" {
     run "$SCRIPT"
     grep -q "CLAUDE_CODE_DISABLE_FEEDBACK_SURVEY=1;" "$CALLS"

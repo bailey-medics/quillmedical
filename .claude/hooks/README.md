@@ -164,3 +164,12 @@ terminal tab. A new title waits for a second prompt to agree with it, and
 where Claude Code's own title fills in while an alert runs, because an
 alert arrives as a slash command and the hook skips those. Anywhere else it
 does nothing. See [the tmux page](../../docs/docs/tmux/index.md).
+
+## Owl's Bash guard
+
+`owl-bash-guard.sh` is a `PreToolUse` hook on Bash, wired in
+`scripts/owl/session-settings.json` rather than here, so only Owl's session
+loads it, and it does nothing unless `QUILL_OWL` is `true` as well. It
+refuses a command in a shape that would raise a permission prompt nobody is
+there to answer, and tells the model what shape to use instead. What it
+refuses, and why, is in [Owl's README](../../scripts/owl/README.md).

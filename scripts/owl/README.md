@@ -21,6 +21,14 @@ A mention waits in the same queue as alerts and counts towards the same daily li
 
 The skill posts the root cause and the summary to the thread itself, through `scripts/slack-reply.sh`. The daemon only says it has picked an alert up, queued it or parked it.
 
+## Never waiting on a prompt
+
+Nobody is at the session to answer a permission prompt, so a prompt stalls a run until the 45-minute limit stops it. Three things keep a run from raising one:
+
+- **An allowlist** in `start-session.sh`: the stack recipes, `slack-reply.sh`, `gcloud logging read`, and Owl's own `journalctl` and `systemctl` state, so "is Owl working?" is answered without asking.
+- **Reads outside the worktree are refused** by `blockReadsOutsideWorkingDirectories` in `session-settings.json`.
+- **A Bash guard**, `.claude/hooks/owl-bash-guard.sh`, wired in `session-settings.json`, refuses a command in a shape that would prompt: commands joined with `;`, `&&` or `||`, a leading `cd`, `python3 -c`, or an unquoted path outside the worktree, the alerts folder, `/dev` and the scratchpad. The refusal tells the model what shape to use instead, so it tries again rather than waiting. Quoted text and heredoc bodies are not looked at, so a Slack reply may say anything.
+
 ## Installing it
 
 from Owl's worktree on the home box, once the env file below exists:
