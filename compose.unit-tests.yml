@@ -62,6 +62,14 @@ services:
       - ./frontend/src/stories/emails/rendered:/frontend/src/stories/emails/rendered
     network_mode: none
 
+  # The backend's network tests, which read a public repository on GitHub,
+  # such as tests/framework_repository_sync_test.py. The same container as
+  # `backend` with a network, so the ordinary suite stays offline.
+  # `just unit-tests-network` runs it.
+  backend-network:
+    extends: backend
+    network_mode: bridge
+
   frontend:
     image: quill-frontend-dev
     build:

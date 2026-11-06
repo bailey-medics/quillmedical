@@ -166,4 +166,5 @@ markers = [
     "e2e: marks end-to-end tests requiring full stack",
     "pentest: marks security penetration tests (run with '-m pentest')",
     "slow: marks tests that should only run in the heavy tier",
+    "network: reads a public repository on GitHub; also marked integration, and run by the framework_repository_sync CI job with '-m network'",
 ]

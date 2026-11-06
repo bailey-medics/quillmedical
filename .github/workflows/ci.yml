@@ -130,6 +130,30 @@ jobs:
         run: |
           poetry run pytest -q -n auto -m "not integration and not e2e" --maxfail=1 --disable-warnings
 
+  # ---------- Framework repository sync ----------
+  # The framework sync reading a real repository on GitHub, end to end:
+  # backend/tests/framework_repository_sync_test.py clones
+  # bailey-medics/quill-medical-framework-testing over HTTPS with no
+  # credential, as App production's sync does, and checks every version
+  # in its history is stored. Its own job because it needs the network,
+  # which the unit tests above never touch. `just unit-tests-network`
+  # runs the same locally. Phase 15 of
+  # docs/docs/plans/2026-11-01-passport-record-and-catalogue-plan.md.
+  framework_repository_sync:
+    if: github.event_name == 'push' || github.event_name == 'merge_group'
+    runs-on: ubuntu-26.04
+    name: Framework repository sync
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Python + backend deps
+        uses: ./.github/actions/setup-python
+
+      - name: Sync the testing repository
+        working-directory: backend
+        run: poetry run pytest -q -p no:cacheprovider -m network
+
   # ---------- Alembic autogenerate-drift check ----------
   # Catches "model changed but migration forgotten": runs the migrations
   # against a fresh Postgres, then fails if autogenerate would still produce
@@ -1153,6 +1177,7 @@ jobs:
     name: Read why the merge queue run failed
     needs:
       - python_checks
+      - framework_repository_sync
       - alembic_drift_check
       - typescript_checks
       - frontend_unit_tests

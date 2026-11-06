@@ -3026,6 +3026,19 @@ unit-tests-frontend *ARGS:
         run --rm frontend sh -lc "yarn unit-test:run {{ARGS}}"
 
 
+alias ubn := unit-tests-network
+# Run the backend tests that read a public repository on GitHub (in a throwaway container with a network)
+unit-tests-network *ARGS:
+    #!/usr/bin/env bash
+    {{initialise}} "unit-tests-network"
+
+    # As for `ub`, but in the backend-network service, which has a network,
+    # and only the tests marked `network`. CI runs the same in the
+    # framework_repository_sync job.
+    docker compose -p "$(just _test-project)" -f compose.unit-tests.yml \
+        run --rm backend-network sh -lc "pytest -q -p no:cacheprovider -m network {{ARGS}}"
+
+
 alias uow := unit-tests-owl
 # Run Owl's type check and tests (in a throwaway container)
 unit-tests-owl *ARGS:

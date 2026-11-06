@@ -1559,7 +1559,7 @@ the source of the fixtures. The steps are in the order they are done.
       The first refresh copied the four fixtures unchanged, from the
       testing repository's commit `3ec56aaa`.
 
-- [ ] **An integration test reads the testing repository for real**, in
+- [x] **An integration test reads the testing repository for real**, in
       `backend/tests/framework_repository_sync_test.py`. It calls
       `sync_from_repositories` with the testing repository alone, over
       HTTPS with no credential, as App production does, and checks that
@@ -1568,12 +1568,24 @@ the source of the fixtures. The steps are in the order they are done.
       `integration` and `network`, so `just ub` never runs it, and run in
       CI by a job of its own, `pytest -m network`, in the fast tier.
       Nothing it replaces: the unit tests keep the fixtures folder.
+      **Built on 6 November 2026.** "The words of the commit that set it"
+      is checked as what each version holds: version 1 has three
+      competencies and three scopes on `quill_test_take_a_history`, and
+      version 2 adds `quill_test_hand_over_a_patient` and `older_adult`.
+      The CI job is `framework_repository_sync`, not yet a required
+      check. The unit-test container has no network, so a
+      `backend-network` service in `compose.unit-tests.yml`, run by
+      `just unit-tests-network` (`just ubn`), runs the test locally.
 
-- [ ] **Tests**: `framework-pipeline.yml`'s `start_sync: false` path
+- [x] **Tests**: `framework-pipeline.yml`'s `start_sync: false` path
       skips `deploy` on a real merge in the testing repository; the
       `.bats` test for `check-framework-fixtures.sh` passes on a matching
       copy and fails on an edited fixture, naming it; the integration
-      test passes in CI; the end-to-end stack is unchanged.
+      test passes in CI; the end-to-end stack is unchanged. The first
+      held on the testing repository's #1, #2 and #3, and the integration
+      test passed locally with `just ubn` on 6 November 2026. No
+      end-to-end file changed: `seed_ci.py` still reads the fixtures
+      folder, whose four files are unchanged.
 
 ## Phase 16: Say which step a failed framework deploy stopped at
 
