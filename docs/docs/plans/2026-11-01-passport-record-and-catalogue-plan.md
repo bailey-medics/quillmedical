@@ -1481,31 +1481,34 @@ the source of the fixtures. The steps are in the order they are done.
       publishers' callers pass all three secrets, so nothing changes for
       them.
 
-- [ ] **Make `bailey-medics/quill-medical-framework-testing`**, by the
+- [x] **Make `bailey-medics/quill-medical-framework-testing`**, by the
       product owner, as for the four in Phase 6. The steps below wait for
       it, so Phase 16 was built first, on 5 November 2026. The harness
       refuses to create a public repository, so the creation and the
-      first push are the product owner's. The ruleset lists repositories
-      by name, so the order is the other way round from the numbered
-      steps below: push the starter commit before the name joins the
-      list, and no ruleset needs switching off. Its caller passes no
-      secrets, and keeps `id-token: write` only because GitHub refuses a
-      call whose caller grants less than a called job asks for. The
-      first run on `main` fails on the unknown `start_sync` input until
-      #2401 merges, and nothing is deployed by it. The name ends `-testing`
-      after the `-framework` ending, as teaching's does.
-      1. **Add it to `local.framework_repos`** in
-         `infra/github/framework_rulesets.tf`, and run
+      first push are the product owner's. Its caller passes no secrets,
+      and keeps `id-token: write` only because GitHub refuses a call
+      whose caller grants less than a called job asks for. The name ends
+      `-testing` after the `-framework` ending, as teaching's does.
+      **Done on 6 November 2026**, in this order. The ruleset lists
+      repositories by name, so pushing the starter commit before the
+      name joined the list meant no ruleset had to be switched off.
+      1. **Push the starter commit straight to `main`**, before the
+         ruleset covers it: a README, the licence, `cspell.config.json`
+         and the caller `.github/workflows/framework.yml` with
+         `start_sync: false`. #2401 had already merged, so the first run
+         on `main` skipped `deploy`, as `start_sync: false` intends.
+      2. **Add it to `local.framework_repos`** in
+         `infra/github/framework_rulesets.tf` (#2408), and run
          `just terraform-github`, so its `main` is protected like the
-         others'.
-      2. **Push the starter commit straight to `main`** with the
-         `framework-protected-branches` ruleset switched off and on
-         again, as on 5 November: a README, the licence,
-         `cspell.config.json` and the caller
-         `.github/workflows/framework.yml` with `start_sync: false`.
+         others'. Until then, `pipeline / check-protection` failed on
+         its pull requests, because it found no ruleset.
 
-- [ ] **Fill it with the fixtures and one test framework, by real
+- [x] **Fill it with the fixtures and one test framework, by real
       merges.** It becomes the source of every framework the tests read.
+      **Done on 6 November 2026**, as the testing repository's #1, #2 and
+      #3, each passing `validate` and `check-protection`, with `deploy`
+      skipped. Version 2 adds the scope `older_adult` and the competency
+      `quill_test_hand_over_a_patient`.
       - **The four fixtures**, `clinical`, `ghnft_radiotherapy_record`,
         `ruh_sact_passport` and `uk_sact_board_2023`, copied from
         `shared/framework-fixtures/` unchanged, in one pull request. They
@@ -1519,7 +1522,7 @@ the source of the fixtures. The steps are in the order they are done.
         catch-up across versions. Each merge passes the pipeline's
         version check, which is part of what is being tested.
 
-- [ ] **Copy the fixtures in with a recipe, and record where from.**
+- [x] **Copy the fixtures in with a recipe, and record where from.**
       `shared/framework-fixtures/` stays as a copy in this repository,
       because the unit tests, Storybook through `yarn generate:types`,
       the end-to-end stack and `just migrate-local` read it offline. Put
@@ -1540,6 +1543,21 @@ the source of the fixtures. The steps are in the order they are done.
         makes the testing repository the source.
       - **The fixtures README** says this, in place of "copied from
         `shared/competency-definitions/` on 4 November 2026".
+
+      **Built on 6 November 2026.** Two choices the step left open:
+      - **`quill_test.yaml` is not copied.** It is the testing
+        repository's own framework, read with its history by the
+        integration test below. Copying it would add a fifth framework to
+        every test's catalogue, to `framework-fixtures.json` and to the
+        end-to-end seed, which no test asked for. Both scripts name it,
+        and the refresh removes a fixture here that is gone from there.
+      - **The check is a step in the "Competency catalogue check" job** in
+        `ci.yml`, not a job of its own. That job is already a required
+        check, so the fixtures check gates a merge with no ruleset change
+        in `infra/github/branch_rules.tf`.
+
+      The first refresh copied the four fixtures unchanged, from the
+      testing repository's commit `3ec56aaa`.
 
 - [ ] **An integration test reads the testing repository for real**, in
       `backend/tests/framework_repository_sync_test.py`. It calls
