@@ -37,10 +37,9 @@ instead was considered and deferred; see Decisions.
         frontend, and every leg pays it.
 
       So three legs should come to about 13m 10s / 3 + 1m 43s, near 6
-      minutes, and four to near 5. `just e2e` on the devbox ran the same
-      374 tests in 2.9 minutes (see the
-      [remote dev machine plan](2026-10-19-remote-dev-machine-plan.md)), so
-      the tests themselves split cleanly. The runner's 4 cores and 2
+      minutes, and four to near 5. `just e2e` on a faster local machine
+      ran the same 374 tests in 2.9 minutes, so the tests themselves split
+      cleanly. The runner's 4 cores and 2
       workers are what make them slow.
 
 ## Phase 2: split the E2E job into three legs

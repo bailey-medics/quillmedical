@@ -116,8 +116,7 @@ main() {
     move_folder "${state}/${OLD_NAME}" "${state}/${NEW_NAME}"
     rewrite_old_path "${HOME}/.config/${OLD_NAME}" "${config}"
 
-    # The tokens are the one thing the repository cannot supply: see the
-    # watcher phase of docs/docs/plans/2026-10-19-remote-dev-machine-plan.md.
+    # The tokens are the one thing the repository cannot supply.
     if [ ! -f "${env_file}" ]; then
         echo "✗ No ${env_file} yet. It holds SLACK_APP_TOKEN, SLACK_BOT_TOKEN and OWL_CHANNEL." >&2
         return 1

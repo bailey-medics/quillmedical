@@ -112,10 +112,8 @@ A daemon on the home box reads `#quill-medical-cicd` and, when an alert or a
 failed deploy is posted there, types `/alert <file>` into the Claude Code
 session in Owl's worktree. The `/alert` skill investigates, explains the cause
 in the alert's thread, and opens a pull request ready for review when the
-fault is ours. A person reviews and merges it, or closes it. The design is
-the watcher phase of the
-[remote dev machine plan](../plans/2026-10-19-remote-dev-machine-plan.md),
-and the program is in `scripts/owl/`.
+fault is ours. A person reviews and merges it, or closes it. The program,
+and how to set it up, is in `scripts/owl/`.
 
 - **Which posts it acts on**: every post by an app that is not on its ignore
   list: success posts opening with ✅, the four-weekly alert route test, the

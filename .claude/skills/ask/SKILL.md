@@ -9,8 +9,7 @@ disallowed-tools: Bash(git commit:*), Bash(git push:*), Bash(git rebase:*), Bash
 # Answer one question asked of Owl
 
 Owl, the alert watcher on the home box, types `/ask <file>` into Owl's
-worktree when Mark mentions Owl in `#quill-medical-cicd` (see
-`docs/docs/plans/2026-11-06-owl-answers-mark-and-listens-to-two-apps-plan.md`).
+worktree when Mark mentions Owl in `#quill-medical-cicd`.
 The watcher has already checked who asked: a mention from anybody not in
 `OWL_SUMMONERS` never reaches this skill. This skill finds the answer and
 gives it in the thread. **It answers only. Nothing here commits, pushes,
