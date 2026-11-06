@@ -10,7 +10,7 @@
 // part of it.
 
 import type { Ledger } from "./ledger.ts";
-import { classify, type Alert, type SlackMessage } from "./messages.ts";
+import { classify, fromUnlistedApp, type Alert, type SlackMessage } from "./messages.ts";
 import type { Thread } from "./session.ts";
 import type { WorktreeState } from "./worktree.ts";
 
@@ -34,6 +34,8 @@ export interface Options {
   channel: string;
   // The bot user the watcher posts as, from auth.test.
   ownUserId: string | undefined;
+  // The bot_ids of the apps whose posts may be alerts, from OWL_ALERT_APPS.
+  alertApps: readonly string[];
   dailyCap: number;
   stallMinutes: number;
   abandonedHours: number;
@@ -43,7 +45,7 @@ export interface Options {
   startGraceSeconds: number;
 }
 
-export const DEFAULT_OPTIONS: Omit<Options, "channel" | "ownUserId"> = {
+export const DEFAULT_OPTIONS: Omit<Options, "channel" | "ownUserId" | "alertApps"> = {
   dailyCap: 20,
   stallMinutes: 45,
   abandonedHours: 3,
@@ -97,14 +99,21 @@ export class Watcher {
 
     const alert = classify(message, {
       ownUserId: this.options.ownUserId,
+      alertApps: this.options.alertApps,
       now: this.deps.now(),
     });
 
-    // Every bot post that is not an alert is on the ignore list, so this
-    // line is how a post wrongly ignored would be found.
+    // A bot post that is not an alert is either from an app that cannot
+    // raise one or on the ignore list. These lines are how a post wrongly
+    // passed over would be found; the bot_id names the app to add, and
+    // nothing of the text is logged.
     if (!alert) {
       if (message.bot_id && message.user !== this.options.ownUserId) {
-        this.deps.log("ignored", { hasAttachments: Boolean(message.attachments?.length), hasBlocks: Boolean(message.blocks?.length) });
+        if (fromUnlistedApp(message, this.options.alertApps)) {
+          this.deps.log("ignored-app", { botId: message.bot_id });
+        } else {
+          this.deps.log("ignored", { hasAttachments: Boolean(message.attachments?.length), hasBlocks: Boolean(message.blocks?.length) });
+        }
       }
       return;
     }

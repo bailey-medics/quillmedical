@@ -4,7 +4,8 @@ Watches `#quill-medical-cicd` for App production alerts and types `/alert <file>
 
 ## What it does
 
-- **Acts on every app's post, unless it is on the ignore list.** It would rather start a run that turns out not to be needed than miss a fault, since a person reviews every pull request anyway. The ignore list is success posts opening with ✅, the four-weekly alert route test, the retention decision, and the closing post of an alert already handled. Everything a person writes, replies in threads and its own posts are never alerts. The skill answers a post that is not a fault with "Not a fault" and a suggested addition to the list, and the list is narrowed from those.
+- **Listens to two apps only.** Google Cloud's own integration, for Cloud Monitoring alerts and Google incidents, and Goshawk, the app the GitHub workflows post through. Their `bot_id`s are in `OWL_ALERT_APPS`. Any other app's post starts nothing and is logged as `ignored-app` with its `bot_id`, so a new app in the channel shows up in the journal without a run.
+- **Acts on every post from those apps, unless it is on the ignore list.** It would rather start a run that turns out not to be needed than miss a fault, since a person reviews every pull request anyway. The ignore list is success posts opening with ✅, the four-weekly alert route test, the retention decision, and the closing post of an alert already handled. Everything a person writes, replies in threads and its own posts are never alerts. The skill answers a post that is not a fault with "Not a fault" and a suggested addition to the list, and the list is narrowed from those.
 - **Knows three shapes by name.** A Cloud Monitoring post whose bold title is one of the policy subjects listed in `src/messages.ts` (Google's post shows the policy's documentation subject, never its name), a `*❌ Deploy failed*` post from `deploy.yml`, and the Google Cloud incident policy. Any other post is `other`.
 - **Runs each alert once.** Each is fingerprinted (the post's first bold line and the UTC day, or for a failed deploy its commit), and no more than twenty investigations start in a UTC day, though a failed deploy is always investigated. The cap guards the Claude plan against a storm of different alerts; an alert held back by it gets a reply asking a person to look by hand.
 - **Waits its turn.** One investigation at a time. It queues while the session is busy, with an alert or with a person, and parks while moving Owl's worktree to the latest `main` would lose somebody's work: uncommitted changes, or a detached commit that `main` does not contain. A clean checkout on any branch, or behind `main`, is free, so a merge to `main` never stalls it.
@@ -45,6 +46,7 @@ Read from the environment, which the systemd unit loads from `~/.config/quill-ow
 - **`SLACK_APP_TOKEN`** - the app-level token, `xapp-`, with `connections:write`.
 - **`SLACK_BOT_TOKEN`** - the bot token, `xoxb-`, with `channels:history` and `chat:write`.
 - **`OWL_CHANNEL`** - the channel's id, such as `C0123456789`, not its name.
+- **`OWL_ALERT_APPS`** - the `bot_id`s of the two apps whose posts may be alerts, comma-separated, such as `B0123456789,B0987654321`. Required: the watcher refuses to start without it. To find an app's id, set `OWL_RECORD_EVENTS=1` for one of its posts and read `bot_id` from the saved event.
 - **`OWL_WORKTREE`** - defaults to `~/github/quillmedical-owl`.
 - **`OWL_TMUX_TARGET`** - defaults to `owl`.
 - **`OWL_STATE`** - defaults to `~/.local/state/quill-owl`, the folder `.claude/hooks/owl-busy.sh` keeps the busy flag in.
