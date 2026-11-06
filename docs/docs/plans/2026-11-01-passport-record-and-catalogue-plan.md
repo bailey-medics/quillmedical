@@ -1482,7 +1482,8 @@ the source of the fixtures. The steps are in the order they are done.
       them.
 
 - [ ] **Make `bailey-medics/quill-medical-framework-testing`**, by the
-      product owner, as for the four in Phase 6. The name ends `-testing`
+      product owner, as for the four in Phase 6. The steps below wait for
+      it, so Phase 16 was built first, on 5 November 2026. The name ends `-testing`
       after the `-framework` ending, as teaching's does.
       1. **Add it to `local.framework_repos`** in
          `infra/github/framework_rulesets.tf`, and run
@@ -1549,7 +1550,7 @@ the source of the fixtures. The steps are in the order they are done.
 
 ## Phase 16: Say which step a failed framework deploy stopped at
 
-- [ ] **Name the step that failed in the Slack notice**, in
+- [x] **Name the step that failed in the Slack notice**, in
       `notify-deploy-failure` in `.github/workflows/framework-pipeline.yml`.
       Found on 5 November 2026: when General clinical skills' `deploy` job
       could not sign in, the notice still said "A refused version is named
@@ -1567,8 +1568,18 @@ the source of the fixtures. The steps are in the order they are done.
       and set in the second, so the wording can follow it, through
       `format()` in the workflow or a small script under
       `.github/scripts/framework-pipeline/` if it grows a branch.
-- [ ] **Tests**: a `.bats` test for any script the step adds, covering
-      both cases. The workflow's own wording is read in review.
+      **Built on 5 November 2026** with two expressions in the workflow,
+      because a job that calls a reusable workflow cannot run a script to
+      compose its input. An empty execution now reads "The run failed
+      before the sync job started, while signing in to Google or starting
+      the job. The framework version was not looked at."
+
+- [x] **Tests**: no script was added, so
+      `.github/scripts/framework-pipeline/deploy-failure-notice.bats`
+      reads the workflow instead. It checks that the refused-version
+      sentence sits only in the branch for a started sync job, and that
+      the other branch says the version was not looked at. All three
+      tests go red against the old wording.
 
 ## Phase 17: Keep the framework repositories' sign-in in Terraform
 
