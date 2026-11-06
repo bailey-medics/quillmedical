@@ -1668,9 +1668,19 @@ the source of the fixtures. The steps are in the order they are done.
       Widening the condition to the whole organisation, so a new
       repository needs no hand step, was not done: it changes who can
       sign in, and is the product owner's to decide.
-- [ ] **The organisation secret `SLACK_WEBHOOK_URL`'s repository list**,
+- [x] **The organisation secret `SLACK_WEBHOOK_URL`'s repository list**,
       also set by hand on 5 November 2026, goes into `infra/github/`
       beside the rulesets, if that Terraform can manage it.
+
+      Built on 6 November 2026, in `infra/github/actions_secrets.tf`. The
+      GitHub provider's `github_actions_organization_secret_repositories`
+      holds the list alone, so the secret's value never reaches Terraform
+      or its state. The list is built from `local.teaching_repos` and
+      `local.framework_repos`, which the rulesets already use, less
+      `quill-medical-framework-testing`, whose caller passes no secrets.
+      A local plan imported the list with no change, and with the testing
+      repository let in it showed one repository added. It is applied
+      with `just terraform-github`, like the rest of that directory.
 - [x] **Tests**: `terraform plan` after the imports shows no change; a
       repository added to `local.framework_repositories` gains its binding
       and its place in the condition in the plan output.
