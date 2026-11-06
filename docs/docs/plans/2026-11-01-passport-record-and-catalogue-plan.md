@@ -1483,7 +1483,16 @@ the source of the fixtures. The steps are in the order they are done.
 
 - [ ] **Make `bailey-medics/quill-medical-framework-testing`**, by the
       product owner, as for the four in Phase 6. The steps below wait for
-      it, so Phase 16 was built first, on 5 November 2026. The name ends `-testing`
+      it, so Phase 16 was built first, on 5 November 2026. The harness
+      refuses to create a public repository, so the creation and the
+      first push are the product owner's. The ruleset lists repositories
+      by name, so the order is the other way round from the numbered
+      steps below: push the starter commit before the name joins the
+      list, and no ruleset needs switching off. Its caller passes no
+      secrets, and keeps `id-token: write` only because GitHub refuses a
+      call whose caller grants less than a called job asks for. The
+      first run on `main` fails on the unknown `start_sync` input until
+      #2401 merges, and nothing is deployed by it. The name ends `-testing`
       after the `-framework` ending, as teaching's does.
       1. **Add it to `local.framework_repos`** in
          `infra/github/framework_rulesets.tf`, and run
