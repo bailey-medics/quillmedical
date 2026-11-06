@@ -759,6 +759,14 @@ enter-frontend:
     docker exec -it quill_frontend /bin/sh
 
 
+alias ffr := framework-fixtures-refresh
+# Copy the framework fixtures from the testing repository's main, and record the commit in SOURCE
+framework-fixtures-refresh:
+    #!/usr/bin/env bash
+    {{initialise}} "framework-fixtures-refresh"
+    bash scripts/framework-fixtures-refresh.sh
+
+
 alias fc := frontend-chunks
 # Build the frontend for production and report the size of every chunk
 frontend-chunks:

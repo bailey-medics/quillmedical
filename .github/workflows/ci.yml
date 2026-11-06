@@ -1083,6 +1083,14 @@ jobs:
       # this repository any more. Each framework repository runs it on its
       # own pull requests, through framework-pipeline.yml.
 
+      # shared/framework-fixtures/ is a copy of the testing repository's
+      # frameworks, made by `just framework-fixtures-refresh`. This fails
+      # when a fixture differs from that repository at the commit SOURCE
+      # records, so a fixture is changed there, not edited here. It reads
+      # a public repository over HTTPS, with no credential.
+      - name: Check the framework fixtures match the testing repository
+        run: bash .github/scripts/ci/check-framework-fixtures.sh
+
   # ---------- Migration immutability ----------
   # A merged migration does not change, at all. The destructive-migration gate
   # only inspects migrations ADDED on a PR, so a drop_column edited into a file
