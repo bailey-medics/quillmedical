@@ -112,8 +112,7 @@ instead was considered and deferred; see Decisions.
   runner there is the bigger saving. It was deferred because the
   repository is public. GitHub advises against self-hosted runners on
   public repositories, because a pull request from a fork can then run
-  code on the machine, and the devbox holds AWS and Google Cloud sign-ins
-  and the alert watcher. Doing it safely needs a separate unprivileged
+  code on the machine. Doing it safely needs a separate unprivileged
   runner user, ephemeral runners, a guard limiting the job to this
   repository's own branches, approval for fork workflows, and a fallback
   to GitHub-hosted runners for when the box is off. Without that fallback
