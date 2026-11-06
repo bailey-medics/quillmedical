@@ -10,7 +10,8 @@
 // part of it.
 
 import type { Ledger } from "./ledger.ts";
-import { classify, fromUnlistedApp, type Alert, type SlackMessage } from "./messages.ts";
+import { classify, fromUnlistedApp, mention, threadOf, type Alert, type SlackMessage } from "./messages.ts";
+import type { Skill } from "./session.ts";
 import type { Thread } from "./session.ts";
 import type { WorktreeState } from "./worktree.ts";
 
@@ -18,12 +19,15 @@ export interface Dependencies {
   now(): Date;
   reply(channel: string, threadTs: string, text: string): Promise<void>;
   permalink(channel: string, ts: string): Promise<string | undefined>;
+  // The text of the post that opened a thread, or undefined if Slack would
+  // not give it.
+  threadOpening(channel: string, threadTs: string): Promise<string | undefined>;
   checkWorktree(): Promise<WorktreeState>;
   session: {
     busySince(nowSeconds: number): number | undefined;
     clearBusy(): void;
     writeAlertFile(alert: Alert, thread: Thread, now: Date): string;
-    startRun(alertFile: string): Promise<void>;
+    startRun(alertFile: string, skill: Skill): Promise<void>;
     interrupt(): Promise<void>;
   };
   // One line to the journal. Never the alert text.
@@ -36,6 +40,9 @@ export interface Options {
   ownUserId: string | undefined;
   // The bot_ids of the apps whose posts may be alerts, from OWL_ALERT_APPS.
   alertApps: readonly string[];
+  // The Slack member ids who may summon Owl with a mention, from
+  // OWL_SUMMONERS. Empty means nobody may.
+  summoners: readonly string[];
   dailyCap: number;
   stallMinutes: number;
   abandonedHours: number;
@@ -45,7 +52,7 @@ export interface Options {
   startGraceSeconds: number;
 }
 
-export const DEFAULT_OPTIONS: Omit<Options, "channel" | "ownUserId" | "alertApps"> = {
+export const DEFAULT_OPTIONS: Omit<Options, "channel" | "ownUserId" | "alertApps" | "summoners"> = {
   dailyCap: 20,
   stallMinutes: 45,
   abandonedHours: 3,
@@ -94,6 +101,13 @@ export class Watcher {
 
   async onMessage(message: SlackMessage): Promise<void> {
     if (message.channel !== this.options.channel) {
+      return;
+    }
+
+    const question = mention(message, this.options.ownUserId);
+
+    if (question) {
+      await this.onMention(question, message.user);
       return;
     }
 
@@ -157,6 +171,39 @@ export class Watcher {
     }
   }
 
+  // A mention is an instruction, not data, so who sent it is checked before
+  // anything is queued: a mention from anybody else never reaches the
+  // session. It gets no reply either, since a reply would tell the channel
+  // that Owl can be summoned. The journal holds neither the text nor who
+  // sent it.
+  private async onMention(question: Alert, user: string | undefined): Promise<void> {
+    if (!user || !this.options.summoners.includes(user)) {
+      this.deps.log("mention-refused");
+      return;
+    }
+
+    if (this.isKnown(question.fingerprint)) {
+      this.deps.log("duplicate", { fingerprint: question.fingerprint });
+      return;
+    }
+
+    if (question.threadTs) {
+      const context = await this.deps.threadOpening(this.options.channel, question.threadTs);
+      if (context) {
+        question.context = context;
+      }
+    }
+
+    // Unlike an alert, a mention is queued during an open Google Cloud
+    // incident: a question asked then is the one that most wants an answer.
+    this.queue.push({ alert: question, parkedNotice: false });
+    this.deps.log("queued", { fingerprint: question.fingerprint, waiting: this.queue.length });
+
+    if (this.current || this.deps.session.busySince(this.nowSeconds()) !== undefined) {
+      await this.deps.reply(this.options.channel, threadOf(question), "Queued: Owl's worktree is busy, and this will be picked up when it is free.");
+    }
+  }
+
   private isKnown(fingerprint: string): boolean {
     return (
       this.ledger.seen(fingerprint) ||
@@ -216,7 +263,7 @@ export class Watcher {
       this.deps.session.clearBusy();
       await this.deps.reply(
         this.options.channel,
-        run.alert.ts,
+        threadOf(run.alert),
         `Stopped: the investigation ran past ${this.options.stallMinutes} minutes without finishing. Owl's worktree is left as it was for a person to look at.`,
       );
       this.deps.log("stalled", { fingerprint: run.alert.fingerprint });
@@ -247,7 +294,7 @@ export class Watcher {
         next.parkedNotice = true;
         await this.deps.reply(
           this.options.channel,
-          next.alert.ts,
+          threadOf(next.alert),
           `Owl's worktree is in use (${worktree.reason}), so this is parked until it is free again.`,
         );
         this.deps.log("parked", { fingerprint: next.alert.fingerprint });
@@ -264,7 +311,7 @@ export class Watcher {
     if (next.alert.kind !== "deploy" && this.ledger.runsOn(date) >= this.options.dailyCap) {
       await this.deps.reply(
         this.options.channel,
-        next.alert.ts,
+        threadOf(next.alert),
         `Not investigated: ${this.options.dailyCap} investigations have already started today, which is the daily limit. Please look at this one by hand; the limit resets at midnight UTC.`,
       );
       this.ledger.record(next.alert.fingerprint, "capped", date);
@@ -272,17 +319,19 @@ export class Watcher {
       return;
     }
 
+    const threadTs = threadOf(next.alert);
     const thread: Thread = {
       channel: this.options.channel,
-      threadTs: next.alert.ts,
-      threadUrl: await this.deps.permalink(this.options.channel, next.alert.ts),
+      threadTs,
+      threadUrl: await this.deps.permalink(this.options.channel, threadTs),
     };
     const alertFile = this.deps.session.writeAlertFile(next.alert, thread, date);
+    const skill: Skill = next.alert.kind === "mention" ? "ask" : "alert";
 
     // Nothing is said in the thread here. The skill's first message says
     // it has started, so the thread never claims a run that did not begin.
     this.ledger.record(next.alert.fingerprint, "run", date);
-    await this.deps.session.startRun(alertFile);
+    await this.deps.session.startRun(alertFile, skill);
 
     this.current = { alert: next.alert, startedAt: now, sawBusy: false };
     this.deps.log("started", { fingerprint: next.alert.fingerprint, kind: next.alert.kind });

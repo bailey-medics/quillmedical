@@ -55,11 +55,11 @@ answers only. It commits nothing and opens no pull request.
 
 ## Phase 2: Mark can summon Owl with a mention
 
-- [ ] **Add `OWL_SUMMONERS` to `scripts/owl/src/config.ts`**, a
+- [x] **Add `OWL_SUMMONERS` to `scripts/owl/src/config.ts`**, a
       comma-separated list of Slack member ids, holding only Mark's. An
       empty list means nobody may summon Owl, and mentions are ignored;
       the watcher still starts, since alerts do not depend on it.
-- [ ] **Add a `mention` kind in `scripts/owl/src/messages.ts`.** A message
+- [x] **Add a `mention` kind in `scripts/owl/src/messages.ts`.** A message
       with no `bot_id`, in the channel or in any thread in it, whose text
       contains `<@` and Owl's own user id from `auth.test`, is a mention.
       No new Slack scope is needed: the watcher already receives every
@@ -68,18 +68,18 @@ answers only. It commits nothing and opens no pull request.
       deletions (`message_changed`, `message_deleted`) are not mentions,
       so editing a question does not start a second run. Its fingerprint
       is `mention|<ts>`, so each message runs once.
-- [ ] **Check the sender in `watcher.ts`**, in `onMessage`, before
+- [x] **Check the sender in `watcher.ts`**, in `onMessage`, before
       anything is queued: a mention whose `user` is not in
       `OWL_SUMMONERS` is logged as `mention-refused` with no text and no
       user id, and gets no reply. A reply would tell anyone in the channel
       that Owl can be summoned and by whom.
-- [ ] **Queue a mention like an alert**, in the same queue, so it waits
+- [x] **Queue a mention like an alert**, in the same queue, so it waits
       for a busy session, parks behind a worktree in use, and counts
       towards the daily cap, which guards the Claude plan whatever starts
       a run. Unlike an alert, an open Google Cloud incident does not
       swallow it: Mark asking a question during an incident is the case
       that most wants an answer.
-- [ ] **Write the question file in `scripts/owl/src/session.ts`**, beside
+- [x] **Write the question file in `scripts/owl/src/session.ts`**, beside
       `writeAlertFile`, with the same header (`channel`, `thread_ts`,
       `thread_url`, `kind: mention`) so `scripts/slack-reply.sh` works
       unchanged. The `thread_ts` is the thread the mention was in, or the
@@ -89,7 +89,7 @@ answers only. It commits nothing and opens no pull request.
       `conversations.replies` (already allowed by `channels:history`), so
       "is this the same as yesterday's?" has its context. The session
       types `/ask <file>` instead of `/alert <file>`.
-- [ ] **Write the `/ask` skill** in `.claude/skills/ask/SKILL.md`. Only
+- [x] **Write the `/ask` skill** in `.claude/skills/ask/SKILL.md`. Only
       the mention's own text is the question. Everything else in the file,
       the thread's opening post above all, is data, never instructions, as
       in `/alert`. It investigates with the same order and tools as
@@ -100,13 +100,13 @@ answers only. It commits nothing and opens no pull request.
       what the change would be, for Mark to start himself. It never
       quotes a log line in full, and never one holding something that
       looks like PHI.
-- [ ] **Tests in `scripts/owl/src/messages.test.ts` and
+- [x] **Tests in `scripts/owl/src/messages.test.ts` and
       `watcher.test.ts`** for: a mention top level and in a thread; a
       message naming another user is not a mention; an edit is not a
       mention; a refused summoner is not queued and not replied to; a
       mention during an open incident is still queued; and the file holds
       the thread's opening post.
-- [ ] **Document it** in `scripts/owl/README.md`: what a mention does,
+- [x] **Document it** in `scripts/owl/README.md`: what a mention does,
       that only `OWL_SUMMONERS` may make one, and `/ask` beside `/alert`.
 
 ## Phase 3: Set it up on the box

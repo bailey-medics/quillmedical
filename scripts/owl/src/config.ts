@@ -12,6 +12,9 @@ export interface Config {
   // The bot_ids of the apps whose posts may be alerts: Google Cloud's own
   // integration and Goshawk, the app the GitHub workflows post through.
   alertApps: string[];
+  // The Slack member ids who may summon Owl with a mention. Empty means
+  // nobody may, and alerts carry on as before.
+  summoners: string[];
   worktree: string;
   tmuxTarget: string;
   stateDirectory: string;
@@ -71,6 +74,7 @@ export function readConfig(env: NodeJS.ProcessEnv): Config {
     botToken: required(env, "SLACK_BOT_TOKEN", /^xoxb-/, "the bot token, starting xoxb-"),
     channel: required(env, "OWL_CHANNEL", /^C[A-Z0-9]{8,}$/, "the channel's id, such as C0123456789, not its name"),
     alertApps: alertApps(env),
+    summoners: idList(env, "OWL_SUMMONERS", /^[UW][A-Z0-9]{8,}$/, "a comma-separated list of Slack member ids, such as U0123456789"),
     worktree: env["OWL_WORKTREE"] || join(home, "github", "quillmedical-owl"),
     // Owl's own session, which scripts/claude-session.sh also names owl.
     tmuxTarget: env["OWL_TMUX_TARGET"] || "owl",

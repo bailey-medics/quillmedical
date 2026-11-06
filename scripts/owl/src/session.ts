@@ -14,6 +14,12 @@ import { setTimeout as sleep } from "node:timers/promises";
 import type { Alert } from "./messages.ts";
 import { runCommand, type Run } from "./worktree.ts";
 
+// The skill typed for a run: `/alert` for an alert, `/ask` for a mention.
+export type Skill = "alert" | "ask";
+
+// Sits between a mention's own text and the post its thread opened with.
+export const CONTEXT_MARKER = "--- the post this thread opened with ---";
+
 export interface Thread {
   channel: string;
   threadTs: string;
@@ -59,7 +65,9 @@ export class Session {
   }
 
   // Writes the alert for the skill to read: a header the skill and
-  // scripts/slack-reply.sh trust, a `---`, then the text from Slack.
+  // scripts/slack-reply.sh trust, a `---`, then the text from Slack. For a
+  // mention in a thread, the post the thread opened with follows, after
+  // CONTEXT_MARKER.
   writeAlertFile(alert: Alert, thread: Thread, now: Date): string {
     const directory = join(this.stateDirectory, "alerts");
     mkdirSync(directory, { recursive: true, mode: 0o700 });
@@ -75,18 +83,20 @@ export class Session {
       "---",
     ];
 
-    writeFileSync(path, `${header.join("\n")}\n${alert.text}\n`, { mode: 0o600 });
+    const context = alert.context ? `${CONTEXT_MARKER}\n${alert.context}\n` : "";
+
+    writeFileSync(path, `${header.join("\n")}\n${alert.text}\n${context}`, { mode: 0o600 });
 
     return path;
   }
 
-  // `/clear` first, so each alert starts a conversation of its own, then the
+  // `/clear` first, so each run starts a conversation of its own, then the
   // skill. `-l` sends the text literally, so nothing in it is read as a key
   // name, and Enter goes separately.
-  async startRun(alertFile: string): Promise<void> {
+  async startRun(alertFile: string, skill: Skill): Promise<void> {
     await this.type("/clear");
     await sleep(this.pauseMs);
-    await this.type(`/alert ${alertFile}`);
+    await this.type(`/${skill} ${alertFile}`);
   }
 
   async interrupt(): Promise<void> {

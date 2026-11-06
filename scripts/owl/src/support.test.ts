@@ -9,7 +9,7 @@ import { describe, it } from "node:test";
 
 import { ConfigError, readConfig } from "./config.ts";
 import { Ledger } from "./ledger.ts";
-import { Session } from "./session.ts";
+import { CONTEXT_MARKER, Session } from "./session.ts";
 import { checkWorktree, type Run } from "./worktree.ts";
 
 function temporaryDirectory(): string {
@@ -50,6 +50,15 @@ describe("readConfig", () => {
 
   it("refuses an alerting app given by name rather than bot_id", () => {
     assert.throws(() => readConfig({ ...GOOD_ENV, OWL_ALERT_APPS: "B0000000002,Goshawk" }), /malformed/);
+  });
+
+  it("lets nobody summon Owl unless OWL_SUMMONERS names them", () => {
+    assert.deepEqual(readConfig(GOOD_ENV).summoners, []);
+    assert.deepEqual(readConfig({ ...GOOD_ENV, OWL_SUMMONERS: "U0000000007" }).summoners, ["U0000000007"]);
+  });
+
+  it("refuses a summoner given by name rather than member id", () => {
+    assert.throws(() => readConfig({ ...GOOD_ENV, OWL_SUMMONERS: "@mark" }), /OWL_SUMMONERS holds a malformed id/);
   });
 
   it("refuses the tokens the wrong way round", () => {
@@ -206,13 +215,40 @@ describe("Session", () => {
       return "";
     };
 
-    await new Session({ stateDirectory: temporaryDirectory(), tmuxTarget: "owl", run, pauseMs: 0 }).startRun("/s/a.txt");
+    const session = new Session({ stateDirectory: temporaryDirectory(), tmuxTarget: "owl", run, pauseMs: 0 });
+    await session.startRun("/s/a.txt", "alert");
+    await session.startRun("/s/b.txt", "ask");
 
     assert.deepEqual(calls, [
       "tmux send-keys -t owl -l /clear",
       "tmux send-keys -t owl Enter",
       "tmux send-keys -t owl -l /alert /s/a.txt",
       "tmux send-keys -t owl Enter",
+      "tmux send-keys -t owl -l /clear",
+      "tmux send-keys -t owl Enter",
+      "tmux send-keys -t owl -l /ask /s/b.txt",
+      "tmux send-keys -t owl Enter",
     ]);
+  });
+
+  it("writes a mention's question, then the post its thread opened with", () => {
+    const session = new Session({ stateDirectory: temporaryDirectory(), tmuxTarget: "owl" });
+    const question = {
+      kind: "mention" as const,
+      fingerprint: "mention|300.000001",
+      source: "mention",
+      closing: false,
+      ts: "300.000001",
+      threadTs: "100.000001",
+      text: "<@U0000000001> is this the same as yesterday's?",
+      context: "*Backend error: app.auth*",
+    };
+
+    const path = session.writeAlertFile(question, { channel: "C0123456789", threadTs: "100.000001", threadUrl: undefined }, new Date("2026-10-26T09:14:03Z"));
+    const lines = readFileSync(path, "utf8").split("\n");
+
+    assert.equal(lines[1], "thread_ts: 100.000001");
+    assert.equal(lines[3], "kind: mention");
+    assert.deepEqual(lines.slice(7), [question.text, CONTEXT_MARKER, question.context, ""]);
   });
 });
