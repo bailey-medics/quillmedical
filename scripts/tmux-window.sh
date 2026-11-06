@@ -38,7 +38,7 @@ case "${number}" in
 esac
 
 if ! command -v tmux > /dev/null; then
-    echo "✗ tmux is not installed. This is for the home box." >&2
+    echo "✗ tmux is not installed. This is for the dev box." >&2
     exit 1
 fi
 

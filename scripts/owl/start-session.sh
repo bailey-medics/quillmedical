@@ -49,8 +49,7 @@
 # `tmux new-session` runs first starts the server, and at boot that is this
 # script, run by quill-owl.service. A server started in the
 # service's group is killed with it, so a restart of the watcher once closed
-# every session on the box, q1 to q6, and every Claude in them. See
-# docs/docs/plans/2026-11-04-tmux-survives-an-alert-watcher-restart-plan.md.
+# every session on the box, q1 to q6, and every Claude in them.
 #
 # OWL_TMUX_TARGET, OWL_WORKTREE and
 # OWL_STATE change the session name, the worktree and the
