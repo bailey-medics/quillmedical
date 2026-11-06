@@ -1622,7 +1622,7 @@ the source of the fixtures. The steps are in the order they are done.
 
 ## Phase 17: Keep the framework repositories' sign-in in Terraform
 
-- [ ] **Put today's hand-made sign-in into Terraform**, so it cannot be
+- [x] **Put today's hand-made sign-in into Terraform**, so it cannot be
       lost or drift. On 5 November 2026 the product owner made it by hand
       with `gcloud`, from the script in "Let the four repositories sign in
       as the content account" in Phase 6, because the harness refuses IAM
@@ -1644,12 +1644,44 @@ the source of the fixtures. The steps are in the order they are done.
       provider are already in Terraform for `quillmedical`'s own deploys,
       and whether a separate plan should own this, since it covers
       teaching as much as frameworks.
+
+      Built on 6 November 2026, in `infra/github-sign-in.tf`, and kept in
+      this plan. Neither the pool nor the provider was in Terraform,
+      although `quillmedical`'s own workflows sign in through them, and
+      `content-sync` is not in Terraform either, so the bindings name it
+      by its email. The pool, the provider and the seven bindings are
+      imported. The bindings to import are a fixed list of the seven made
+      by hand, not the live lists, because an import of a binding that
+      does not exist yet stops the plan.
+
+      **The condition cannot be imported unchanged.** Terraform always
+      reads a map's keys in alphabetical order, so a condition built from
+      `local.framework_repositories` lists the four repositories in a
+      different order from the hand-made one, which also grouped the
+      teaching repositories in brackets of its own. The new string admits
+      exactly the same repositories from the same branches. CI's apply
+      account may not change a provider (see `infra/owl.tf`), so the
+      product owner sets the new string by hand before the pull request
+      merges, with the command in the file's header and the pull request.
+      Each later change to the condition works the same way: the binding
+      is one map entry, and the condition is one `gcloud` command as well.
+      Widening the condition to the whole organisation, so a new
+      repository needs no hand step, was not done: it changes who can
+      sign in, and is the product owner's to decide.
 - [ ] **The organisation secret `SLACK_WEBHOOK_URL`'s repository list**,
       also set by hand on 5 November 2026, goes into `infra/github/`
       beside the rulesets, if that Terraform can manage it.
-- [ ] **Tests**: `terraform plan` after the imports shows no change; a
+- [x] **Tests**: `terraform plan` after the imports shows no change; a
       repository added to `local.framework_repositories` gains its binding
       and its place in the condition in the plan output.
+
+      Run locally on 6 November 2026, with `-lock=false` as CI plans. The
+      pool and the seven bindings import with no change, and the provider
+      imports with one: its condition, until the command above is run.
+      The only other change was the Cloud Run backend's revision name,
+      which every deploy leaves. A made-up repository added to
+      `local.framework_repositories` was planned with its own new binding
+      and its place in the condition, then taken out again.
 
 ## What happened on 5 November 2026, in order
 
