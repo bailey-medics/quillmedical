@@ -1,7 +1,6 @@
 # owl.tf - the read-only identity Owl, the alert watcher, reads logs as
 #
-# Owl on the home box (scripts/owl/, and the watcher
-# phase of docs/docs/plans/2026-10-19-remote-dev-machine-plan.md) is told
+# Owl on the home box (scripts/owl/) is told
 # only which policy fired. To say why, its /alert skill reads the logs over
 # the window with `gcloud logging read`, as this account.
 #
@@ -142,8 +141,7 @@ import {
 # Renamed from the alert watcher to Owl on 4 November 2026. Each block moves
 # the resource to its new name in the state, so the plan renames it rather
 # than destroying one and creating another. The IDs Google Cloud holds, such
-# as account_id and workload_identity_pool_id, are unchanged: see
-# docs/docs/plans/2026-11-04-the-alert-watcher-is-called-owl-plan.md.
+# as account_id and workload_identity_pool_id, are unchanged.
 moved {
   from = google_service_account.alert_watcher_logs
   to   = google_service_account.owl_logs
