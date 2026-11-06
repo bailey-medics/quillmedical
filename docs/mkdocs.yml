@@ -32,6 +32,7 @@ nav:
   - Home: index.md
   - Getting Started: getting-started.md
   - Git worktrees: worktrees/index.md
+  - tmux: tmux/index.md
   - Concepts:
       - Overview: concepts/index.md
       - Organisation: concepts/organisation.md
