@@ -14,7 +14,12 @@
 # A number gives the worktree another such session: `just tw 2` in
 # quillmedical-6 is t6-2, beside t6, and `just tw 2` again comes back to it.
 #
-# It runs nothing in the shell. Whatever is wanted is typed there.
+# A new shell has the backend's virtual environment switched on, when the
+# worktree has one, by typing its activate line into the shell just made,
+# before anybody is attached. That is the only thing ever typed: a running
+# shell is left as it is. VS Code's Python extension used to do it, but it
+# also typed the line into whatever a restored terminal was showing, Claude
+# included, so it is switched off on the box.
 #
 # A session of its own, rather than a window in a q session, keeps `just c`
 # landing on Claude, and keeps it out of Owl's way: Owl types into
@@ -61,6 +66,12 @@ fi
 
 if ! tmux has-session -t "=${name}" 2> /dev/null; then
     tmux new-session -d -s "${name}" -c "${top}" "bash -l"
+
+    activate="${top}/backend/.venv/bin/activate"
+    if [ -f "${activate}" ]; then
+        tmux send-keys -t "=${name}:" "source ${activate}" Enter
+    fi
+
     echo "Started ${name} in ${top}"
 fi
 

@@ -47,7 +47,32 @@ run_in() {
     [ "$(grep -c new-session "$CALLS")" -eq 0 ]
 }
 
-@test "nothing is typed into the shell" {
+@test "nothing is typed into a running shell" {
+    SESSION_EXISTS=1 run_in "$WORKTREE"
+    [ "$(grep -c send-keys "$CALLS")" -eq 0 ]
+}
+
+@test "a new session has the backend's virtual environment switched on, when the worktree has one" {
+    mkdir -p "${WORKTREE}/backend/.venv/bin"
+    touch "${WORKTREE}/backend/.venv/bin/activate"
+
+    run_in "$WORKTREE"
+    [ "$status" -eq 0 ]
+    grep -q "^tmux send-keys -t =t3: source .*quillmedical-3/backend/.venv/bin/activate Enter$" "$CALLS"
+    # Typed into the new, empty shell, before anybody is attached to it.
+    [ "$(grep -n send-keys "$CALLS" | cut -d: -f1)" -lt "$(grep -n attach "$CALLS" | cut -d: -f1)" ]
+}
+
+@test "a new session in a worktree with no virtual environment is left as a plain shell" {
+    run_in "$WORKTREE"
+    [ "$status" -eq 0 ]
+    [ "$(grep -c send-keys "$CALLS")" -eq 0 ]
+}
+
+@test "a running session is never typed into, even with a virtual environment" {
+    mkdir -p "${WORKTREE}/backend/.venv/bin"
+    touch "${WORKTREE}/backend/.venv/bin/activate"
+
     SESSION_EXISTS=1 run_in "$WORKTREE"
     [ "$(grep -c send-keys "$CALLS")" -eq 0 ]
 }
