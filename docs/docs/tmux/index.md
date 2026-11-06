@@ -22,6 +22,9 @@ box uses, if you want the same behaviour:
 set -g mouse on
 set -g history-limit 50000
 
+# No status line: the terminal tab already names the session
+set -g status off
+
 # Copy on mouse release, and keep the selection on screen
 bind -T copy-mode    MouseDragEnd1Pane send -X copy-pipe-no-clear
 bind -T copy-mode-vi MouseDragEnd1Pane send -X copy-pipe-no-clear
@@ -70,6 +73,12 @@ reaches every session at once.
 
 - **Mouse and history** - the mouse wheel scrolls back through output,
   and tmux keeps the last 50,000 lines of it.
+
+- **No status line** - tmux's green bar along the bottom, reading
+  something like `[q4] 0:bash*`, is switched off. It gave the session
+  name, the window number and name, and a clock, and the terminal tab
+  already says which session it is. tmux messages still show briefly at
+  the bottom of the pane.
 
 - **Copy on release** - dragging over text copies it when you let go of
   the mouse button, and the text stays highlighted.
