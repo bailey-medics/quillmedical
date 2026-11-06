@@ -1,10 +1,15 @@
 // Which Slack messages are alerts, and what each one is.
 //
-// Every top-level bot post is an alert unless it is on the ignore list: the
-// watcher would rather start a run that turns out not to be needed than
-// drop a post it does not recognise without telling anyone. Anything a
-// person writes, any reply in a thread and the watcher's own posts are
-// never alerts.
+// Only two apps can raise an alert: Google Cloud's own integration and
+// Goshawk, the app the GitHub workflows post through, named by their
+// bot_ids in OWL_ALERT_APPS. Any other app's post is not an alert, so a new
+// app in the channel is quiet until somebody adds it.
+//
+// Every top-level post from those apps is an alert unless it is on the
+// ignore list: the watcher would rather start a run that turns out not to
+// be needed than drop a post it does not recognise without telling anyone.
+// Anything a person writes, any reply in a thread and the watcher's own
+// posts are never alerts.
 //
 // Three shapes are known: a Cloud Monitoring post for one of the alert
 // policies in infra/modules/monitoring/main.tf, a `*❌ Deploy failed*` post
@@ -154,11 +159,20 @@ function utcDate(now: Date): string {
   return now.toISOString().slice(0, 10);
 }
 
+export interface ClassifyOptions {
+  ownUserId: string | undefined;
+  alertApps: readonly string[];
+  now: Date;
+}
+
+// True for a post from an app other than the two that raise alerts. The
+// watcher asks, so the journal can say why a bot post was passed over.
+export function fromUnlistedApp(message: SlackMessage, alertApps: readonly string[]): boolean {
+  return message.bot_id !== undefined && !alertApps.includes(message.bot_id);
+}
+
 // What the message is, or undefined when it is not an alert to act on.
-export function classify(
-  message: SlackMessage,
-  options: { ownUserId: string | undefined; now: Date },
-): Alert | undefined {
+export function classify(message: SlackMessage, options: ClassifyOptions): Alert | undefined {
   if (!message.bot_id) {
     return undefined;
   }
@@ -172,6 +186,10 @@ export function classify(
   }
 
   if (message.thread_ts && message.thread_ts !== message.ts) {
+    return undefined;
+  }
+
+  if (fromUnlistedApp(message, options.alertApps)) {
     return undefined;
   }
 

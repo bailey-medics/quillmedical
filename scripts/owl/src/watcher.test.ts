@@ -71,7 +71,12 @@ describe("Watcher", () => {
   beforeEach(() => {
     fakes = new Fakes();
     const ledger = new Ledger(join(mkdtempSync(join(tmpdir(), "watcher-")), "ledger.json"));
-    watcher = new Watcher(fakes.deps(), ledger, { ...DEFAULT_OPTIONS, channel: CHANNEL, ownUserId: "U0000000001" });
+    watcher = new Watcher(fakes.deps(), ledger, {
+      ...DEFAULT_OPTIONS,
+      channel: CHANNEL,
+      ownUserId: "U0000000001",
+      alertApps: ["B0000000002", "B0000000003"],
+    });
   });
 
   it("starts an investigation on the next tick, leaving the first word in the thread to the skill", async () => {
@@ -247,5 +252,15 @@ describe("Watcher", () => {
 
     assert.equal(watcher.queued(), 0);
     assert.deepEqual(fakes.events, ["ignored"]);
+  });
+
+  it("starts nothing for an app off the alerting list, and names it in the journal", async () => {
+    await watcher.onMessage({ channel: CHANNEL, ts: "100.000001", bot_id: "B0000000009", text: "*❌ Terraform apply failed*" });
+    await watcher.tick();
+
+    assert.equal(watcher.queued(), 0);
+    assert.deepEqual(fakes.started, []);
+    assert.deepEqual(fakes.replies, []);
+    assert.deepEqual(fakes.events, ["ignored-app"]);
   });
 });

@@ -13,7 +13,10 @@ import {
 } from "./messages.ts";
 
 const NOW = new Date("2026-10-26T09:14:03Z");
-const OPTIONS = { ownUserId: "U0000000001", now: NOW };
+// B0000000001 is the watcher's own app, which deploy.yml's webhook may post
+// through until the move to Goshawk is finished; B0000000002 stands for
+// Google Cloud's app.
+const OPTIONS = { ownUserId: "U0000000001", alertApps: ["B0000000001", "B0000000002"], now: NOW };
 
 function botPost(fields: Partial<SlackMessage>): SlackMessage {
   return { ts: "1761480000.123456", bot_id: "B0000000002", ...fields };
@@ -164,6 +167,15 @@ describe("classify", () => {
     const alert = classify(botPost({ bot_id: "B0000000001", text: DEPLOY_FAILED }), OPTIONS);
 
     assert.equal(alert?.kind, "deploy");
+  });
+
+  it("ignores a failure posted by an app that is not on the alerting list", () => {
+    assert.equal(classify(botPost({ bot_id: "B0000000009", text: DEPLOY_FAILED }), OPTIONS), undefined);
+    assert.equal(classify(botPost({ bot_id: "B0000000009", text: "*:x: Something failed*" }), OPTIONS), undefined);
+  });
+
+  it("ignores the watcher's own posts even when its app is on the alerting list", () => {
+    assert.equal(classify(botPost({ bot_id: "B0000000001", user: "U0000000001", text: DEPLOY_FAILED }), OPTIONS), undefined);
   });
 
   it("ignores a reply in a thread", () => {

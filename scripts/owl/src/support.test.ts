@@ -21,6 +21,7 @@ const GOOD_ENV = {
   SLACK_APP_TOKEN: "xapp-1",
   SLACK_BOT_TOKEN: "xoxb-1",
   OWL_CHANNEL: "C0123456789",
+  OWL_ALERT_APPS: "B0000000002, B0000000003",
 };
 
 describe("readConfig", () => {
@@ -36,6 +37,19 @@ describe("readConfig", () => {
 
   it("refuses a channel given by name rather than id", () => {
     assert.throws(() => readConfig({ ...GOOD_ENV, OWL_CHANNEL: "#quill-medical-cicd" }), ConfigError);
+  });
+
+  it("reads the alerting apps as a list, trimming the spaces", () => {
+    assert.deepEqual(readConfig(GOOD_ENV).alertApps, ["B0000000002", "B0000000003"]);
+  });
+
+  it("refuses to start with no alerting apps", () => {
+    assert.throws(() => readConfig({ ...GOOD_ENV, OWL_ALERT_APPS: "" }), /OWL_ALERT_APPS is missing/);
+    assert.throws(() => readConfig({ ...GOOD_ENV, OWL_ALERT_APPS: undefined }), ConfigError);
+  });
+
+  it("refuses an alerting app given by name rather than bot_id", () => {
+    assert.throws(() => readConfig({ ...GOOD_ENV, OWL_ALERT_APPS: "B0000000002,Goshawk" }), /malformed/);
   });
 
   it("refuses the tokens the wrong way round", () => {

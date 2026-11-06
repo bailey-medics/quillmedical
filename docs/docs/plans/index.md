@@ -131,3 +131,4 @@
 - [Tmux Survives an Alert Watcher Restart](2026-11-04-tmux-survives-an-alert-watcher-restart-plan.md)
 - [Alert Watcher Never Types Into a Dialog](2026-11-04-alert-watcher-never-types-into-a-dialog-plan.md)
 - [The Alert Watcher Is Called Owl](2026-11-04-the-alert-watcher-is-called-owl-plan.md)
+- [Owl Answers Mark and Listens to Two Apps](2026-11-06-owl-answers-mark-and-listens-to-two-apps-plan.md)

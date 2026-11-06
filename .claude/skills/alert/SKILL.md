@@ -46,9 +46,11 @@ received_at: 2026-10-26T09:14:03Z
 
 `kind` is `monitoring` for a Cloud Monitoring alert, `deploy` for a
 `*❌ Deploy failed*` post from `deploy.yml`, `gcp-incident` for a
-Personalized Service Health post, or `other` for any other post by an app
-in the channel. The watcher passes on every app's post that is not on its
-ignore list, so an `other` alert may not be a fault at all. If the file is missing, empty, or has no
+Personalized Service Health post, or `other` for any other post by one of
+the two apps that raise alerts: Google Cloud's own integration and
+Goshawk, the app the GitHub workflows post through. The watcher passes on
+every post of theirs that is not on its ignore list, so an `other` alert
+may not be a fault at all. If the file is missing, empty, or has no
 `channel` and `thread_ts`, stop and say so in the session: with no thread
 there is nowhere to report.
 
@@ -73,8 +75,8 @@ there is nowhere to report.
 ## An `other` alert: first decide whether it is a fault
 
 The watcher would rather start a run that is not needed than miss one, so
-an `other` alert is any app's post it does not know: a failed workflow, a
-scan's report, a reminder, or an app nobody has told it about. Read the
+an `other` alert is any post from Google Cloud or Goshawk that it does not
+know: a failed workflow, a scan's report or a reminder. Read the
 post and decide first whether something is broken that a change could
 fix.
 
