@@ -152,3 +152,15 @@ If the stack did not start, the hook says so and leaves the full Compose output
 in `/tmp/compose-up.log`; daemon startup failures land in `/tmp/dockerd.log`.
 A `Forbidden` on a `production.cloudfront.docker.com` URL in the first of those
 means the allowed-domains change above has not been applied to this environment.
+
+## Tab topic
+
+`tab-topic.sh` is a different kind of hook: it serves the home box, not the
+web. After each prompt in a `q` tmux session, it asks a small model whether
+the conversation has moved to a new goal, and keeps a short title for it in
+the session's `@topic` option. The tmux config shows that title in the
+terminal tab. A new title waits for a second prompt to agree with it, and
+`/clear` or a fresh start clears it. It works in Owl's `owl` session too,
+where Claude Code's own title fills in while an alert runs, because an
+alert arrives as a slash command and the hook skips those. Anywhere else it
+does nothing. See [the tmux page](../../docs/docs/tmux/index.md).
