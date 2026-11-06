@@ -419,7 +419,11 @@ changes:
 Each repository sets three secrets, passed to the pipeline by name:
 `GCP_WORKLOAD_IDENTITY_PROVIDER` and `GCP_SERVICE_ACCOUNT`, which are the
 teaching repositories' values, and `SLACK_WEBHOOK_URL`, for a failed
-deploy.
+deploy. The pipeline takes them as optional: a repository that never
+starts the sync, such as a testing repository, sets the input
+`start_sync: false` and passes none, and its merges stop after the pull
+request checks. With `start_sync` left true, the `deploy` job refuses to
+run unless both sign-in secrets were passed, and names the one missing.
 
 **Two settings are made by hand, not by Terraform.** The workload identity
 provider names each repository allowed to sign in, and admits a

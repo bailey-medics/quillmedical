@@ -1444,42 +1444,162 @@ reads the repositories, not a bucket" in Decisions.
 
 ## Phase 15: A framework repository for testing
 
-- [ ] **Make a framework repository for testing, `quill-medical-framework-testing`**,
-      shaped like the four publishers' repositories and run through the
-      same pipeline, so the tests pull real git material: a real clone, a
-      real first-parent history, and versions made by real merges. The
-      product owner asked for it on 4 November 2026, after reading #2359:
-      the folder of fixtures in `shared/framework-fixtures/` tests what the
-      sync does with a file, but nothing tests reading a repository's
-      history end to end. Teaching already has the same thing in
-      `eoeeta-teaching-testing`, which publishes a test module through the
-      real teaching pipeline. The name is a suggestion; it should match the
-      other repositories' `-framework` ending, with `-testing` after it as
-      teaching's does.
-      - **What it holds**: one small framework, a few competencies with a
-        level and a scope, at version 1, then a second merge that makes
-        version 2, so a catch-up across versions is real. It names itself
-        as a test framework in its `description`, and its publisher is
-        Quill.
-      - **The human steps**, as for the four repositories in Phase 6: make
-        the repository and its first push straight to `main`, add it to
-        `infra/github/` for `just terraform-github`, set its three
-        secrets, and add it to the Workload Identity provider's condition
-        with the same `refs/heads/main` rule.
-      - **The sync reads it in CI**: an integration test clones it over
-        HTTPS, as `read_repositories` does in App production, and checks
-        the versions it stores against the repository's history. That
-        replaces nothing: the unit tests and the end-to-end stack keep the
-        fixtures folder, so they run without the network.
-- [ ] **Decide whether its framework reaches App production.** Teaching's
-      test module does, behind its own organisation. A framework has no
-      organisation: once stored, the catalogue serves it to everybody, so
-      it would appear in every holder's framework picker. Either the
-      pipeline syncs it into a test environment only, or the catalogue
-      leaves out a framework marked as a test. For the product owner;
-      nothing in this phase is built before it is settled.
-- [ ] **Tests**: the integration test above, and the end-to-end stack
-      unchanged.
+The product owner asked for it on 4 November 2026, after reading #2359:
+the tests read a folder of fixtures, so nothing tests the sync reading a
+real repository's history end to end. Teaching already has the same in
+`eoeeta-teaching-testing`. Rewritten on 5 November 2026, once the four
+publishers' repositories existed, so the testing repository also becomes
+the source of the fixtures. The steps are in the order they are done.
+
+- [x] **Keep its framework out of App production by leaving it off
+      `FRAMEWORK_REPOSITORIES`.** Decided by the product owner on 5
+      November 2026. This was the question that held the phase: a
+      framework has no organisation, so once stored the catalogue would
+      show it in every holder's framework picker. Leaving it off the list
+      settles it. Both App production's syncs, the job and each deploy's
+      `run-migrations`, read only the repositories on that list, so they
+      never store it. The integration test below names the repository
+      itself, so nothing else needs to know about it.
+
+- [x] **Let a framework repository's pipeline skip starting the sync**, in
+      `.github/workflows/framework-pipeline.yml`, before the repository
+      exists. A merge to the testing repository would otherwise start
+      `quill-framework-sync-app`, which reads none of it, and would need
+      the repository to sign in to Google for nothing. So the workflow
+      takes an input, `start_sync`, true by default so the four
+      publishers' callers are unchanged. With it false, the `deploy` and
+      `notify-deploy-failure` jobs skip. The three secrets become
+      `required: false`, so a caller that never starts the sync passes
+      none. With `start_sync` true, `deploy` refuses to run without them.
+      So the testing repository needs no secrets, no Workload Identity
+      binding and no place on the Slack secret, and `validate` and
+      `check-protection` still run on its pull requests for real.
+      **Built on 5 November 2026**: the check is
+      `.github/scripts/framework-pipeline/check-sign-in-secrets.sh`, the
+      first step of `deploy`, which names the missing secret rather than
+      leaving the Google sign-in to fail unexplained. The four
+      publishers' callers pass all three secrets, so nothing changes for
+      them.
+
+- [ ] **Make `bailey-medics/quill-medical-framework-testing`**, by the
+      product owner, as for the four in Phase 6. The name ends `-testing`
+      after the `-framework` ending, as teaching's does.
+      1. **Add it to `local.framework_repos`** in
+         `infra/github/framework_rulesets.tf`, and run
+         `just terraform-github`, so its `main` is protected like the
+         others'.
+      2. **Push the starter commit straight to `main`** with the
+         `framework-protected-branches` ruleset switched off and on
+         again, as on 5 November: a README, the licence,
+         `cspell.config.json` and the caller
+         `.github/workflows/framework.yml` with `start_sync: false`.
+
+- [ ] **Fill it with the fixtures and one test framework, by real
+      merges.** It becomes the source of every framework the tests read.
+      - **The four fixtures**, `clinical`, `ghnft_radiotherapy_record`,
+        `ruh_sact_passport` and `uk_sact_board_2023`, copied from
+        `shared/framework-fixtures/` unchanged, in one pull request. They
+        stay fixtures: they need not follow the publishers' frameworks,
+        and a test that names one of their competencies names a
+        fixture.
+      - **One small test framework**, `quill_test`, a few competencies
+        with a level and a scope, published by Quill and naming itself a
+        test framework in its `description`. Version 1 in one pull
+        request, then version 2 in a second, so its history holds a real
+        catch-up across versions. Each merge passes the pipeline's
+        version check, which is part of what is being tested.
+
+- [ ] **Copy the fixtures in with a recipe, and record where from.**
+      `shared/framework-fixtures/` stays as a copy in this repository,
+      because the unit tests, Storybook through `yarn generate:types`,
+      the end-to-end stack and `just migrate-local` read it offline. Put
+      the network in front of every test run and each one is slower and
+      can fail for reasons that have nothing to do with the code.
+      - **`just framework-fixtures-refresh`** clones the testing
+        repository, copies each file in `frameworks/` into
+        `shared/framework-fixtures/`, and writes the commit it copied
+        from to `shared/framework-fixtures/SOURCE`. A refresh is an
+        ordinary pull request, so a fixture change is reviewed here as
+        well as there.
+      - **A CI check, `check-framework-fixtures.sh`**, under
+        `.github/scripts/ci/`, clones the testing repository at the
+        commit in `SOURCE` and fails if any fixture differs from it. It
+        compares with the recorded commit, not with `main`, so a merge in
+        the testing repository never turns an unrelated pull request
+        here red. A fixture edited here by hand fails it, which is what
+        makes the testing repository the source.
+      - **The fixtures README** says this, in place of "copied from
+        `shared/competency-definitions/` on 4 November 2026".
+
+- [ ] **An integration test reads the testing repository for real**, in
+      `backend/tests/framework_repository_sync_test.py`. It calls
+      `sync_from_repositories` with the testing repository alone, over
+      HTTPS with no credential, as App production does, and checks that
+      it stores `quill_test` at versions 1 and 2, each with the words of
+      the commit that set it, and the four fixtures at version 1. Marked
+      `integration` and `network`, so `just ub` never runs it, and run in
+      CI by a job of its own, `pytest -m network`, in the fast tier.
+      Nothing it replaces: the unit tests keep the fixtures folder.
+
+- [ ] **Tests**: `framework-pipeline.yml`'s `start_sync: false` path
+      skips `deploy` on a real merge in the testing repository; the
+      `.bats` test for `check-framework-fixtures.sh` passes on a matching
+      copy and fails on an edited fixture, naming it; the integration
+      test passes in CI; the end-to-end stack is unchanged.
+
+## Phase 16: Say which step a failed framework deploy stopped at
+
+- [ ] **Name the step that failed in the Slack notice**, in
+      `notify-deploy-failure` in `.github/workflows/framework-pipeline.yml`.
+      Found on 5 November 2026: when General clinical skills' `deploy` job
+      could not sign in, the notice still said "A refused version is named
+      in its log", though the sync job never started and nothing was
+      refused. The job has two ways to fail, and the notice should say
+      which one happened:
+      - **Before the sync job starts**: signing in to Google, or starting
+        `quill-framework-sync-app`. The notice says the sync did not run,
+        and that the framework version was not looked at.
+      - **The sync job ran and failed**: a version refused, or the job
+        itself erroring. Only then does it say a refused version is named
+        in the job's log, and link the execution, as it does today.
+
+      `needs.deploy.outputs.execution` is already empty in the first case
+      and set in the second, so the wording can follow it, through
+      `format()` in the workflow or a small script under
+      `.github/scripts/framework-pipeline/` if it grows a branch.
+- [ ] **Tests**: a `.bats` test for any script the step adds, covering
+      both cases. The workflow's own wording is read in review.
+
+## Phase 17: Keep the framework repositories' sign-in in Terraform
+
+- [ ] **Put today's hand-made sign-in into Terraform**, so it cannot be
+      lost or drift. On 5 November 2026 the product owner made it by hand
+      with `gcloud`, from the script in "Let the four repositories sign in
+      as the content account" in Phase 6, because the harness refuses IAM
+      grants. It is two things in `quill-medical-app`, neither in
+      Terraform, and the teaching repositories' half of each was made the
+      same way on 23 September 2026:
+      - **`github-provider`'s attribute condition**, in the pool
+        `github-pool`. It admits `quillmedical` and the three teaching
+        repositories, and the four framework repositories from `main`
+        only.
+      - **`roles/iam.workloadIdentityUser` on `content-sync`**, one binding
+        for each teaching and framework repository.
+
+      Bring both under Terraform with `import` blocks, so the first apply
+      changes nothing, and build the condition and the bindings from
+      lists, with the framework list read from `local.framework_repositories`
+      in `infra/main.tf`. A new framework repository is then one map
+      entry, not a `gcloud` command. Check first whether the pool and the
+      provider are already in Terraform for `quillmedical`'s own deploys,
+      and whether a separate plan should own this, since it covers
+      teaching as much as frameworks.
+- [ ] **The organisation secret `SLACK_WEBHOOK_URL`'s repository list**,
+      also set by hand on 5 November 2026, goes into `infra/github/`
+      beside the rulesets, if that Terraform can manage it.
+- [ ] **Tests**: `terraform plan` after the imports shows no change; a
+      repository added to `local.framework_repositories` gains its binding
+      and its place in the condition in the plan output.
 
 ## What happened on 5 November 2026, in order
 
@@ -1567,7 +1687,8 @@ What this leaves:
   They need nothing, because their next merge signs in the same way.
 
 - **The Slack failure message names a refused version even when the sync
-  never started.** It could say which step failed. Not yet planned.
+  never started.** Phase 16 makes it say which step failed. The sign-in
+  made by hand is Phase 17.
 
 - **Phase 8 comes next**, from its rewritten first step.
 
