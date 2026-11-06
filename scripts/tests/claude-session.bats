@@ -198,15 +198,13 @@ run_in() {
     [ "$(grep -c new-session "$CALLS")" -eq 0 ]
 }
 
-@test "from VS Code's terminal, a running Claude is asked to link again before attaching" {
+@test "from VS Code's terminal, a running Claude is not typed into, and a note says to type /ide" {
     export TERM_PROGRAM=vscode
 
     SESSION_EXISTS=1 CLAUDE_RUNNING=1 run_in "$WORKTREE"
     [ "$status" -eq 0 ]
-    grep -qx "tmux send-keys -t %7 /ide Enter" "$CALLS"
-    grep -qx "tmux attach -t =q3" "$CALLS"
-    # Asked before attaching, so the picker is waiting on arrival.
-    [ "$(grep -n send-keys "$CALLS" | cut -d: -f1)" -lt "$(grep -n attach "$CALLS" | cut -d: -f1)" ]
+    [ "$(grep -c send-keys "$CALLS")" -eq 0 ]
+    grep -q "^tmux attach -t =q3 ; display-message .*/ide" "$CALLS"
 }
 
 @test "from another terminal, a running Claude is attached to and not asked to link" {

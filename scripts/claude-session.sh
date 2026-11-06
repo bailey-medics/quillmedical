@@ -107,11 +107,12 @@ fi
 # Inside tmux, TERM_PROGRAM names tmux rather than the terminal, so VS
 # Code's terminal is only recognised from outside, which is where the
 # link is wanted. VS Code moves to a new port each time it restarts, so
-# a Claude already running may hold a link that no longer answers: ask
-# it to link again, and its picker waits for the person attaching. Text
-# left half-typed in Claude's input would be sent along with it.
+# a Claude already running may hold a link that no longer answers. The
+# note says to type /ide rather than typing it: VS Code reattaches its
+# terminal itself after the connection drops, and /ide typed then landed
+# in Claude's input, among whatever was half written there.
 if [ "${claude_was_running}" = true ] && [ "${TERM_PROGRAM:-}" = "vscode" ]; then
-    tmux send-keys -t "${pane_id}" "/ide" Enter
+    exec tmux attach -t "=${name}" \; display-message -d 5000 "Type /ide to link Claude to VS Code again"
 fi
 
 exec tmux attach -t "=${name}"
