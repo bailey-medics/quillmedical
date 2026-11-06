@@ -204,7 +204,7 @@ could not reproduce, not a fault) is one message in place of the last two.
    the repository's conventions as any other change would.
 5. **Run the targeted tests**: `just ub -k "<name>"` or
    `just uf <file>`. Never the full suite.
-6. **Open the pull request** with `/crpd ready`, only when
+6. **Open the pull request** with `/crpd`, only when
    `QUILL_OWL=true` (see "Before anything else"). The stack key is
    always `alert`, so the branch is `feature/alert-<what-it-fixes>` and the
    title `Alert: <what it fixes>`; use it even when another alert's pull

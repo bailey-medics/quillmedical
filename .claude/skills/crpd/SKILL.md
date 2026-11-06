@@ -1,7 +1,7 @@
 ---
 name: crpd
 description: Commit, rebase, push and describe one stacked branch
-argument-hint: "[repo: eoeeta-teaching|eoeeta-teaching-testing|respiratory-teaching] [ready]"
+argument-hint: "[repo: eoeeta-teaching|eoeeta-teaching-testing|respiratory-teaching] [draft]"
 allowed-tools: Bash(git status:*), Bash(git diff:*), Bash(git log:*), Bash(git branch:*), Bash(git rev-parse:*), Bash(git fetch:*), Bash(just stack-log:*), Bash(just stack-log-long:*), Bash(just stack-files:*), Bash(git switch:*), Bash(just stack-add:*), Bash(just stack-new:*), Bash(just stack-fresh:*), Bash(just stack-sync:*), Bash(just stack-rebase:*), Bash(just stack-submit:*), Bash(just stack-move:*), Bash(gh stack view:*), Bash(gh pr list:*), Bash(gh pr view:*), Bash(gh pr edit:*), Bash(gh pr ready:*), Bash(python3 scripts/stack-status.py:*), Bash(STACK_REPO=* just stack-*), Bash(git -C *), Bash(just validate-teaching:*)
 disallowed-tools: Bash(gh pr merge:*), Bash(gh stack merge:*), Bash(git rebase:*), Bash(git commit:*), Bash(git reset:*), Bash(git cherry-pick:*), Bash(git stash:*), mcp__github__merge_pull_request, mcp__github__enable_pr_auto_merge
 ---
@@ -38,8 +38,8 @@ So after a run finishes:
   which is the same act behind a recipe.
 - **Do not push** the branch again. `just stack-submit` and `git push`
   are both out.
-- **Do not open or update the pull request**, and do not take it out of
-  draft.
+- **Do not open or update the pull request**, and do not change whether
+  it is a draft.
 
 The branch this skill made is not an open workspace. A later fix on it
 needs the user to run `/crpd` again, or to ask for a commit in their
@@ -69,9 +69,9 @@ These hold on every run.
 - **Never merge a pull request. Ever.** Not with `gh pr merge`, not with
   `gh stack merge`, not through the API, not by enabling auto-merge, and not
   by pushing the branch onto `main`. Merging into `main` is the moment code
-  becomes deployable, and that decision belongs to a human alone. `ready`
-  gets a pull request ready for a human to review and merge; it never takes
-  that last step. If asked to merge as part of this command, refuse and say
+  becomes deployable, and that decision belongs to a human alone. Marking a
+  pull request ready gets it ready for a human to review and merge; it never
+  takes that last step. If asked to merge as part of this command, refuse and say
   why. Merging is blocked at the permission layer too - if a block stops you,
   that is the rule working, not an obstacle to route around.
 - **Never push or commit to `main` directly.** It is protected and requires a
@@ -112,16 +112,21 @@ Up to two space-separated arguments, both optional, in either order:
   `respiratory-teaching`, or the short form of one, `eoeeta`,
   `eoeeta-test` or `resp`. Omitted, the run acts on **quillmedical**. See
   "Target repository" below.
-- **`ready`** - after describing it, take the pull request out of draft.
-  Omitted, the pull request stays a draft. It never merges anything.
+- **`draft`** - leave the pull request a draft. Omitted, the pull request
+  is taken out of draft once it is described. Neither merges anything.
+- **`ready`** is accepted and changes nothing, since ready is the default.
+  It is kept so that `/crpd ready`, typed from habit, still works.
 
-So `/crpd`, `/crpd ready`, `/crpd eoeeta-teaching`, `/crpd eoeeta` and
-`/crpd eoeeta-teaching ready` are all valid. Any other token is an error: stop and ask what was meant rather than
-guessing.
+So `/crpd`, `/crpd draft`, `/crpd eoeeta-teaching`, `/crpd eoeeta` and
+`/crpd eoeeta-teaching draft` are all valid. `draft` and `ready` together
+are an error, and so is any other token: stop and ask what was meant rather
+than guessing.
 
-Default to leaving it a draft. In a long unattended run the whole stack is
-reviewed the next morning, and a draft is the correct state until a human has
-read it. Pass `ready` when finishing a branch deliberately, by hand.
+Default to marking it ready. Run by hand, `/crpd` usually finishes a small
+change the human means to review and merge soon, and marking it ready
+starts the heavy CI tier while they read it rather than after. `/f` passes
+`draft`: in a long unattended run the whole stack is reviewed the next
+morning, and a draft is the correct state until a human has read it.
 
 The arguments supplied to this command are: `$ARGUMENTS`
 
@@ -185,8 +190,8 @@ Four things differ in substance, and nothing else does:
   added.
 - **Merging matters more, not less.** The sync serves the newest version
   of the content once a pull request merges, so the pull request is the
-  only gate there is. Leave it a draft unless `ready` was given, and never
-  merge it.
+  only gate there is. Marking it ready, the default, is not merging it;
+  never merge it.
 
 ## Before anything
 
@@ -997,7 +1002,7 @@ to start a stack anywhere but the tip of `origin/main`, and says to run
 
    Keep every attempt's ease, in order, for the report.
 
-10. **Mark it ready only if `ready` was given**, and only if step 6 reported
+10. **Mark it ready unless `draft` was given**, and only if step 6 reported
    `isDraft: true`:
 
    ```bash
@@ -1005,8 +1010,9 @@ to start a stack anywhere but the tip of `origin/main`, and says to run
    ```
 
    Marking ready starts the heavy CI tier - say so when reporting. If it is
-   already out of draft, leave it and say so. This is the last step; do not
-   merge it.
+   already out of draft, leave it and say so. With `draft`, leave it a draft,
+   and never put back into draft a pull request that is already out of it.
+   This is the last step; do not merge it.
 
 ## Report
 
