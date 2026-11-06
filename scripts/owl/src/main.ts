@@ -14,7 +14,7 @@ import { WebClient } from "@slack/web-api";
 import { CertificateReminder, readExpiry } from "./certificate.ts";
 import { ConfigError, readConfig } from "./config.ts";
 import { Ledger } from "./ledger.ts";
-import type { SlackMessage } from "./messages.ts";
+import { flatten, type SlackMessage } from "./messages.ts";
 import { Session } from "./session.ts";
 import { DEFAULT_OPTIONS, Watcher } from "./watcher.ts";
 import { checkWorktree } from "./worktree.ts";
@@ -66,12 +66,30 @@ async function main(): Promise<void> {
           return undefined;
         }
       },
+      // conversations.replies lists a thread from the post that opened it,
+      // so the first message is that post. channels:history covers it.
+      threadOpening: async (channel, threadTs) => {
+        try {
+          const found = await web.conversations.replies({ channel, ts: threadTs, limit: 1, inclusive: true });
+          const opening = found.messages?.[0];
+
+          return isSlackMessage(opening) ? flatten(opening) : undefined;
+        } catch {
+          return undefined;
+        }
+      },
       checkWorktree: () => checkWorktree(config.worktree),
       session,
       log,
     },
     ledger,
-    { ...DEFAULT_OPTIONS, channel: config.channel, ownUserId: identity.user_id, alertApps: config.alertApps },
+    {
+      ...DEFAULT_OPTIONS,
+      channel: config.channel,
+      ownUserId: identity.user_id,
+      alertApps: config.alertApps,
+      summoners: config.summoners,
+    },
   );
 
   socket.on("message", async ({ event, ack }: { event: unknown; ack: () => Promise<void> }) => {

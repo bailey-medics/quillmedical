@@ -13,6 +13,12 @@ Watches `#quill-medical-cicd` for App production alerts and types `/alert <file>
 - **Stops a run that goes past 45 minutes** with Escape, and says so in the thread. A person's turn is never interrupted.
 - **Warns before its certificate runs out.** The box reads the logs by showing Google a client certificate that lasts a year. From 30 days before it runs out, the watcher posts a reminder in the channel with the renewal command, once a week until it is renewed. Its expiry date is written to the journal at start-up.
 
+## Asking Owl a question
+
+Mention Owl in the channel, at the top level or in a thread, and it answers in that thread. In an alert's thread it reads the alert too, so "@owl is this the same as yesterday's?" has its context. Only the Slack member ids in `OWL_SUMMONERS` may ask. A mention from anybody else starts nothing and gets no reply, and the journal logs `mention-refused` without the text or who sent it.
+
+A mention waits in the same queue as alerts and counts towards the same daily limit. An open Google Cloud incident does not swallow it. The session runs `/ask <file>` instead of `/alert <file>`, and `/ask` answers only: it never commits, pushes or opens a pull request.
+
 The skill posts the root cause and the summary to the thread itself, through `scripts/slack-reply.sh`. The daemon only says it has picked an alert up, queued it or parked it.
 
 ## Installing it
@@ -47,6 +53,7 @@ Read from the environment, which the systemd unit loads from `~/.config/quill-ow
 - **`SLACK_BOT_TOKEN`** - the bot token, `xoxb-`, with `channels:history` and `chat:write`.
 - **`OWL_CHANNEL`** - the channel's id, such as `C0123456789`, not its name.
 - **`OWL_ALERT_APPS`** - the `bot_id`s of the two apps whose posts may be alerts, comma-separated, such as `B0123456789,B0987654321`. Required: the watcher refuses to start without it. To find an app's id, set `OWL_RECORD_EVENTS=1` for one of its posts and read `bot_id` from the saved event.
+- **`OWL_SUMMONERS`** - the Slack member ids who may ask Owl a question with a mention, comma-separated, such as `U0123456789`. Optional: empty means nobody may. In Slack, open a profile, then the three dots, then "Copy member ID".
 - **`OWL_WORKTREE`** - defaults to `~/github/quillmedical-owl`.
 - **`OWL_TMUX_TARGET`** - defaults to `owl`.
 - **`OWL_STATE`** - defaults to `~/.local/state/quill-owl`, the folder `.claude/hooks/owl-busy.sh` keeps the busy flag in.

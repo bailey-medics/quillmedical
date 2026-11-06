@@ -8,6 +8,8 @@ import {
   GCP_INCIDENT_SUBJECT,
   IGNORED_SUBJECTS,
   INVESTIGATED_SUBJECTS,
+  mention,
+  threadOf,
   title,
   type SlackMessage,
 } from "./messages.ts";
@@ -180,6 +182,47 @@ describe("classify", () => {
 
   it("ignores a reply in a thread", () => {
     assert.equal(classify(botPost({ thread_ts: "1761470000.000001", text: DEPLOY_FAILED }), OPTIONS), undefined);
+  });
+});
+
+describe("mention", () => {
+  const OWL = "U0000000001";
+  const asked = { ts: "300.000001", user: "U0000000007", text: `<@${OWL}> is this the same as yesterday's?` };
+
+  it("reads a top-level mention, answered in its own thread", () => {
+    const found = mention(asked, OWL);
+
+    assert.equal(found?.kind, "mention");
+    assert.equal(found?.fingerprint, "mention|300.000001");
+    assert.equal(found && threadOf(found), "300.000001");
+  });
+
+  it("reads a mention inside a thread, answered in that thread", () => {
+    const found = mention({ ...asked, thread_ts: "100.000001" }, OWL);
+
+    assert.equal(found?.threadTs, "100.000001");
+    assert.equal(found && threadOf(found), "100.000001");
+  });
+
+  it("is not a mention when somebody else is named", () => {
+    assert.equal(mention({ ...asked, text: "<@U0000000009> have a look?" }, OWL), undefined);
+  });
+
+  it("is not a mention when Owl's name is only written as a word", () => {
+    assert.equal(mention({ ...asked, text: "owl, have a look?" }, OWL), undefined);
+  });
+
+  it("is not a mention when the message was edited or deleted", () => {
+    assert.equal(mention({ ...asked, subtype: "message_changed" }, OWL), undefined);
+    assert.equal(mention({ ...asked, subtype: "message_deleted" }, OWL), undefined);
+  });
+
+  it("is not a mention when an app names Owl, Owl's own replies included", () => {
+    assert.equal(mention({ ...asked, bot_id: "B0000000002" }, OWL), undefined);
+  });
+
+  it("is never a mention before Owl knows its own id", () => {
+    assert.equal(mention(asked, undefined), undefined);
   });
 });
 

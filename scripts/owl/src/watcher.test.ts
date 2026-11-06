@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { beforeEach, describe, it } from "node:test";
 
 import { Ledger } from "./ledger.ts";
-import type { SlackMessage } from "./messages.ts";
+import type { Alert, SlackMessage } from "./messages.ts";
 import { DEFAULT_OPTIONS, Watcher, type Dependencies } from "./watcher.ts";
 import type { WorktreeState } from "./worktree.ts";
 
@@ -18,6 +18,9 @@ class Fakes {
   worktree: WorktreeState = { free: true };
   replies: { threadTs: string; text: string }[] = [];
   started: string[] = [];
+  skills: string[] = [];
+  written: Alert[] = [];
+  threadOpenings = new Map<string, string>();
   interrupts = 0;
   events: string[] = [];
 
@@ -36,15 +39,20 @@ class Fakes {
         this.replies.push({ threadTs, text });
       },
       permalink: async (_channel, ts) => `https://slack.example/${ts}`,
+      threadOpening: async (_channel, threadTs) => this.threadOpenings.get(threadTs),
       checkWorktree: async () => this.worktree,
       session: {
         busySince: () => this.busy,
         clearBusy: () => {
           this.busy = undefined;
         },
-        writeAlertFile: (alert) => `/state/alerts/${alert.ts}.txt`,
-        startRun: async (alertFile) => {
+        writeAlertFile: (alert) => {
+          this.written.push(alert);
+          return `/state/alerts/${alert.ts}.txt`;
+        },
+        startRun: async (alertFile, skill) => {
           this.started.push(alertFile);
+          this.skills.push(skill);
         },
         interrupt: async () => {
           this.interrupts += 1;
@@ -64,6 +72,14 @@ function alertPost(subject: string, ts: string): SlackMessage {
 
 const INCIDENT = "*Google Cloud reports an incident affecting this project*";
 
+// The one person allowed to summon Owl in these tests, and somebody who is not.
+const MARK = "U0000000007";
+const SOMEBODY_ELSE = "U0000000008";
+
+function mentionOf(user: string, ts: string, threadTs?: string): SlackMessage {
+  return { channel: CHANNEL, ts, user, text: "<@U0000000001> is this the same as yesterday's?", ...(threadTs ? { thread_ts: threadTs } : {}) };
+}
+
 describe("Watcher", () => {
   let fakes: Fakes;
   let watcher: Watcher;
@@ -76,6 +92,7 @@ describe("Watcher", () => {
       channel: CHANNEL,
       ownUserId: "U0000000001",
       alertApps: ["B0000000002", "B0000000003"],
+      summoners: [MARK],
     });
   });
 
@@ -262,5 +279,56 @@ describe("Watcher", () => {
     assert.deepEqual(fakes.started, []);
     assert.deepEqual(fakes.replies, []);
     assert.deepEqual(fakes.events, ["ignored-app"]);
+  });
+
+  it("answers a summoner's top-level mention with /ask, in the mention's own thread", async () => {
+    await watcher.onMessage(mentionOf(MARK, "300.000001"));
+    await watcher.tick();
+
+    assert.deepEqual(fakes.started, ["/state/alerts/300.000001.txt"]);
+    assert.deepEqual(fakes.skills, ["ask"]);
+    assert.equal(fakes.written[0]?.kind, "mention");
+  });
+
+  it("answers a mention inside a thread there, with the post that opened it", async () => {
+    fakes.threadOpenings.set("100.000001", "*Backend error: app.auth*");
+    fakes.busy = fakes.nowSeconds();
+
+    await watcher.onMessage(mentionOf(MARK, "300.000001", "100.000001"));
+
+    assert.equal(fakes.replies[0]?.threadTs, "100.000001");
+    assert.match(fakes.replies[0]?.text ?? "", /^Queued/);
+
+    fakes.busy = undefined;
+    await watcher.tick();
+
+    assert.equal(fakes.written[0]?.threadTs, "100.000001");
+    assert.equal(fakes.written[0]?.context, "*Backend error: app.auth*");
+    assert.deepEqual(fakes.skills, ["ask"]);
+  });
+
+  it("refuses a mention from anybody not on the list, without a reply or a run", async () => {
+    await watcher.onMessage(mentionOf(SOMEBODY_ELSE, "300.000001"));
+    await watcher.tick();
+
+    assert.equal(watcher.queued(), 0);
+    assert.deepEqual(fakes.started, []);
+    assert.deepEqual(fakes.replies, []);
+    assert.deepEqual(fakes.events, ["mention-refused"]);
+  });
+
+  it("queues a summoner's mention even while a Google Cloud incident is open", async () => {
+    await watcher.onMessage({ channel: CHANNEL, ts: "100.000001", bot_id: "B0000000002", text: `${INCIDENT}\nState: ACTIVE` });
+    await watcher.onMessage(mentionOf(MARK, "300.000001", "100.000001"));
+
+    assert.equal(watcher.queued(), 2);
+    assert.equal(fakes.replies.length, 0);
+  });
+
+  it("still runs alerts with /alert", async () => {
+    await watcher.onMessage(alertPost("Backend error: app.auth", "100.000001"));
+    await watcher.tick();
+
+    assert.deepEqual(fakes.skills, ["alert"]);
   });
 });

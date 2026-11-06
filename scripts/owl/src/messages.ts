@@ -17,7 +17,9 @@
 // post is `other`. messages.test.ts fails when a policy's subject in
 // Terraform is not listed here, so the two cannot drift apart quietly.
 
-export type AlertKind = "monitoring" | "deploy" | "gcp-incident" | "other";
+// `mention` is not an alert but a question: a person naming Owl in the
+// channel. It travels the same queue, so it shares the type.
+export type AlertKind = "monitoring" | "deploy" | "gcp-incident" | "other" | "mention";
 
 export interface SlackMessage {
   channel?: string;
@@ -40,7 +42,18 @@ export interface Alert {
   // True for a post saying an incident has closed or recovered.
   closing: boolean;
   ts: string;
+  // For a mention inside a thread, the thread it was asked in, so the answer
+  // goes there. Alerts are top-level posts, and their thread is their own.
+  threadTs?: string;
   text: string;
+  // For a mention inside a thread, the text of the post that opened it, so
+  // a question such as "is this the same as yesterday's?" has its context.
+  context?: string;
+}
+
+// The thread to reply in.
+export function threadOf(alert: Alert): string {
+  return alert.threadTs ?? alert.ts;
 }
 
 // Google's Slack post never names the alert policy. Its bold first line is
@@ -169,6 +182,35 @@ export interface ClassifyOptions {
 // watcher asks, so the journal can say why a bot post was passed over.
 export function fromUnlistedApp(message: SlackMessage, alertApps: readonly string[]): boolean {
   return message.bot_id !== undefined && !alertApps.includes(message.bot_id);
+}
+
+// A person naming Owl, in the channel or a thread in it, or undefined. Slack
+// writes a mention as `<@` and the user id, so a renamed bot still matches.
+// Only a plain new message counts: an edit or a deletion arrives with a
+// subtype, so editing a question does not ask it twice. Who may ask is the
+// watcher's check, not this one.
+export function mention(message: SlackMessage, ownUserId: string | undefined): Alert | undefined {
+  if (!ownUserId || message.bot_id || message.subtype || !message.user) {
+    return undefined;
+  }
+
+  const text = message.text ?? "";
+
+  if (!text.includes(`<@${ownUserId}>`)) {
+    return undefined;
+  }
+
+  const inThread = message.thread_ts !== undefined && message.thread_ts !== message.ts;
+
+  return {
+    kind: "mention",
+    fingerprint: `mention|${message.ts}`,
+    source: "mention",
+    closing: false,
+    ts: message.ts,
+    ...(inThread ? { threadTs: message.thread_ts } : {}),
+    text,
+  };
 }
 
 // What the message is, or undefined when it is not an alert to act on.
