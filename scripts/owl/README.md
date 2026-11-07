@@ -39,7 +39,32 @@ just owl-install
 
 That installs the packages and links `quill-owl.service` into systemd as a user service, which starts the tmux session through `start-session.sh` and then the daemon. Its log is `journalctl --user -u quill-owl`.
 
-The tmux server runs in a systemd scope of its own, `quill-tmux-server.scope`, not in the watcher's process group. At boot `start-session.sh` is usually the first `tmux new-session` on the box, so the server it starts would otherwise belong to the service, and systemd kills everything in a service's group when it stops. A restart of the watcher must never close the sessions people are working in: on 4 November 2026 one closed all of them. `systemctl --user status quill-tmux-server.scope` shows the server.
+The tmux server runs as a transient systemd service of its own, `quill-tmux-server.service`, not in the watcher's process group. At boot `start-session.sh` is usually the first `tmux new-session` on the box, so the server it starts would otherwise belong to the service, and systemd kills everything in a service's group when it stops. A restart of the watcher must never close the sessions people are working in: on 4 November 2026 one closed all of them. `systemctl --user status quill-tmux-server.service` shows the server.
+
+It is a service and not a scope because a scope runs its command inside the caller's own process. From 4 to 7 November 2026 the server was started in a scope, so it inherited `NoNewPrivileges=true` from `quill-owl.service`, and every pane on the box refused `sudo` with "The 'no new privileges' flag is set". A transient service is spawned by the user manager and inherits nothing from Owl, while Owl itself keeps the flag. The server's flag should read 0:
+
+```bash
+grep NoNewPrivs /proc/$(systemctl --user show -p MainPID --value quill-tmux-server.service)/status
+```
+
+`~/.local/bin/quill-sessions`, which starts the other worktrees' sessions at boot, lives only on the box, and starts the server the same way when it runs first. Its `systemd-run` line must match this script's, and on a rebuilt box it needs the change made by hand:
+
+```bash
+systemd-run --user --quiet --collect --unit="${TMUX_UNIT}" \
+    --property=Type=forking tmux "$@"
+```
+
+with its `is-active` check asking for `"${TMUX_UNIT}.service"`.
+
+The change only reaches a server started after it is installed. To move the running server across, from a plain SSH shell that is not attached to tmux, and at a quiet moment because it ends every session on the box:
+
+```bash
+tmux kill-server
+systemctl --user daemon-reload
+systemctl --user restart quill-owl quill-sessions
+```
+
+Never run this from a Claude session, which would end that session with all the others.
 
 On a box that still runs `quill-alert-watcher.service`, the service's name before Owl, the same command moves it across: it stops the old service, moves `~/.config/quill-alert-watcher` and `~/.local/state/quill-alert-watcher` to their `quill-owl` names, and starts `quill-owl.service`. It is safe to run again.
 
