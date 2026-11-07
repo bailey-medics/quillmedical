@@ -125,3 +125,4 @@
 - [Passport Landing Views](2026-10-31-passport-landing-views-plan.md)
 - [Landing Bucket UK](2026-11-01-landing-bucket-uk-plan.md)
 - [Passport Record and Catalogue](2026-11-01-passport-record-and-catalogue-plan.md)
+- [Tmux Does Not Inherit Owl's Restrictions](2026-11-07-tmux-does-not-inherit-owls-restrictions-plan.md)

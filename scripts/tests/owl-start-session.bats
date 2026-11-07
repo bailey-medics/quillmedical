@@ -6,8 +6,8 @@
 # `has-session` with whatever SESSION_EXISTS says, so no tmux server is
 # started and no claude runs. systemd-run and systemctl are stubs too:
 # systemd-run records its options and runs the command after them, and
-# `systemctl is-active` answers with whatever SCOPE_ACTIVE says, so no test
-# reaches the real systemd.
+# `systemctl is-active` answers with whatever SERVICE_ACTIVE says, and only
+# for the tmux server's service, so no test reaches the real systemd.
 
 setup() {
     SCRIPT="${BATS_TEST_DIRNAME}/../owl/start-session.sh"
@@ -16,7 +16,7 @@ setup() {
     export OWL_STATE="${BATS_TEST_TMPDIR}/state"
     export HOME="${BATS_TEST_TMPDIR}/home"
     SYSTEMD_RUN_CALLS="${BATS_TEST_TMPDIR}/systemd-run-calls"
-    unset OWL_TMUX_TARGET SESSION_EXISTS SCOPE_ACTIVE
+    unset OWL_TMUX_TARGET SESSION_EXISTS SERVICE_ACTIVE
 
     mkdir -p "${OWL_WORKTREE}" "${BATS_TEST_TMPDIR}/bin"
     cat > "${BATS_TEST_TMPDIR}/bin/tmux" <<EOF
@@ -37,7 +37,7 @@ EOF
     cat > "${BATS_TEST_TMPDIR}/bin/systemctl" <<EOF
 #!/usr/bin/env bash
 if [ "\$2" = "is-active" ]; then
-    [ "\${SCOPE_ACTIVE:-}" = "1" ]
+    [ "\${SERVICE_ACTIVE:-}" = "1" ] && [ "\$4" = "quill-tmux-server.service" ]
 fi
 EOF
     chmod +x "${BATS_TEST_TMPDIR}/bin/tmux" \
@@ -158,15 +158,21 @@ EOF
     [ "$(grep -c new-session "$CALLS")" -eq 0 ]
 }
 
-@test "the session starts in a systemd scope of its own, outside the service" {
+@test "the session starts in a transient service of its own, outside Owl's" {
     run "$SCRIPT"
     [ "$status" -eq 0 ]
-    grep -q -- "^--user --scope --quiet --collect --unit=quill-tmux-server tmux new-session -d -s owl -c ${OWL_WORKTREE} bash -lc " "$SYSTEMD_RUN_CALLS"
+    grep -q -- "^--user --quiet --collect --unit=quill-tmux-server --property=Type=forking tmux new-session -d -s owl -c ${OWL_WORKTREE} bash -lc " "$SYSTEMD_RUN_CALLS"
     grep -q "^new-session -d -s owl " "$CALLS"
 }
 
-@test "a scope already running is not asked for again" {
-    SCOPE_ACTIVE=1 run "$SCRIPT"
+@test "the server is never started in a scope, which would inherit Owl's restrictions" {
+    run "$SCRIPT"
+    [ "$status" -eq 0 ]
+    [ "$(grep -c -- "--scope" "$SYSTEMD_RUN_CALLS")" -eq 0 ]
+}
+
+@test "a service already running is not asked for again" {
+    SERVICE_ACTIVE=1 run "$SCRIPT"
     [ "$status" -eq 0 ]
     [ ! -e "$SYSTEMD_RUN_CALLS" ]
     grep -q "^new-session -d -s owl " "$CALLS"
@@ -188,7 +194,7 @@ EOF
     grep -q "^new-session -d -s owl -c ${OWL_WORKTREE} bash -lc " "$CALLS"
 }
 
-@test "a session already running starts no scope" {
+@test "a session already running starts no service" {
     SESSION_EXISTS=1 run "$SCRIPT"
     [ ! -e "$SYSTEMD_RUN_CALLS" ]
 }
