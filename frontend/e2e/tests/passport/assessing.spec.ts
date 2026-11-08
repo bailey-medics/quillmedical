@@ -9,7 +9,7 @@
  * every result is checked where a person would see it (Phase 7).
  */
 
-import type { Browser, Page } from "@playwright/test";
+import type { Browser } from "@playwright/test";
 import { test, expect } from "../../fixtures/axe";
 import { linkIn, waitForEmail } from "../../fixtures/mail";
 import {
@@ -19,23 +19,10 @@ import {
   makeHolder,
   pageAs,
   passportEmailOf,
+  signFromTheInbox,
   type PassportPerson,
 } from "../../fixtures/passport";
 import { freshUsername, signIn } from "../../fixtures/signIn";
-
-/** Open the request about the competency from the inbox, and sign it. */
-async function signFromTheInbox(page: Page): Promise<void> {
-  await page.goto("/inbox");
-  await page.getByText(REFER_PALLIATIVE.name).first().click();
-  await expect(page).toHaveURL(/\/passport\/sign-off\//);
-  await page.getByRole("combobox", { name: "What did you do?" }).click();
-  await page.getByRole("option", { name: "Directly observed" }).click();
-  await page
-    .getByRole("checkbox", { name: "I confirm this declaration" })
-    .check();
-  await page.getByRole("button", { name: "Sign off competency" }).click();
-  await expect(page).toHaveURL(/\/inbox$/);
-}
 
 /** The row of the holder's landing page naming the competency. */
 async function holderRowText(

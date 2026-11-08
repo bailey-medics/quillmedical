@@ -3398,7 +3398,7 @@ not deferred items: deferring is for what nobody should build yet.
     large, the answer is a deliberate design change — the browser
     hashing the file itself and the backend verifying by reading the
     object back — not a signed URL that skips the hash.
-- [ ] End-to-end test: holder requests, assessor signs, holder exports
+- [x] End-to-end test: holder requests, assessor signs, holder exports
       PDF, hash on PDF matches repository. **Moved on 8 November 2026 to
       Phase 18 of `2026-11-01-passport-record-and-catalogue-plan.md`**,
       which builds it and ticks this. **Deferred deliberately, and
