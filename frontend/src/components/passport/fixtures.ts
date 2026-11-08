@@ -152,6 +152,7 @@ export const signedOff: SignOff = {
     },
   ],
   content_hash: "sha256:7f4e9a21bc0d",
+  fingerprint_matches: true,
 };
 
 export const requested: SignOff = {
@@ -174,6 +175,7 @@ export const requested: SignOff = {
   evidence: null,
   attachments: [],
   content_hash: null,
+  fingerprint_matches: null,
 };
 
 /**

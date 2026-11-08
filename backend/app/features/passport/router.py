@@ -137,6 +137,7 @@ from . import (
     evidence,
     export,
     frameworks,
+    hashing,
     ids,
     layout,
     paths,
@@ -1392,9 +1393,17 @@ def answer_logbook_confirmation(
 
 
 def _sign_off_out(name: str, record: SignOff) -> SignOffOut:
-    """Describe a sign-off on the wire."""
+    """Describe a sign-off on the wire, with its fingerprint checked."""
+    fingerprint_matches = (
+        hashing.matches(record) if record.content_hash is not None else None
+    )
+
     return SignOffOut.model_validate(
-        {"name": name, **record.model_dump(mode="json")}
+        {
+            "name": name,
+            **record.model_dump(mode="json"),
+            "fingerprint_matches": fingerprint_matches,
+        }
     )
 
 

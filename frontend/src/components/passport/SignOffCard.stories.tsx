@@ -37,6 +37,11 @@ export const SignedAtADifferentLevel: Story = {
   },
 };
 
+/** A record changed since it was signed, which Quill finds on reading it. */
+export const FingerprintDoesNotMatch: Story = {
+  args: { signOff: { ...signedOff, fingerprint_matches: false } },
+};
+
 export const ThreeClocks: Story = {
   render: () => (
     <Stack gap="sm">

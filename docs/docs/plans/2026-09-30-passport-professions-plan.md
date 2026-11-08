@@ -450,7 +450,7 @@ nothing writes it yet.
         switch, in both directions
       - a ward refuses the switch, as it refuses every feature
 
-- [ ] **Set up Cheltenham** once this has merged: Gloucestershire
+- [x] **Set up Cheltenham** once this has merged: Gloucestershire
       Hospitals as the `organisation`, Cheltenham oncology as a `site`
       under it, with `passport` and `passport_write` switched on at the
       site only.

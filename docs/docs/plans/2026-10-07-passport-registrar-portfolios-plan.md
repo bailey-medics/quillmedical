@@ -769,7 +769,7 @@ passport, is sold, and until now no base profession carried it.
 - [x] **Say so in the guide and the backend page**:
       `add-somebody-to-the-passport.md` and
       `docs/docs/backend/passport/index.md`.
-- [ ] **Give `passport_write` by hand to anybody who is already a Passport
+- [x] **Give `passport_write` by hand to anybody who is already a Passport
       admin**, in the user editor on the live app. A profession only seeds
       a person's `user_competency` rows at the moment it is given:
       `User.get_final_competencies` reads the rows and never the

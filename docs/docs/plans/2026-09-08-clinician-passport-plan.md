@@ -3399,7 +3399,9 @@ not deferred items: deferring is for what nobody should build yet.
     hashing the file itself and the backend verifying by reading the
     object back — not a signed URL that skips the hash.
 - [ ] End-to-end test: holder requests, assessor signs, holder exports
-      PDF, hash on PDF matches repository. **Deferred deliberately, and
+      PDF, hash on PDF matches repository. **Moved on 8 November 2026 to
+      Phase 18 of `2026-11-01-passport-record-and-catalogue-plan.md`**,
+      which builds it and ticks this. **Deferred deliberately, and
       it is larger than a spec file.** `seed_ci.py` knows nothing about
       the passport — two users, one teaching organisation, no feature
       flag and no `access_clinician_passport` — so the test would stop
@@ -3717,7 +3719,7 @@ not deferred items: deferring is for what nobody should build yet.
     ago: breaking the assertion shows a test runs, and only breaking
     the code shows what it covers.
 
-- [ ] Enable the `passport` feature for the first South West
+- [x] Enable the `passport` feature for the first South West
       organisation and onboard a small assessor group.
 - [x] Document the module under `docs/docs/backend/passport/index.md`
       and add a concepts page `docs/docs/concepts/clinician-passport.md`

@@ -1693,6 +1693,94 @@ the source of the fixtures. The steps are in the order they are done.
       `local.framework_repositories` was planned with its own new binding
       and its place in the condition, then taken out again.
 
+## Phase 18: The whole passport journey, end to end
+
+Moved here on 8 November 2026 from Phase 7 of the clinician passport
+plan, where it was put off in September. Both of its reasons have gone
+since: `seed_ci.py` now seeds a passport place with its own Passport
+admin and the framework fixtures, and the passport specs already run two
+people one after the other. Each step is tested on its own today: asking
+in `holding-a-passport.spec.ts` test 4, signing in `assessing.spec.ts`
+test 13, and downloading in test 11, which checks only that a file
+arrives. Nothing follows one sign-off from the ask to the printed
+record, or checks its fingerprint.
+
+- [x] **Check that the PDF prints each sign-off's fingerprint.** Read
+      `backend/app/features/passport/export.py` and render a passport
+      with one sign-off. If only the Markdown export prints it, the
+      spec below compares the Markdown with the bundle instead, and this
+      step says so.
+
+      Checked on 8 November 2026: it does. `pdf.py` prints
+      "Fingerprint sha256:..." under each signed sign-off, and
+      `render.py` prints it in the Markdown too. The record in the bundle
+      names the field `content_hash:`, not `hash:`, and the spec below
+      says so.
+- [x] **Show on a sign-off's page whether it still matches its
+      fingerprint.** Found on 8 November 2026 while planning the spec:
+      every downloaded bundle's `VERIFY.md`, from `VERIFY_TEMPLATE` in
+      `backend/app/features/passport/hashing.py`, tells its reader to
+      "ask the holder to open the record in Quill, which recomputes the
+      fingerprint and reports whether it still matches". Quill does not.
+      `matches` and `verify` in `hashing.py` exist, but nothing in the
+      application calls either, and no page shows the answer. So every
+      bundle promises a check that does not exist, and a holder has no
+      simple way to show a record is unchanged. Fixed in this phase, with
+      a failing test first:
+      - The backend adds the answer from `matches` to the sign-off it
+        already returns, as an optional field, which is additive and so
+        safe for the API. A record with no fingerprint answers null, not
+        no: a request nobody has signed has nothing to check, and "does
+        not match" would read as tampering.
+      - The sign-off's page shows "Fingerprint" with "Matches. Nothing in
+        this sign-off has changed since it was signed.", or a warning in
+        bold that it has changed and cannot be relied on.
+      - A backend test changes one stored fact on a signed record and
+        finds the answer turn to no. A frontend test renders both states.
+
+      Changing `VERIFY.md` to stop making the promise was the smaller
+      choice, and was not taken: it would leave the holder with nothing
+      to show.
+
+      Built on 8 November 2026. `fingerprint_matches` on `SignOffOut` is
+      set in `_sign_off_out` in `router.py`, the one place a sign-off
+      becomes a response, so every sign-off route carries it. Three tests
+      in `TestSignOff` in `router_test.py` pin null before signing, true
+      after, and false once the stored record's observed date is edited
+      behind the application's back. `SignOffCard` shows the answer, with
+      a story for the warning; the fingerprint itself stays off the page.
+- [ ] **Read one file's contents from a downloaded zip**, in
+      `frontend/e2e/fixtures/zip.ts`, beside `namesInZip`. The spec reads
+      the sign-off's record from the full bundle with it.
+- [ ] **Write the spec, all on screen**, in
+      `frontend/e2e/tests/passport/`. No API call, setup included: each
+      person is made on the add-user form with `makeHolder` and
+      `makeAssessor`, and each has a browser of their own through
+      `pageAs`.
+      1. The holder asks for a sign-off on a competency's page.
+      2. The assessor signs it from their inbox.
+      3. The holder sees it signed, opens the sign-off's page and reads
+         "Matches. Nothing in this sign-off has changed since it was
+         signed." there.
+      4. The holder downloads the PDF and the full bundle from
+         `/passport/download`.
+      5. The spec reads the PDF's text with pdf.js, as
+         `pdf-pages.spec.ts` does, and finds the sign-off, the
+         assessor's name and its fingerprint.
+      6. The spec finds the same fingerprint on the sign-off's
+         `content_hash:` line in the bundle's record.
+
+      The spec never works the fingerprint out itself. That would copy
+      the rules in `backend/app/features/passport/hashing.py` into the
+      test, where they would drift, and a mistake shared by both copies
+      would pass. The backend unit tests pin how the fingerprint is
+      worked out. This spec pins the two things only a whole journey
+      shows: Quill's own re-check of the stored record, read on screen in
+      step 3, and the printed copy agreeing with the stored copy in
+      steps 5 and 6.
+- [ ] **Tick the step in the clinician passport plan**, Phase 7, once the
+      spec is merged.
+
 ## What happened on 5 November 2026, in order
 
 Recorded at the product owner's request, so the day reads in the order it
