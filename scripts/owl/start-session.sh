@@ -72,7 +72,13 @@ set -euo pipefail
 # The web and the GitHub API are read through fetch.sh and gh-get.sh, never
 # a bare curl or gh api, which would take any flag after an allowed pattern,
 # including ones that send data. The Bash guard refuses both.
+#
+# `printenv QUILL_OWL` is how the /alert skill learns it may open a pull
+# request. It is allowed exactly, with no `:*`, so it reads that one
+# variable and no other; auto mode asks about `echo "$QUILL_OWL"`, because
+# an expanded variable might hold a secret.
 readonly ALLOWED_TOOLS=(
+    "Bash(printenv QUILL_OWL)"
     "Bash(scripts/owl/fetch.sh:*)"
     "Bash(scripts/owl/gh-get.sh:*)"
     "Bash(just stack-fresh:*)"

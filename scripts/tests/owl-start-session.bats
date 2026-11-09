@@ -139,6 +139,13 @@ EOF
     grep -qF 'Bash\(scripts/owl/gh-get.sh:\*\)' "$CALLS"
 }
 
+@test "the allowlist lets the alert skill read the Owl flag, and no other variable" {
+    run "$SCRIPT"
+    grep -qF 'Bash\(printenv\ QUILL_OWL\)' "$CALLS"
+    [ "$(grep -c 'printenv\\ QUILL_OWL:' "$CALLS")" -eq 0 ]
+    [ "$(grep -cE 'Bash\\\(printenv\\\)|printenv:' "$CALLS")" -eq 0 ]
+}
+
 @test "the allowlist never names a bare curl or gh api" {
     run "$SCRIPT"
     [ "$(grep -c 'Bash\\(curl' "$CALLS")" -eq 0 ]
