@@ -175,7 +175,9 @@ frontend/tsconfig.check.json	8c54e18db0f214ac3b3f3ab69069695d7a309bce	2026-10-15
 frontend/tsconfig.json	511e9d2a878cf30ced49f3ce48ecf88039b92fa9	2026-10-13	Cotswoldsmaker	mark.allan.bailey@gmail.com
 frontend/tsconfig.node.json	a2691c6ca8a3b7ed887bc0f98f8835f6a2a12c35	2026-10-15	Cotswoldsmaker	mark.allan.bailey@gmail.com
 frontend/vite.config.ts	2cedb5fac3864533f321bd92026287b2ba80e3e9	2026-10-15	Cotswoldsmaker	mark.allan.bailey@gmail.com
-infra/aws/modules/ses-account/main.tf	b8f4577992887f1445338463266355a935a1b1b0	2026-10-20	Cotswoldsmaker	mark.allan.bailey@gmail.com
+infra/aws/modules/ses-account/main.tf	b60fc134058df7573a969260b214018ec7f3b0df	2026-11-09	Cotswoldsmaker	mark.allan.bailey@gmail.com
 infra/aws/modules/ses-account/outputs.tf	11a7b474ea034712adc3a968d83dbd3324a7a94b	2026-10-20	Cotswoldsmaker	mark.allan.bailey@gmail.com
 infra/aws/modules/ses-account/variables.tf	f920626aa10971d8faa43e062acba3b2b98273dd	2026-10-22	Cotswoldsmaker	mark.allan.bailey@gmail.com
+infra/aws/policies/email-only.json	fbce2d2a6d6a1e662f60347f3e272e957218f752	2026-11-09	Cotswoldsmaker	mark.allan.bailey@gmail.com
+infra/aws/policies/london-only.json	edf0418f615ce898a7d6f8a6684d888f948ae47e	2026-11-09	Cotswoldsmaker	mark.allan.bailey@gmail.com
 scripts/check-python-version.sh	e9ba5acc38524cdd3b8c10fdd371c2e9771ce114	2026-10-11	Cotswoldsmaker	mark.allan.bailey@gmail.com
