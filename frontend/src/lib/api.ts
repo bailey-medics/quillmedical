@@ -105,6 +105,47 @@ function serialiseBody(body: unknown): BodyInit | undefined {
 }
 
 /**
+ * The statuses something in front of the backend answers with when it
+ * cannot reach it: a load balancer's 502, 503 and 504, and Cloudflare's
+ * 530 when a tunnel's other end has gone.
+ */
+const GATEWAY_STATUSES = new Set([502, 503, 504, 530]);
+
+/** What a request is refused with when the backend cannot be reached. */
+export const BACKEND_UNREACHABLE = "The server could not be reached";
+
+/**
+ * Whether this answer came from in front of the backend, saying the
+ * backend cannot be reached.
+ *
+ * The network is up, so `fetch` does not throw, and without this the
+ * app never knew it was offline: the page only said a thing could not
+ * be loaded. The backend answers some 503s itself, such as an upload
+ * it refuses, and every answer of its own is JSON, so a gateway status
+ * counts only when it carries none.
+ */
+function isBackendUnreachable(res: Response): boolean {
+  const contentType = res.headers.get("content-type") ?? "";
+
+  return (
+    GATEWAY_STATUSES.has(res.status) &&
+    !contentType.includes("application/json")
+  );
+}
+
+/**
+ * Say the backend cannot be reached, as a failed connection does, so
+ * the connectivity context shows the app offline and polls until it is
+ * back. Thrown rather than read, since a gateway's page is no message
+ * for the person.
+ */
+function backendUnreachable(): never {
+  window.dispatchEvent(new CustomEvent("app:network-error"));
+
+  throw new Error(BACKEND_UNREACHABLE);
+}
+
+/**
  * Core API Request Handler
  *
  * Makes an authenticated HTTP request to the backend API with automatic token
@@ -207,6 +248,8 @@ async function request<T>(path: string, opts: Options = {}): Promise<T> {
   // identifier from a URL is recorded, and no request or response body is
   // touched at all.
   recordApi(method, path, res.status);
+
+  if (isBackendUnreachable(res)) backendUnreachable();
 
   // Silent, single refresh try on 401
   if (res.status === 401 && !opts.retry) {
@@ -368,6 +411,8 @@ async function requestBlob(path: string, opts: Options = {}): Promise<Blob> {
   }
 
   checkCompatHeader(res);
+
+  if (isBackendUnreachable(res)) backendUnreachable();
 
   if (res.status === 401 && !opts.retry) {
     const refreshed = await fetch(`/api/auth/refresh`, {

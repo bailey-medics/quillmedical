@@ -6,7 +6,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { api, UNAUTHENTICATED_EVENT } from "./api";
+import { api, BACKEND_UNREACHABLE, UNAUTHENTICATED_EVENT } from "./api";
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                           */
@@ -143,6 +143,94 @@ describe("api.request", () => {
     expect(handler).toHaveBeenCalledTimes(1);
 
     window.removeEventListener("app:network-error", handler);
+  });
+
+  describe("a gateway saying the backend cannot be reached", () => {
+    // A stopped tunnel or a backend down behind the load balancer: the
+    // network is up, so fetch does not throw, and the page is the
+    // gateway's, not the backend's.
+    it.each([502, 503, 504, 530])(
+      "counts a %i with a page of its own as offline",
+      async (status) => {
+        vi.mocked(fetch).mockResolvedValueOnce(
+          htmlResponse("<h1>The origin is unreachable</h1>", status),
+        );
+        const handler = vi.fn();
+        window.addEventListener("app:network-error", handler);
+
+        await expect(api.get("/auth/me")).rejects.toThrow(BACKEND_UNREACHABLE);
+        expect(handler).toHaveBeenCalledTimes(1);
+
+        window.removeEventListener("app:network-error", handler);
+      },
+    );
+
+    it("counts a plain-text answer with no content type as offline", async () => {
+      vi.mocked(fetch).mockResolvedValueOnce(
+        new Response("upstream connect error", { status: 503 }),
+      );
+      const handler = vi.fn();
+      window.addEventListener("app:network-error", handler);
+
+      await expect(api.get("/auth/me")).rejects.toThrow(BACKEND_UNREACHABLE);
+      expect(handler).toHaveBeenCalledTimes(1);
+
+      window.removeEventListener("app:network-error", handler);
+    });
+
+    it("never shows the gateway's page as the message", async () => {
+      vi.mocked(fetch).mockResolvedValueOnce(
+        htmlResponse("<html>Cloudflare error 1033</html>", 530),
+      );
+
+      await expect(api.get("/auth/me")).rejects.not.toThrow(/Cloudflare/);
+    });
+
+    it("takes a 503 the backend answers itself as its answer, not offline", async () => {
+      // The backend refuses some things with a 503 of its own, such as a
+      // supplier's document where uploads are scanned; every answer it
+      // gives is JSON.
+      vi.mocked(fetch).mockResolvedValueOnce(
+        jsonResponse({ detail: "Supplier documents cannot be uploaded" }, 503),
+      );
+      const handler = vi.fn();
+      window.addEventListener("app:network-error", handler);
+
+      await expect(api.post("/safety/files/x/sources")).rejects.toThrow(
+        "Supplier documents cannot be uploaded",
+      );
+      expect(handler).not.toHaveBeenCalled();
+
+      window.removeEventListener("app:network-error", handler);
+    });
+
+    it("counts it as offline for a download too", async () => {
+      vi.mocked(fetch).mockResolvedValueOnce(
+        htmlResponse("<h1>Bad gateway</h1>", 502),
+      );
+      const handler = vi.fn();
+      window.addEventListener("app:network-error", handler);
+
+      await expect(api.blob("/safety/files/x/document.pdf")).rejects.toThrow(
+        BACKEND_UNREACHABLE,
+      );
+      expect(handler).toHaveBeenCalledTimes(1);
+
+      window.removeEventListener("app:network-error", handler);
+    });
+
+    it("leaves any other failure the backend's own error", async () => {
+      vi.mocked(fetch).mockResolvedValueOnce(
+        htmlResponse("<h1>Server error</h1>", 500),
+      );
+      const handler = vi.fn();
+      window.addEventListener("app:network-error", handler);
+
+      await expect(api.get("/auth/me")).rejects.toThrow();
+      expect(handler).not.toHaveBeenCalled();
+
+      window.removeEventListener("app:network-error", handler);
+    });
   });
 
   it("dispatches app:api-success on successful response", async () => {
