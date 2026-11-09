@@ -57,8 +57,13 @@ services:
       - HOST_UID=${HOST_UID:-}
       - HOST_GID=${HOST_GID:-}
     ports:
-      - "5173:5173"
-      - "5174:5174"
+      # Bound to loopback, so only this machine reaches the dev server.
+      # Docker publishes a bare "5173:5173" on every interface and its own
+      # firewall rules go round ufw, which would open the dev app to every
+      # device on the local network. From another machine, forward the
+      # port over SSH or with VS Code's Ports view instead.
+      - "127.0.0.1:5173:5173"
+      - "127.0.0.1:5174:5174"
     volumes:
       - ./scripts/hand-back-ownership.sh:/usr/local/bin/hand-back-ownership.sh:ro
       - ./frontend:/app
@@ -231,7 +236,10 @@ services:
       #
       # Production is unaffected: its Caddy listens on :8080 and the GCP
       # Global HTTPS Load Balancer terminates TLS in front of it.
-      - "80:80"
+      #
+      # Bound to loopback, like the frontend's ports, so the dev stack is
+      # not published to the local network.
+      - "127.0.0.1:80:80"
     volumes:
       - ./caddy/dev/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
