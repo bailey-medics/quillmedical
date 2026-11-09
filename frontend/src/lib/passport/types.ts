@@ -374,6 +374,12 @@ export interface SignOff {
   attachments: Attachment[];
   content_hash: string | null;
   /**
+   * Whether the record still matches `content_hash`, worked out again by
+   * Quill each time it is read. Null where there is no fingerprint to
+   * check, as on a request not yet signed.
+   */
+  fingerprint_matches?: boolean | null;
+  /**
    * Who the holder asked, as they typed it. Sent only to the holder, on
    * their own sign-off routes, and absent where no request was kept.
    */

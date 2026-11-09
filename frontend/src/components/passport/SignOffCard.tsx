@@ -83,6 +83,7 @@ export default function SignOffCard({ signOff }: SignOffCardProps) {
     comments,
     attachments,
     assessor_email,
+    fingerprint_matches,
   } = signOff;
 
   return (
@@ -172,9 +173,26 @@ export default function SignOffCard({ signOff }: SignOffCardProps) {
           </Stack>
         )}
 
-        {/* No content hash. It is a string of hex that tells a reader
-            nothing here. The download carries it, with VERIFY.md saying
-            how to check a record against it. */}
+        {/* Whether the record still matches its fingerprint, which Quill
+            works out again each time the sign-off is read. The download's
+            VERIFY.md sends a reader here for this check. The fingerprint
+            itself is not shown: a string of hex tells a reader nothing,
+            and the download carries it. */}
+        {fingerprint_matches === true && (
+          <Field label="Fingerprint">
+            Matches. Nothing in this sign-off has changed since it was signed.
+          </Field>
+        )}
+
+        {fingerprint_matches === false && (
+          <Stack gap={2}>
+            <BodyTextBold>Fingerprint</BodyTextBold>
+            <BodyTextBold>
+              Does not match. Something in this sign-off has changed since it
+              was signed, so it cannot be relied on.
+            </BodyTextBold>
+          </Stack>
+        )}
       </Stack>
     </BaseCard>
   );

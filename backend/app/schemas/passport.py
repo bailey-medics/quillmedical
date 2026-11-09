@@ -498,6 +498,12 @@ class SignOffOut(BaseModel):
     evidence: EvidenceSnapshotOut | None = None
     attachments: list[AttachmentOut] = Field(default_factory=list)
     content_hash: str | None = None
+    #: Whether the record still matches ``content_hash``, worked out
+    #: again by Quill each time it is read: true if nothing it covers has
+    #: changed since signing, false if something has. Null where there is
+    #: no fingerprint to check, as on a request not yet signed. This is
+    #: the check the downloaded bundle's VERIFY.md points a reader to.
+    fingerprint_matches: bool | None = None
     #: Who the holder asked, as they typed it. Not part of the signed
     #: record, which names only who signed: it comes from the request
     #: row, and only on the holder's own sign-off routes. Null where

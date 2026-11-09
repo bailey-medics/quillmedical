@@ -49,9 +49,15 @@ from sqlalchemy.orm import Session
 from app.body_limit import limit_for
 from app.config import settings
 from app.email_send import EmailNotAllowedError, EmailRateLimitError
-from app.features.passport import catalogue, definitions, router, service
+from app.features.passport import (
+    catalogue,
+    definitions,
+    layout,
+    router,
+    service,
+)
 from app.features.passport.blobs import BlobStore
-from app.features.passport.commits import Actor
+from app.features.passport.commits import Actor, CommitMessage
 from app.features.passport.models import (
     Passport,
     PassportAssessorInvite,
@@ -1206,6 +1212,77 @@ class TestSignOff:
 
         assert response.status_code == 200, response.text
         assert response.json()["status"] == "signed_off"
+
+    def _sign(
+        self, test_client: TestClient, passport_id: str, name: str
+    ) -> None:
+        response = _login(test_client, "assessor").post(
+            f"/api/passport/{passport_id}/sign-offs/{name}/sign-off",
+            json={
+                "meaning": "directly observed",
+                "declaration_confirmed": True,
+                "level_id": LEVEL,
+            },
+        )
+        assert response.status_code == 200, response.text
+
+    def test_a_request_not_yet_signed_has_no_fingerprint_to_check(
+        self, test_client: TestClient, requested: tuple[str, str]
+    ) -> None:
+        passport_id, name = requested
+        client = _login(test_client, "holder")
+
+        record = client.get(
+            f"/api/passport/{passport_id}/sign-offs/{name}"
+        ).json()
+
+        assert record["fingerprint_matches"] is None
+
+    def test_a_signed_record_matches_its_fingerprint(
+        self, test_client: TestClient, requested: tuple[str, str]
+    ) -> None:
+        passport_id, name = requested
+        self._sign(test_client, passport_id, name)
+        client = _login(test_client, "holder")
+
+        record = client.get(
+            f"/api/passport/{passport_id}/sign-offs/{name}"
+        ).json()
+
+        assert record["fingerprint_matches"] is True
+
+    def test_a_record_changed_after_signing_no_longer_matches(
+        self,
+        test_client: TestClient,
+        passport_store: LocalPassportStore,
+        requested: tuple[str, str],
+    ) -> None:
+        """What VERIFY.md promises: Quill recomputes and says it differs.
+
+        The stored record is edited behind the application's back, as a
+        hand edit of the repository would, so the fingerprint it carries
+        no longer fits the facts beside it.
+        """
+        passport_id, name = requested
+        self._sign(test_client, passport_id, name)
+        path = layout.sign_off_file(passport_store, passport_id, name)
+        stored = passport_store.read(passport_id, path).decode("utf-8")
+        edited = stored.replace("2026-03-14", "2026-03-15")
+        assert edited != stored
+        passport_store.write(
+            passport_id,
+            {path: edited},
+            CommitMessage(subject="Edit a signed record by hand"),
+            Actor(name="Someone", role="Editor", email="editor@example.com"),
+            passport_store.head(passport_id),
+        )
+        client = _login(test_client, "holder")
+
+        record = client.get(
+            f"/api/passport/{passport_id}/sign-offs/{name}"
+        ).json()
+
+        assert record["fingerprint_matches"] is False
 
     def test_the_assessor_can_sign_a_different_level_with_a_reason(
         self, test_client: TestClient, requested: tuple[str, str]

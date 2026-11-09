@@ -54,6 +54,26 @@ describe("SignOffCard", () => {
       expect(screen.queryByText("Sent to")).not.toBeInTheDocument();
     });
 
+    it("says a signed record still matches its fingerprint", () => {
+      renderWithMantine(<SignOffCard signOff={signedOff} />);
+      expect(screen.getByText("Fingerprint")).toBeInTheDocument();
+      expect(screen.getByText(/^Matches\./)).toBeInTheDocument();
+      expect(screen.queryByText(/^Does not match/)).not.toBeInTheDocument();
+    });
+
+    it("warns when a record no longer matches its fingerprint", () => {
+      renderWithMantine(
+        <SignOffCard signOff={{ ...signedOff, fingerprint_matches: false }} />,
+      );
+      expect(screen.getByText(/^Does not match\./)).toBeInTheDocument();
+      expect(screen.queryByText(/^Matches\./)).not.toBeInTheDocument();
+    });
+
+    it("says nothing about a fingerprint on a request not yet signed", () => {
+      renderWithMantine(<SignOffCard signOff={requested} />);
+      expect(screen.queryByText("Fingerprint")).not.toBeInTheDocument();
+    });
+
     it("renders the status badge", () => {
       renderWithMantine(<SignOffCard signOff={signedOff} />);
       expect(screen.getByText("Signed off")).toBeInTheDocument();

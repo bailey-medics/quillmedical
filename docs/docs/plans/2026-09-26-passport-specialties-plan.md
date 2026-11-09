@@ -466,7 +466,7 @@ they choose, so an oncology department can put Oncology at the top.
       saved lead whose specialty file has gone shows as "no longer offered", so
       it can be removed.
 
-- [ ] **Set the oncology department's lead to Oncology** on app, through that
+- [x] **Set the oncology department's lead to Oncology** on app, through that
       card, once deployed. It is data, not code, so nothing in this repository
       names the organisation.
 
