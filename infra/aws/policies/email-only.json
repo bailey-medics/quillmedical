@@ -1,0 +1,31 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "LondonEmailOnly",
+      "Effect": "Deny",
+      "NotAction": [
+        "cloudtrail:LookupEvents",
+        "cloudwatch:BatchGet*",
+        "cloudwatch:Describe*",
+        "cloudwatch:Get*",
+        "cloudwatch:List*",
+        "ec2:DescribeRegions",
+        "health:*",
+        "servicequotas:*",
+        "ses:*",
+        "signin:*",
+        "sts:*",
+        "support:*",
+        "tag:GetResources",
+        "uxc:*"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "eu-west-2"
+        }
+      }
+    }
+  ]
+}

@@ -1,5 +1,6 @@
-# organisation.tf - the organisation, its accounts, and the rule that
-# keeps every one of them in London
+# organisation.tf - the organisation, its accounts, the rule that keeps
+# every one of them in London, and the rule that keeps the email
+# accounts to email
 #
 # Adopted from what was made by hand, so that a new account, or a change
 # to what an account may do, is a reviewed pull request.
@@ -141,10 +142,19 @@ check "every_account_is_listed" {
 #
 # Three statements, in policies/london-only.json:
 #   - RegionFloor refuses everything outside eu-west-2, us-east-1 and
-#     us-west-2, but for a short list of services that have no region.
+#     us-west-2. AWS's version let Bedrock through in every region;
+#     Quill uses no Bedrock, so that exception was taken out on
+#     9 November 2026.
 #   - UsEast1Partitional and UsWest2Partitional then refuse everything
 #     in those two American regions except the global services AWS
 #     itself runs from them: IAM, billing, the organisation, support.
+#     Quill uses AWS for email alone, so on 9 November 2026 the
+#     us-east-1 list was written again as signing in, billing, support
+#     and a few read-only console calls. AWS's version also let through
+#     services that store data or serve traffic there, such as logs,
+#     keys, certificates, CloudFront, Route 53 and Lightsail. The
+#     us-west-2 list lost CloudShell, Network Manager and Route 53
+#     recovery the same day, keeping sign-in and read-only key lookups.
 # So nothing of Quill's can be made anywhere but London.
 resource "aws_organizations_policy" "london_only" {
   provider = aws.management
@@ -179,4 +189,42 @@ import {
 import {
   to = aws_organizations_policy_attachment.london_only
   id = "${data.aws_organizations_organization.this.roots[0].id}:${var.london_only_policy_id}"
+}
+
+# ---------- Email only ----------
+# The London-only policy above says where an account may work. This one
+# says what the two email accounts may do there: send email through SES,
+# and little else. Without it, a leaked key or an IAM grant made too
+# wide could start servers or store data in London, and the only thing
+# in the way would be IAM itself.
+#
+# One statement, in policies/email-only.json: in eu-west-2, refuse
+# everything except SES, the sign-in and token calls that reach an
+# account (signin, sts), and the read-only console calls that show
+# SES's sending figures, quotas and health. IAM, billing and the
+# organisation are reached through us-east-1, so this does not touch
+# them.
+#
+# Attached to the two email accounts, not the root. The identity
+# account holds the sign-in directory, which AWS runs for itself, and
+# a rule written for email would break it. The management account is
+# never bound by a service control policy, wherever it is attached.
+#
+# Using a new AWS service in either email account means adding it here
+# first, or AWS refuses it. That is the point.
+resource "aws_organizations_policy" "email_only" {
+  provider = aws.management
+
+  name        = "QuillEmailAccountsEmailOnly"
+  description = "In London, the email accounts may use SES and nothing else but sign-in and read-only console calls."
+  type        = "SERVICE_CONTROL_POLICY"
+  content     = file("${path.module}/policies/email-only.json")
+}
+
+resource "aws_organizations_policy_attachment" "email_only" {
+  provider = aws.management
+  for_each = toset(["emails_app", "emails_dev"])
+
+  policy_id = aws_organizations_policy.email_only.id
+  target_id = local.accounts[each.key].id
 }
