@@ -1749,10 +1749,14 @@ record, or checks its fingerprint.
       after, and false once the stored record's observed date is edited
       behind the application's back. `SignOffCard` shows the answer, with
       a story for the warning; the fingerprint itself stays off the page.
-- [ ] **Read one file's contents from a downloaded zip**, in
+- [x] **Read one file's contents from a downloaded zip**, in
       `frontend/e2e/fixtures/zip.ts`, beside `namesInZip`. The spec reads
       the sign-off's record from the full bundle with it.
-- [ ] **Write the spec, all on screen**, in
+
+      Built on 8 November 2026 as `textInZip`. The bundle deflates its
+      files, so it inflates one with Node's own `zlib`, still with no zip
+      library, and it refuses unless exactly one file matches.
+- [x] **Write the spec, all on screen**, in
       `frontend/e2e/tests/passport/`. No API call, setup included: each
       person is made on the add-user form with `makeHolder` and
       `makeAssessor`, and each has a browser of their own through
@@ -1764,9 +1768,8 @@ record, or checks its fingerprint.
          signed." there.
       4. The holder downloads the PDF and the full bundle from
          `/passport/download`.
-      5. The spec reads the PDF's text with pdf.js, as
-         `pdf-pages.spec.ts` does, and finds the sign-off, the
-         assessor's name and its fingerprint.
+      5. The spec reads the PDF's text with pdf.js and finds the
+         sign-off, the assessor's name and its fingerprint.
       6. The spec finds the same fingerprint on the sign-off's
          `content_hash:` line in the bundle's record.
 
@@ -1778,8 +1781,19 @@ record, or checks its fingerprint.
       shows: Quill's own re-check of the stored record, read on screen in
       step 3, and the printed copy agreeing with the stored copy in
       steps 5 and 6.
-- [ ] **Tick the step in the clinician passport plan**, Phase 7, once the
-      spec is merged.
+
+      Built on 8 November 2026 as story 33,
+      `frontend/e2e/tests/passport/whole-journey.spec.ts`, which passed in
+      Chromium and WebKit with `just e2e`. `pdf-pages.spec.ts` turned out
+      to look at PDFs in the app's viewer rather than read their text, so
+      a new fixture, `textOfPdf` in `fixtures/pdfText.ts`, reads it with
+      the legacy build of `pdfjs-dist`, which the app already depends on.
+      It takes out every space, because a fingerprint can wrap across two
+      lines of the PDF. `signFromTheInbox` moved from `assessing.spec.ts`
+      into `fixtures/passport.ts`, so both specs sign the same way.
+- [x] **Tick the step in the clinician passport plan**, Phase 7, once the
+      spec is merged. Ticked in the same pull request as the spec, so
+      the two merge together.
 
 ## What happened on 5 November 2026, in order
 

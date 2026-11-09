@@ -353,6 +353,23 @@ export async function askAsHolder(
   await page.context().close();
 }
 
+/**
+ * As the assessor signed in on *page*, open the request about the
+ * competency from the inbox, and sign it, as story 13 does.
+ */
+export async function signFromTheInbox(page: Page): Promise<void> {
+  await page.goto("/inbox");
+  await page.getByText(REFER_PALLIATIVE.name).first().click();
+  await expect(page).toHaveURL(/\/passport\/sign-off\//);
+  await page.getByRole("combobox", { name: "What did you do?" }).click();
+  await page.getByRole("option", { name: "Directly observed" }).click();
+  await page
+    .getByRole("checkbox", { name: "I confirm this declaration" })
+    .check();
+  await page.getByRole("button", { name: "Sign off competency" }).click();
+  await expect(page).toHaveURL(/\/inbox$/);
+}
+
 /** Write a reflection called *title*, as story 10 does. */
 export async function writeReflection(
   page: Page,
