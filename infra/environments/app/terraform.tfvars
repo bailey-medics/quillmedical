@@ -1,17 +1,6 @@
 # environments/app/terraform.tfvars - App configuration
 #
-# The teaching and passport product, in the project it is moving to.
-#
-# This environment claims app.quill-medical.com and nothing else. It must
-# not name teaching.quill-medical.com or the apex: those are served by
-# quill-medical-teaching, a Google-managed certificate only goes active
-# once every domain on it validates by DNS, and the DNS for both still
-# points at the old project. Listing them here would leave this
-# project's certificate pending for ever.
-#
-# The DNS record for app.quill-medical.com was created by hand in Batch 5.
-# From Batch 10a the whole quill-medical.com zone is in Terraform, held by
-# this environment: see manage_dns_zone below and infra/dns.tf.
+# The Quill Medical product
 
 project_id  = "quill-medical-app"
 region      = "europe-west2"
@@ -37,10 +26,10 @@ lb_domains = ["app.quill-medical.com"]
 # The apex, served from gs://quill-medical-app-landing-uk behind this load
 # balancer.
 #
-# The order here is fixed by how Google validates a managed certificate,
-# and 2026-09-22 established it the hard way. A certificate is attached to
-# a proxy, not to a hostname, so moving the DNS first does not let the app
-# project serve the apex on teaching's certificate: the handshake fails
+# The order here is fixed by how Google validates a managed certificate.
+# A certificate is attached to a proxy, not to a hostname, so moving the
+# DNS first does not let the app project serve the apex on teaching's
+# certificate: the handshake fails
 # because this project's certificate does not carry the name. And the
 # certificate cannot validate the apex while the DNS still points
 # elsewhere, because validation resolves the domain.
@@ -65,11 +54,11 @@ scan_image      = "gcr.io/cloudrun/hello:latest"
 monitored_hostnames = ["app.quill-medical.com", "quill-medical.com"]
 app_domain          = "app.quill-medical.com"
 alert_email         = "info@quill-medical.com"
+cloud_run_services  = ["quill-backend-app", "quill-frontend-app"]
 
 # Who decides whether a closed account's training records are deleted
 # once their sponsor's period has passed. Told when any are waiting.
 retention_decision_email = "mark@quill-medical.com"
-cloud_run_services       = ["quill-backend-app", "quill-frontend-app"]
 
 # The content pipeline in eoeeta-teaching and respiratory-teaching
 # authenticates as this account and publishes question banks into
@@ -77,15 +66,15 @@ cloud_run_services       = ["quill-backend-app", "quill-frontend-app"]
 # repositories (infra/github/framework_rulesets.tf) uses it too, only to
 # start the framework sync job, which reads those repositories itself. It
 # is scoped to that bucket and those jobs, unlike the teaching CI
-# account it replaced on 2026-09-23, which carried roles/editor across
-# the whole project.
+# account it replaced, which carried roles/editor across the whole
+# project.
 content_ci_service_account = "content-sync@quill-medical-app.iam.gserviceaccount.com"
 deploy_service_account     = "github-deploy@quill-medical-app.iam.gserviceaccount.com"
 
 # The monitoring module looks a Slack channel up by display name rather
 # than creating one, because a Slack channel can only be made through the
 # console's OAuth consent flow, which produces an auth_token nothing else
-# can mint. This one was made that way on 2026-09-23 and posts to the same
+# can mint. This one was made that way and posts to the same
 # #quill-medical-cicd channel as the deploy notifications. The name has to
 # match the console's display name exactly.
 slack_channel_display_name = "quill-medical-cicd"
@@ -105,5 +94,4 @@ passport_deletable_usernames = [
   "mark.bailey.superadmin",
   "mark.bailey.admin",
   "mark.bailey",
-  "jessica.bailey",
 ]

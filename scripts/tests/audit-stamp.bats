@@ -319,6 +319,22 @@ ledger() {
     [[ "$output" == *"Nothing to stamp"* ]]
 }
 
+@test "certificates are left off the card" {
+    mkdir -p "${MAIN}/infra/environments/app"
+    printf -- '-----BEGIN CERTIFICATE-----\n' \
+        > "${MAIN}/infra/environments/app/owl-ca.pem"
+    git -C "$MAIN" add -A
+    git -C "$MAIN" -c user.name=t -c user.email=t@example.com \
+        commit -q -m "a certificate"
+
+    run ledger "$MAIN" status f
+    [[ "$output" != *"owl-ca.pem"* ]]
+
+    run ledger "$MAIN" mark infra/environments/app
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Nothing to stamp"* ]]
+}
+
 @test "the api-compatibility decision files are left off the card" {
     mkdir "${MAIN}/api-compatibility"
     echo 'decision: additive' > "${MAIN}/api-compatibility/0001.yaml"
