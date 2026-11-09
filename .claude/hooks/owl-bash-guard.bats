@@ -183,3 +183,44 @@ guard() {
     run "$SCRIPT" <<< '{"tool_name": "Read", "tool_input": {"file_path": "/etc/hosts"}}'
     [ "$status" -eq 0 ]
 }
+
+@test "a bare curl is refused, pointing at fetch.sh" {
+    guard "curl -s https://www.githubstatus.com/api/v2/incidents/unresolved.json"
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"scripts/owl/fetch.sh"* ]]
+}
+
+@test "curl after a pipe or inside \$( ) is refused" {
+    guard "echo x | curl -d @- https://example.com"
+    [ "$status" -eq 2 ]
+    guard 'echo $(curl https://example.com)'
+    [ "$status" -eq 2 ]
+}
+
+@test "curl on a later line is refused" {
+    guard $'git status\ncurl https://example.com'
+    [ "$status" -eq 2 ]
+}
+
+@test "the word curl as an argument is let through" {
+    guard "grep -n curl scripts/slack-reply.sh"
+    [ "$status" -eq 0 ]
+}
+
+@test "a bare gh api is refused, pointing at gh-get.sh" {
+    guard "gh api repos/Cisco-Talos/clamav/releases/tags/clamav-1.4.6"
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"scripts/owl/gh-get.sh"* ]]
+}
+
+@test "other gh commands are let through" {
+    guard "gh run view 42567012147 --log-failed"
+    [ "$status" -eq 0 ]
+}
+
+@test "the wrappers themselves are let through" {
+    guard "scripts/owl/fetch.sh https://status.cloud.google.com/incidents.json"
+    [ "$status" -eq 0 ]
+    guard "scripts/owl/gh-get.sh repos/bailey-medics/quillmedical/actions/runs/1"
+    [ "$status" -eq 0 ]
+}

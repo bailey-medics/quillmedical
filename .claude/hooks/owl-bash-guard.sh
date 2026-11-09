@@ -13,6 +13,9 @@
 # - commands joined with `;`, `&&` or `||`
 # - a leading `cd`
 # - `python3 -c` or `python -c`
+# - a bare `curl` or `gh api`, which point to scripts/owl/fetch.sh and
+#   scripts/owl/gh-get.sh: allowed as patterns, both would take any flag
+#   after them, including ones that send data
 # - an unquoted path outside the worktree, the alerts folder, /dev and the
 #   session's scratchpad under /tmp/claude-<uid>
 #
@@ -109,6 +112,19 @@ main() {
 
     if [[ "${text}" =~ (^|[[:space:]])python3?[[:space:]]+(-[A-Za-z]*[[:space:]]+)*-c([[:space:]]|$) ]]; then
         refuse "Do not run python3 -c. Use jq, grep or the Read tool, or write a script under scripts/ for a person to review."
+    fi
+
+    # A command starts the text or a line, or follows a pipe, `$(` or a
+    # backtick.
+    local curl_command=$'(^|[\n|(`])[[:space:]]*curl([[:space:]]|$)'
+    local gh_api_command=$'(^|[\n|(`])[[:space:]]*gh[[:space:]]+api([[:space:]]|$)'
+
+    if [[ "${text}" =~ ${curl_command} ]]; then
+        refuse "Do not run curl. Read a status page or test a release download with scripts/owl/fetch.sh <url>, which takes one whitelisted address and only reads."
+    fi
+
+    if [[ "${text}" =~ ${gh_api_command} ]]; then
+        refuse "Do not run gh api. Read an API path with scripts/owl/gh-get.sh <path>, which always uses GET and takes no other option."
     fi
 
     found="$(outside_path "${text}" "${project}" "${state}/alerts" "${scratch}")"

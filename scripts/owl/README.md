@@ -28,6 +28,7 @@ Nobody is at the session to answer a permission prompt, so a prompt stalls a run
 - **An allowlist** in `start-session.sh`: the stack recipes, `slack-reply.sh`, `gcloud logging read`, and Owl's own `journalctl` and `systemctl` state, so "is Owl working?" is answered without asking.
 - **Reads outside the worktree are refused** by `blockReadsOutsideWorkingDirectories` in `session-settings.json`.
 - **A Bash guard**, `.claude/hooks/owl-bash-guard.sh`, wired in `session-settings.json`, refuses a command in a shape that would prompt: commands joined with `;`, `&&` or `||`, a leading `cd`, `python3 -c`, or an unquoted path outside the worktree, the alerts folder, `/dev` and the scratchpad. The refusal tells the model what shape to use instead, so it tries again rather than waiting. Quoted text and heredoc bodies are not looked at, so a Slack reply may say anything.
+- **Reading the web and the GitHub API goes through two wrappers**, which the session's allowlist names and the Bash guard points to when it refuses a bare `curl` or `gh api`. An allow pattern on either would take any flag after it, including ones that send data. `fetch.sh <url>` reads GitHub's and Google Cloud's status pages, and for a GitHub release download fetches one byte and prints the HTTP status. `gh-get.sh <path>` reads `repos/bailey-medics/quillmedical/...` or another owner's repository, always with a GET, so none of bailey-medics' other repositories, the private one among them. Each takes exactly one argument, checked against a whitelist.
 
 ## Installing it
 

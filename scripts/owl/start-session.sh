@@ -68,7 +68,13 @@ set -euo pipefail
 #
 # Owl's own journal and service state are allowed too, so a question to
 # Owl about whether it is working is answered without a prompt.
+#
+# The web and the GitHub API are read through fetch.sh and gh-get.sh, never
+# a bare curl or gh api, which would take any flag after an allowed pattern,
+# including ones that send data. The Bash guard refuses both.
 readonly ALLOWED_TOOLS=(
+    "Bash(scripts/owl/fetch.sh:*)"
+    "Bash(scripts/owl/gh-get.sh:*)"
     "Bash(just stack-fresh:*)"
     "Bash(just stack-new:*)"
     "Bash(just stack-submit:*)"

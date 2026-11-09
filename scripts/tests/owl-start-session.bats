@@ -133,6 +133,18 @@ EOF
     grep -qF 'Bash\(scripts/slack-reply.sh:\*\)' "$CALLS"
 }
 
+@test "the allowlist reads the web and the GitHub API through the read-only wrappers" {
+    run "$SCRIPT"
+    grep -qF 'Bash\(scripts/owl/fetch.sh:\*\)' "$CALLS"
+    grep -qF 'Bash\(scripts/owl/gh-get.sh:\*\)' "$CALLS"
+}
+
+@test "the allowlist never names a bare curl or gh api" {
+    run "$SCRIPT"
+    [ "$(grep -c 'Bash\\(curl' "$CALLS")" -eq 0 ]
+    [ "$(grep -c 'gh\\ api' "$CALLS")" -eq 0 ]
+}
+
 @test "the allowlist never lets a run merge" {
     run "$SCRIPT"
     [ "$(grep -c 'merge' "$CALLS")" -eq 0 ]
