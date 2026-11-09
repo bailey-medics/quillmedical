@@ -2,7 +2,7 @@
 name: alert
 description: Investigate one App production alert from Slack, explain it in the thread, and open a pull request that fixes it
 argument-hint: "<path to the alert file>"
-allowed-tools: Bash(gcloud logging read:*), Bash(gh run view:*), Bash(gh run list:*), Bash(gh pr list:*), Bash(gh pr view:*), Bash(git log:*), Bash(git show:*), Bash(git status:*), Bash(git fetch:*), Bash(scripts/slack-reply.sh:*), Bash(just stack-fresh:*), Bash(just stack-log:*), Bash(just ub:*), Bash(just uf:*), WebFetch(domain:www.githubstatus.com), WebFetch(domain:status.cloud.google.com)
+allowed-tools: Bash(gcloud logging read:*), Bash(gh run view:*), Bash(gh run list:*), Bash(gh pr list:*), Bash(gh pr view:*), Bash(git log:*), Bash(git show:*), Bash(git status:*), Bash(git fetch:*), Bash(scripts/slack-reply.sh:*), Bash(scripts/owl/fetch.sh:*), Bash(scripts/owl/gh-get.sh:*), Bash(just stack-fresh:*), Bash(just stack-log:*), Bash(just ub:*), Bash(just uf:*), WebFetch(domain:www.githubstatus.com), WebFetch(domain:status.cloud.google.com)
 disallowed-tools: Bash(gh pr merge:*), Bash(gh stack merge:*), Bash(git rebase:*), Bash(git reset:*), Bash(git push:*), Bash(gh pr create:*), Bash(gcloud auth:*), Bash(gcloud config:*), mcp__github__merge_pull_request, mcp__github__enable_pr_auto_merge
 ---
 
@@ -104,6 +104,13 @@ minutes by looking upstream first; see `.claude/rules/incidents.md`.
 
 All times are UTC. Slack shows local time, and BST is UTC+1. Take the
 window as from 30 minutes before `received_at` to now.
+
+Read the web with `scripts/owl/fetch.sh <url>` and the GitHub API with
+`scripts/owl/gh-get.sh <path>`, never a bare `curl` or `gh api`, which
+Owl's session refuses. `fetch.sh` reads the two status pages below and
+GitHub release downloads, printing only the HTTP status for a download;
+`gh-get.sh` reads this repository and other owners' repositories, with a
+GET.
 
 1. **GitHub's status**, <https://www.githubstatus.com/api/v2/incidents/unresolved.json>,
    for anything open against Actions, Pull Requests or Git Operations. A

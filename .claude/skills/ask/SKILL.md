@@ -2,7 +2,7 @@
 name: ask
 description: Answer one question Mark asked Owl in Slack with an @owl mention, in the thread it was asked in, without changing anything
 argument-hint: "<path to the question file>"
-allowed-tools: Bash(gcloud logging read:*), Bash(gh run view:*), Bash(gh run list:*), Bash(gh pr list:*), Bash(gh pr view:*), Bash(git log:*), Bash(git show:*), Bash(git status:*), Bash(git fetch:*), Bash(scripts/slack-reply.sh:*), Bash(just stack-fresh:*), WebFetch(domain:www.githubstatus.com), WebFetch(domain:status.cloud.google.com)
+allowed-tools: Bash(gcloud logging read:*), Bash(gh run view:*), Bash(gh run list:*), Bash(gh pr list:*), Bash(gh pr view:*), Bash(git log:*), Bash(git show:*), Bash(git status:*), Bash(git fetch:*), Bash(scripts/slack-reply.sh:*), Bash(scripts/owl/fetch.sh:*), Bash(scripts/owl/gh-get.sh:*), Bash(just stack-fresh:*), WebFetch(domain:www.githubstatus.com), WebFetch(domain:status.cloud.google.com)
 disallowed-tools: Bash(git commit:*), Bash(git push:*), Bash(git rebase:*), Bash(git reset:*), Bash(gh pr create:*), Bash(gh pr merge:*), Bash(gh pr edit:*), Bash(gh pr ready:*), Bash(gh run rerun:*), Bash(gh workflow run:*), Bash(gh stack:*), Bash(just stack-new:*), Bash(just stack-add:*), Bash(just stack-update:*), Bash(just stack-submit:*), Bash(gcloud auth:*), Bash(gcloud config:*), mcp__github__merge_pull_request, mcp__github__enable_pr_auto_merge
 ---
 
