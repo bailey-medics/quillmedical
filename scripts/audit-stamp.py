@@ -62,9 +62,10 @@ LEDGER_PATH = "audit/ledger.tsv"
 #: What git gives a file's contents: forty characters of hexadecimal.
 FINGERPRINT = re.compile(r"[0-9a-f]{40}")
 
-# Files that are not audited as code: pictures and sounds, lock files, and
-# anything a script writes. Prose is left out too, the card being about
-# code, except for the guides in AUDITED_PROSE_FOLDERS.
+# Files that are not audited as code: pictures and sounds, certificates,
+# lock files, and anything a script writes. A certificate is encoded data
+# nobody can review by reading it. Prose is left out too, the card being
+# about code, except for the guides in AUDITED_PROSE_FOLDERS.
 SKIPPED_SUFFIXES = (
     ".png",
     ".jpg",
@@ -81,6 +82,7 @@ SKIPPED_SUFFIXES = (
     ".ttf",
     ".md",
     ".snap",
+    ".pem",
 )
 SKIPPED_NAMES = ("yarn.lock", "poetry.lock", "package-lock.json")
 # Prose that is audited all the same: the guides are shown to the people
