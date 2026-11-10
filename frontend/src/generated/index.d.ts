@@ -276,6 +276,10 @@ declare module "@/generated/brand.json" {
       primary: string[];
       secondary: string[];
     };
+    // The ribbon's mail icon while nothing is waiting
+    ribbon_icon_idle: string;
+    // Links in light mode
+    link: string;
     logo: string;
     logo_tile?: string;
     wordmark: {

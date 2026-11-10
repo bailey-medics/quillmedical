@@ -343,7 +343,7 @@ diff for the alternative brand's name finds nothing.
       centred `Stack` shrinks the card. The card now hugs the logo
       (`w="fit-content"`), and a test in each holds it.
 
-- [ ] **`brand-colour-fixes`: contrast and colours held for every
+- [x] **`brand-colour-fixes`: contrast and colours held for every
       brand.** From `brand-inbox-icon`,
       `brand-<alternative brand name>-contrast` and `brand-dark-ribbon`,
       as one unit: the idle inbox icon takes a colour per brand
@@ -360,6 +360,32 @@ diff for the alternative brand's name finds nothing.
       not fixed here: it is recorded in this plan, under a new step in
       Phase 3, with the story and the colours that fail (Mark,
       10 November 2026).
+
+      **Built, and the grey moved.** The idle mail icon is secondary 6,
+      `#c0c0c0`, 4.6:1 on the light ribbon and 9.2:1 on the dark one,
+      where Quill's grey 6 would be 2.5:1. Links are the logo blue,
+      `#0848a9`, 8.4:1 on white, as the brand's emails' links are. The
+      first sweep, with `just sbt` against `just sb ldd`, failed 54 of
+      971 Storybook tests in 18 files, every one colour contrast, from
+      two causes in the brand's own values. **The mid-dark grey,
+      `#707070`, was too dark**: the app sets the secondary against the
+      brand primary (public pages, secondary buttons) and against
+      dark-mode surfaces, which is why Quill's amber is light, and the
+      grey was 1.7:1 on the blue and 2.2:1 on blue shade 6. So the
+      secondary is now `#d0d0d0`, from the lighter half of the logo's
+      head, 5.4:1 on the blue; shade 6 stays light (`#c0c0c0`, 4.6:1
+      with blue text) because a hovered secondary button is shade 6 with
+      blue text, and shade 7 is dark (`#686868`, 5.0:1 on `gray.1`) for
+      the current navigation link. This departs from the mid-dark grey
+      chosen in Phase 1 and is flagged for Mark in the pull request.
+      **Blue shade 4 took white text at 4.32:1**, so it is now `#3d6fc0`,
+      5.0:1. No failure needed a shared colour token, so nothing was
+      recorded for Phase 3. The second sweep passed: 968 passed and 3
+      skipped of 971. `just uf src/theme.test.ts
+      src/components/inbox/InboxButton.test.tsx
+      src/components/ribbon/TopRibbon.test.tsx
+      src/stories/BrandFoundations.test.tsx` passes (119), and
+      `just ub app/email/brand_test.py` (24).
 
 - [ ] **`brand-runs-the-app`: the app runs locally as a brand.** From
       `brand-runs-the-app` and `sa-takes-a-brand`, shaped by Phase 1:

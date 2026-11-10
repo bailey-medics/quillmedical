@@ -145,6 +145,10 @@ interface BrandLook {
   colours: BrandColours;
   primary: MantineColorsTuple;
   secondary: MantineColorsTuple;
+  /** The ribbon's mail icon while nothing is waiting */
+  ribbonIconIdle: string;
+  /** Links in light mode */
+  link: string;
   logo?: string;
   logoTile?: string;
   wordmark?: Wordmark;
@@ -162,6 +166,10 @@ function brandLook(name: string): BrandLook {
       colours: brandColours,
       primary: primaryScale,
       secondary: secondaryScale,
+      // Grey 6: quiet on the navy ribbon, and 5.3:1 against it
+      ribbonIconIdle: greyScale[6],
+      // Primary 4: 6.9:1 on white
+      link: primaryScale[4],
     };
   }
 
@@ -179,6 +187,8 @@ function brandLook(name: string): BrandLook {
     colours: source.brand,
     primary: toColoursTuple(`${name} primary`, source.palette.primary),
     secondary: toColoursTuple(`${name} secondary`, source.palette.secondary),
+    ribbonIconIdle: source.ribbon_icon_idle,
+    link: source.link,
     logo: source.logo,
     logoTile: source.logo_tile,
     wordmark: {
@@ -341,6 +351,9 @@ function appCssVariables(look: BrandLook) {
       "--brand-secondary": colours.secondary,
       "--brand-background": colours.background,
       "--brand-mark": colours.mark,
+      // The ribbon's mail icon while nothing is waiting: grey 6 on Quill's
+      // navy, a light grey on Let's Do Digital's blue, each 3:1 or more
+      "--ribbon-icon-idle": look.ribbonIconIdle,
       // Button interaction colours - amber button text/active states.
       // Brand navy, not #333: on the amber fill #333 was 4.75:1, and on the
       // hover and pressed shades 3.3:1 and 3.1:1, under WCAG AA. Navy is
@@ -392,6 +405,11 @@ function appCssVariables(look: BrandLook) {
       "--mantine-color-placeholder": "#5c6370",
       // Body background - primary shade 8 (Quill's brand navy)
       "--mantine-color-body": primary[8],
+      // The ribbon is the page's own colour in dark mode, for every brand.
+      // Quill's brand navy is primary 8, so its ribbon does not change; a
+      // brand whose primary is its shade 5 would otherwise sit as a mid
+      // bar over a dark page.
+      "--ribbon-bg": primary[8],
       "--brand-background": primary[8],
       // Card/surface background - primary shade 7 (one lighter than body)
       "--card-bg": primary[7],
@@ -442,6 +460,8 @@ function appCssVariables(look: BrandLook) {
     },
     light: {
       "--mantine-color-text": primary[5],
+      // The ribbon in light mode: the brand primary
+      "--ribbon-bg": colours.primary,
       // Muted text (`c="dimmed"`). Mantine's default gray.6 is 3.3:1 on
       // white, under the WCAG AA 4.5:1 for body text; gray.7 is 8.2:1 on
       // white and 6.9:1 on gray.2.
@@ -453,8 +473,9 @@ function appCssVariables(look: BrandLook) {
       "--mantine-color-error": "var(--error-color)",
       "--error-color": "#c4320a",
       "--error-focus-color": "#ffb3b3",
-      // Links: primary.4 is 6.9:1 on white; hover darkens to the brand navy.
-      "--link-color": primary[4],
+      // Links: the brand's own, primary.4 for Quill at 6.9:1 on white;
+      // hover darkens to shade 8, Quill's brand navy.
+      "--link-color": look.link,
       "--link-hover-color": primary[8],
       "--mantine-color-anchor": "var(--link-color)",
       "--bubble-mine-bg": primary[0],

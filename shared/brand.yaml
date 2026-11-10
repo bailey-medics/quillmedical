@@ -86,9 +86,12 @@ app_themes:
     brand:
       # The back head's blue, the same blue the email theme uses
       primary: "#0848a9"
-      # A mid-dark grey from the front head, from the darker half of its
-      # shading, so a highlight in it is clearly seen
-      secondary: "#707070"
+      # A light grey from the front head, from the lighter half of its
+      # shading. Light, as Quill's amber is, because the app sets the
+      # secondary against the brand blue: on the public pages, on buttons
+      # and on dark-mode surfaces. A mid-dark grey, #707070, was tried
+      # first and failed 54 Storybook contrast checks, at 1.7:1 on the blue.
+      secondary: "#d0d0d0"
       background: "#ffffff"
       # The logo sits on a white tile wherever it is drawn on the brand
       # blue, since its back head is that blue
@@ -102,25 +105,37 @@ app_themes:
         - "#d2dff4" # 1 light tint, hover on light variant
         - "#aac2e9" # 2 borders, disabled states
         - "#7b9fdb" # 3 muted/secondary indicators
-        - "#4879c9" # 4 medium prominence
+        - "#3d6fc0" # 4 medium prominence (5.0:1 with white text)
         - "#0848a9" # 5 primary actions, primaryShade (8.4:1 with white)
         - "#053785" # 6 dark-mode inputs and card borders
         - "#032967" # 7 dark-mode cards
         - "#011b4a" # 8 dark-mode body
         - "#000d2b" # 9 deepest blue (dark-mode input borders)
       # Grey, 0 lightest to 9 darkest, a neutral grey as the logo's is.
-      # Shade 5 is the brand secondary (4.95:1 on white).
+      # Shade 5 is the brand secondary, 5.4:1 against the blue. It takes
+      # dark text, never white. Shade 6 stays light because a hovered or
+      # pressed secondary button is shade 6 with blue text on it; shade 7
+      # is dark, for the current navigation link's text.
       secondary:
-        - "#f5f5f5" # 0 subtle grey backgrounds
-        - "#e8e8e8" # 1 light grey fill
-        - "#d4d4d4" # 2 grey borders
-        - "#bababa" # 3 decorative grey
-        - "#989898" # 4 secondary grey
-        - "#707070" # 5 brand grey
-        - "#5b5b5b" # 6 prominent grey
-        - "#484848" # 7 dark grey
-        - "#353535" # 8 darker grey
-        - "#242424" # 9 darkest grey
+        - "#f7f7f7" # 0 subtle grey backgrounds
+        - "#efefef" # 1 light grey fill
+        - "#e8e8e8" # 2 grey borders
+        - "#e0e0e0" # 3 decorative grey
+        - "#d8d8d8" # 4 secondary grey
+        - "#d0d0d0" # 5 brand grey
+        - "#c0c0c0" # 6 hover and pressed (4.6:1 with blue text)
+        - "#686868" # 7 dark grey, the current nav link (5.0:1 on gray.1)
+        - "#4f4f4f" # 8 darker grey
+        - "#363636" # 9 darkest grey
+    # The ribbon's mail icon while nothing is waiting. Secondary 6, a light
+    # grey: Quill's grey 6 would be 2.5:1 on the blue ribbon, short of the
+    # 3:1 an icon that is the whole control needs (WCAG 1.4.11). This is
+    # 4.6:1 on the light ribbon and 9.2:1 on the dark one.
+    ribbon_icon_idle: "#c0c0c0"
+    # Links in light mode: the logo blue, primary 5, 8.4:1 on white, as
+    # the Let's Do Digital emails' links are. Quill's primary 4 would be
+    # 4.3:1 here.
+    link: "#0848a9"
     # The logo, unchanged from media/ldd-logo.png in
     # letsdodigital/letsdodigital.github.io (commit 2970845dfdd9), 714
     # pixels square. No SVG of it exists, and the app never draws it

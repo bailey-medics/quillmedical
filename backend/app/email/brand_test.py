@@ -124,9 +124,11 @@ class TestAppThemes:
         ldd = BRAND.app_themes["ldd"]
 
         assert ldd.brand.primary == "#0848a9"
-        assert ldd.brand.secondary == "#707070"
+        assert ldd.brand.secondary == "#d0d0d0"
         assert ldd.palette.primary[5] == ldd.brand.primary
         assert ldd.palette.secondary[5] == ldd.brand.secondary
+        assert ldd.ribbon_icon_idle == "#c0c0c0"
+        assert ldd.link == "#0848a9"
         assert ldd.logo == "/brands/ldd/logo.png"
         assert ldd.logo_tile == "#ffffff"
         assert ldd.wordmark.src == "/brands/ldd/wordmark-white.svg"
@@ -204,6 +206,24 @@ class TestAppThemes:
         wordmark["dark_src"] = "brands/ldd/wordmark-dark.svg"
 
         with pytest.raises(ValidationError):
+            load_brand(_write_brand(tmp_path, data))
+
+    def test_refuses_a_ribbon_icon_colour_that_is_not_hex(
+        self, tmp_path: Path
+    ) -> None:
+        data = _brand_data()
+        data["app_themes"]["ldd"]["ribbon_icon_idle"] = "secondary.3"  # type: ignore[index]
+
+        with pytest.raises(ValidationError, match="Not a hex colour"):
+            load_brand(_write_brand(tmp_path, data))
+
+    def test_refuses_a_link_colour_that_is_not_hex(
+        self, tmp_path: Path
+    ) -> None:
+        data = _brand_data()
+        data["app_themes"]["ldd"]["link"] = "primary.5"  # type: ignore[index]
+
+        with pytest.raises(ValidationError, match="Not a hex colour"):
             load_brand(_write_brand(tmp_path, data))
 
     def test_refuses_an_unknown_field(self, tmp_path: Path) -> None:
