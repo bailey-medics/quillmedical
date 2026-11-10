@@ -20,7 +20,7 @@ import "./styles/disabled-controls.css";
 import ReactDOM from "react-dom/client";
 import { MantineProvider } from "@mantine/core";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
-import { theme, cssVariablesResolver } from "./theme";
+import { appIdentity, theme, cssVariablesResolver } from "./theme";
 import {
   wireControllerChangeReload,
   wirePreloadErrorRecovery,
@@ -76,6 +76,10 @@ const router = createBrowserRouter([
 // rather than lost. The error boundary covers what React sees; this covers
 // rejected promises and anything thrown outside a render.
 installGlobalErrorReporting();
+
+// index.html says Quill Medical, for the moment before this runs; a build
+// run as another brand says that brand's name from here on.
+document.title = appIdentity.name;
 
 // index.html has had a quill turning since the page first painted, and
 // the render below replaces it. Read when it began before it goes, so the

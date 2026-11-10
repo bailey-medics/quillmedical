@@ -21,6 +21,17 @@
 #
 # See docs/docs/plans/2026-09-25-email-branding-plan.md.
 
+# What Quill calls itself: the name in page titles, and who commits to the
+# git repositories the app writes, such as a passport. The author of a
+# commit is always the person who acted; the committer is the
+# application, named by its full name, and saying so is more honest than
+# attributing the mechanism to a clinician. Each brand under app_themes
+# carries its own, so a deployment run as that brand says its own name.
+identity:
+  name: Quill Medical
+  short_name: Quill
+  committer_email: noreply@quill-medical.com
+
 brand:
   primary: "#001a36"
   secondary: "#C8963E"
@@ -83,6 +94,12 @@ app_themes:
   # 10 November 2026. Each ramp keeps the logo colour's hue in OKLCH and
   # steps the lightness, with the logo colour at shade 5.
   ldd:
+    # As the top-level identity. The short name is what fits under a home
+    # screen icon, about twelve letters.
+    identity:
+      name: Let's Do Digital
+      short_name: LDD
+      committer_email: info@letsdodigital.org
     brand:
       # The back head's blue, the same blue the email theme uses
       primary: "#0848a9"

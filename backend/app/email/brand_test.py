@@ -11,7 +11,9 @@ from app.email.brand import (
     BRAND,
     BRAND_YAML_PATH,
     EmailTheme,
+    brand_names,
     email_theme,
+    identity,
     load_brand,
 )
 
@@ -236,3 +238,46 @@ class TestAppThemes:
 
 def test_resolved_themes_are_still_email_themes() -> None:
     assert isinstance(email_theme("ldd"), EmailTheme)
+
+
+class TestIdentity:
+    """What each brand calls itself, and the address it commits from."""
+
+    def test_quill_is_the_first_brand(self) -> None:
+        assert brand_names() == ("quill", "ldd")
+
+    def test_quill_is_quill_medical(self) -> None:
+        quill = identity("quill")
+
+        assert quill.name == "Quill Medical"
+        assert quill.short_name == "Quill"
+        assert quill.committer_email == "noreply@quill-medical.com"
+
+    def test_ldd_is_lets_do_digital(self) -> None:
+        ldd = identity("ldd")
+
+        assert ldd.name == "Let's Do Digital"
+        assert ldd.short_name == "LDD"
+        assert ldd.committer_email == "info@letsdodigital.org"
+
+    def test_an_unknown_brand_is_refused_with_the_list(self) -> None:
+        with pytest.raises(ValueError, match="Known brands: quill, ldd"):
+            identity("constructor")
+
+    def test_refuses_a_committer_address_that_is_not_one(
+        self, tmp_path: Path
+    ) -> None:
+        data = _brand_data()
+        data["identity"]["committer_email"] = "Quill Medical"  # type: ignore[index]
+
+        with pytest.raises(ValidationError):
+            load_brand(_write_brand(tmp_path, data))
+
+    def test_refuses_an_app_theme_without_an_identity(
+        self, tmp_path: Path
+    ) -> None:
+        data = _brand_data()
+        del data["app_themes"]["ldd"]["identity"]  # type: ignore[index]
+
+        with pytest.raises(ValidationError):
+            load_brand(_write_brand(tmp_path, data))

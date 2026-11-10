@@ -29,6 +29,7 @@ from functools import lru_cache
 from pathlib import Path
 
 from app.config import settings
+from app.email.brand import identity
 from app.features.passport import archive
 from app.features.passport.blobs import BlobStore
 from app.features.passport.gcs_store import (
@@ -36,7 +37,11 @@ from app.features.passport.gcs_store import (
     build_blob_store,
     build_store,
 )
-from app.features.passport.store import LocalPassportStore, PassportStore
+from app.features.passport.store import (
+    Committer,
+    LocalPassportStore,
+    PassportStore,
+)
 
 
 def using_bucket() -> bool:
@@ -47,6 +52,24 @@ def using_bucket() -> bool:
         of backend turns on, named once so nothing re-derives it.
     """
     return bool(settings.PASSPORT_GCS_BUCKET)
+
+
+def brand_committer(brand: str) -> Committer:
+    """Who commits for the brand called *brand*: its full name.
+
+    Args:
+        brand: ``"quill"``, or a key of ``app_themes`` in
+            ``shared/brand.yaml``, as ``settings.BRAND`` holds.
+
+    Returns:
+        The brand's full name and its committer address.
+
+    Raises:
+        ValueError: If *brand* is not a brand.
+    """
+    named = identity(brand)
+
+    return Committer(name=named.name, email=named.committer_email)
 
 
 @lru_cache(maxsize=1)
@@ -63,11 +86,12 @@ def get_passport_store() -> PassportStore:
         a local store under ``PASSPORT_LOCAL_ROOT``.
     """
     bucket = settings.PASSPORT_GCS_BUCKET
+    committer = brand_committer(settings.BRAND)
 
     if bucket:
-        return build_store(bucket)
+        return build_store(bucket, committer=committer)
 
-    return LocalPassportStore(Path(settings.PASSPORT_LOCAL_ROOT))
+    return LocalPassportStore(Path(settings.PASSPORT_LOCAL_ROOT), committer)
 
 
 @lru_cache(maxsize=1)

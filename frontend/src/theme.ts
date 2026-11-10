@@ -132,12 +132,72 @@ declare module "@mantine/core" {
 
 /**
  * Every brand the app can be shown in: Quill, then each entry of
- * `app_themes` in shared/brand.yaml.
+ * `app_themes` in shared/brand.yaml. Storybook offers them through
+ * `just sb <brand>`, and the dev stack runs as one through
+ * `just sa <brand>`.
  */
 export const BRAND_NAMES: readonly string[] = [
   "quill",
   ...Object.keys(brand.app_themes),
 ];
+
+/** What a brand calls itself. */
+export interface Identity {
+  /** The full name, for page titles */
+  name: string;
+  /** The name where room is short */
+  shortName: string;
+}
+
+/**
+ * What the brand called *name* calls itself, from shared/brand.yaml.
+ *
+ * @throws Error if *name* is not one of `BRAND_NAMES`.
+ */
+export function brandIdentity(name: string): Identity {
+  // hasOwn, not a lookup: "constructor" would find Object's own
+  if (name !== "quill" && !Object.hasOwn(brand.app_themes, name)) {
+    throw new Error(
+      `Unknown brand "${name}". Known brands: ${BRAND_NAMES.join(", ")}`,
+    );
+  }
+
+  const source =
+    name === "quill" ? brand.identity : brand.app_themes[name]?.identity;
+
+  if (source === undefined) {
+    throw new Error(`The brand "${name}" has no identity in brand.yaml`);
+  }
+
+  return { name: source.name, shortName: source.short_name };
+}
+
+/**
+ * The brand the app runs as, from `VITE_BRAND`. Unset or empty means
+ * Quill, so a build that sets nothing is Quill as it always was. An
+ * unknown brand stops the app here rather than showing Quill under
+ * another name, as `.storybook/preview.tsx` does for `STORYBOOK_BRAND`.
+ *
+ * @throws Error if *value* is set and is not one of `BRAND_NAMES`.
+ */
+export function resolveAppBrand(value: string | undefined): string {
+  const name = value || "quill";
+
+  if (!BRAND_NAMES.includes(name)) {
+    throw new Error(
+      `VITE_BRAND is "${name}", which is not a brand. ` +
+        `Known brands: ${BRAND_NAMES.join(", ")}`,
+    );
+  }
+
+  return name;
+}
+
+/** The brand this build runs as. */
+export const APP_BRAND: string = resolveAppBrand(import.meta.env.VITE_BRAND);
+
+/** What this build calls itself. */
+export const appIdentity: Identity = brandIdentity(APP_BRAND);
 
 /** What a brand changes: its colours, ramps, logo and wordmark. */
 interface BrandLook {
@@ -650,8 +710,8 @@ function buildTheme(look: BrandLook): MantineThemeOverride {
 
 /**
  * The theme and CSS variables for one brand: "quill", or a key of
- * `app_themes` in shared/brand.yaml. The app uses Quill's, through the
- * exports below.
+ * `app_themes` in shared/brand.yaml. The app uses the one `VITE_BRAND`
+ * names, through the exports below.
  *
  * @throws Error if *name* is not one of `BRAND_NAMES`.
  */
@@ -669,10 +729,10 @@ export function makeTheme(name: string): {
   };
 }
 
-const quill = makeTheme("quill");
+const app = makeTheme(APP_BRAND);
 
-/** Quill's theme, which the app always uses. */
-export const theme = quill.theme;
+/** The theme of the brand this build runs as, Quill's unless set. */
+export const theme = app.theme;
 
-/** Quill's CSS variables, layered on Mantine's. */
-export const cssVariablesResolver = quill.cssVariablesResolver;
+/** That brand's CSS variables, layered on Mantine's. */
+export const cssVariablesResolver = app.cssVariablesResolver;

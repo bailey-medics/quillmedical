@@ -64,6 +64,8 @@ from .blobs import BlobConflictError, BlobError, BlobNotFoundError, digest
 from .commits import Actor, CommitMessage
 from .schemas import Attachment
 from .store import (
+    DEFAULT_COMMITTER,
+    Committer,
     ConcurrentWriteError,
     LocalPassportStore,
     PassportExistsError,
@@ -161,15 +163,20 @@ class GcsPassportStore(PassportStore):
     rather than by an in-process HEAD comparison.
     """
 
-    def __init__(self, bucket: _Bucket) -> None:
+    def __init__(
+        self, bucket: _Bucket, committer: Committer = DEFAULT_COMMITTER
+    ) -> None:
         """Start a store over *bucket*.
 
         Args:
             bucket: The Cloud Storage bucket holding every passport.
                 Passed in rather than built from settings, so this module
                 stays importable without the application's configuration.
+            committer: Who every commit is committed by, passed on to the
+                local store each write is made in.
         """
         self._bucket = bucket
+        self._committer = committer
 
     def _bundle_name(self, passport_id: str) -> str:
         """The object key for one passport's bundle.
@@ -264,7 +271,7 @@ class GcsPassportStore(PassportStore):
 
         with tempfile.TemporaryDirectory() as scratch:
             root = Path(scratch)
-            local = LocalPassportStore(root)
+            local = LocalPassportStore(root, self._committer)
 
             commit = local.create(passport_id, files, message, actor)
 
@@ -461,7 +468,7 @@ class _Checkout:
 
         _unbundle(data, root / paths.shard(self._passport_id))
 
-        self.store = LocalPassportStore(root)
+        self.store = LocalPassportStore(root, self._store._committer)
         self.root = root
         self.generation = generation
 
@@ -708,7 +715,11 @@ def blob_object_key(passport_id: str, blob_digest: str) -> str:
     return f"{PREFIX}/{shard}/{paths.blob(blob_digest)}"
 
 
-def build_store(bucket_name: str, client: Any = None) -> GcsPassportStore:
+def build_store(
+    bucket_name: str,
+    client: Any = None,
+    committer: Committer = DEFAULT_COMMITTER,
+) -> GcsPassportStore:
     """Build a bucket-backed passport store.
 
     The composition point for production. Takes a bucket name rather than
@@ -720,11 +731,12 @@ def build_store(bucket_name: str, client: Any = None) -> GcsPassportStore:
         bucket_name: The bucket holding passports.
         client: A Cloud Storage client. Built from the ambient
             credentials when omitted, which is what Cloud Run wants.
+        committer: Who every commit is committed by.
 
     Returns:
         A store over that bucket.
     """
-    return GcsPassportStore(_bucket_for(bucket_name, client))
+    return GcsPassportStore(_bucket_for(bucket_name, client), committer)
 
 
 def build_blob_store(bucket_name: str, client: Any = None) -> GcsBlobStore:
