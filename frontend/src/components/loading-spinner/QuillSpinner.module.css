@@ -20,7 +20,8 @@
    * paler one fades into a white page as the quill goes edge on, which
    * reads as the turn rushing through that moment.
    * The shadowed colour is the one the animation was drawn with, written
-   * out because it is not a shade in the palette.
+   * out because it is not a shade in the palette. It is Quill's navy in
+   * every brand: the spinner is the quill itself, and is not rebranded.
    */
   --quill-spinner-face: var(--mantine-color-primary-8);
   --quill-spinner-lit: var(--mantine-color-primary-2);

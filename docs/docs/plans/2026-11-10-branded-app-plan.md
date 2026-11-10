@@ -206,7 +206,7 @@ diff for the alternative brand's name finds nothing.
       each brand its own link colour. `mark` is white, the tile the logo
       sits on. `just ub app/email/brand_test.py` passes (18).
 
-- [ ] **`brand-theme-from-the-brand`: the theme is built from the
+- [x] **`brand-theme-from-the-brand`: the theme is built from the
       brand, Quill's unchanged.** From `brand-theme`: `makeTheme(brand)`
       in `theme.ts` builds the Mantine theme from a brand, carrying the
       brand on `theme.other`, and `theme.quill-baseline.json` with
@@ -214,6 +214,14 @@ diff for the alternative brand's name finds nothing.
       for variable, in light and dark. Small component fixes ride along
       (`BurgerButton`, `SolidSwitch`, `QuillSpinner` CSS,
       `dark-overrides.css`).
+
+      **Built without the logo and wordmark on `theme.other`**, for the
+      same reason as the unit above: they, and the test that a brand's
+      theme nested inside Quill's keeps them (the `deepMerge` trap),
+      arrive with `brand-logo-and-wordmark`. `theme.other` carries only
+      `brand` for now. `just uf src/theme.test.ts
+      src/components/button/BurgerButton.test.tsx` passes (73), the
+      Quill baseline among them.
 
 - [ ] **`brand-logo-and-wordmark`: the brand's logo and wordmark.** From
       `brand-logo` and `brand-wordmark-font` together, as one unit: the
