@@ -357,6 +357,7 @@ describe("makeTheme", () => {
     expect(built.black).toBe(ldd?.palette.primary[5]);
     expect(built.other).toEqual({
       brand: "ldd",
+      colours: ldd?.brand,
       logo: "/brands/ldd/logo.png",
       logoTile: "#ffffff",
       wordmark: {
@@ -389,6 +390,18 @@ describe("makeTheme", () => {
     expect(nested.other.logo).toBe("/brands/ldd/logo.png");
     expect(nested.other.wordmark?.alt).toBe("Let's Do Digital");
     expect("wordmark" in resolved.other).toBe(false);
+  });
+
+  it("carries each brand's four colours on the theme", () => {
+    const ldd = mergeMantineTheme(DEFAULT_THEME, makeTheme("ldd").theme);
+
+    expect(resolved.other.colours).toEqual(brandColours);
+    expect(ldd.other.colours).toEqual({
+      primary: "#0848a9",
+      secondary: "#707070",
+      background: "#ffffff",
+      mark: "#ffffff",
+    });
   });
 
   it("lists Quill first, then every app theme", () => {

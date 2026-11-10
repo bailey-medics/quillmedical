@@ -3,25 +3,31 @@
  *
  * Visual reference for the app's semantic colour palette.
  * Documents brand colours, status colours, text colours and placeholder
- * colours so developers know which tokens to use.
+ * colours so developers know which tokens to use. The brand colours,
+ * scales and logo are the brand Storybook is running (`just sb <brand>`),
+ * from BrandFoundations.tsx; the rest are shared by every brand.
  */
 
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Badge, Box, Group, Stack, Text } from "@mantine/core";
 import {
-  brand,
   placeholderColours,
   statusColours,
   statusTextColour,
   textColours,
   type StatusColourName,
 } from "@/styles/semanticColours";
-import { primaryScale, secondaryScale, greyScale } from "@/theme";
+import { greyScale } from "@/theme";
+import {
+  BrandColourSwatches,
+  BrandLogos,
+  BrandScales,
+  ColourSwatch,
+  ScaleRow,
+} from "@/stories/BrandFoundations";
 import { StoryNote } from "@/stories/variants";
 import PageHeader from "@components/page-header";
 import { TextField } from "@components/form";
-import Image from "@components/images/Image";
-import publicAsset from "@lib/publicAsset";
 
 const meta: Meta = {
   title: "Foundations/Colours",
@@ -36,35 +42,6 @@ type Story = StoryObj;
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
 /* ------------------------------------------------------------------ */
-
-function ColourSwatch({
-  colour,
-  label,
-  description,
-}: {
-  colour: string;
-  label: string;
-  description: string;
-}) {
-  return (
-    <Group gap="md" align="center" wrap="nowrap">
-      <Box
-        style={{
-          width: 48,
-          height: 48,
-          borderRadius: 8,
-          backgroundColor: colour,
-          border: "1px solid var(--mantine-color-gray-3)",
-          flexShrink: 0,
-        }}
-      />
-      <div>
-        <StoryNote mt={0}>{label.toUpperCase()}</StoryNote>
-        <StoryNote mt={0}>{description}</StoryNote>
-      </div>
-    </Group>
-  );
-}
 
 function StatusSwatch({
   name,
@@ -141,61 +118,6 @@ function TextSwatch({
   );
 }
 
-/**
- * One version of the quill mark or wordmark, on the background it is
- * drawn for. `height` and `width` are rem; the tile is 6rem tall.
- */
-function LogoSwatch({
-  src,
-  alt,
-  height,
-  width = 6,
-  inset = 0.75,
-  background,
-  label,
-  colours,
-  usage,
-}: {
-  src: string;
-  alt: string;
-  height: number;
-  width?: number;
-  inset?: number;
-  background: string;
-  label: string;
-  colours: string;
-  usage: string;
-}) {
-  const onWhite = background === brand.background;
-  return (
-    <Group gap="md" align="center" wrap="nowrap">
-      <Box
-        style={{
-          width: `${width}rem`,
-          height: "6rem",
-          borderRadius: 8,
-          backgroundColor: background,
-          border: onWhite ? "1px solid var(--mantine-color-gray-3)" : undefined,
-          padding: `${inset}rem`,
-          flexShrink: 0,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          overflow: "hidden",
-        }}
-      >
-        <Image src={src} alt={alt} height={height} />
-      </Box>
-      <div>
-        <StoryNote mt={0}>{label.toUpperCase()}</StoryNote>
-        <StoryNote mt={0}>
-          {colours} - {usage}
-        </StoryNote>
-      </div>
-    </Group>
-  );
-}
-
 /* ------------------------------------------------------------------ */
 /*  Stories                                                            */
 /* ------------------------------------------------------------------ */
@@ -216,26 +138,7 @@ export const Overview: Story = {
       <div>
         <PageHeader title="Brand colours" />
         <Stack gap="md">
-          <ColourSwatch
-            colour={brand.primary}
-            label="Primary"
-            description={`${brand.primary} - navigation, primary actions, brand identity`}
-          />
-          <ColourSwatch
-            colour={brand.secondary}
-            label="Secondary"
-            description={`${brand.secondary} - secondary buttons, accents, highlights`}
-          />
-          <ColourSwatch
-            colour={brand.background}
-            label="Background"
-            description={`${brand.background} - page backgrounds, card surfaces`}
-          />
-          <ColourSwatch
-            colour={brand.mark}
-            label="Mark"
-            description={`${brand.mark} - the quill on a navy tile: the email avatar and the installed app's icon. Light grey, not white, so the mark sits back from the navy`}
-          />
+          <BrandColourSwatches />
           <ColourSwatch
             colour="#f8f9fa"
             label="Default grey"
@@ -244,86 +147,7 @@ export const Overview: Story = {
         </Stack>
       </div>
 
-      <div>
-        <PageHeader title="Quill logo" />
-        <StoryNote>
-          The mark is the feather; the wordmark is the name. Each is a PNG in{" "}
-          <code>frontend/public</code>, drawn in one colour for one background,
-          so the pairing is fixed: pick the file for the surface it sits on.{" "}
-          <code>QuillLogo</code> chooses navy or white by colour scheme;{" "}
-          <code>QuillName</code> is always the white wordmark, because the
-          ribbon is always navy.
-        </StoryNote>
-        <Stack gap="md" mt="xl">
-          <LogoSwatch
-            src={publicAsset("/android-chrome-512x512.png")}
-            alt="Grey quill mark on a navy tile"
-            height={6}
-            inset={0}
-            background={brand.primary}
-            label="Mark on a navy tile"
-            colours={`${brand.mark} on ${brand.primary}`}
-            usage="the installed app's icon, and the email avatar (/email/quill-avatar.png, the same in a circle)"
-          />
-          <LogoSwatch
-            src={publicAsset("/quill-logo.png")}
-            alt="Navy quill mark"
-            height={4.5}
-            background={brand.background}
-            label="Navy mark"
-            colours={`${brand.primary} on white`}
-            usage='login, register and password pages in light mode (QuillLogo colour="default")'
-          />
-          <LogoSwatch
-            src={publicAsset("/quill-logo-white.png")}
-            alt="White quill mark"
-            height={4.5}
-            background={brand.primary}
-            label="White mark"
-            colours="#ffffff on navy"
-            usage='the same pages in dark mode (QuillLogo colour="white")'
-          />
-          <LogoSwatch
-            src={publicAsset("/quill-logo-light-grey.png")}
-            alt="Light grey quill mark"
-            height={4.5}
-            background={brand.background}
-            label="Light grey mark"
-            colours="#939296 on white"
-            usage='QuillLogo colour="light-grey"; no page uses it today'
-          />
-          <LogoSwatch
-            src={publicAsset("/quill-name-white.png")}
-            alt="White Quill Medical wordmark"
-            height={3}
-            width={10}
-            background={brand.primary}
-            label="White wordmark"
-            colours="#ffffff on navy"
-            usage="the app's top ribbon (QuillName)"
-          />
-          <LogoSwatch
-            src={publicAsset("/quill-name.png")}
-            alt="Navy Quill Medical wordmark"
-            height={3}
-            width={10}
-            background={brand.background}
-            label="Navy wordmark"
-            colours={`${brand.primary} on white`}
-            usage="the file exists; no page uses it today"
-          />
-          <LogoSwatch
-            src={publicAsset("/quill-name-long-white-amber.png")}
-            alt="Quill Medical wordmark in white and amber"
-            height={3}
-            width={20}
-            background={brand.primary}
-            label="White and amber wordmark"
-            colours={`#ffffff and ${brand.secondary} on navy`}
-            usage="the public site's ribbon and footer, and the header band of every Quill email (/email/quill-wordmark.png, the same at email size)"
-          />
-        </Stack>
-      </div>
+      <BrandLogos />
 
       <div>
         <PageHeader title="Status colours" />
@@ -406,40 +230,6 @@ export const Overview: Story = {
 /*  Shade Scales                                                       */
 /* ------------------------------------------------------------------ */
 
-function ScaleRow({
-  name,
-  scale,
-  primaryShade,
-}: {
-  name: string;
-  scale: readonly string[];
-  primaryShade?: number;
-}) {
-  return (
-    <div>
-      <StoryNote mt={0}>{name.toUpperCase()}</StoryNote>
-      <Group gap="md" align="flex-start" mt="xs">
-        {scale.map((colour, i) => (
-          <Stack key={i} gap={4} align="center">
-            <Box
-              style={{
-                width: 48,
-                height: 48,
-                borderRadius: 8,
-                backgroundColor: colour,
-                border: "1px solid var(--mantine-color-gray-3)",
-              }}
-            />
-            <StoryNote mt={0}>{i}</StoryNote>
-            <StoryNote mt={0}>{colour}</StoryNote>
-            {i === primaryShade && <StoryNote mt={0}>DEFAULT</StoryNote>}
-          </Stack>
-        ))}
-      </Group>
-    </div>
-  );
-}
-
 /** Brand and accent 10-shade colour scales. Bold label marks the primaryShade. */
 export const Scales: Story = {
   render: () => {
@@ -453,16 +243,7 @@ export const Scales: Story = {
             <code>color=&quot;secondary&quot;</code>.
           </StoryNote>
           <Stack gap="lg" mt={20}>
-            <ScaleRow
-              name="primary (navy)"
-              scale={primaryScale}
-              primaryShade={8}
-            />
-            <ScaleRow
-              name="secondary (amber)"
-              scale={secondaryScale}
-              primaryShade={5}
-            />
+            <BrandScales />
             <ScaleRow
               name="grey (neutral)"
               scale={greyScale}

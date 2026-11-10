@@ -298,7 +298,7 @@ diff for the alternative brand's name finds nothing.
       afterwards (Mark, 11 November 2026): `just sb ldd` shows every
       story as the brand, so they repeated the stories above them.
 
-- [ ] **`brand-storybook-switch`: choose the brand in Storybook.** From
+- [x] **`brand-storybook-switch`: choose the brand in Storybook.** From
       `brand-switch` and `brand-foundations`: `just sb <brand>`, with the
       recipe's `case` reading `quill|ldd`, the switch in
       `.storybook/preview.tsx`, and Foundations/Colours showing the
@@ -306,6 +306,42 @@ diff for the alternative brand's name finds nothing.
       own labels ("blue", "grey") and logo section. `.storybook/preview.tsx`
       also gained a line from `safety-frontend` on the source stack; take
       only the brand lines.
+
+      **Built.** `theme.other` also gains `colours`, the brand's four
+      colours, which the Colours page reads. `just sb purple` stops with
+      "Unknown brand 'purple': quill or ldd." and starts nothing.
+      `just sb ldd` was opened and looked at: the ribbon is the brand
+      blue with the white wordmark and a grey bottom border, and
+      Foundations/Colours shows the blue and grey, their scales and the
+      Let's Do Digital logo section. `just uf src/theme.test.ts
+      src/stories/BrandFoundations.test.tsx` passes (69).
+
+      **The stories that show whichever brand is running no longer name
+      Quill** (Mark, 11 November 2026): "Images/Brand name",
+      "Images/Brand logo" and "Feedback/Brand spinner", the fixed
+      "Quill Medical" alt text taken out of their default stories so it
+      follows the brand, and "Loading Quill app" now "Loading the app".
+      Where "Quill" names the product itself, as in "a Quill account", it
+      stays. Foundations/Colours names Geostar Fill for the wordmark and
+      shows the dark one too.
+
+      **"Images/Brand logo", Default, is always the navy feather on
+      white** (Mark, 11 November 2026). It had left `colour` at `"auto"`,
+      which turns the feather white in dark mode, so the story showed a
+      white feather on its white box. Pinned to `"default"`, and held in
+      light mode so the whole canvas is white rather than a white box on
+      a dark page, it now differs from Light grey and White in both
+      modes. Light grey and White fill the whole canvas with the brand's
+      own colour instead of a box, so each of the three is shown on a
+      full screen of the colour it is meant for.
+
+      **The EoEETA and Let's Do Digital logos no longer stretch**
+      (Mark, 11 November 2026). Each sits on a `BaseCard`, which filled
+      whatever width it was given, and the image was stretched across it:
+      in their stories, where the card spans the canvas, both logos came
+      out several times too wide. The public pages hid it, because a
+      centred `Stack` shrinks the card. The card now hugs the logo
+      (`w="fit-content"`), and a test in each holds it.
 
 - [ ] **`brand-colour-fixes`: contrast and colours held for every
       brand.** From `brand-inbox-icon`,
