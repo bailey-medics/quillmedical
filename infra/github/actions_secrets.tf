@@ -6,12 +6,8 @@
 # and never reaches Terraform, its state, or this public repository.
 #
 # SLACK_WEBHOOK_URL is the incoming webhook every pipeline posts its
-# failures to. Anybody holding it can post to the channel, so it is visible
-# to the repositories that send a message and no others, never ALL. The
-# list was set by hand on 5 November 2026, when the four framework
-# repositories were added to it, and is imported below, so the first apply
-# changes nothing. See Phase 17 of
-# docs/docs/plans/2026-11-01-passport-record-and-catalogue-plan.md.
+# failures to. Anybody holding it can post to the channel, so only the
+# repositories that send a message may read it, never ALL.
 
 locals {
   # quill-medical-framework-testing is protected beside the other framework
@@ -42,9 +38,4 @@ resource "github_actions_organization_secret_repositories" "slack_webhook_url" {
   selected_repository_ids = [
     for repository in data.github_repository.slack_webhook : repository.repo_id
   ]
-}
-
-import {
-  to = github_actions_organization_secret_repositories.slack_webhook_url
-  id = "SLACK_WEBHOOK_URL"
 }

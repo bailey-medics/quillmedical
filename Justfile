@@ -3189,10 +3189,23 @@ worktree-create branch="":
     # the stack will not come up. Copied rather than symlinked: a branch
     # may legitimately need a different value, and a symlink would edit
     # the original from inside the worktree without warning.
+    #
+    # Taken from the checkout this is run in, or failing that from the
+    # main checkout, which holds the shared .git. A worktree made from
+    # another worktree that had none would otherwise get none either, and
+    # look fine until a recipe that reads them fails. Said aloud when
+    # neither has one.
+    MAIN=$(dirname "$(git -C "$ROOT" rev-parse --path-format=absolute --git-common-dir)")
+
     for f in .env backend/.env frontend/.env; do
         if [ -f "$ROOT/$f" ]; then
             cp "$ROOT/$f" "$DEST/$f"
             echo "Copied $f"
+        elif [ -f "$MAIN/$f" ]; then
+            cp "$MAIN/$f" "$DEST/$f"
+            echo "Copied $f from the main checkout"
+        else
+            echo "⚠ No $f in this checkout or the main one, so none copied."
         fi
     done
 
