@@ -1,5 +1,8 @@
+import { MantineThemeProvider } from "@mantine/core";
+import type { ReactElement } from "react";
 import { describe, expect, it } from "vitest";
 import { renderWithMantine, remToPx } from "@test/test-utils";
+import { makeTheme } from "@/theme";
 import QuillLogo from "./QuillLogo";
 
 describe("QuillLogo Component", () => {
@@ -88,5 +91,85 @@ describe("QuillLogo Component", () => {
       const img = container.querySelector("img");
       expect(img).toHaveStyle({ height: remToPx("8rem") });
     });
+  });
+});
+
+describe("QuillLogo under another brand", () => {
+  const ldd = makeTheme("ldd").theme;
+
+  function renderAsLdd(ui: ReactElement) {
+    return renderWithMantine(
+      <MantineThemeProvider theme={ldd}>{ui}</MantineThemeProvider>,
+    );
+  }
+
+  it("shows the brand's logo", () => {
+    const { container } = renderAsLdd(<QuillLogo />);
+    const img = container.querySelector("img");
+
+    expect(img).toHaveAttribute(
+      "src",
+      expect.stringContaining("brands/ldd/logo.png"),
+    );
+  });
+
+  it.each(["default", "light-grey", "white"] as const)(
+    "shows the brand's one logo whatever the colour: %s",
+    (colour) => {
+      const { container } = renderAsLdd(<QuillLogo colour={colour} />);
+      const img = container.querySelector("img");
+
+      expect(img).toHaveAttribute(
+        "src",
+        expect.stringContaining("brands/ldd/logo.png"),
+      );
+    },
+  );
+
+  it("names the brand in the alt text", () => {
+    const { container } = renderAsLdd(<QuillLogo />);
+
+    expect(container.querySelector("img")).toHaveAttribute(
+      "alt",
+      "Let's Do Digital",
+    );
+  });
+
+  it("keeps alt text a caller passes", () => {
+    const { container } = renderAsLdd(<QuillLogo alt="Home" />);
+
+    expect(container.querySelector("img")).toHaveAttribute("alt", "Home");
+  });
+
+  it("keeps the height", () => {
+    const { container } = renderAsLdd(<QuillLogo height={4} />);
+
+    expect(container.querySelector("img")).toHaveStyle({
+      height: remToPx("4rem"),
+    });
+  });
+
+  it("draws the logo on the brand's white tile", () => {
+    const { container } = renderAsLdd(<QuillLogo />);
+
+    expect(container.querySelector("img")).toHaveStyle({
+      backgroundColor: "#ffffff",
+    });
+  });
+
+  it("keeps a caller's style alongside the tile", () => {
+    const { container } = renderAsLdd(
+      <QuillLogo style={{ marginTop: "1rem" }} />,
+    );
+    const img = container.querySelector("img");
+
+    expect(img).toHaveStyle({ backgroundColor: "#ffffff" });
+    expect(img).toHaveStyle({ marginTop: remToPx("1rem") });
+  });
+
+  it("draws Quill's logo with no tile", () => {
+    const { container } = renderWithMantine(<QuillLogo />);
+
+    expect(container.querySelector("img")?.style.backgroundColor).toBe("");
   });
 });

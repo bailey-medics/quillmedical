@@ -223,7 +223,7 @@ diff for the alternative brand's name finds nothing.
       src/components/button/BurgerButton.test.tsx` passes (73), the
       Quill baseline among them.
 
-- [ ] **`brand-logo-and-wordmark`: the brand's logo and wordmark.** From
+- [x] **`brand-logo-and-wordmark`: the brand's logo and wordmark.** From
       `brand-logo` and `brand-wordmark-font` together, as one unit: the
       first added a font package and the second took it out again in
       favour of a wordmark drawn as an SVG, so carrying the net change
@@ -249,6 +249,54 @@ diff for the alternative brand's name finds nothing.
         `quill-name-white.png`, since the ribbon is a fixed height. Three
         words may need a smaller size than a one-word name; settled from
         screenshots of the ribbon and flagged in the pull request.
+
+      **Built, with two findings.** The ribbon does not show `QuillLogo`
+      at all, only `QuillName`; the logo is on the sign-in and
+      registration pages, on the page's own background. So the tile does
+      its work in dark mode, where the page is the brand's dark blue
+      behind a blue head, and is invisible on a white light-mode page.
+      And the tile's colour is carried on `theme.other.logoTile`, read by
+      `QuillLogo` like the logo itself: a first try set it as a CSS
+      variable from the theme's variables resolver, but a theme nested
+      with `MantineThemeProvider`, as a story's is, never runs the
+      resolver, so the tile vanished. The logo comes from commit
+      `2970845dfdd9` and weighs 217 KB, unoptimised as the step asks.
+      The wordmark is Source Sans 3 700 from Fontsource 5.3.0, chosen
+      over 600 because it carries on the ribbon as Quill's heavy serif
+      does; the box runs from 20% above the cap height to 45% of it below
+      the baseline, so the capitals fill about three fifths of it, a
+      little smaller than Quill's, and it draws about 196 pixels wide at
+      the ribbon's 2.1rem against Quill's 71. `just uf src/theme.test.ts
+      src/components/images/QuillLogo.test.tsx
+      src/components/images/QuillName.test.tsx` passes (96), and
+      `just ub app/email/brand_test.py` (22). Both stories were looked at
+      in a running Storybook, in light and dark.
+
+      **The wordmark is now Geostar Fill** (Mark, 11 November 2026:
+      it is the font he sets the name in). It is a Google Font under the
+      SIL Open Font Licence, by Joe Prince, in one weight only. The font
+      file, unchanged, and its `OFL.txt` are kept in
+      `frontend/brand-sources/ldd/`, outside `public/` so the build does
+      not ship a font nothing loads; the licence reserves the name
+      "Geostar", so the file is never trimmed or edited.
+      `scripts/brand-wordmark.py` draws the wordmark from it, so it can
+      be drawn again. A bold, made by tracing every letter's outline with
+      a line 50 font units wide, was tried and looked too heavy in the
+      app, so the font's one weight is used; the script keeps `--bold`
+      for a font that needs it. The font is wide: the name draws about
+      290 pixels across at the ribbon's height, against 196 in Source
+      Sans 3.
+
+      **A dark wordmark too** (Mark, 11 November 2026), for the dark font
+      story, which showed Quill's name whatever the brand.
+      `wordmark-dark.svg` is the same drawing in the brand blue,
+      `#0848a9`, named by an optional `dark_src` on the wordmark;
+      `QuillName` takes `colour="dark"` as `QuillLogo` takes its colour,
+      and falls back to the white wordmark for a brand without a dark
+      one. The ribbon still uses the white. The stories that wrapped the
+      name and logo in Let's Do Digital's theme were taken out
+      afterwards (Mark, 11 November 2026): `just sb ldd` shows every
+      story as the brand, so they repeated the stories above them.
 
 - [ ] **`brand-storybook-switch`: choose the brand in Storybook.** From
       `brand-switch` and `brand-foundations`: `just sb <brand>`, with the

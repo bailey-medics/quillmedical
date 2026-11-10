@@ -70,8 +70,8 @@ palette:
     - "#495057" # 7 muted text, dimmed in light mode (8.2:1 on white)
 
 # Other looks the app can be shown in, beside Quill's own above. Each
-# holds what differs from Quill: for now, the brand colours and the
-# primary and secondary ramps. The grey ramp is Mantine's neutral greys
+# holds what differs from Quill: the brand colours, the primary and
+# secondary ramps, the logo and the wordmark. The grey ramp is Mantine's neutral greys
 # and is shared, so it is not repeated. The backend checks every value
 # here when it starts.
 #
@@ -121,6 +121,25 @@ app_themes:
         - "#484848" # 7 dark grey
         - "#353535" # 8 darker grey
         - "#242424" # 9 darkest grey
+    # The logo, unchanged from media/ldd-logo.png in
+    # letsdodigital/letsdodigital.github.io (commit 2970845dfdd9), 714
+    # pixels square. No SVG of it exists, and the app never draws it
+    # larger than that.
+    logo: /brands/ldd/logo.png
+    # Drawn on a white tile, because the logo's back head is the brand
+    # blue and would be lost on the dark-mode page, which is that blue's
+    # darker shade. A brand with no tile shows its logo as it is.
+    logo_tile: "#ffffff"
+    # The name drawn as an image, white for the blue ribbon, as Quill's is
+    # quill-name-white.png. Set in Geostar Fill, Let's Do Digital's own
+    # font, at its one weight, kept with its licence in
+    # frontend/brand-sources/ldd/. Drawn by scripts/brand-wordmark.py;
+    # each letter is a path, so no font loads.
+    # The dark version, in the brand blue, is for a light background.
+    wordmark:
+      src: /brands/ldd/wordmark-white.svg
+      dark_src: /brands/ldd/wordmark-dark.svg
+      alt: Let's Do Digital
 
 # Each email theme is one brand's look for every email: the layout is the
 # same, only these values change. Mark approved these values when the

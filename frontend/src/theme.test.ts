@@ -343,6 +343,8 @@ describe("makeTheme", () => {
     );
     expect(quill.cssVariablesResolver(rebuilt)).toEqual(vars);
     expect(resolved.other.brand).toBe("quill");
+    expect(resolved.other.logo).toBeUndefined();
+    expect(resolved.other.wordmark).toBeUndefined();
   });
 
   it("builds Let's Do Digital from its entry in the brand file", () => {
@@ -353,7 +355,16 @@ describe("makeTheme", () => {
     expect([...built.colors.primary]).toEqual(ldd?.palette.primary);
     expect([...built.colors.secondary]).toEqual(ldd?.palette.secondary);
     expect(built.black).toBe(ldd?.palette.primary[5]);
-    expect(built.other).toEqual({ brand: "ldd" });
+    expect(built.other).toEqual({
+      brand: "ldd",
+      logo: "/brands/ldd/logo.png",
+      logoTile: "#ffffff",
+      wordmark: {
+        src: "/brands/ldd/wordmark-white.svg",
+        darkSrc: "/brands/ldd/wordmark-dark.svg",
+        alt: "Let's Do Digital",
+      },
+    });
   });
 
   it("points Let's Do Digital's brand and dark-mode surfaces at its own colours", () => {
@@ -367,6 +378,17 @@ describe("makeTheme", () => {
     expect(lddVars.dark["--mantine-color-body"]).toBe(blue[8]);
     expect(lddVars.dark["--card-bg"]).toBe(blue[7]);
     expect(lddVars.light["--mantine-color-text"]).toBe(blue[5]);
+  });
+
+  it("keeps Let's Do Digital's logo and wordmark when nested inside Quill's theme", () => {
+    // As MantineThemeProvider merges a story's theme over Storybook's.
+    // Quill's theme must not carry the keys as undefined: Mantine's
+    // deepMerge turns undefined merged with an object into {}.
+    const nested = mergeMantineTheme(resolved, makeTheme("ldd").theme);
+
+    expect(nested.other.logo).toBe("/brands/ldd/logo.png");
+    expect(nested.other.wordmark?.alt).toBe("Let's Do Digital");
+    expect("wordmark" in resolved.other).toBe(false);
   });
 
   it("lists Quill first, then every app theme", () => {

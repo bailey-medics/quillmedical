@@ -98,6 +98,16 @@ export const secondaryScale = toColoursTuple(
  */
 export const greyScale: readonly string[] = brand.palette.grey;
 
+/**
+ * A brand's name drawn as an image: white for the top ribbon, and
+ * optionally dark, for a light background.
+ */
+export interface Wordmark {
+  src: string;
+  darkSrc?: string;
+  alt: string;
+}
+
 declare module "@mantine/core" {
   /**
    * Which brand a theme is, so a component can ask the theme around it
@@ -106,6 +116,12 @@ declare module "@mantine/core" {
   export interface MantineThemeOther {
     /** "quill", or a key of `app_themes` in shared/brand.yaml. */
     brand?: string;
+    /** The brand's logo under frontend/public. Unset for Quill. */
+    logo?: string;
+    /** The colour of the tile behind the logo. Unset for no tile. */
+    logoTile?: string;
+    /** The brand's wordmark image. Unset for Quill, whose is a PNG. */
+    wordmark?: Wordmark;
   }
 }
 
@@ -118,12 +134,15 @@ export const BRAND_NAMES: readonly string[] = [
   ...Object.keys(brand.app_themes),
 ];
 
-/** What a brand changes: its colours and ramps. */
+/** What a brand changes: its colours, ramps, logo and wordmark. */
 interface BrandLook {
   name: string;
   colours: typeof brandColours;
   primary: MantineColorsTuple;
   secondary: MantineColorsTuple;
+  logo?: string;
+  logoTile?: string;
+  wordmark?: Wordmark;
 }
 
 /**
@@ -155,6 +174,15 @@ function brandLook(name: string): BrandLook {
     colours: source.brand,
     primary: toColoursTuple(`${name} primary`, source.palette.primary),
     secondary: toColoursTuple(`${name} secondary`, source.palette.secondary),
+    logo: source.logo,
+    logoTile: source.logo_tile,
+    wordmark: {
+      src: source.wordmark.src,
+      alt: source.wordmark.alt,
+      ...(source.wordmark.dark_src !== undefined && {
+        darkSrc: source.wordmark.dark_src,
+      }),
+    },
   };
 }
 
@@ -461,8 +489,14 @@ function buildTheme(look: BrandLook): MantineThemeOverride {
     },
 
     /** Which brand this is, for components that change with it */
+    // Left out, never set to undefined, when a brand has none: Mantine's
+    // deepMerge turns undefined merged with an object into {}, so a
+    // theme nested inside Quill's would lose its wordmark.
     other: {
       brand: look.name,
+      ...(look.logo !== undefined && { logo: look.logo }),
+      ...(look.logoTile !== undefined && { logoTile: look.logoTile }),
+      ...(look.wordmark !== undefined && { wordmark: look.wordmark }),
     },
 
     /** Use primary navy as the default colour for all components */

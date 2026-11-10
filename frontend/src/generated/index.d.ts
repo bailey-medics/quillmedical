@@ -276,6 +276,13 @@ declare module "@/generated/brand.json" {
       primary: string[];
       secondary: string[];
     };
+    logo: string;
+    logo_tile?: string;
+    wordmark: {
+      src: string;
+      dark_src?: string;
+      alt: string;
+    };
   }
 
   const data: {
