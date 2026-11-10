@@ -25,9 +25,12 @@ set -g history-limit 50000
 # No status line: the terminal tab already names the session
 set -g status off
 
-# Copy on mouse release, and keep the selection on screen
-bind -T copy-mode    MouseDragEnd1Pane send -X copy-pipe-no-clear
-bind -T copy-mode-vi MouseDragEnd1Pane send -X copy-pipe-no-clear
+# Copy on mouse release, and keep the selection on screen. A click that
+# moves a little reads as a drag of a character or two, and copying that
+# would replace the clipboard: so a selection on one line of two
+# characters or fewer is dropped, and copy mode left, instead of copied
+bind -T copy-mode    MouseDragEnd1Pane if -F "#{||:#{!=:#{selection_start_y},#{selection_end_y}},#{||:#{e|>|:#{e|-|:#{selection_end_x},#{selection_start_x}},2},#{e|<|:#{e|-|:#{selection_end_x},#{selection_start_x}},-2}}}" { send -X copy-pipe-no-clear } { send -X cancel }
+bind -T copy-mode-vi MouseDragEnd1Pane if -F "#{||:#{!=:#{selection_start_y},#{selection_end_y}},#{||:#{e|>|:#{e|-|:#{selection_end_x},#{selection_start_x}},2},#{e|<|:#{e|-|:#{selection_end_x},#{selection_start_x}},-2}}}" { send -X copy-pipe-no-clear } { send -X cancel }
 
 # Name the terminal tab after the session: "C3" and the conversation's
 # topic for Claude's q sessions, "Owl" and its topic for Owl's, "Tmux T3"
@@ -81,7 +84,11 @@ reaches every session at once.
   the bottom of the pane.
 
 - **Copy on release** - dragging over text copies it when you let go of
-  the mouse button, and the text stays highlighted.
+  the mouse button, and the text stays highlighted. A click is not a
+  copy: when the mouse moves slightly during a click, tmux reads it as a
+  drag over a character or two, and without the size check that tiny
+  selection replaced whatever was already on the clipboard. A selection
+  of two characters or fewer, on one line, is dropped instead.
 
 - **Tab titles** - the terminal tab says which session it is showing.
   A plain shell reads "Tmux T3". A Claude session reads "C3" and what
