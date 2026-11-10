@@ -125,16 +125,86 @@ own, and reaches the Turva stack in `quillmedical-4` by the next
       tests point `HOME` at their own folder and check the path is plain
       with colour on or off.
 
-- [ ] **Ctrl-click a plain path in `just stw` over Remote SSH**, and
-      record here that it opens the diff. A plain path typed with `echo`
-      and then `find` was the test before the change; the watch's own
-      line is the one that matters.
-
-## Phase 4: Land it, then bring it into the Turva stack
+- [x] **Dropped: ctrl-click a plain path in `just stw` over Remote SSH.**
+      The path opened, but a raw `.diff` file is hard to read, and the
+      view wanted is VS Code's own side-by-side diff, as Graphite's
+      extension gives on a click: its branch panel lists the files a
+      focused branch touches, and each opens the two-pane editor against
+      the parent. Phase 4 gets there with a key instead of a click.
 
 - [x] **Build it in a worktree level with `origin/main`** (`just wc`),
       not in `quillmedical-4`, whose stack must not be pushed until the
       Turva team sign off. Put it up with `/crpd` as its own pull request.
+
+## Phase 4: A number opens the picked file side by side
+
+- [x] **Find out what a click in the terminal can and cannot do.** Tried
+      on 10 November 2026, over Remote SSH. A `command:vscode.diff?…` link
+      with two `git:` URIs, which would have opened the two-pane editor
+      straight from the line, failed with "no application found to open
+      URL": VS Code's terminal opens every clicked URL through the
+      operating system, and only a plain path or a `vscode-remote:` URI
+      stays inside the editor. The GitHub Pull Requests extension, which
+      shows a stacked pull request's files against its base, cannot be
+      reached either: its diff commands (`pr.openDiffView`,
+      `pr.openChanges`) take a node from its own sidebar, and it
+      registers no URI handler. So a click cannot open a diff, and the
+      keyboard has to. `code --diff <left> <right>` from VS Code's
+      integrated terminal opens the two-pane editor in the window the
+      terminal belongs to, over Remote SSH too, because the `code` on the
+      path there is the remote CLI.
+
+- [x] **Number the expanded files and let a digit pick one, in
+      `scripts/stack-status.py` and the `Justfile`.** `expanded_lines`
+      gives each file a number in the key colour, 1 at the top, instead
+      of the diff path, and `write_diffs` goes. A new `--diff-at N`,
+      with `--expand BRANCH`, writes the parent's copy of file *N* to
+      `~/.cache/stack-watch/<worktree>/<n>-parent-<file name>` with
+      `git show <base>:<path>` (empty for an added file, and from the
+      old name for a rename) and prints two lines, the copy's path and
+      the working file's, for `code --diff`. The right side is the live
+      file, so a slip seen while reading can be fixed in the same
+      editor; a deleted file gets an empty right side at
+      `<n>-deleted-<file name>`. It exits 1 when there is no file *N*,
+      which the recipe's second-digit wait uses as `--branch-at` does. In
+      the watch, while `expanded` is on, a digit picks a file rather than
+      a branch, and the key line says `number file` instead of `number
+      branch`. `code` missing from the path is said in the dots line:
+      the watch is in a tmux window rather than VS Code's terminal.
+      Opening a diff keeps the drawing already on screen rather than
+      fetching GitHub again, through a `refetch` flag, so picking three
+      files in a row costs no three network calls.
+
+- [x] **Move the tests with the code, in `scripts/tests/stack-status.bats`**:
+      the lines are numbered and carry no path; the parent's copy holds
+      the parent's text; an added file's left side is empty; a deleted
+      file's right side is an empty file, not the missing working file;
+      a rename's left side comes from the old name; and the `Justfile`
+      passes `--diff-at`. Run with `just ts`.
+
+- [x] **Say so in `docs/docs/cicd/stacked-branches.md`**, replacing the
+      ctrl-click sentence.
+
+- [x] **Make it work from tmux, in `scripts/vscode-code.sh`.** Tried on
+      10 November 2026: `e` then `2` flashed some text and opened nothing.
+      The watch runs in a tmux window from `just tw`, and there `code` on
+      the path is the standalone CLI in `~/.local/bin`, which has no
+      window and said so, in an error the redraw wiped at once. VS Code's
+      integrated terminal reaches its window through two things a tmux
+      shell lacks: `VSCODE_IPC_HOOK_CLI`, the window's socket, and the
+      remote CLI first on `PATH`. The tmux client attached to the session
+      was started from that terminal, so its own environment, at
+      `/proc/<pid>/environ` with the pid from `tmux display-message -p
+      '#{client_pid}'`, has both. The script runs `code` straight when the
+      terminal is VS Code's own, borrows the two from the client inside
+      tmux, and otherwise refuses with a line saying where to run. The
+      recipe calls it instead of `code`, and on a failure shows the
+      message and waits for a key rather than redrawing over it. Tested in
+      `scripts/tests/vscode-code.bats` with a stub tmux, a `/proc` of the
+      test's own through `PROC_ROOT`, and two stub `code`s, the remote
+      CLI's and a local one that must never run.
+
+## Phase 5: Bring it into the Turva stack
 
 - [ ] **Once it has merged, run `just stack-rebase` in
       `quillmedical-4`.** The recipe then reaches the Turva stack through
@@ -145,19 +215,30 @@ own, and reaches the Turva stack in `quillmedical-4` by the next
 
 ## Decisions
 
-- **A link to a `.diff` file, not the side-by-side diff** - a terminal
-  can follow a link on a click but cannot run a command, and VS Code's
-  side-by-side view (`code --diff`) needs one. A key per file could run
-  it, but the files would need letters that do not clash with `a`, `s`,
-  `b`, `f` and `e`, and `code` is on the path only inside VS Code's own
-  terminal, not in a tmux session elsewhere. The coloured patch is the
-  same change, and needs nothing but the terminal. The key per file can
-  be added later beside the paths if the patch view proves too plain.
+- **A key per file running `code --diff`, not a link to a `.diff` file** -
+  the first build linked each line to a patch file, because a terminal
+  can follow a link but cannot run a command. The patch proved too
+  plain to review from, and Phase 4 found that no link of any scheme
+  can open the two-pane editor either, so the keyboard does it. The
+  digits are free to pick files while the list is expanded because
+  moving branch and reading one branch's files are not done at the same
+  moment, and `e` gives the digits back. The cost accepted is that
+  `code` is on the path only in VS Code's own terminal, so from a tmux
+  window the key says so and does nothing.
+
+- **A click, if it is still wanted, means an extension of our own** - a
+  `vscode://<publisher>.<name>/…` link is the one scheme the operating
+  system hands back to VS Code, and it reaches an extension that has
+  registered a URI handler, running where that extension runs, so over
+  Remote SSH the diff would resolve on the box with no host name kept
+  anywhere. About forty lines, but a package to build and install. Left
+  until the key has been used for a while and found wanting.
 
 - **A plain path, not a `vscode://vscode-remote/ssh-remote+<host>/…`
   link** - a remote link would keep the short label, but it needs the
   host as the local VS Code names it, kept in a setting, and it breaks
   when the watch is not run over Remote SSH. A plain path works in both.
+  Moot now the lines carry no path, kept for the record.
 
 - **The current branch only, not every branch** - `just stack-files`
   already prints every branch's summary. The watch is for the unit in

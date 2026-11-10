@@ -2364,7 +2364,7 @@ stack-update message="":
 
 
 alias stw := stack-watch
-# Redraw the stack with PR and CI state every minute; keys ready, sync, move, rebase and expand
+# Redraw the stack with PR and CI state every minute; keys ready, sync, move, rebase, expand and open a file's diff
 stack-watch:
     #!/usr/bin/env bash
     set +x
@@ -2400,7 +2400,12 @@ stack-watch:
     }
 
     # Whether `e` has expanded the branch checked out, listing its files.
+    # While it is on, a digit opens a file rather than moving branch.
     expanded=0
+
+    # Opening a file's diff changes nothing in the stack, so the drawing
+    # already on screen is kept rather than fetched from GitHub again.
+    refetch=1
 
     while true; do
 
@@ -2416,7 +2421,11 @@ stack-watch:
 
         # Fetch first, then clear, so the old stack stays on screen during
         # the ~3s call.
-        drawn=$(python3 "{{stack_scripts}}"/stack-status.py --prs --numbered --colour ${expand[@]+"${expand[@]}"} 2>&1 || true)
+        if [ "${refetch}" -eq 1 ]; then
+            drawn=$(python3 "{{stack_scripts}}"/stack-status.py --prs --numbered --colour ${expand[@]+"${expand[@]}"} 2>&1 || true)
+        fi
+
+        refetch=1
 
         # Stop the dots a keypress started, further down.
         stop_dots
@@ -2430,11 +2439,18 @@ stack-watch:
         k='\033[1;94m'
         n='\033[0m'
 
+        # What a digit does depends on whether the files are listed.
+        picks="branch"
+
+        if [ "${expanded}" -eq 1 ]; then
+            picks="file"
+        fi
+
         # The colour codes split each word at its key letter, which the
         # spelling check reads as fragments.
         # cspell:disable
         printf '%b\n' \
-            "ready ${k}a${n}ll - ${k}s${n}ync - ${k}number${n} branch - re${k}b${n}ase - re${k}f${n}resh - ${k}e${n}xpand - ${k}ctrl-c${n} to stop"
+            "ready ${k}a${n}ll - ${k}s${n}ync - ${k}number${n} ${picks} - re${k}b${n}ase - re${k}f${n}resh - ${k}e${n}xpand - ${k}ctrl-c${n} to stop"
 
         # cspell:enable
         # Flush with the left edge, like the line above. stack-status.py
@@ -2444,7 +2460,8 @@ stack-watch:
         # The minute's wait doubles as the keyboard: a is `stack-ready`, s is
         # `stack-sync`, a number is `stack-move`, b is `stack-rebase`, f
         # refreshes, and e lists the files the branch checked out changes,
-        # or stops listing them.
+        # or stops listing them. While they are listed, a number opens that
+        # file side by side with its parent's copy, with `code --diff`.
         #
         # With no terminal on stdin `read` returns at once and the loop
         # would spin against GitHub, so that case just sleeps.
@@ -2507,6 +2524,58 @@ stack-watch:
                 start_dots "s · syncing the stack"
                 ;;
             [1-9])
+
+                # While the files are listed, a digit picks a file. The same
+                # option that lists them says which, so the numbers on screen
+                # and the one picked come from one reading of the branch.
+                # With ten or more, wait 5s for a second digit, as for a
+                # branch below.
+                if [ "${expanded}" -eq 1 ]; then
+                    pick=(python3 "{{stack_scripts}}"/stack-status.py ${expand[@]+"${expand[@]}"} --diff-at)
+                    number="${key}"
+
+                    if "${pick[@]}" "$((key * 10))" >/dev/null 2>&1; then
+                        printf '%s · a second digit within 5s for %s0 and up, or any other key for file %s ' \
+                            "${key}" "${key}" "${key}"
+                        second=""
+                        read -rsn1 -t 5 second || true
+                        echo ""
+
+                        case "${second}" in
+                            [0-9]) number="${key}${second}" ;;
+                        esac
+                    fi
+
+                    # The drawing on screen stays as it is whatever happens
+                    # next: nothing in the stack has changed.
+                    refetch=0
+
+                    if ! sides="$("${pick[@]}" "${number}" 2>/dev/null)"; then
+                        start_dots "${number} · there is no file ${number}"
+                        continue
+                    fi
+
+                    # Two lines: the parent's copy, then the working file.
+                    # vscode-code.sh finds the VS Code window this terminal
+                    # belongs to, from a tmux window opened by `just tw` as
+                    # well as from VS Code's own terminal, and runs `code`
+                    # for it. When it cannot, or `code` fails, the message
+                    # is shown and waits, since the redraw would wipe it.
+                    left="${sides%%$'\n'*}"
+                    right="${sides#*$'\n'}"
+                    opened=0
+                    opening=$(bash "{{stack_scripts}}"/vscode-code.sh --diff "${left}" "${right}" 2>&1) || opened=$?
+
+                    if [ "${opened}" -ne 0 ]; then
+                        printf '\n%s\n\n' "${opening}"
+                        read -rsn1 -p "file ${number} did not open · any key to carry on" _ || true
+                        echo ""
+                        continue
+                    fi
+
+                    start_dots "${number} · opened file ${number} side by side with its parent"
+                    continue
+                fi
 
                 # With ten or more branches, wait 5s for a second digit.
                 # "Is there a branch ten times this one" says whether any

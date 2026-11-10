@@ -407,7 +407,7 @@ PY
 # A throwaway repository with a parent commit and a branch on it that
 # adds, changes, deletes and renames a file, so the expanded list has
 # each kind to show. The repository is the current directory afterwards,
-# and HOME is the test's own folder, so the diffs written under
+# and HOME is the test's own folder, so the parent copies written under
 # ~/.cache never reach the real one.
 make_branch() {
     export HOME="${BATS_TEST_TMPDIR}/home"
@@ -478,62 +478,101 @@ for f in module.changed_files("unit", "above"):
     [ "$output" = "A above.txt" ]
 }
 
-@test "each changed file's diff is written to a short path in the home cache" {
+# The changed file named, from the branch's list, with its number in it:
+# prints "<number> <ChangedFile>" for the test's Python to pick up.
+pick_file() {
+    cat <<PY
+files = module.changed_files("main", "unit")
+number, changed = next(
+    (n, f) for n, f in enumerate(files, start=1) if f.path == "$1"
+)
+PY
+}
+
+@test "a changed file's parent copy holds the parent's text, beside the working file" {
+    make_branch
+    run with_module "$(pick_file changed.txt)
+left, right = module.diff_sides('main', changed, number)
+print(left)
+print(right)
+"
+    [ "$status" -eq 0 ]
+    left="${lines[0]}"
+    right="${lines[1]}"
+    # The copy is numbered for its place in the list, in a folder named
+    # for the worktree, and the right side is the live file itself.
+    [[ "$left" == "$HOME/.cache/stack-watch/repo/"[0-9]"-parent-changed.txt" ]]
+    [ "$(cat "$left")" = "$(printf 'one\ntwo')" ]
+    [ "$right" = "$PWD/changed.txt" ]
+    [ "$(cat "$right")" = "$(printf 'one\nthree\nfour')" ]
+}
+
+@test "an added file's parent copy is empty" {
+    make_branch
+    run with_module "$(pick_file added.txt)
+left, right = module.diff_sides('main', changed, number)
+print(left)
+print(right)
+"
+    [ "$status" -eq 0 ]
+    [ -e "${lines[0]}" ]
+    [ ! -s "${lines[0]}" ]
+    [ "${lines[1]}" = "$PWD/added.txt" ]
+}
+
+@test "a deleted file's right side is an empty file, not the missing working file" {
+    make_branch
+    run with_module "$(pick_file deleted.txt)
+left, right = module.diff_sides('main', changed, number)
+print(left)
+print(right)
+"
+    [ "$status" -eq 0 ]
+    [ "$(cat "${lines[0]}")" = "gone" ]
+    [[ "${lines[1]}" == "$HOME/.cache/stack-watch/repo/"[0-9]"-deleted-deleted.txt" ]]
+    [ -e "${lines[1]}" ]
+    [ ! -s "${lines[1]}" ]
+}
+
+@test "a renamed file's parent copy comes from the old name" {
+    make_branch
+    run with_module "$(pick_file 'new name.txt')
+left, right = module.diff_sides('main', changed, number)
+print(left)
+print(right)
+"
+    [ "$status" -eq 0 ]
+    [[ "${lines[0]}" == *"-parent-old name.txt" ]]
+    [ "$(cat "${lines[0]}")" = "$(printf 'same\nlines\nhere')" ]
+    [ "${lines[1]}" = "$PWD/new name.txt" ]
+}
+
+@test "each line is numbered for the watch's digits and carries no path" {
     make_branch
     run with_module '
 files = module.changed_files("main", "unit")
-print(module.write_diffs("main", "unit", files)["changed.txt"])
+for line in module.expanded_lines(files, module.Palette(False)):
+    print(line)
 '
     [ "$status" -eq 0 ]
-    # Numbered for its place in the list, in a folder named for the
-    # worktree, so the printed path stays short.
-    [[ "$output" == "$HOME/.cache/stack-watch/repo/"[0-9]"-changed.txt.diff" ]]
-    grep -qx '+three' "$output"
-    grep -qx -- '-two' "$output"
+    [[ "$output" != *"$HOME"* ]]
+    [[ "$output" == *"1 A added.txt   +1 -0"* ]]
+    [[ "$output" == *"2 M changed.txt   +2 -1"* ]]
+    [[ "$output" == *"R old name.txt → new name.txt   +0 -0" ]]
 }
 
-@test "a file the branch no longer changes leaves no diff behind" {
-    make_branch
-    stale="$HOME/.cache/stack-watch/repo/9-stale.txt.diff"
-    mkdir -p "$(dirname "$stale")"
-    : > "$stale"
-    run with_module '
-module.write_diffs("main", "unit", module.changed_files("main", "unit"))
-'
-    [ "$status" -eq 0 ]
-    [ ! -e "$stale" ]
-}
-
-@test "each line ends with its diff's path, plain, even with colour on" {
-    # A hidden file:// link opens on the machine in front of you, which
-    # over Remote SSH is not the one holding the diff. A plain path is
-    # found by VS Code and opened where the terminal runs.
+@test "with colour on, the number is in the key colour and nothing is a link" {
     make_branch
     run with_module '
 files = module.changed_files("main", "unit")
-diffs = module.write_diffs("main", "unit", files)
-for line in module.expanded_lines(files, diffs, module.Palette(True)):
+for line in module.expanded_lines(files, module.Palette(True)):
     print(line)
 '
     [ "$status" -eq 0 ]
     [[ "$output" != *$'\033]8;'* ]]
-    [[ "$output" == *"$HOME/.cache/stack-watch/repo/"[0-9]"-added.txt.diff"* ]]
-}
-
-@test "with no colour, the paths are plain text with no escape in them" {
-    # Piped output, or --no-colour, must carry nothing a reader would
-    # see as rubbish.
-    make_branch
-    run with_module '
-files = module.changed_files("main", "unit")
-diffs = module.write_diffs("main", "unit", files)
-for line in module.expanded_lines(files, diffs, module.Palette(False)):
-    print(line)
-'
-    [ "$status" -eq 0 ]
-    [[ "$output" != *$'\033'* ]]
-    [[ "$output" == *"M changed.txt   +2 -1   $HOME/.cache/stack-watch/repo/"* ]]
-    [[ "$output" == *"R old name.txt → new name.txt   +0 -0   $HOME/"* ]]
+    # The number first, in the key colour, then the letter, which has a
+    # colour of its own for an added file.
+    [[ "$output" == *$'\033[1;94m1\033[0m \033[32mA\033[0m added.txt'* ]]
 }
 
 @test "a branch with no changes says so" {
@@ -541,7 +580,7 @@ for line in module.expanded_lines(files, diffs, module.Palette(False)):
     git switch -qc empty
     run with_module '
 files = module.changed_files("unit", "empty")
-print(module.expanded_lines(files, {}, module.Palette(False))[0])
+print(module.expanded_lines(files, module.Palette(False))[0])
 '
     [ "$status" -eq 0 ]
     [ "$output" = "no changes" ]
@@ -571,5 +610,13 @@ module.draw(branches, "main", module.Palette(False), show_prs=False,
     run grep -F 'a|A|s|S|[1-9]|b|B|f|F|e|E)' "$justfile"
     [ "$status" -eq 0 ]
     run grep -F 'expand=(--expand "$(git branch --show-current)")' "$justfile"
+    [ "$status" -eq 0 ]
+}
+
+@test "while expanded, a digit asks --diff-at for the two sides and opens them with code --diff" {
+    justfile="${BATS_TEST_DIRNAME}/../../Justfile"
+    run grep -F -- '${expand[@]+"${expand[@]}"} --diff-at)' "$justfile"
+    [ "$status" -eq 0 ]
+    run grep -F 'vscode-code.sh --diff "${left}" "${right}"' "$justfile"
     [ "$status" -eq 0 ]
 }
