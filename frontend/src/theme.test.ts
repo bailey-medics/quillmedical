@@ -373,6 +373,10 @@ describe("makeTheme", () => {
         darkSrc: "/brands/ldd/wordmark-dark.svg",
         alt: "Let's Do Digital",
       },
+      spinner: {
+        src: "/brands/ldd/logo-spinner.webp",
+        still: "/brands/ldd/logo-spinner-still.png",
+      },
     });
   });
 

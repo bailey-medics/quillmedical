@@ -193,6 +193,36 @@ class Identity(_Strict):
     committer_email: str = Field(pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
+class Spinner(_Strict):
+    """A brand's own spinner, in place of the quill.
+
+    Attributes:
+        src: The animation's path under ``frontend/public``.
+        still: Its first frame, for somebody who asks for less motion.
+    """
+
+    src: str = Field(pattern=r"^/\S+$")
+    still: str = Field(pattern=r"^/\S+$")
+
+
+class Icons(_Strict):
+    """A brand's own icons, in place of Quill's.
+
+    Attributes:
+        favicon: The browser tab's icon, under ``frontend/public``.
+        apple_touch_icon: The icon an iPhone or iPad gives the app on
+            its home screen.
+        manifest: The web app manifest, naming the brand and its icons
+            for an installed app.
+        theme_colour: The colour a phone gives its status bar.
+    """
+
+    favicon: str = Field(pattern=r"^/\S+$")
+    apple_touch_icon: str = Field(pattern=r"^/\S+$")
+    manifest: str = Field(pattern=r"^/\S+$")
+    theme_colour: str = Field(pattern=r"^#[0-9a-fA-F]{6}$")
+
+
 class Wordmark(_Strict):
     """A brand's name drawn as an image, for the app's top ribbon.
 
@@ -227,6 +257,8 @@ class AppTheme(_Strict):
         logo_tile: The colour of a tile drawn behind the logo, for a logo
             that would be lost on the brand's own colours. Unset draws
             the logo as it is.
+        spinner: The brand's own spinner. Unset keeps the quill.
+        icons: The brand's own tab and app icons. Unset keeps Quill's.
         wordmark: The name, drawn as an image.
     """
 
@@ -237,6 +269,8 @@ class AppTheme(_Strict):
     link: str
     logo: str = Field(pattern=r"^/\S+$")
     logo_tile: str | None = None
+    spinner: Spinner | None = None
+    icons: Icons | None = None
     wordmark: Wordmark
 
     @model_validator(mode="after")
