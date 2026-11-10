@@ -33,14 +33,24 @@ export const Default: Story = {};
 
 /**
  * On the navy public background, where the white panel keeps the blue of
- * the mark visible.
+ * the mark visible. The navy fills the whole canvas, not a band across the
+ * top.
  */
 export const OnPublicBackground: Story = {
+  parameters: { layout: "fullscreen" },
   decorators: [
     (Story) => (
-      <PublicDarkBackground>
-        <Story />
-      </PublicDarkBackground>
+      <div
+        style={{
+          background: "var(--mantine-color-primary-8)",
+          minHeight: "100vh",
+          padding: "1rem",
+        }}
+      >
+        <PublicDarkBackground>
+          <Story />
+        </PublicDarkBackground>
+      </div>
     ),
   ],
 };

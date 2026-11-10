@@ -129,6 +129,18 @@ evidence the NHS DTAC's accessibility section (D1) asks for, and the
   screen reader user to it. In Settings, check "Passport home page" is
   announced as one group with its two choices, and that saving one is
   heard.
+- **Journeys 1 to 4 as Let's Do Digital, and again as Quill** - added on
+  10 November 2026 by the
+  [branded app plan](../../plans/2026-11-10-branded-app-plan.md). Every
+  journey passes through the top ribbon and the side navigation, whose
+  colours, wordmark and idle mail icon now come from the brand, and
+  journey 1 opens on the login page's logo and the splash spinner. Run
+  each journey with the dev stack started as `just sa ldd`. Check every
+  page title is announced with "Let's Do Digital" after the page's own
+  name, where Quill's says "Quill Medical", that the ribbon's wordmark is announced as "Let's Do Digital", that the
+  login page's logo is announced by the brand's name, and that the
+  splash spinner is still announced as "Loading". Then run them once
+  more as Quill, to check nothing moved there.
 - **Journey 4 again, for declining a request** - added on 31 October
   2026 by the
   [passport landing views plan](../../plans/2026-10-31-passport-landing-views-plan.md).
