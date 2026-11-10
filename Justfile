@@ -2364,7 +2364,7 @@ stack-update message="":
 
 
 alias stw := stack-watch
-# Redraw the stack with PR and CI state every minute; keys ready, sync, move and rebase
+# Redraw the stack with PR and CI state every minute; keys ready, sync, move, rebase and expand
 stack-watch:
     #!/usr/bin/env bash
     set +x
@@ -2399,11 +2399,24 @@ stack-watch:
         fi
     }
 
+    # Whether `e` has expanded the branch checked out, listing its files.
+    expanded=0
+
     while true; do
+
+        # The branch is read afresh each time, so moving branch with a
+        # number moves the expansion with it. Spelt out so an empty array
+        # expands to nothing: a bare "${expand[@]}" stops a Mac's bash 3.2
+        # under `set -u`.
+        expand=()
+
+        if [ "${expanded}" -eq 1 ]; then
+            expand=(--expand "$(git branch --show-current)")
+        fi
 
         # Fetch first, then clear, so the old stack stays on screen during
         # the ~3s call.
-        drawn=$(python3 "{{stack_scripts}}"/stack-status.py --prs --numbered --colour 2>&1 || true)
+        drawn=$(python3 "{{stack_scripts}}"/stack-status.py --prs --numbered --colour ${expand[@]+"${expand[@]}"} 2>&1 || true)
 
         # Stop the dots a keypress started, further down.
         stop_dots
@@ -2421,7 +2434,7 @@ stack-watch:
         # spelling check reads as fragments.
         # cspell:disable
         printf '%b\n' \
-            "ready ${k}a${n}ll - ${k}s${n}ync - ${k}number${n} branch - re${k}b${n}ase - re${k}f${n}resh - ${k}ctrl-c${n} to stop"
+            "ready ${k}a${n}ll - ${k}s${n}ync - ${k}number${n} branch - re${k}b${n}ase - re${k}f${n}resh - ${k}e${n}xpand - ${k}ctrl-c${n} to stop"
 
         # cspell:enable
         # Flush with the left edge, like the line above. stack-status.py
@@ -2430,7 +2443,8 @@ stack-watch:
 
         # The minute's wait doubles as the keyboard: a is `stack-ready`, s is
         # `stack-sync`, a number is `stack-move`, b is `stack-rebase`, f
-        # refreshes.
+        # refreshes, and e lists the files the branch checked out changes,
+        # or stops listing them.
         #
         # With no terminal on stdin `read` returns at once and the loop
         # would spin against GitHub, so that case just sleeps.
@@ -2463,7 +2477,7 @@ stack-watch:
             fi
 
             case "${key}" in
-                a|A|s|S|[1-9]|b|B|f|F)
+                a|A|s|S|[1-9]|b|B|f|F|e|E)
                     break
                     ;;
                 $'\e')
@@ -2523,6 +2537,19 @@ stack-watch:
 
                 recipe=(stack-move "${number}")
                 start_dots "${number} · checking out branch ${number}"
+                ;;
+            e|E)
+
+                # A redraw, as f is, with the files listed or no longer.
+                if [ "${expanded}" -eq 1 ]; then
+                    expanded=0
+                    start_dots "e · no longer listing the branch's files"
+                else
+                    expanded=1
+                    start_dots "e · listing the branch's files"
+                fi
+
+                continue
                 ;;
             *)
 
