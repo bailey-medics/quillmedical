@@ -1,7 +1,8 @@
 /**
- * Quill Name Component Stories
+ * Brand Name Component Stories
  *
- * Demonstrates the "Quill Medical" text logo SVG:
+ * Demonstrates the brand's name drawn as an image, Quill's or the brand
+ * Storybook runs as:
  * - Default size (5px height for Storybook)
  * - Customizable height
  * - Accessible alt text
@@ -11,7 +12,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import QuillName from "./QuillName";
 
 const meta: Meta<typeof QuillName> = {
-  title: "Images/Quill name",
+  title: "Images/Brand name",
   component: QuillName,
   parameters: {
     layout: "padded",
@@ -28,13 +29,12 @@ export default meta;
 type Story = StoryObj<typeof QuillName>;
 
 /**
- * Default "Quill Medical" text logo.
+ * The brand's name, white, as the ribbon shows it.
  * Standard height (5px) suitable for Storybook display.
  */
 export const Default: Story = {
   args: {
     height: 5,
-    alt: "Quill Medical",
   },
   decorators: [
     (Story) => (

@@ -34,7 +34,9 @@ export default function EoeetaLogo({
   height = 6,
 }: Props) {
   return (
-    <BaseCard bg="white">
+    // The card hugs the logo: left to fill a wide parent, it stretched the
+    // image across its width
+    <BaseCard bg="white" w="fit-content">
       <Image src={publicAsset(LOGO_PATH)} alt={alt} height={height} />
     </BaseCard>
   );

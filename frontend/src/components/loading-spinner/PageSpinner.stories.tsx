@@ -48,8 +48,8 @@ export const HandingOver: Story = {
     <>
       <StoryNote mt={0}>
         A new spinner replaces the old one every 0.7 seconds, as happens when
-        one part of Quill hands a wait over to the next. The quill should keep
-        turning without restarting.
+        one part of the app hands a wait over to the next. The spinner should
+        keep turning without restarting.
       </StoryNote>
       <HandOverLoop />
     </>

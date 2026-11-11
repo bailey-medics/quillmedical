@@ -202,9 +202,11 @@ export default defineConfig(
     },
     // Storybook stories use console.log for action callbacks, and are what
     // the stories helpers are for. Before the blocks below, which excuse
-    // one story from one more thing
+    // one story from one more thing. The files in src/stories are stories
+    // and the parts of stories (BrandFoundations.tsx), so they may use the
+    // helpers beside them; app code still may not import any of them.
     {
-      files: ["**/*.stories.tsx"],
+      files: ["**/*.stories.tsx", "src/stories/**/*.tsx"],
       rules: {
         "no-console": "off",
         "no-restricted-imports": restrictImports({ patterns: [] }),

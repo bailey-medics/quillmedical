@@ -98,6 +98,9 @@ export const secondaryScale = toColoursTuple(
  */
 export const greyScale: readonly string[] = brand.palette.grey;
 
+/** A brand's four colours: primary, secondary, background and mark. */
+export type BrandColours = typeof brandColours;
+
 /**
  * A brand's name drawn as an image: white for the top ribbon, and
  * optionally dark, for a light background.
@@ -116,6 +119,8 @@ declare module "@mantine/core" {
   export interface MantineThemeOther {
     /** "quill", or a key of `app_themes` in shared/brand.yaml. */
     brand?: string;
+    /** The brand's four colours, as Foundations/Colours shows them. */
+    colours?: BrandColours;
     /** The brand's logo under frontend/public. Unset for Quill. */
     logo?: string;
     /** The colour of the tile behind the logo. Unset for no tile. */
@@ -137,7 +142,7 @@ export const BRAND_NAMES: readonly string[] = [
 /** What a brand changes: its colours, ramps, logo and wordmark. */
 interface BrandLook {
   name: string;
-  colours: typeof brandColours;
+  colours: BrandColours;
   primary: MantineColorsTuple;
   secondary: MantineColorsTuple;
   logo?: string;
@@ -494,6 +499,7 @@ function buildTheme(look: BrandLook): MantineThemeOverride {
     // theme nested inside Quill's would lose its wordmark.
     other: {
       brand: look.name,
+      colours: look.colours,
       ...(look.logo !== undefined && { logo: look.logo }),
       ...(look.logoTile !== undefined && { logoTile: look.logoTile }),
       ...(look.wordmark !== undefined && { wordmark: look.wordmark }),

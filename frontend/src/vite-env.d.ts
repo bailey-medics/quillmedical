@@ -3,6 +3,11 @@
 interface ImportMetaEnv {
   readonly VITE_CLINICAL_SERVICES_ENABLED: string;
   readonly VITE_VAPID_PUBLIC: string;
+  /**
+   * Storybook only: the brand every story is shown in, "quill" when unset.
+   * Set by `just sb <brand>`; see `.storybook/preview.tsx`.
+   */
+  readonly STORYBOOK_BRAND?: string;
 }
 
 interface ImportMeta {

@@ -2746,10 +2746,19 @@ stop:
 
 
 alias sb := storybook
-# Run storybook dev server
-storybook:
+# Run storybook dev server, in one brand: quill (default) or ldd
+storybook brand="quill":
     #!/usr/bin/env bash
     {{initialise}} "storybook"
+
+    # Checked before anything else runs, so a mistyped brand costs nothing.
+    # The list is written out by hand and widened when a new brand is
+    # ready; the preview checks again against shared/brand.yaml.
+    case "{{brand}}" in
+        quill|ldd) ;;
+        *) echo "✗ Unknown brand '{{brand}}': quill or ldd."; exit 1 ;;
+    esac
+
     just _frontend-packages-current || exit 1
 
     # Render the emails first: the email stories show saved HTML files and
@@ -2778,8 +2787,9 @@ storybook:
     cd frontend
 
     # Written so an empty list expands to nothing under `set -u` in the
-    # bash 3.2 a Mac ships, which otherwise calls it unbound.
-    yarn storybook ${host_args[@]+"${host_args[@]}"}
+    # bash 3.2 a Mac ships, which otherwise calls it unbound. The preview
+    # reads STORYBOOK_BRAND and builds every story's theme from it.
+    STORYBOOK_BRAND="{{brand}}" yarn storybook ${host_args[@]+"${host_args[@]}"}
 
 
 alias sbt := storybook-test

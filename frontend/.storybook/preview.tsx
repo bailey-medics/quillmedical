@@ -12,8 +12,24 @@ import "../src/styles/disabled-controls.css";
 import type { Decorator, Preview } from "@storybook/react";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import React, { useEffect } from "react";
-import { theme, cssVariablesResolver } from "../src/theme";
+import { BRAND_NAMES, makeTheme } from "../src/theme";
 import { EXTRA_RULES, WCAG_TAGS } from "../src/lib/accessibility/axeConfig";
+
+// The brand every story is shown in, from `just sb <brand>`, which sets
+// STORYBOOK_BRAND. Unset means Quill, so the tests, the published
+// Storybook and a bare `yarn storybook` are Quill. An unknown brand stops
+// the preview here rather than showing Quill under another name: the
+// recipe checks first, and this catches anyone who skipped it.
+const storyBrand = import.meta.env.STORYBOOK_BRAND || "quill";
+
+if (!BRAND_NAMES.includes(storyBrand)) {
+  throw new Error(
+    `STORYBOOK_BRAND is "${storyBrand}", which is not a brand. ` +
+      `Known brands: ${BRAND_NAMES.join(", ")}`,
+  );
+}
+
+const { theme, cssVariablesResolver } = makeTheme(storyBrand);
 
 // What one story lays over the signed-in user below, from its
 // `parameters.mockUser`. A story of something that depends on who is
