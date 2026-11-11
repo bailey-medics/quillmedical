@@ -14,7 +14,7 @@
 # ---------------------------------------------------------------------------
 
 terraform {
-  required_version = ">= 1.15.8"
+  required_version = ">= 1.17.1"
 
   # Remote since 2026-09-25, beside the GCP state in the same bucket under its
   # own prefix. It had been a local terraform.tfstate in one checkout: one
