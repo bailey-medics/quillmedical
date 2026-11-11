@@ -76,9 +76,11 @@ lists what each branch changes against its own parent.
 
 `stack-watch` redraws `stack-log-long` every minute and takes keys. Its
 `e` key lists the files the branch checked out changes, against its own
-parent as `stack-files` does. Each line ends with the path of that file's
-diff, under `~/.cache/stack-watch/`: ctrl-click it in VS Code's terminal,
-over Remote SSH too, to open the changes as a coloured diff.
+parent as `stack-files` does, each with a number. While they are listed a
+digit opens that file side by side with its parent's copy in VS Code,
+through `code --diff`, from VS Code's own terminal or from a tmux window
+opened from one with `just tw`, over Remote SSH too; `e` again puts the
+digits back to moving branch.
 
 ## How a stack meets CI
 

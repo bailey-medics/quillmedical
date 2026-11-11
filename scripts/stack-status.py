@@ -24,7 +24,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import shutil
 import subprocess
 import sys
 from dataclasses import dataclass, field
@@ -878,64 +877,70 @@ def changed_files(base: str, branch: str) -> list[ChangedFile]:
 
 
 def diff_folder() -> Path:
-    """Where the watch keeps the expanded branch's diff files.
+    """Where the watch keeps the parent's copy of a picked file.
 
-    Short, because the path is printed in full for VS Code to make
-    clickable: `~/.cache/stack-watch/<worktree>/`. One folder per
-    worktree, so two watches never share one, and in the home folder
-    rather than `/tmp`, so nobody else on the machine can read them.
-    Only one branch is expanded at a time, so the branch is not in it.
+    `~/.cache/stack-watch/<worktree>/`: one folder per worktree, so two
+    watches never share one, and in the home folder rather than `/tmp`,
+    so nobody else on the machine can read a copy. Only one branch is
+    expanded at a time, so the branch is not in it.
     """
     top = run(["git", "rev-parse", "--show-toplevel"]).strip()
 
     return Path.home() / ".cache" / "stack-watch" / Path(top).name
 
 
-def write_diffs(
-    base: str, branch: str, files: list[ChangedFile]
-) -> dict[str, Path]:
-    """Write each file's change to a `.diff` file, and say where.
+def diff_sides(
+    base: str, changed: ChangedFile, number: int
+) -> tuple[Path, Path]:
+    """The two files `code --diff` opens for one changed file.
 
-    The terminal cannot run a command on a click, so the change has to
-    be a file before its line is drawn. Each is named for its place in
-    the list and its file name, `3-api.ts.diff`, which keeps the
-    printed path short and two files of one name apart. The folder is
-    cleared first, so a file the branch no longer changes leaves no
-    diff behind.
+    The left is the parent's copy, written out from `git show` because
+    the editor wants a file and the parent's version is not one. It is
+    named for the file's place in the list, `3-parent-api.ts`, so two
+    files of one name stay apart. A new file has an empty left side, and
+    a rename's comes from the old name.
+
+    The right is the working file itself, not a copy: the branch is the
+    one checked out, since the watch expands the current branch, and a
+    live right side means a slip seen while reading can be fixed in the
+    same editor. A deleted file has no working file, so its right side
+    is an empty file beside the copy.
+
+    The copy is written as bytes, not text, so a binary file comes
+    through whole.
     """
     folder = diff_folder()
+    folder.mkdir(parents=True, exist_ok=True)
+    top = Path(run(["git", "rev-parse", "--show-toplevel"]).strip())
+    old_path = changed.old_path or changed.path
 
-    if folder.exists():
-        shutil.rmtree(folder)
-
-    folder.mkdir(parents=True)
-    written: dict[str, Path] = {}
-
-    for number, changed in enumerate(files, start=1):
-        target = folder / f"{number}-{Path(changed.path).name}.diff"
-        paths = [changed.path]
-        if changed.old_path:
-            paths.insert(0, changed.old_path)
-        patch = run(
-            ["git", "diff", "-M", f"{base}..{branch}", "--", *paths],
-            check=False,
+    left = folder / f"{number}-parent-{Path(old_path).name}"
+    if changed.status == "A":
+        left.write_bytes(b"")
+    else:
+        shown = subprocess.run(
+            ["git", "show", f"{base}:{old_path}"],
+            capture_output=True,
+            timeout=30,
         )
-        target.write_text(patch, encoding="utf-8")
-        written[changed.path] = target
+        left.write_bytes(shown.stdout)
 
-    return written
+    if changed.status == "D":
+        right = folder / f"{number}-deleted-{Path(changed.path).name}"
+        right.write_bytes(b"")
+    else:
+        right = top / changed.path
+
+    return left, right
 
 
-def expanded_lines(
-    files: list[ChangedFile], diffs: dict[str, Path], palette: Palette
-) -> list[str]:
-    """One line per changed file, ending with the path of its diff.
+def expanded_lines(files: list[ChangedFile], palette: Palette) -> list[str]:
+    """One line per changed file, numbered for the watch's digits.
 
-    The diff's path is printed plain, not as a hidden OSC 8 link. VS
-    Code's terminal finds a plain path by itself and opens it on the
-    machine the terminal runs on, so a ctrl-click works over Remote SSH.
-    A `file://` link is opened on the machine in front of you instead,
-    where the path does not exist.
+    The number is in the key colour, as the branch numbers are, because
+    while the list is on screen a digit picks a file rather than a
+    branch. Padded to the width of the longest, so ten and up keep the
+    letters in a column.
 
     The letter is git's own (A added, M modified, D deleted, R renamed,
     C copied), coloured where colour says something: green for a new
@@ -945,8 +950,9 @@ def expanded_lines(
         return [palette.dim("no changes")]
 
     lines: list[str] = []
+    width = len(str(len(files)))
 
-    for changed in files:
+    for number, changed in enumerate(files, start=1):
         if changed.status == "A":
             letter = palette.green(changed.status)
         elif changed.status == "D":
@@ -967,11 +973,8 @@ def expanded_lines(
                 + palette.red(f"-{changed.removed}")
             )
 
-        line = f"{letter} {name}   {counts}"
-        diff = diffs.get(changed.path)
-        if diff:
-            line = f"{line}   {diff}"
-        lines.append(line)
+        tag = palette.key(str(number).rjust(width))
+        lines.append(f"{tag} {letter} {name}   {counts}")
 
     return lines
 
@@ -1083,7 +1086,16 @@ def main() -> int:
         metavar="BRANCH",
         help=(
             "list what BRANCH changes against its parent, under it, each "
-            "file with the path of its diff to ctrl-click"
+            "file numbered for --diff-at"
+        ),
+    )
+    parser.add_argument(
+        "--diff-at",
+        type=int,
+        metavar="N",
+        help=(
+            "with --expand, print the two paths `code --diff` opens for "
+            "file N: the parent's copy, then the working file"
         ),
     )
     parser.add_argument(
@@ -1204,14 +1216,27 @@ def main() -> int:
     # the watch asks for the branch checked out, which may have just
     # left the stack.
     expanded: tuple[str, list[str]] | None = None
+    expanded_files: list[ChangedFile] = []
+    expanded_base = ""
 
     for entry in stack_entries(stack) if args.expand else []:
         name = str(entry.get("name", ""))
         base = str(entry.get("base", ""))
         if name == args.expand and base:
-            files = changed_files(base, name)
-            diffs = write_diffs(base, name, files)
-            expanded = (name, expanded_lines(files, diffs, palette))
+            expanded_files = changed_files(base, name)
+            expanded_base = base
+            expanded = (name, expanded_lines(expanded_files, palette))
+
+    if args.diff_at is not None:
+        # For the watch's digits while the list is on screen: the two
+        # paths only, one per line, for `code --diff`. Exit 1 when no file
+        # carries that number, as --branch-at does for a branch.
+        if not 1 <= args.diff_at <= len(expanded_files):
+            return 1
+        picked = expanded_files[args.diff_at - 1]
+        for side in diff_sides(expanded_base, picked, args.diff_at):
+            print(side)
+        return 0
 
     if args.files:
         draw_files(stack, occupied, palette, patch=args.patch)
