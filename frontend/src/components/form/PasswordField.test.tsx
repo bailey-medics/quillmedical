@@ -50,10 +50,10 @@ describe("PasswordField", () => {
 
     const label = screen.getByText("Password");
     expect(label).toHaveStyle({
-      fontSize: "var(--mantine-font-size-md)",
-      color: "var(--mantine-color-text)",
       marginBottom: remToPx("0.25rem"),
     });
+    expect(label.style.fontSize).toBe("var(--mantine-font-size-md)");
+    expect(label.style.color).toBe("var(--mantine-color-text)");
   });
 
   it("renders as disabled when disabled prop is set", () => {

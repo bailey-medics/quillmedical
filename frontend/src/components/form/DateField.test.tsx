@@ -72,19 +72,20 @@ describe("DateField", () => {
     it("applies the standardised label styles", () => {
       renderWithMantine(<DateField label="Observed on" />);
 
-      expect(screen.getByText("Observed on")).toHaveStyle({
-        fontSize: "var(--mantine-font-size-md)",
-        color: "var(--mantine-color-text)",
+      const label = screen.getByText("Observed on");
+      expect(label).toHaveStyle({
         marginBottom: remToPx("0.25rem"),
       });
+      expect(label.style.fontSize).toBe("var(--mantine-font-size-md)");
+      expect(label.style.color).toBe("var(--mantine-color-text)");
     });
 
     it("applies the standardised input font size", () => {
       renderWithMantine(<DateField label="Observed on" />);
 
-      expect(screen.getByRole("textbox")).toHaveStyle({
-        fontSize: "var(--mantine-font-size-md)",
-      });
+      expect(screen.getByRole("textbox").style.fontSize).toBe(
+        "var(--mantine-font-size-md)",
+      );
     });
   });
 

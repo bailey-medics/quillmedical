@@ -21,8 +21,6 @@ describe("EmptyState", () => {
     renderWithMantine(<EmptyState>Grey text</EmptyState>);
 
     const element = screen.getByText("Grey text");
-    expect(element).toHaveStyle({
-      color: "var(--mantine-color-dimmed)",
-    });
+    expect(element.style.color).toBe("var(--mantine-color-dimmed)");
   });
 });
