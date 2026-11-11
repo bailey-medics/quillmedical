@@ -3,22 +3,18 @@
 # This file manages branch protection for the quillmedical repository using
 # GitHub Rulesets (the modern replacement for classic branch protection rules).
 #
-# Clinical safety context (DCB 0129):
-#   These rulesets form part of the auditable change-control process required
-#   by DCB 0129. They ensure that all changes to protected branches go through
-#   pull-request review, creating an approval record in the repository history.
-#   The naming convention ruleset prevents ad-hoc branch names, keeping the
-#   commit graph traceable for hazard-log and incident-response audits.
-#
 # Usage: `just terraform-github` (alias tf-gh), from any checkout. It plans,
-# asks, then applies. State is remote, so every checkout sees the same state.
+# asks, then applies. State is remote, so every checkout shares it, but the
+# code applied is from the checkout you are on: run it from the latest main,
+# or from the branch being applied, and read the plan, since an older checkout
+# may undo whatever merged after it.
 
 # ---------------------------------------------------------------------------
 # Terraform and provider configuration
 # ---------------------------------------------------------------------------
 
 terraform {
-  required_version = ">= 1.6.4"
+  required_version = ">= 1.15.8"
 
   # Remote since 2026-09-25, beside the GCP state in the same bucket under its
   # own prefix. It had been a local terraform.tfstate in one checkout: one
