@@ -20,8 +20,11 @@ its own pair: 0 every branch has merged, 1 anything else.
 
 from __future__ import annotations
 
+# cspell:ignore numstat
+
 import argparse
 import json
+import shutil
 import subprocess
 import sys
 from dataclasses import dataclass, field
@@ -615,8 +618,12 @@ def draw(
     show_prs: bool,
     hide_merged: bool = False,
     numbered: bool = False,
+    expanded: tuple[str, list[str]] | None = None,
 ) -> None:
     """Print the stack.
+
+    `expanded` is a branch's name and the lines to draw under it, its
+    changed files, for the watch's `e` key.
 
     `hide_merged` drops the branches that have already landed. They are
     kept by default because "what has gone in" is worth seeing, but a
@@ -735,6 +742,11 @@ def draw(
             notes.append(palette.yellow(held))
         for note in notes:
             print(f"  {PIPE}   {note}")
+
+        if expanded and expanded[0] == branch.name:
+            for detail in expanded[1]:
+                print(f"  {PIPE}     {detail}")
+
         print(f"  {PIPE}")
 
     if merged_hidden:
@@ -795,6 +807,173 @@ def draw_files(
 
     print(f"  {ELBOW}─ {palette.dim(str(stack.get('trunk', 'main')))}")
     print()
+
+
+@dataclass(frozen=True)
+class ChangedFile:
+    """One file a branch changes, as `git diff` reports it.
+
+    `added` and `removed` are None for a binary file, whose lines git
+    does not count. `old_path` is set only for a rename.
+    """
+
+    status: str
+    path: str
+    added: int | None
+    removed: int | None
+    old_path: str | None = None
+
+
+def changed_files(base: str, branch: str) -> list[ChangedFile]:
+    """What *branch* changes against *base*, its parent, file by file.
+
+    Two git calls, both with `-z` so a path with a space or a tab in it
+    comes back whole: `--name-status` for the letter, `--numstat` for
+    the counts. Both with `-M`, so a renamed file is one line, not a
+    deletion and an addition.
+    """
+    span = f"{base}..{branch}"
+    statuses = run(
+        ["git", "diff", "-z", "-M", "--name-status", span], check=False
+    ).split("\0")
+    counts_raw = run(
+        ["git", "diff", "-z", "-M", "--numstat", span], check=False
+    ).split("\0")
+
+    # --numstat -z: "added<TAB>removed<TAB>path", or for a rename
+    # "added<TAB>removed<TAB>" followed by the old and new paths as the
+    # next two fields. "-" counts mean a binary file.
+    counts: dict[str, tuple[int | None, int | None]] = {}
+    index = 0
+
+    while index < len(counts_raw) and counts_raw[index]:
+        added_text, removed_text, path = counts_raw[index].split("\t", 2)
+        if not path:
+            path = counts_raw[index + 2]
+            index += 2
+        counts[path] = (
+            int(added_text) if added_text != "-" else None,
+            int(removed_text) if removed_text != "-" else None,
+        )
+        index += 1
+
+    # --name-status -z: a status, then one path, or two for a rename or
+    # a copy (R100, C75), each its own field.
+    files: list[ChangedFile] = []
+    index = 0
+
+    while index < len(statuses) and statuses[index]:
+        status = statuses[index]
+        letter = status[0]
+        if letter in ("R", "C"):
+            old_path, path = statuses[index + 1], statuses[index + 2]
+            index += 3
+        else:
+            old_path, path = None, statuses[index + 1]
+            index += 2
+        added, removed = counts.get(path, (None, None))
+        files.append(ChangedFile(letter, path, added, removed, old_path))
+
+    return files
+
+
+def diff_folder() -> Path:
+    """Where the watch keeps the expanded branch's diff files.
+
+    Short, because the path is printed in full for VS Code to make
+    clickable: `~/.cache/stack-watch/<worktree>/`. One folder per
+    worktree, so two watches never share one, and in the home folder
+    rather than `/tmp`, so nobody else on the machine can read them.
+    Only one branch is expanded at a time, so the branch is not in it.
+    """
+    top = run(["git", "rev-parse", "--show-toplevel"]).strip()
+
+    return Path.home() / ".cache" / "stack-watch" / Path(top).name
+
+
+def write_diffs(
+    base: str, branch: str, files: list[ChangedFile]
+) -> dict[str, Path]:
+    """Write each file's change to a `.diff` file, and say where.
+
+    The terminal cannot run a command on a click, so the change has to
+    be a file before its line is drawn. Each is named for its place in
+    the list and its file name, `3-api.ts.diff`, which keeps the
+    printed path short and two files of one name apart. The folder is
+    cleared first, so a file the branch no longer changes leaves no
+    diff behind.
+    """
+    folder = diff_folder()
+
+    if folder.exists():
+        shutil.rmtree(folder)
+
+    folder.mkdir(parents=True)
+    written: dict[str, Path] = {}
+
+    for number, changed in enumerate(files, start=1):
+        target = folder / f"{number}-{Path(changed.path).name}.diff"
+        paths = [changed.path]
+        if changed.old_path:
+            paths.insert(0, changed.old_path)
+        patch = run(
+            ["git", "diff", "-M", f"{base}..{branch}", "--", *paths],
+            check=False,
+        )
+        target.write_text(patch, encoding="utf-8")
+        written[changed.path] = target
+
+    return written
+
+
+def expanded_lines(
+    files: list[ChangedFile], diffs: dict[str, Path], palette: Palette
+) -> list[str]:
+    """One line per changed file, ending with the path of its diff.
+
+    The diff's path is printed plain, not as a hidden OSC 8 link. VS
+    Code's terminal finds a plain path by itself and opens it on the
+    machine the terminal runs on, so a ctrl-click works over Remote SSH.
+    A `file://` link is opened on the machine in front of you instead,
+    where the path does not exist.
+
+    The letter is git's own (A added, M modified, D deleted, R renamed,
+    C copied), coloured where colour says something: green for a new
+    file, red for a deleted one.
+    """
+    if not files:
+        return [palette.dim("no changes")]
+
+    lines: list[str] = []
+
+    for changed in files:
+        if changed.status == "A":
+            letter = palette.green(changed.status)
+        elif changed.status == "D":
+            letter = palette.red(changed.status)
+        else:
+            letter = changed.status
+
+        name = changed.path
+        if changed.old_path:
+            name = f"{changed.old_path} → {name}"
+
+        if changed.added is None or changed.removed is None:
+            counts = palette.dim("binary")
+        else:
+            counts = (
+                palette.green(f"+{changed.added}")
+                + " "
+                + palette.red(f"-{changed.removed}")
+            )
+
+        line = f"{letter} {name}   {counts}"
+        diff = diffs.get(changed.path)
+        if diff:
+            line = f"{line}   {diff}"
+        lines.append(line)
+
+    return lines
 
 
 def draw_no_stack(palette: Palette) -> None:
@@ -898,6 +1077,14 @@ def main() -> int:
         "--patch",
         action="store_true",
         help="with --files, show the full diff rather than a summary",
+    )
+    parser.add_argument(
+        "--expand",
+        metavar="BRANCH",
+        help=(
+            "list what BRANCH changes against its parent, under it, each "
+            "file with the path of its diff to ctrl-click"
+        ),
     )
     parser.add_argument(
         "--hide-merged",
@@ -1013,6 +1200,19 @@ def main() -> int:
                 return 0
         return 1
 
+    # A branch not in the stack expands nothing, rather than failing:
+    # the watch asks for the branch checked out, which may have just
+    # left the stack.
+    expanded: tuple[str, list[str]] | None = None
+
+    for entry in stack_entries(stack) if args.expand else []:
+        name = str(entry.get("name", ""))
+        base = str(entry.get("base", ""))
+        if name == args.expand and base:
+            files = changed_files(base, name)
+            diffs = write_diffs(base, name, files)
+            expanded = (name, expanded_lines(files, diffs, palette))
+
     if args.files:
         draw_files(stack, occupied, palette, patch=args.patch)
     elif not args.check:
@@ -1023,6 +1223,7 @@ def main() -> int:
             show_prs=args.prs,
             hide_merged=args.hide_merged,
             numbered=args.numbered,
+            expanded=expanded,
         )
         # The drawing goes to stdout and the warning to stderr; flushing
         # between them keeps the warning under the stack it refers to

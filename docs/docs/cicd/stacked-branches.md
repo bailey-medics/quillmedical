@@ -74,6 +74,12 @@ Three recipes only look: `stack-log` draws the stack from the local
 record, `stack-log-long` adds each pull request's state, and `stack-files`
 lists what each branch changes against its own parent.
 
+`stack-watch` redraws `stack-log-long` every minute and takes keys. Its
+`e` key lists the files the branch checked out changes, against its own
+parent as `stack-files` does. Each line ends with the path of that file's
+diff, under `~/.cache/stack-watch/`: ctrl-click it in VS Code's terminal,
+over Remote SSH too, to open the changes as a coloured diff.
+
 ## How a stack meets CI
 
 A stacked pull request's base is the branch below it, not `main`. Two
