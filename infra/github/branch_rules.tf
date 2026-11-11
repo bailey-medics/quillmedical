@@ -16,11 +16,9 @@
 terraform {
   required_version = ">= 1.15.8"
 
-  # Remote since 2026-09-25, beside the GCP state in the same bucket under its
-  # own prefix. It had been a local terraform.tfstate in one checkout: one
-  # copy, no locking, no history, and a trap whenever that checkout sat on a
-  # branch with older code here. Applies stay manual; see
-  # .github/workflows/github-rulesets.yml for why CI does not run them.
+  # Terraform state sits beside the GCP state, in the same bucket under its
+  # own prefix. Applies are manual; .github/workflows/github-rulesets.yml says
+  # why.
   backend "gcs" {
     bucket = "quill-medical-app-terraform-state"
     prefix = "terraform/github"
@@ -29,7 +27,7 @@ terraform {
   required_providers {
     github = {
       source  = "integrations/github"
-      version = "~> 6.0"
+      version = "~> 6.13"
     }
   }
 }
@@ -79,24 +77,16 @@ variable "block_merges_into_feature_branches" {
     Whether a pull request can be merged into a branch other than main.
 
     A stacked pull request's base is the branch below it, and a merge goes
-    into the base. On 2026-10-11 fourteen pull requests of one stack were
-    merged that way, into feature branches no ruleset protects, and none
-    reached main.
+    into that base: a feature branch no ruleset protects, so the work never
+    reaches main.
 
-    True does two things together. It requires linear history on every
-    branch but main, so a merge commit is refused there, and it switches
-    off squash and rebase merging for the repository, so there is no other
-    way to merge. The hope was that pushing a stack would be unaffected,
-    its branches holding one commit each, rebased and never merged.
+    True requires linear history on every branch but main, and switches off
+    squash and rebase merging, so a merge has nowhere to land but main. It
+    does not work: a branch cut from main carries main's own merge commits,
+    and linear history then refuses its push. So this must stay false.
 
-    Tried on 2026-10-16 and it does not work: with linear history required
-    on every branch but main, a branch cut from main cannot be pushed,
-    because main's own merge commits are in its history and the rule
-    refuses them. So this must stay false. See
-    docs/docs/plans/2026-10-15-stacked-pull-requests-land-on-main-plan.md.
-
-    Kept, switched off, as the record of what was tried, so the idea is
-    not tried again without a different way round main's history.
+    Kept, switched off, so the idea is not tried again without a different
+    way round main's history.
   EOT
   type        = bool
   default     = false
@@ -130,7 +120,7 @@ resource "github_repository_ruleset" "protected_branches" {
 
   rules {
     # Require a pull request before merging (0 approvals while solo developer;
-    # increase to 1+ when additional team members join - see docs/docs/plans/todo.md)
+    # increase to 1+ when additional team members join
     pull_request {
       required_approving_review_count   = 0
       dismiss_stale_reviews_on_push     = true
@@ -178,7 +168,6 @@ resource "github_repository_ruleset" "protected_branches" {
       }
 
       # Security
-      # Named "Semgrep (frontend SAST)" until 14 October 2026.
       required_check {
         context = "SAST"
       }
@@ -188,7 +177,7 @@ resource "github_repository_ruleset" "protected_branches" {
         context = "E2E (Playwright)"
       }
 
-      # API compatibility (item 15 - see docs/docs/backend/api-compatibility.md)
+      # API compatibility
       required_check {
         context = "API breaking-change check"
       }
@@ -196,14 +185,14 @@ resource "github_repository_ruleset" "protected_branches" {
         context = "API breaking-change review gate"
       }
 
-      # Destructive DB migrations (see
-      # docs/docs/plans/2026-08-25-db-destructive-migration-review-plan.md)
+      # Destructive DB migrations
       required_check {
         context = "DB destructive migration check"
       }
       required_check {
         context = "DB destructive migration review gate"
       }
+
       # A merged migration's code does not change (comments may). The
       # destructive gate above only inspects migrations ADDED on a PR, so a
       # drop_column edited into a file already on main would be invisible to
@@ -212,11 +201,12 @@ resource "github_repository_ruleset" "protected_branches" {
       required_check {
         context = "DB migration immutability check"
       }
-      # A competency is retired, never deleted. Deleting one from the shared
-      # catalogue revokes nothing - everyone holding it keeps the access, it
-      # merely stops being describable - and it destroys the vocabulary the
-      # audit trail needs. Like the check above, no approval path: there is
-      # no legitimate case to approve.
+
+      # Stops a competency being deleted from the shared catalogue: one is
+      # retired, never deleted. Deleting it revokes nothing - everyone
+      # holding it keeps the access, it merely stops being describable -
+      # and it destroys the vocabulary the audit trail needs. Like the check
+      # above, no approval path: there is no legitimate case to approve.
       required_check {
         context = "Competency catalogue check"
       }
@@ -228,49 +218,19 @@ resource "github_repository_ruleset" "protected_branches" {
     # Block branch deletion
     deletion = true
 
-    # Merge queue - replaces the old manual "rebase, wait for CI, merge,
-    # repeat" loop. GitHub builds a temporary merge-group ref (PR + latest
-    # main) and re-runs the required checks above against it before merging,
-    # so a PR is always tested against current main without anyone force-
-    # pushing a rebase onto the PR branch by hand. See
-    # .claude/rules/ci.md for the full flow.
+    # Merge queue: each PR is re-tested against the latest main before it
+    # merges, so nobody rebases by hand.
     #
-    # Batching deliberately disabled (min/max_entries_to_merge = 1): each PR
-    # is tested and merged one at a time. With batching, a failure part-way
-    # through a group forces GitHub to bisect the group to find the culprit,
-    # which costs more time than it saves for a repo where PRs are reviewed
-    # and queued individually rather than in bulk.
-    #
-    # merge_method = MERGE keeps queued PRs landing the way this repo
-    # already merges them (the "Create a merge commit" button).
-    #
-    # Worth knowing: this does change the shape of main's history. The old
-    # flow rebased the PR branch up to date before merging, so its merge
-    # commit joined two tips already in a straight line. The queue replaces
-    # that manual rebase with a temporary merge-group ref, so a PR's merge
-    # commit now joins a branch that diverged earlier: the graph shows real
-    # branch-and-merge diamonds rather than a straight line. REBASE or
-    # SQUASH would keep the history linear instead, at the cost of no longer
-    # matching the merge button used today.
-    #
-    # max_entries_to_build is parallelism, not batching: how many queued PRs
-    # are speculatively tested at once, each assuming the ones ahead of it
-    # will merge. It was 3 while a queue run took six to seven minutes; at
-    # 6 a whole stack, usually five or six pull requests queued together,
-    # is tested in one round of about four minutes rather than two. The
-    # cost is unchanged in kind: every speculative run is thrown away and
-    # repeated when a PR ahead of it fails, so a failure near the front of
-    # a full queue now wastes up to five runs rather than two. Lower it if
-    # that starts to happen often.
-    #
-    # check_response_timeout_minutes is how long the queue waits for the
-    # required checks to report before dropping the entry. The slowest chain
-    # is heavy_e2e_images -> heavy_e2e (20 min timeout each), so 60 leaves
-    # headroom for runner queueing but not a huge amount - if entries start
-    # being dequeued for no obvious reason, raise this first.
-    #
-    # Wrapped in a dynamic block so the queue can be switched off without
-    # deleting its configuration - see var.merge_queue_enabled.
+    # - Batching off (min/max_entries_to_merge = 1): a failed batch would
+    #   have to be split to find the culprit.
+    # - MERGE matches the merge button; main's graph shows diamonds, not a
+    #   straight line.
+    # - max_entries_to_build = 6 tests a whole stack at once. A failure
+    #   reruns everything behind it, so lower it if that happens often.
+    # - check_response_timeout_minutes = 60: the slowest chain,
+    #   heavy_e2e_images then heavy_e2e, can take 40, leaving room for runner
+    #   queueing. Raise it first if entries drop.
+    # - Dynamic, so var.merge_queue_enabled can switch it off.
     dynamic "merge_queue" {
       for_each = var.merge_queue_enabled ? [1] : []
 
@@ -294,8 +254,8 @@ resource "github_repository_ruleset" "protected_branches" {
 #
 # Purpose:
 #   Enforces a consistent naming convention across the repository. Any branch
-#   that is not main must match the pattern feature/*, hotfix/*, copilot/*, or
-#   renovate/* (automated dependency updates), plus gh-readonly-queue/* for the
+#   that is not main must match the pattern feature/*, hotfix/* or renovate/*
+#   (automated dependency updates), plus gh-readonly-queue/* for the
 #   merge queue's own branches. Branches that don't conform are rejected at
 #   creation time.
 #
@@ -313,19 +273,14 @@ resource "github_repository_ruleset" "branch_naming" {
       include = ["~ALL"]
       exclude = [
         "refs/heads/main",
-        # The merge queue builds each entry on a temporary branch named
-        # gh-readonly-queue/main/pr-<number>-<sha>. Without an exemption the
-        # naming rule rejects that branch at creation time, so the merge group
-        # is never built, no merge_group event fires, no required check
-        # reports, and GitHub drops the entry with "removed from the merge
-        # queue due to failing Branch Protection rules" - with nothing in the
-        # Actions tab to explain it. Seen on PR #503.
+        # The merge queue builds each entry on a temporary branch,
+        # gh-readonly-queue/main/pr-<number>-<sha>. Without this exemption
+        # the naming rule rejects it, and the queue drops the entry with only
+        # "failing Branch Protection rules" to explain it.
         #
-        # Both spellings are listed because a bare `**` alone did not match
-        # the two-segment queue ref when it was tried on #503; GitHub's own
-        # ruleset docs write this shape as `refs/heads/releases/**/*`. The
-        # regex below carries the same exemption independently, so the branch
-        # is allowed even if neither pattern matches.
+        # Two patterns, because `**` alone did not match the two levels under
+        # the prefix (main/pr-…). The regex below allows the prefix too, in
+        # case neither does.
         "refs/heads/gh-readonly-queue/**",
         "refs/heads/gh-readonly-queue/**/*",
       ]
@@ -338,8 +293,8 @@ resource "github_repository_ruleset" "branch_naming" {
       # gh-readonly-queue is the merge queue's own prefix, not a branch anyone
       # creates by hand. It is matched here as well as excluded above so the
       # queue does not depend on fnmatch semantics to function.
-      pattern = "^(feature|hotfix|copilot|renovate|gh-readonly-queue)/.+"
-      name    = "Branch names must follow feature/*, hotfix/*, copilot/*, or renovate/* convention (gh-readonly-queue/* is reserved for the merge queue)"
+      pattern = "^(feature|hotfix|renovate|gh-readonly-queue)/.+"
+      name    = "Branch names must follow feature/*, hotfix/*, or renovate/* convention (gh-readonly-queue/* is reserved for the merge queue)"
       negate  = false
     }
 
