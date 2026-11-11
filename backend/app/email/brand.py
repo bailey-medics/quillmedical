@@ -202,6 +202,8 @@ class AppTheme(_Strict):
     Attributes:
         brand: The brand colours.
         palette: The primary and secondary ramps.
+        ribbon_icon_idle: The ribbon's mail icon while nothing waits.
+        link: Links in light mode.
         logo: The logo's path under ``frontend/public``.
         logo_tile: The colour of a tile drawn behind the logo, for a logo
             that would be lost on the brand's own colours. Unset draws
@@ -211,17 +213,22 @@ class AppTheme(_Strict):
 
     brand: AppBrandColours
     palette: AppPalette
+    ribbon_icon_idle: str
+    link: str
     logo: str = Field(pattern=r"^/\S+$")
     logo_tile: str | None = None
     wordmark: Wordmark
 
     @model_validator(mode="after")
-    def _tile_is_hex(self) -> AppTheme:
-        """Refuse a logo tile colour that is not hex.
+    def _colours_are_hex(self) -> AppTheme:
+        """Refuse a ribbon icon, link or logo tile colour that is not hex.
 
         Returns:
             The model, unchanged.
         """
+        _check_hex(self.ribbon_icon_idle)
+        _check_hex(self.link)
+
         if self.logo_tile is not None:
             _check_hex(self.logo_tile)
 

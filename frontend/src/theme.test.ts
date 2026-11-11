@@ -10,7 +10,11 @@
 
 import { DEFAULT_THEME, mergeMantineTheme } from "@mantine/core";
 import { describe, expect, it } from "vitest";
-import { AA_TEXT, contrastRatio } from "@lib/colour-contrast/contrast";
+import {
+  AA_LARGE_OR_GRAPHIC,
+  AA_TEXT,
+  contrastRatio,
+} from "@lib/colour-contrast/contrast";
 import brand from "@/generated/brand.json";
 import baseline from "./theme.quill-baseline.json";
 import {
@@ -375,7 +379,7 @@ describe("makeTheme", () => {
     const blue = brand.app_themes["ldd"]?.palette.primary ?? [];
 
     expect(lddVars.variables["--brand-primary"]).toBe("#0848a9");
-    expect(lddVars.variables["--brand-secondary"]).toBe("#707070");
+    expect(lddVars.variables["--brand-secondary"]).toBe("#d0d0d0");
     expect(lddVars.dark["--mantine-color-body"]).toBe(blue[8]);
     expect(lddVars.dark["--card-bg"]).toBe(blue[7]);
     expect(lddVars.light["--mantine-color-text"]).toBe(blue[5]);
@@ -398,11 +402,78 @@ describe("makeTheme", () => {
     expect(resolved.other.colours).toEqual(brandColours);
     expect(ldd.other.colours).toEqual({
       primary: "#0848a9",
-      secondary: "#707070",
+      secondary: "#d0d0d0",
       background: "#ffffff",
       mark: "#ffffff",
     });
   });
+
+  it("gives the ribbon's idle mail icon each brand's own colour", () => {
+    const ldd = makeTheme("ldd");
+    const lddVars = ldd.cssVariablesResolver(
+      mergeMantineTheme(DEFAULT_THEME, ldd.theme),
+    );
+
+    expect(vars.variables["--ribbon-icon-idle"]).toBe(greyScale[6]);
+    expect(lddVars.variables["--ribbon-icon-idle"]).toBe("#c0c0c0");
+  });
+
+  it.each(BRAND_NAMES)(
+    "gives %s's ribbon the dark page's colour in dark mode, and its brand primary in light",
+    (name) => {
+      const built = makeTheme(name);
+      const resolvedBrand = mergeMantineTheme(DEFAULT_THEME, built.theme);
+      const brandVars = built.cssVariablesResolver(resolvedBrand);
+
+      expect(brandVars.dark["--ribbon-bg"]).toBe(
+        brandVars.dark["--mantine-color-body"],
+      );
+      expect(brandVars.light["--ribbon-bg"]).toBe(
+        resolvedBrand.other.colours?.primary,
+      );
+    },
+  );
+
+  it.each(BRAND_NAMES)(
+    "keeps %s's idle mail icon at 3:1 or more on its ribbon in both schemes",
+    (name) => {
+      const built = makeTheme(name);
+      const brandVars = built.cssVariablesResolver(
+        mergeMantineTheme(DEFAULT_THEME, built.theme),
+      );
+      const icon = brandVars.variables["--ribbon-icon-idle"] ?? "";
+
+      for (const scheme of ["light", "dark"] as const) {
+        expect(
+          contrastRatio(icon, brandVars[scheme]["--ribbon-bg"] ?? ""),
+        ).toBeGreaterThanOrEqual(AA_LARGE_OR_GRAPHIC);
+      }
+    },
+  );
+
+  // Every app theme's text colours, held to WCAG AA as Quill's are
+  // above. An app theme's link and current nav link once fell short in
+  // light mode, found by the Storybook accessibility test.
+  it.each(Object.keys(brand.app_themes))(
+    "keeps %s's light-mode text at 4.5:1 or more",
+    (name) => {
+      const built = makeTheme(name);
+      const light = built.cssVariablesResolver(
+        mergeMantineTheme(DEFAULT_THEME, built.theme),
+      ).light;
+      const ramps = brand.app_themes[name];
+
+      expect(
+        contrastRatio(light["--link-color"] ?? "", "#ffffff"),
+      ).toBeGreaterThanOrEqual(AA_TEXT);
+      expect(
+        contrastRatio(ramps?.palette.secondary[7] ?? "", greyScale[1] ?? ""),
+      ).toBeGreaterThanOrEqual(AA_TEXT);
+      expect(
+        contrastRatio(ramps?.palette.primary[5] ?? "", "#ffffff"),
+      ).toBeGreaterThanOrEqual(AA_TEXT);
+    },
+  );
 
   it("lists Quill first, then every app theme", () => {
     expect(BRAND_NAMES).toEqual(["quill", ...Object.keys(brand.app_themes)]);

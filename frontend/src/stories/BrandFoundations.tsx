@@ -300,7 +300,7 @@ const BRAND_WORDS: Readonly<Record<string, BrandWords>> = {
     primary:
       "the logo's blue back head: the ribbon, filled buttons, links and body text",
     secondary:
-      "a mid-dark grey from the logo's front head: accents, highlights and the current navigation link",
+      "a light grey from the logo's front head: accents, highlights and the current navigation link",
     background: "page backgrounds, card surfaces",
     mark: "the white tile the logo is drawn on",
     primaryScale: "primary (blue)",

@@ -55,7 +55,7 @@ describe("BrandFoundations under Let's Do Digital", () => {
       screen.getByText(/^#0848a9 - the logo's blue back head/),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/^#707070 - a mid-dark grey from the logo's front head/),
+      screen.getByText(/^#d0d0d0 - a light grey from the logo's front head/),
     ).toBeInTheDocument();
     expect(
       screen.getByText(/^#ffffff - the white tile the logo is drawn on/),
