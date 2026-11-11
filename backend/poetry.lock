@@ -4581,14 +4581,14 @@ crypto = ["cryptography (>=3.4.0)"]
 
 [[package]]
 name = "pymdown-extensions"
-version = "12.3"
+version = "13.0"
 description = "Extension pack for Python Markdown."
 optional = false
-python-versions = ">=3.10"
+python-versions = ">=3.11.5"
 groups = ["dev"]
 files = [
-    {file = "pymdown_extensions-12.3-py3-none-any.whl", hash = "sha256:345493a8e3497e24382902903a1c43a28e34a52f2b7571a1c9641429b820ca74"},
-    {file = "pymdown_extensions-12.3.tar.gz", hash = "sha256:a7f2a4e0bc60c6e6babfa7922cfb3b01cd640eb00fb208f3c582e12bae00ea67"},
+    {file = "pymdown_extensions-13.0-py3-none-any.whl", hash = "sha256:c68f6e69b14604fb55227735bd0c4c4d3d1d9299a2d1314352190c48aa0d1040"},
+    {file = "pymdown_extensions-13.0.tar.gz", hash = "sha256:092524bea4fb3e62891204495de9e56b98603912df167ddd90d4f91bf2cd0414"},
 ]
 
 [package.dependencies]
@@ -5189,14 +5189,14 @@ full = ["httpx (>=0.27.0,<0.29.0)", "httpx2 (>=2.0.0)", "itsdangerous", "jinja2"
 
 [[package]]
 name = "types-markdown"
-version = "3.11.2.20261107"
+version = "3.11.3.20261108"
 description = "Typing stubs for Markdown"
 optional = false
 python-versions = ">=3.10"
 groups = ["dev"]
 files = [
-    {file = "types_markdown-3.11.2.20261107-py3-none-any.whl", hash = "sha256:5ff026b9b364f7440c3ce5347f986170a4cf02eeb7e6bf96125833137df14a1c"},
-    {file = "types_markdown-3.11.2.20261107.tar.gz", hash = "sha256:73043f9aecc4936b4530ce583eb443568cf33e9ed06b9d946f807a18bdf8c8ad"},
+    {file = "types_markdown-3.11.3.20261108-py3-none-any.whl", hash = "sha256:f906be98f35c745906ce2b88bd803f5e2af78d2f2f146d700110152ac20ffc38"},
+    {file = "types_markdown-3.11.3.20261108.tar.gz", hash = "sha256:eac0188fc8dacbf9bbbea68a0aee98c7d3b0008f8b1def1a141cd669dd7c708a"},
 ]
 
 [[package]]
