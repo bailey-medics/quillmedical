@@ -45,15 +45,14 @@ graph LR
 | ------------ | --------------------------------- | -------------- |
 | `feature/*`  | New features and non-urgent fixes | CI checks only |
 | `hotfix/*`   | Urgent fixes                      | CI checks only |
-| `copilot/*`  | AI-generated branches             | CI checks only |
 | `renovate/*` | Automated dependency updates      | CI checks only |
 | `main`       | Trunk - single protected branch   | App (auto)     |
 
 ### Rules
 
-- All development happens on `feature/*`, `hotfix/*`, or `copilot/*` branches
+- All development happens on `feature/*` or `hotfix/*` branches
 - `main` requires a pull request - never push directly
-- Branch names must match `^(feature|hotfix|copilot|renovate|gh-readonly-queue)/.+` (enforced at creation time; `gh-readonly-queue/*` is the merge queue's own prefix)
+- Branch names must match `^(feature|hotfix|renovate|gh-readonly-queue)/.+` (enforced at creation time; `gh-readonly-queue/*` is the merge queue's own prefix)
 - Use `hotfix/*` only for urgent production fixes; `feature/*` for everything else
 
 ## Branch protection rulesets
@@ -88,7 +87,7 @@ The `infra/github/` Terraform is applied by a person, never by CI. Merging `.tf`
 
 **Targets:** All branches except `main` and the merge queue's own `gh-readonly-queue/*` branches
 
-Pattern: `^(feature|hotfix|copilot|renovate|gh-readonly-queue)/.+` - branches that don't match are rejected at creation time.
+Pattern: `^(feature|hotfix|renovate|gh-readonly-queue)/.+` - branches that don't match are rejected at creation time.
 
 ### Ruleset 3 - Protected branches (teaching content repos)
 
@@ -98,7 +97,7 @@ Same PR and force-push rules as quillmedical. The required status checks are `pi
 
 ### Ruleset 4 - Branch naming (teaching content repos)
 
-The `^(feature|hotfix|copilot|renovate)/.+` pattern: quillmedical's, without the merge queue's prefix.
+The `^(feature|hotfix|renovate)/.+` pattern: quillmedical's, without the merge queue's prefix.
 
 ## Required status checks
 

@@ -36,7 +36,7 @@ per day. A worktree is cheap to make and cheap to remove.
 `just wc <branch>` - aliased from `just worktree-create`:
 
 - **Refuses a branch name the repository will reject.** Branch protection
-  allows only `feature/`, `hotfix/`, `copilot/` and `renovate/` prefixes,
+  allows only `feature/`, `hotfix/` and `renovate/` prefixes,
   and finding that out after the worktree exists means unpicking it by
   hand.
 - **Names the directory for you.** `quillmedical-2`, `quillmedical-3` and

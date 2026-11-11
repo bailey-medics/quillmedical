@@ -7,7 +7,8 @@
 # when state migrates to the bucket. State lives in GCS, never in git.
 *.tfstate.*
 *.tfplan
-.terraform.lock.hcl
+# .terraform.lock.hcl is committed: it holds the exact provider versions and
+# their checksums, so a plan and its apply use the same providers.
 crash.log
 override.tf
 override.tf.json

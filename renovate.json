@@ -155,10 +155,19 @@
       "automerge": false
     },
     {
-      "description": "Terraform provider updates - no automerge, manual review required",
+      "description": "Terraform provider updates - no automerge, manual review required. Each provider's floor (a two-part '~> 6.13') says the version last used; bump raises it with each release, since a range that already allows the newest version otherwise looks up to date. The exact versions, with their checksums, are in each configuration's committed .terraform.lock.hcl, which this updates too.",
       "matchManagers": ["terraform"],
+      "rangeStrategy": "bump",
       "groupName": "Terraform providers",
       "groupSlug": "terraform-providers",
+      "automerge": false
+    },
+    {
+      "description": "Terraform's own version, in one pull request: .terraform-version, which the workflows read, and the required_version floors in infra/, which must be written out. bump moves a '>= ' floor, which would otherwise always look up to date. scripts/check-terraform-version.sh fails the pull request if any of them disagree. Update the Terraform on the dev box when it merges, or the Terraform recipes refuse to run.",
+      "matchDepNames": ["hashicorp/terraform"],
+      "rangeStrategy": "bump",
+      "groupName": "Terraform version",
+      "groupSlug": "terraform-version",
       "automerge": false
     },
     {

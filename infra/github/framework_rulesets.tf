@@ -96,8 +96,8 @@ resource "github_organization_ruleset" "framework_branch_naming" {
   rules {
     branch_name_pattern {
       operator = "regex"
-      pattern  = "^(feature|hotfix|copilot|renovate)/.+"
-      name     = "Branch names must follow feature/*, hotfix/*, copilot/*, or renovate/* convention"
+      pattern  = "^(feature|hotfix|renovate)/.+"
+      name     = "Branch names must follow feature/*, hotfix/*, or renovate/* convention"
       negate   = false
     }
   }
