@@ -10,7 +10,6 @@
 import { ActionIcon, useMantineTheme } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 import { IconMenu2 } from "@/components/icons/appIcons";
-import { secondaryScale } from "@/theme";
 
 interface BurgerButtonProps {
   /** Whether the navigation is currently open */
@@ -40,10 +39,12 @@ export default function BurgerButton({
       aria-controls="app-navbar"
       aria-label={navOpen ? "Close navigation" : "Open navigation"}
       aria-expanded={navOpen}
+      // The theme's secondary 5 as a variable, not a value read when this
+      // file loads, so the icon follows the brand of the theme around it.
       style={{
-        color: secondaryScale[5],
+        color: "var(--mantine-color-secondary-5)",
         "--ai-hover": "var(--burger-hover-bg)",
-        "--ai-hover-color": secondaryScale[5],
+        "--ai-hover-color": "var(--mantine-color-secondary-5)",
       }}
     >
       <IconMenu2 size={32} stroke={stroke} />

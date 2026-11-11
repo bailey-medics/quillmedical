@@ -921,6 +921,7 @@
     "sqladmin",
     "sqlalchemy",
     "sqlmap",
+    "srgb",
     "SSDP",
     "SSLMODE",
     "staffmember",
