@@ -9,7 +9,7 @@
  */
 
 import { DEFAULT_THEME, mergeMantineTheme } from "@mantine/core";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   AA_LARGE_OR_GRAPHIC,
   AA_TEXT,
@@ -18,6 +18,10 @@ import {
 import brand from "@/generated/brand.json";
 import baseline from "./theme.quill-baseline.json";
 import {
+  APP_BRAND,
+  appIdentity,
+  brandIdentity,
+  resolveAppBrand,
   BRAND_NAMES,
   brandColours,
   cssVariablesResolver,
@@ -486,4 +490,59 @@ describe("makeTheme", () => {
       expect(() => makeTheme(name)).toThrow(/Unknown brand/);
     },
   );
+});
+
+describe("the brand the app runs as", () => {
+  it("is Quill when VITE_BRAND is unset", () => {
+    expect(APP_BRAND).toBe("quill");
+    expect(appIdentity.name).toBe("Quill Medical");
+  });
+
+  it("is Quill when VITE_BRAND is empty", () => {
+    expect(resolveAppBrand("")).toBe("quill");
+  });
+
+  it("is the brand VITE_BRAND names", () => {
+    expect(resolveAppBrand("ldd")).toBe("ldd");
+  });
+
+  it("refuses a brand the brand file does not hold, naming the known ones", () => {
+    expect(() => resolveAppBrand("not-a-brand")).toThrow(
+      'VITE_BRAND is "not-a-brand", which is not a brand. Known brands: quill, ldd',
+    );
+  });
+
+  it("gives the app Let's Do Digital's look when built as it", async () => {
+    vi.stubEnv("VITE_BRAND", "ldd");
+    vi.resetModules();
+    const fresh = await import("./theme");
+    const built = mergeMantineTheme(DEFAULT_THEME, fresh.theme);
+
+    expect(fresh.APP_BRAND).toBe("ldd");
+    expect(built.other.brand).toBe("ldd");
+    expect([...built.colors.primary]).toEqual(
+      brand.app_themes["ldd"]?.palette.primary,
+    );
+    vi.unstubAllEnvs();
+  });
+});
+
+describe("brandIdentity", () => {
+  it("names Quill from the top of the brand file", () => {
+    expect(brandIdentity("quill")).toEqual({
+      name: "Quill Medical",
+      shortName: "Quill",
+    });
+  });
+
+  it("names Let's Do Digital from its app theme", () => {
+    expect(brandIdentity("ldd")).toEqual({
+      name: "Let's Do Digital",
+      shortName: "LDD",
+    });
+  });
+
+  it("refuses an unknown brand, including one of Object's own names", () => {
+    expect(() => brandIdentity("constructor")).toThrow(/Unknown brand/);
+  });
 });

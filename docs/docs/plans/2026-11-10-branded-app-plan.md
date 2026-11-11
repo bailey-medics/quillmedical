@@ -387,8 +387,10 @@ diff for the alternative brand's name finds nothing.
       src/stories/BrandFoundations.test.tsx` passes (119), and
       `just ub app/email/brand_test.py` (24).
 
-- [ ] **`brand-runs-the-app`: the app runs locally as a brand.** From
-      `brand-runs-the-app` and `sa-takes-a-brand`, shaped by Phase 1:
+- [x] **`brand-runs-locally`: the app runs locally as a brand.** From
+      `brand-runs-the-app` and `sa-takes-a-brand`, shaped by Phase 1 (named
+      `brand-runs-locally` here, because the source branch holds the
+      other name):
       `BRAND` in `backend/app/config.py`, checked against the brand file;
       `VITE_BRAND` in `frontend/src/main.tsx` and `vite-env.d.ts`; the
       page title from the brand in `useDocumentTitle`; `BRAND` and
@@ -403,6 +405,25 @@ diff for the alternative brand's name finds nothing.
       brand that `BRAND` names, with a test that a Let's Do Digital build
       commits as "Let's Do Digital". No `QUILL_DEV_STACK_HERE` and no
       `CLAUDE.md` paragraph.
+
+      **Built.** The identity holds `name`, `short_name` and
+      `committer_email`; there is no separate committer name. The
+      passport package must import without `app.config`, so
+      `LocalPassportStore` and `GcsPassportStore` take a `Committer`
+      (defaulting to Quill's, for tooling with no application round it),
+      the bucket store passes it to the local store each write is made
+      in, and `brand_committer` in `backend/app/passport_storage.py`
+      builds it from `settings.BRAND`. The frontend's `Identity` has no
+      committer, since only the backend commits. The source also renamed
+      the volume `just sa b` removes to follow the folder it runs from;
+      that was for the override, so it stays out. `just ub
+      app/email/brand_test.py app/config_test.py
+      app/passport_storage_test.py app/features/passport/store_test.py
+      app/features/passport/gcs_store_test.py
+      tests/features_import_boundary_test.py` passes (227), `just uf
+      src/theme.test.ts src/lib/accessibility/useDocumentTitle.test.tsx`
+      (81), and `just ts scripts/tests` (438, the seven new among them).
+      `just sa ldd` itself waits for the main checkout, as Phase 0 says.
 
 - [ ] **`brand-splash-and-icons`: the brand from the first paint.** From
       `<alternative brand name>-spinner`, `brand-icons` and

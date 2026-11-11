@@ -49,11 +49,32 @@ from .commits import Actor, CommitMessage
 #: backfills and repairs are new commits like everything else.
 BRANCH = "refs/heads/main"
 
-#: Who commits. The author is the person who acted; the committer is
-#: always Quill, because the application is the only writer and saying so
-#: is more honest than attributing the mechanism to a clinician.
-COMMITTER_NAME = "Quill Medical"
-COMMITTER_EMAIL = "noreply@quill-medical.com"
+
+@dataclass(frozen=True)
+class Committer:
+    """Who commits: the application, named as the brand it runs as.
+
+    The author of a commit is the person who acted; the committer is the
+    application, because it is the only writer and saying so is more
+    honest than attributing the mechanism to a clinician. Passed in by
+    the caller, which knows the brand from settings, so this module keeps
+    importing without ``app.config``.
+
+    Attributes:
+        name: The brand's full name, such as ``"Quill Medical"``.
+        email: The address commits are made from, never a person's.
+    """
+
+    name: str
+    email: str
+
+
+#: The committer when none is given: Quill's, as in shared/brand.yaml.
+#: For tooling that reads or writes a passport with no application round
+#: it; the application passes the committer for its brand.
+DEFAULT_COMMITTER = Committer(
+    name="Quill Medical", email="noreply@quill-medical.com"
+)
 
 #: What a new passport's README says. Written once at creation and never
 #: regenerated, so a passport exported years later still explains itself
@@ -213,15 +234,19 @@ class LocalPassportStore(PassportStore):
     from the id rather than recorded anywhere.
     """
 
-    def __init__(self, root: Path) -> None:
+    def __init__(
+        self, root: Path, committer: Committer = DEFAULT_COMMITTER
+    ) -> None:
         """Start a store rooted at *root*.
 
         Args:
             root: The directory holding every passport. Created on first
                 write rather than here, so constructing a store has no
                 side effect.
+            committer: Who every commit is committed by.
         """
         self._root = root
+        self._committer = committer
 
     def _path(self, passport_id: str) -> Path:
         """Where one passport's repository sits.
@@ -637,8 +662,8 @@ class LocalPassportStore(PassportStore):
                 int(signature_time.timestamp()),
             )
             committer = pygit2.Signature(
-                COMMITTER_NAME,
-                COMMITTER_EMAIL,
+                self._committer.name,
+                self._committer.email,
                 int(signature_time.timestamp()),
             )
 

@@ -2652,14 +2652,25 @@ stack-watch:
 
 
 alias sa := start-app
-# Start the dev app without the EHR services, FHIR and EHRbase (build: 'b' will also build the images)
-start-app build="":
+# Start the dev app without the EHR services, as a brand: quill (default) or ldd; add 'b' to build the images
+start-app *args:
     #!/usr/bin/env bash
     {{initialise}} "start-app"
+
+    # `b` builds and anything else is the brand, in either order, so
+    # `just sa b` and `just sa ldd b` both work. Sorted, and an unknown
+    # brand refused, before anything starts.
+    parsed="$(bash scripts/start-app-args.sh {{args}})" || exit 1
+    read -r brand build <<< "${parsed}"
+
+    # Read by compose.dev.yml, as BRAND for the backend and VITE_BRAND for
+    # the frontend, so the two cannot run as different brands.
+    export BRAND="${brand}"
 
     just _dev-stack-guard
     just _start-docker-daemon
     echo "Access the frontend at: http://$(just _host-address)"
+    echo "Brand: ${brand}"
     echo "Clinical services (FHIR/EHRbase) disabled"
 
     # The backend bind-mounts teaching-repos/. Left for Docker to make, it
@@ -2668,7 +2679,7 @@ start-app build="":
 
     build_args=""
 
-    if [ "{{build}}" = "b" ]; then
+    if [ "${build}" = "yes" ]; then
         docker compose -f compose.dev.yml down
         docker volume rm -f quillmedical_frontend_node_modules >/dev/null 2>&1 || true
         cd frontend && yarn install && cd ..

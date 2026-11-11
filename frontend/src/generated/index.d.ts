@@ -268,9 +268,19 @@ declare module "@/generated/brand.json" {
     mark: string;
   }
 
+  // What a brand calls itself, and the address it commits from. The
+  // backend checks the address is one.
+  interface IdentitySource {
+    name: string;
+    short_name: string;
+    committer_email: string;
+  }
+
   // Another look for the app, beside Quill's own, such as Let's Do
-  // Digital's. The backend checks every value is hex.
+  // Digital's: Storybook shows one with `just sb ldd`, and the dev stack
+  // runs as one with `just sa ldd`. The backend checks every value is hex.
   interface AppThemeSource {
+    identity: IdentitySource;
     brand: BrandColoursSource;
     palette: {
       primary: string[];
@@ -290,6 +300,7 @@ declare module "@/generated/brand.json" {
   }
 
   const data: {
+    identity: IdentitySource;
     brand: BrandColoursSource;
     palette: {
       primary: string[];

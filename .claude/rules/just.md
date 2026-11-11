@@ -16,3 +16,8 @@ paths:
 - Inside a recipe, put a blank line before and after each `if`, `case`, `for`
   and `while` block, and after a run of variable assignments, so setup,
   checks and the work itself read as separate groups.
+- When a recipe that already takes one positional argument needs a second,
+  tell them apart by value, not by position, so the old form keeps working:
+  `just sa b`, `just sa ldd` and `just sa ldd b` all do what they say.
+  Sort them in a script beside its bats test, as `scripts/start-app-args.sh`
+  does, rather than inline, so the sorting can be tested.

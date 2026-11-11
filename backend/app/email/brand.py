@@ -175,6 +175,24 @@ class AppPalette(_Strict):
         return self
 
 
+class Identity(_Strict):
+    """What one brand calls itself.
+
+    Attributes:
+        name: The full name, for page titles, and the name every commit
+            the app makes is committed under. The author of a commit is
+            always the person who acted.
+        short_name: The name where room is short, such as under a home
+            screen icon.
+        committer_email: The address commits are made from, never a
+            person's.
+    """
+
+    name: str = Field(min_length=1)
+    short_name: str = Field(min_length=1)
+    committer_email: str = Field(pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
 class Wordmark(_Strict):
     """A brand's name drawn as an image, for the app's top ribbon.
 
@@ -200,6 +218,7 @@ class AppTheme(_Strict):
     the browser.
 
     Attributes:
+        identity: What the brand calls itself, and its committer address.
         brand: The brand colours.
         palette: The primary and secondary ramps.
         ribbon_icon_idle: The ribbon's mail icon while nothing waits.
@@ -211,6 +230,7 @@ class AppTheme(_Strict):
         wordmark: The name, drawn as an image.
     """
 
+    identity: Identity
     brand: AppBrandColours
     palette: AppPalette
     ribbon_icon_idle: str
@@ -372,6 +392,7 @@ class EmailTheme(_Strict):
 class BrandFile(_Strict):
     """The whole of ``shared/brand.yaml``, with every colour resolved."""
 
+    identity: Identity
     brand: BrandColours
     palette: Palette
     app_themes: dict[str, AppTheme]
@@ -429,6 +450,44 @@ def load_brand(path: Path) -> BrandFile:
 
 
 BRAND: BrandFile = load_brand(BRAND_YAML_PATH)
+
+
+#: The name the app's own look goes by. Every other brand is a key of
+#: ``app_themes``.
+QUILL = "quill"
+
+
+def brand_names() -> tuple[str, ...]:
+    """Every brand the app can run as: Quill, then each app theme.
+
+    Returns:
+        The names, ``"quill"`` first, as ``BRAND`` may be set to.
+    """
+    return (QUILL, *BRAND.app_themes)
+
+
+def identity(name: str) -> Identity:
+    """What the brand called *name* calls itself.
+
+    Args:
+        name: ``"quill"``, or a key of ``app_themes``.
+
+    Returns:
+        The brand's identity.
+
+    Raises:
+        ValueError: If *name* is not a brand.
+    """
+    if name == QUILL:
+        return BRAND.identity
+
+    if name not in BRAND.app_themes:
+        raise ValueError(
+            f"Unknown brand {name!r}. Known brands: "
+            f"{', '.join(brand_names())}"
+        )
+
+    return BRAND.app_themes[name].identity
 
 
 def email_theme(name: EmailThemeName) -> EmailTheme:
