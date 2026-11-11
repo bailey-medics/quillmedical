@@ -12,7 +12,8 @@
     "cookies.txt",
     "audit/ledger.tsv",
     ".pnp.*",
-    "temp"
+    "temp",
+    "frontend/brand-sources/*/OFL.txt"
   ],
   "words": [
     "AACE",
@@ -163,6 +164,7 @@
     "cloudsql",
     "cloudsqlsuperuser",
     "Clouvider",
+    "cmap",
     "CNOM",
     "CNST",
     "cobblestoning",
@@ -377,6 +379,7 @@
     "GEEKOM",
     "Genda",
     "gensalt",
+    "Geostar",
     "getbbox",
     "getexif",
     "getifaddr",
@@ -406,6 +409,8 @@
     "gsub",
     "gsutil",
     "guidewords",
+    "Harf",
+    "HarfBuzz",
     "handoff",
     "hapi",
     "hapiproject",
@@ -425,6 +430,7 @@
     "Hikari",
     "HMAC",
     "HMRC",
+    "hmtx",
     "Hostinger",
     "hotfixes",
     "hrefs",

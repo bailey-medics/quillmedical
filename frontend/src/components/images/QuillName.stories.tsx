@@ -9,8 +9,6 @@
  */
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import QuillName from "./QuillName";
-import Image from "@components/images/Image";
-import publicAsset from "@lib/publicAsset";
 
 const meta: Meta<typeof QuillName> = {
   title: "Images/Quill name",
@@ -19,6 +17,7 @@ const meta: Meta<typeof QuillName> = {
     layout: "padded",
   },
   argTypes: {
+    colour: { control: "inline-radio", options: ["white", "dark"] },
     height: { control: "number" },
     alt: { control: "text" },
   },
@@ -52,8 +51,15 @@ export const Default: Story = {
   ],
 };
 
-/** Dark font variant for light backgrounds. */
+/**
+ * Dark font variant for light backgrounds. It follows the brand Storybook
+ * runs as, so `just sb ldd` shows Let's Do Digital's.
+ */
 export const DarkFont: Story = {
+  args: {
+    colour: "dark",
+    height: 5,
+  },
   decorators: [
     (Story) => (
       <div
@@ -67,12 +73,4 @@ export const DarkFont: Story = {
       </div>
     ),
   ],
-  render: () => (
-    <Image
-      src={publicAsset("/quill-name.png")}
-      alt="Quill Medical"
-      height={5}
-      style={{ marginRight: "0.5rem" }}
-    />
-  ),
 };

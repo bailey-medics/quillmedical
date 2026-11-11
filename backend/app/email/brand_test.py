@@ -127,6 +127,11 @@ class TestAppThemes:
         assert ldd.brand.secondary == "#707070"
         assert ldd.palette.primary[5] == ldd.brand.primary
         assert ldd.palette.secondary[5] == ldd.brand.secondary
+        assert ldd.logo == "/brands/ldd/logo.png"
+        assert ldd.logo_tile == "#ffffff"
+        assert ldd.wordmark.src == "/brands/ldd/wordmark-white.svg"
+        assert ldd.wordmark.dark_src == "/brands/ldd/wordmark-dark.svg"
+        assert ldd.wordmark.alt == "Let's Do Digital"
 
     def test_refuses_a_ramp_of_nine_shades(self, tmp_path: Path) -> None:
         data = _brand_data()
@@ -150,6 +155,55 @@ class TestAppThemes:
         data["app_themes"]["ldd"]["brand"]["mark"] = "white"  # type: ignore[index]
 
         with pytest.raises(ValidationError, match="Not a hex colour"):
+            load_brand(_write_brand(tmp_path, data))
+
+    def test_refuses_a_logo_path_not_from_the_root(
+        self, tmp_path: Path
+    ) -> None:
+        data = _brand_data()
+        data["app_themes"]["ldd"]["logo"] = "brands/ldd/logo.png"  # type: ignore[index]
+
+        with pytest.raises(ValidationError):
+            load_brand(_write_brand(tmp_path, data))
+
+    def test_refuses_a_logo_tile_that_is_not_hex(self, tmp_path: Path) -> None:
+        data = _brand_data()
+        data["app_themes"]["ldd"]["logo_tile"] = "white"  # type: ignore[index]
+
+        with pytest.raises(ValidationError, match="Not a hex colour"):
+            load_brand(_write_brand(tmp_path, data))
+
+    def test_a_logo_tile_may_be_left_out(self, tmp_path: Path) -> None:
+        data = _brand_data()
+        del data["app_themes"]["ldd"]["logo_tile"]  # type: ignore[index]
+
+        loaded = load_brand(_write_brand(tmp_path, data))
+
+        assert loaded.app_themes["ldd"].logo_tile is None
+
+    def test_refuses_a_wordmark_with_no_alt_text(self, tmp_path: Path) -> None:
+        data = _brand_data()
+        data["app_themes"]["ldd"]["wordmark"]["alt"] = ""  # type: ignore[index]
+
+        with pytest.raises(ValidationError):
+            load_brand(_write_brand(tmp_path, data))
+
+    def test_a_wordmark_needs_no_dark_version(self, tmp_path: Path) -> None:
+        data = _brand_data()
+        del data["app_themes"]["ldd"]["wordmark"]["dark_src"]  # type: ignore[index]
+
+        loaded = load_brand(_write_brand(tmp_path, data))
+
+        assert loaded.app_themes["ldd"].wordmark.dark_src is None
+
+    def test_refuses_a_dark_wordmark_path_not_from_the_root(
+        self, tmp_path: Path
+    ) -> None:
+        data = _brand_data()
+        wordmark = data["app_themes"]["ldd"]["wordmark"]  # type: ignore[index]
+        wordmark["dark_src"] = "brands/ldd/wordmark-dark.svg"
+
+        with pytest.raises(ValidationError):
             load_brand(_write_brand(tmp_path, data))
 
     def test_refuses_an_unknown_field(self, tmp_path: Path) -> None:
