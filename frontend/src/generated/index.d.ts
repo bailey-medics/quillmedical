@@ -261,18 +261,31 @@ declare module "@/generated/brand.json" {
     dark: EmailDarkTheme;
   }
 
-  const data: {
-    brand: {
-      primary: string;
-      secondary: string;
-      background: string;
-      mark: string;
+  interface BrandColoursSource {
+    primary: string;
+    secondary: string;
+    background: string;
+    mark: string;
+  }
+
+  // Another look for the app, beside Quill's own, such as Let's Do
+  // Digital's. The backend checks every value is hex.
+  interface AppThemeSource {
+    brand: BrandColoursSource;
+    palette: {
+      primary: string[];
+      secondary: string[];
     };
+  }
+
+  const data: {
+    brand: BrandColoursSource;
     palette: {
       primary: string[];
       secondary: string[];
       grey: string[];
     };
+    app_themes: Record<string, AppThemeSource>;
     // Keyed by the theme names in emailThemes.ts, which is generated
     // from the same file, so the names are not written out again here.
     email_themes: Record<

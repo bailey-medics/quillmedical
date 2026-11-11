@@ -119,5 +119,46 @@ class TestAMistakeFailsAtLoad:
             load_brand(_write_brand(tmp_path, data))
 
 
+class TestAppThemes:
+    def test_the_real_file_holds_ldd_from_its_logo(self) -> None:
+        ldd = BRAND.app_themes["ldd"]
+
+        assert ldd.brand.primary == "#0848a9"
+        assert ldd.brand.secondary == "#707070"
+        assert ldd.palette.primary[5] == ldd.brand.primary
+        assert ldd.palette.secondary[5] == ldd.brand.secondary
+
+    def test_refuses_a_ramp_of_nine_shades(self, tmp_path: Path) -> None:
+        data = _brand_data()
+        palette = data["app_themes"]["ldd"]["palette"]  # type: ignore[index]
+        palette["primary"] = palette["primary"][:9]
+
+        with pytest.raises(ValidationError):
+            load_brand(_write_brand(tmp_path, data))
+
+    def test_refuses_a_shade_that_is_not_hex(self, tmp_path: Path) -> None:
+        data = _brand_data()
+        data["app_themes"]["ldd"]["palette"]["secondary"][2] = "primary.2"  # type: ignore[index]
+
+        with pytest.raises(ValidationError, match="Not a hex colour"):
+            load_brand(_write_brand(tmp_path, data))
+
+    def test_refuses_a_brand_colour_that_is_not_hex(
+        self, tmp_path: Path
+    ) -> None:
+        data = _brand_data()
+        data["app_themes"]["ldd"]["brand"]["mark"] = "white"  # type: ignore[index]
+
+        with pytest.raises(ValidationError, match="Not a hex colour"):
+            load_brand(_write_brand(tmp_path, data))
+
+    def test_refuses_an_unknown_field(self, tmp_path: Path) -> None:
+        data = _brand_data()
+        data["app_themes"]["ldd"]["favicon"] = "/x.svg"  # type: ignore[index]
+
+        with pytest.raises(ValidationError, match="favicon"):
+            load_brand(_write_brand(tmp_path, data))
+
+
 def test_resolved_themes_are_still_email_themes() -> None:
     assert isinstance(email_theme("ldd"), EmailTheme)
