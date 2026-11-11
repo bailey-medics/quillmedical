@@ -6,13 +6,12 @@ Quill Medical uses a trunk-based branching strategy with a single protected bran
 
 ```mermaid
 graph LR
-    A["feature/* / copilot/*"] -->|PR| B[main]
+    A["feature/*"] -->|PR| B[main]
     C[hotfix/*] -->|PR| B
     B -->|auto-deploy| D[App]
 ```
 
 - **`feature/*`** - individual feature/fix branches; CI runs checks and opens a draft PR to `main`
-- **`copilot/*`** - AI-generated branches; same CI pipeline as `feature/*`
 - **`hotfix/*`** - urgent fixes; same CI pipeline
 - **`renovate/*`** - automated dependency updates; same CI pipeline
 - **`main`** - the only long-lived branch; auto-deploys to the app environment on merge
@@ -147,7 +146,7 @@ Managed via Terraform in `infra/github/branch_rules.tf`.
 
 **Branch naming:**
 
-All branches must match `^(feature|hotfix|copilot|renovate|gh-readonly-queue)/.+` - enforced at creation time (`gh-readonly-queue/*` is the merge queue's own prefix).
+All branches must match `^(feature|hotfix|renovate|gh-readonly-queue)/.+` - enforced at creation time (`gh-readonly-queue/*` is the merge queue's own prefix).
 
 ## Docker build
 

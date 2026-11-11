@@ -155,8 +155,9 @@
       "automerge": false
     },
     {
-      "description": "Terraform provider updates - no automerge, manual review required",
+      "description": "Terraform provider updates - no automerge, manual review required. Each provider's floor (a two-part '~> 6.13') says the version last used; bump raises it with each release, since a range that already allows the newest version otherwise looks up to date. The exact versions, with their checksums, are in each configuration's committed .terraform.lock.hcl, which this updates too.",
       "matchManagers": ["terraform"],
+      "rangeStrategy": "bump",
       "groupName": "Terraform providers",
       "groupSlug": "terraform-providers",
       "automerge": false

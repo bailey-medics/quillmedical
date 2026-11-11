@@ -292,7 +292,7 @@ _python-guard:
 
 # Prefix a bare name with feature/, leaving an already-prefixed one alone.
 #
-# Branch protection rejects anything outside feature/*, hotfix/*, copilot/*
+# Branch protection rejects anything outside feature/*, hotfix/*
 # and renovate/*, and it rejects it at creation time - so a stack branch
 # named without the prefix fails at the push, once the commits already
 # exist. Cheaper to add it here than to unpick a branch by hand.
@@ -301,7 +301,7 @@ _stack-branch-name name:
     set -euo pipefail
 
     case "{{name}}" in
-        feature/*|hotfix/*|copilot/*|renovate/*) echo "{{name}}" ;;
+        feature/*|hotfix/*|renovate/*) echo "{{name}}" ;;
         *) echo "feature/{{name}}" ;;
     esac
 
@@ -2852,8 +2852,8 @@ terraform-aws:
 
     cd infra/aws
 
-    # -upgrade: see terraform-github; the lock file is not committed.
-    terraform init -input=false -upgrade
+    # No -upgrade: the providers are the ones in the committed lock file.
+    terraform init -input=false
     terraform plan
     read -rp "Apply these changes? (yes/no): " confirm
 
@@ -2895,9 +2895,9 @@ terraform-github:
     fi
 
     # -reconfigure: an old checkout may still record a local backend; the
-    # state is in the bucket. -upgrade: the lock file is not committed, so
-    # an older provider could not read state a newer one wrote.
-    terraform init -input=false -reconfigure -upgrade
+    # state is in the bucket. No -upgrade: the providers are the ones in the
+    # committed lock file.
+    terraform init -input=false -reconfigure
     terraform plan -var-file=terraform.tfvars
     read -rp "Apply these changes? (yes/no): " confirm
 
@@ -3241,9 +3241,9 @@ worktree-create branch="":
     # Branch protection rejects anything outside this set, and finding
     # that out after the worktree exists means unpicking it by hand.
     case "{{branch}}" in
-        feature/*|hotfix/*|copilot/*|renovate/*) ;;
+        feature/*|hotfix/*|renovate/*) ;;
         *)
-            echo "Branch must start with feature/, hotfix/, copilot/ or renovate/"
+            echo "Branch must start with feature/, hotfix/ or renovate/"
             exit 1
             ;;
     esac
