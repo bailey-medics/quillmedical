@@ -144,7 +144,7 @@ jobs:
       # framework-pins.bats checks, so the pull request is validated by
       # the same loader the backend runs.
       - name: Install validator dependencies
-        run: python -m pip install pydantic==2.14.2 pyyaml==6.0.3
+        run: python -m pip install pydantic==2.14.3 pyyaml==6.0.3
 
       - name: Validate the frameworks
         working-directory: tooling/backend
