@@ -162,6 +162,14 @@
       "automerge": false
     },
     {
+      "description": "Terraform's own version, in one pull request: .terraform-version, which the workflows read, and the required_version floors in infra/, which must be written out. bump moves a '>= ' floor, which would otherwise always look up to date. scripts/check-terraform-version.sh fails the pull request if any of them disagree. Update the Terraform on the dev box when it merges, or the Terraform recipes refuse to run.",
+      "matchDepNames": ["hashicorp/terraform"],
+      "rangeStrategy": "bump",
+      "groupName": "Terraform version",
+      "groupSlug": "terraform-version",
+      "automerge": false
+    },
+    {
       "description": "Tier 2 - Docker base images: group and no automerge",
       "matchManagers": ["docker-compose", "dockerfile"],
       "groupName": "Docker base images",

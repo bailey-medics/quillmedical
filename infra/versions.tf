@@ -1,7 +1,7 @@
 # versions.tf - Provider version constraints
 
 terraform {
-  required_version = ">= 1.15.2"
+  required_version = ">= 1.15.8"
 
   required_providers {
     google = {

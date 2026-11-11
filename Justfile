@@ -2817,6 +2817,9 @@ terraform-aws:
     {{initialise}} "terraform-aws"
     set -euo pipefail
 
+    # The Terraform here must be the one CI runs, since the state is shared.
+    bash scripts/check-terraform-version.sh host
+
     # The account numbers live in backend/.env, which is gitignored, and not
     # in a tfvars file: this repository is public. Trace off while they are
     # read, so they are not printed.
@@ -2867,6 +2870,10 @@ terraform-github:
     #!/usr/bin/env bash
     {{initialise}} "terraform-github"
     set -euo pipefail
+
+    # The Terraform here must be the one CI runs, since the state is shared.
+    bash scripts/check-terraform-version.sh host
+
     cd infra/github
 
     # Trace off, so the token is not printed.
