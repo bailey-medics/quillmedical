@@ -176,6 +176,59 @@ _e2e-up:
     echo "http://localhost:${port}"
 
 
+# Signs in to an AWS account (emails or management) unless already signed
+# in, so a lapsed session is renewed before Terraform starts, not halfway
+# through a plan. `just al` itself refuses the wrong account.
+_ensure-aws-login which:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    case "{{which}}" in
+        emails)     profile="quill-emails" ;;
+        management) profile="quill-management" ;;
+        *) echo "✗ Unknown account '{{which}}': emails or management."; exit 1 ;;
+    esac
+
+    if aws sts get-caller-identity --profile "$profile" >/dev/null 2>&1; then
+        exit 0
+    fi
+
+    echo "Not signed in to the AWS {{which}} account. Signing in now:"
+    echo "open the {{which}} account's console in the browser first."
+    just aws-login "{{which}}"
+
+    if ! aws sts get-caller-identity --profile "$profile" >/dev/null 2>&1; then
+        echo "✗ Still not signed in to the AWS {{which}} account."
+        exit 1
+    fi
+
+
+# Signs in to Google Cloud unless both of its sign-ins work: gcloud's own,
+# which gcloud commands use, and application default, which Terraform uses
+# for its state bucket. An expired one otherwise fails as invalid_rapt
+# partway through. Never call it inside $( ), which would hide the prompt.
+_ensure-gcp-login:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    signed_in() {
+        gcloud auth print-access-token >/dev/null 2>&1 \
+            && gcloud auth application-default print-access-token >/dev/null 2>&1
+    }
+
+    if signed_in; then
+        exit 0
+    fi
+
+    echo "Not signed in to Google Cloud. Signing in now."
+    just gcp-login
+
+    if ! signed_in; then
+        echo "✗ Still not signed in to Google Cloud."
+        exit 1
+    fi
+
+
 # Installs the frontend packages on the host when they have fallen behind
 # package.json or yarn.lock, as they do after a pull that bumps a version.
 # Yarn then refuses to run a script at all ("command not found: storybook"),
@@ -434,6 +487,8 @@ add-role-remote env:
     {{initialise}} "add-role ({{env}})"
     set -euo pipefail
 
+    just _ensure-gcp-login
+
     PROJECT=$(just _gcp_env_project "{{env}}")
     REGION="europe-west2"
 
@@ -541,6 +596,8 @@ build-admin env:
     {{initialise}} "build-admin ({{env}})"
     set -euo pipefail
 
+    just _ensure-gcp-login
+
     PROJECT=$(just _gcp_env_project "{{env}}")
     REGION="europe-west2"
     REGISTRY="${REGION}-docker.pkg.dev"
@@ -582,6 +639,8 @@ check-competency-seeding env:
     {{initialise}} "check-competency-seeding ({{env}})"
     set -euo pipefail
 
+    just _ensure-gcp-login
+
     PROJECT=$(just _gcp_env_project "{{env}}")
     REGION="europe-west2"
 
@@ -620,6 +679,8 @@ create-superadmin env:
     #!/usr/bin/env bash
     {{initialise}} "create-superadmin ({{env}})"
     set -euo pipefail
+
+    just _ensure-gcp-login
 
     PROJECT=$(just _gcp_env_project "{{env}}")
     REGION="europe-west2"
@@ -985,6 +1046,8 @@ migrate-current env:
     {{initialise}} "migrate-current ({{env}})"
     set -euo pipefail
 
+    just _ensure-gcp-login
+
     PROJECT=$(just _gcp_env_project "{{env}}")
     REGION="europe-west2"
 
@@ -1062,6 +1125,8 @@ migrate-remote env:
     {{initialise}} "migrate-remote ({{env}})"
     set -euo pipefail
 
+    just _ensure-gcp-login
+
     PROJECT=$(just _gcp_env_project "{{env}}")
     REGION="europe-west2"
 
@@ -1081,6 +1146,8 @@ newsletter-send env campaign confirm="" only_to="" limit="":
     #!/usr/bin/env bash
     {{initialise}} "newsletter-send ({{env}})"
     set -euo pipefail
+
+    just _ensure-gcp-login
 
     PROJECT=$(just _gcp_env_project "{{env}}")
     REGION="europe-west2"
@@ -1207,6 +1274,8 @@ passport-delete env username confirm="":
     #!/usr/bin/env bash
     {{initialise}} "passport-delete ({{env}})"
     set -euo pipefail
+
+    just _ensure-gcp-login
 
     PROJECT=$(just _gcp_env_project "{{env}}")
     REGION="europe-west2"
@@ -2838,17 +2907,13 @@ terraform-aws:
     export TF_VAR_management_account_id="$(grep '^AWS_MANAGEMENT_ACCOUNT_ID=' backend/.env | cut -d= -f2-)"
     export TF_VAR_identity_account_id="$(grep '^AWS_ID_ACCOUNT_ID=' backend/.env | cut -d= -f2-)"
 
-    # Both sign-ins are needed: the emails account for App production, and
-    # the management account, which holds the organisation's policy and is
-    # where the development account is reached from.
-    # Checked here so a lapsed session says so plainly, and not as a
-    # provider error halfway through a plan.
-    for profile in quill-emails quill-management; do
-        if ! aws sts get-caller-identity --profile "$profile" >/dev/null 2>&1; then
-            echo "✗ Not signed in to AWS as ${profile}. Run: just al$([ "$profile" = quill-management ] && echo ' management')"
-            exit 1
-        fi
-    done
+    # The state is in the Cloud Storage bucket, so Google is needed too.
+    # Both AWS sign-ins are needed: the emails account for App production,
+    # and the management account, which holds the organisation's policy and
+    # is where the development account is reached from.
+    just _ensure-gcp-login
+    just _ensure-aws-login emails
+    just _ensure-aws-login management
 
     cd infra/aws
 
@@ -2873,6 +2938,9 @@ terraform-github:
 
     # The Terraform here must be the one CI runs, since the state is shared.
     bash scripts/check-terraform-version.sh host
+
+    # The state is in the Cloud Storage bucket.
+    just _ensure-gcp-login
 
     cd infra/github
 
