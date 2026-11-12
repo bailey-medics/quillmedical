@@ -10,15 +10,15 @@
 # account can do.
 #
 # The account has no key. The organisation enforces
-# iam.disableServiceAccountKeyCreation, found on 2026-10-27 when
-# `keys create` was refused, and a key file on a home machine is what that
-# rule exists to stop. The box authenticates with a client certificate
-# instead, through the workload identity pool below.
-resource "google_service_account" "owl_logs" {
+# iam.disableServiceAccountKeyCreation, which refuses `keys create`, and a
+# key file on a home machine is what that rule exists to stop. The box
+# authenticates with a client certificate instead, through the workload
+# identity pool below.
+resource "google_service_account" "owl_watcher_logs" {
   project      = var.project_id
-  account_id   = "alert-watcher-logs"
+  account_id   = "owl-logs"
   display_name = "Owl: reads logs"
-  description  = "Read by Owl, the alert watcher on the home box, to find out why an alert fired. May read logs and nothing else; see infra/owl.tf."
+  description  = "Read by Owl, the alert watcher on the dev box, to find out why an alert fired. May read logs and nothing else; see infra/owl.tf."
 }
 
 # Its two grants were made by hand, as Mark, not here. They are:
@@ -32,8 +32,6 @@ resource "google_service_account" "owl_logs" {
 #     roles/logging.viewer, and `_AllLogs` is the view Logging makes on
 #     every bucket. Granted on that one view rather than project-wide,
 #     which would reach every view in every bucket.
-#
-# The commands are in the watcher phase of the plan above.
 
 # ---------- How the box signs in: a certificate, not a key ----------
 # Workload identity federation with an X.509 certificate. The box holds a
@@ -42,7 +40,7 @@ resource "google_service_account" "owl_logs" {
 # The authority's public certificate is checked in beside the environment's
 # tfvars and registered here as the pool's one trust anchor, so a certificate
 # it signed, and nothing else, can be swapped at Google's token service for a
-# short-lived token that acts as alert-watcher-logs.
+# short-lived token that acts as owl-logs.
 #
 # No long-lived secret leaves the box, and nothing expires daily: the client
 # certificate is valid for a year (Google stops accepting one after 390
@@ -50,50 +48,44 @@ resource "google_service_account" "owl_logs" {
 #
 # Only in an environment whose folder holds the authority's certificate.
 #
-# The pool and its provider were made by hand, as Mark, on 27 October 2026,
-# and are imported below. CI's apply account, github-actions, may not
-# create or change them: the first apply failed with "Permission
-# 'iam.workloadIdentityPools.create' denied", and stopped every apply after
-# it. It could not read them either, so importing failed too, until Mark
-# granted it roles/iam.workloadIdentityPoolViewer, which reads pools and
-# providers and changes nothing. (The pull request plan runs as github-plan,
-# whose roles/iam.securityReviewer already read them, which is why that plan
-# was clean and the apply was not.) Granting CI
-# roles/iam.workloadIdentityPoolAdmin was rejected, because that role lets
-# its holder create new ways to sign in to the project. So a change to
-# either, the trust anchor above all, is made by hand with
+# The pool, its provider, the account and the grant below were all made by
+# hand, as Mark, and are imported. CI's apply account, github-actions, may
+# not create or change a pool or provider: it holds
+# roles/iam.workloadIdentityPoolViewer, which reads them and changes
+# nothing. roles/iam.workloadIdentityPoolAdmin was rejected for it, because
+# that role lets its holder create new ways to sign in to the project. So a
+# change to either, the trust anchor above all, is made by hand with
 # `gcloud iam workload-identity-pools` and then written here to match, or
-# the next apply fails the same way. Renewing the client certificate
-# touches neither.
+# the next apply fails. Renewing the client certificate touches neither.
 #
-# Google refused the first authority, which had no key usage extensions,
-# with "Certificate is not in PEM format". It wants keyUsage=keyCertSign
-# and extendedKeyUsage=clientAuth on the authority, and digitalSignature on
-# the client certificate; the plan step has the openssl configuration.
+# Google refuses an authority without key usage extensions, with
+# "Certificate is not in PEM format". It wants keyUsage=keyCertSign and
+# extendedKeyUsage=clientAuth on the authority, and digitalSignature on the
+# client certificate.
 locals {
   owl_ca_path = "${path.module}/environments/${var.environment}/owl-ca.pem"
-  owl_subject = "quill-alert-watcher"
+  owl_subject = "quill-owl"
 }
 
-resource "google_iam_workload_identity_pool" "owl" {
+resource "google_iam_workload_identity_pool" "owl_watcher" {
   count = fileexists(local.owl_ca_path) ? 1 : 0
 
   project                   = var.project_id
-  workload_identity_pool_id = "alert-watcher"
-  display_name              = "Owl on the home box"
-  description               = "The home box reads App production's logs as alert-watcher-logs, authenticating with a client certificate. See infra/owl.tf."
+  workload_identity_pool_id = "owl-watcher"
+  display_name              = "Owl on the dev box"
+  description               = "Owl reads App production's logs as owl-logs, signing in with a client certificate. See infra/owl.tf."
 }
 
 # google.subject is the certificate's common name, and the condition admits
 # that one name only, so a second certificate from the same authority with
 # another name gets nothing until it is named here too.
-resource "google_iam_workload_identity_pool_provider" "owl_x509" {
-  count = length(google_iam_workload_identity_pool.owl)
+resource "google_iam_workload_identity_pool_provider" "owl_watcher_x509" {
+  count = length(google_iam_workload_identity_pool.owl_watcher)
 
   project                            = var.project_id
-  workload_identity_pool_id          = google_iam_workload_identity_pool.owl[0].workload_identity_pool_id
-  workload_identity_pool_provider_id = "home-box-certificate"
-  display_name                       = "Home box client certificate"
+  workload_identity_pool_id          = google_iam_workload_identity_pool.owl_watcher[0].workload_identity_pool_id
+  workload_identity_pool_provider_id = "dev-box-certificate"
+  display_name                       = "Dev box client certificate"
 
   attribute_mapping = {
     "google.subject" = "assertion.subject.dn.cn"
@@ -113,51 +105,77 @@ resource "google_iam_workload_identity_pool_provider" "owl_x509" {
 }
 
 # The certificate's identity may act as the log reader. This is a grant on
-# the service account, not on the project, and github-actions sets grants
-# like it on other accounts already.
-resource "google_service_account_iam_member" "owl_certificate_acts_as_log_reader" {
-  count = length(google_iam_workload_identity_pool.owl)
+# the service account, not on the project.
+resource "google_service_account_iam_member" "owl_watcher_certificate_acts_as_log_reader" {
+  count = length(google_iam_workload_identity_pool.owl_watcher)
 
-  service_account_id = google_service_account.owl_logs.name
+  service_account_id = google_service_account.owl_watcher_logs.name
   role               = "roles/iam.workloadIdentityUser"
-  member             = "principal://iam.googleapis.com/projects/${data.google_project.project.number}/locations/global/workloadIdentityPools/${google_iam_workload_identity_pool.owl[0].workload_identity_pool_id}/subject/${local.owl_subject}"
+  member             = "principal://iam.googleapis.com/projects/${data.google_project.project.number}/locations/global/workloadIdentityPools/${google_iam_workload_identity_pool.owl_watcher[0].workload_identity_pool_id}/subject/${local.owl_subject}"
 }
 
 import {
-  for_each = fileexists(local.owl_ca_path) ? toset(["alert-watcher"]) : toset([])
+  to = google_service_account.owl_watcher_logs
+  id = "projects/${var.project_id}/serviceAccounts/owl-logs@${var.project_id}.iam.gserviceaccount.com"
+}
 
-  to = google_iam_workload_identity_pool.owl[0]
+import {
+  for_each = fileexists(local.owl_ca_path) ? toset(["owl-watcher"]) : toset([])
+
+  to = google_iam_workload_identity_pool.owl_watcher[0]
   id = "projects/${var.project_id}/locations/global/workloadIdentityPools/${each.key}"
 }
 
 import {
-  for_each = fileexists(local.owl_ca_path) ? toset(["alert-watcher"]) : toset([])
+  for_each = fileexists(local.owl_ca_path) ? toset(["owl-watcher"]) : toset([])
 
-  to = google_iam_workload_identity_pool_provider.owl_x509[0]
-  id = "projects/${var.project_id}/locations/global/workloadIdentityPools/${each.key}/providers/home-box-certificate"
+  to = google_iam_workload_identity_pool_provider.owl_watcher_x509[0]
+  id = "projects/${var.project_id}/locations/global/workloadIdentityPools/${each.key}/providers/dev-box-certificate"
 }
 
+import {
+  for_each = fileexists(local.owl_ca_path) ? toset(["owl-watcher"]) : toset([])
 
-# Renamed from the alert watcher to Owl on 4 November 2026. Each block moves
-# the resource to its new name in the state, so the plan renames it rather
-# than destroying one and creating another. The IDs Google Cloud holds, such
-# as account_id and workload_identity_pool_id, are unchanged.
-moved {
-  from = google_service_account.alert_watcher_logs
-  to   = google_service_account.owl_logs
+  to = google_service_account_iam_member.owl_watcher_certificate_acts_as_log_reader[0]
+  id = "projects/${var.project_id}/serviceAccounts/owl-logs@${var.project_id}.iam.gserviceaccount.com roles/iam.workloadIdentityUser principal://iam.googleapis.com/projects/${data.google_project.project.number}/locations/global/workloadIdentityPools/${each.key}/subject/${local.owl_subject}"
 }
 
-moved {
-  from = google_iam_workload_identity_pool.alert_watcher
-  to   = google_iam_workload_identity_pool.owl
+# ---------- The set this replaced ----------
+# Owl first signed in through pool alert-watcher, provider
+# home-box-certificate, account alert-watcher-logs and a certificate named
+# quill-alert-watcher, all named before the alert watcher became Owl.
+# Google Cloud fixes those IDs, so they were replaced rather than renamed.
+# These blocks drop them from Terraform's state without destroying
+# anything: CI may not delete a pool or provider, and the old set is
+# deleted by hand once this is applied.
+removed {
+  from = google_service_account.owl_logs
+
+  lifecycle {
+    destroy = false
+  }
 }
 
-moved {
-  from = google_iam_workload_identity_pool_provider.alert_watcher_x509
-  to   = google_iam_workload_identity_pool_provider.owl_x509
+removed {
+  from = google_iam_workload_identity_pool.owl
+
+  lifecycle {
+    destroy = false
+  }
 }
 
-moved {
-  from = google_service_account_iam_member.alert_watcher_certificate_acts_as_log_reader
-  to   = google_service_account_iam_member.owl_certificate_acts_as_log_reader
+removed {
+  from = google_iam_workload_identity_pool_provider.owl_x509
+
+  lifecycle {
+    destroy = false
+  }
+}
+
+removed {
+  from = google_service_account_iam_member.owl_certificate_acts_as_log_reader
+
+  lifecycle {
+    destroy = false
+  }
 }

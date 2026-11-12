@@ -1,6 +1,6 @@
 // Reminds the channel before the box's client certificate runs out.
 //
-// The /alert skill reads App production's logs as alert-watcher-logs, which
+// The /alert skill reads App production's logs as owl-logs, which
 // the box signs in as by showing Google a client certificate (see
 // infra/owl.tf). The certificate lasts a year, and once it runs out
 // every investigation loses its logs without saying why. So from 30 days
@@ -17,12 +17,13 @@ export const REPEAT_DAYS = 7;
 
 export type Expiry = { readable: true; expires: Date } | { readable: false };
 
-// The same command as the certificate step of the remote dev machine plan.
-// The authority is unchanged by it, so nothing in Terraform changes.
+// The common name must be quill-owl, the one name the provider in
+// infra/owl.tf admits. The authority is unchanged by it, so nothing in
+// Terraform changes.
 const RENEWAL = [
   "```",
   "cd ~/.config/quill-owl/pki",
-  'openssl req -new -key watcher.key -subj "/O=Quill Medical/CN=quill-alert-watcher" -config exts.cnf -out watcher.csr',
+  'openssl req -new -key watcher.key -subj "/O=Quill Medical/CN=quill-owl" -config exts.cnf -out watcher.csr',
   "openssl x509 -req -in watcher.csr -CA ca.crt -CAkey ca.key -CAcreateserial -days 365 -sha256 -extfile exts.cnf -extensions leaf_exts -out watcher.crt",
   "rm watcher.csr ca.srl",
   "```",
