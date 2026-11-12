@@ -75,6 +75,7 @@ nav:
       - Sessions and requests: frontend/sessions-and-requests.md
       - Client updates: frontend/client-updates.md
       - Shared YAML: frontend/shared-yaml.md
+      - Branding: frontend/branding.md
       - In-app guides: frontend/guides.md
       - Accessibility:
           - Overview: frontend/accessibility.md

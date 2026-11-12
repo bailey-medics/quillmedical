@@ -213,3 +213,71 @@ describe("the brand-splash plugin", () => {
     expect(html).toBe(other);
   });
 });
+
+/** The paths an app theme names under frontend/public. */
+interface ThemeFiles {
+  logo: string;
+  wordmark: { src: string; dark_src?: string };
+  spinner?: { src: string; still: string };
+  icons?: { favicon: string; apple_touch_icon: string; manifest: string };
+}
+
+const appThemes: Record<string, ThemeFiles | undefined> = brandFile.app_themes;
+
+/** Every file an app theme names under frontend/public, with what it is. */
+function filesNamed(name: string): [string, string][] {
+  const theme = appThemes[name];
+
+  if (theme === undefined) {
+    return [];
+  }
+
+  const files: [string, string][] = [
+    ["logo", theme.logo],
+    ["wordmark", theme.wordmark.src],
+  ];
+
+  if (theme.wordmark.dark_src !== undefined) {
+    files.push(["dark wordmark", theme.wordmark.dark_src]);
+  }
+
+  if (theme.spinner !== undefined) {
+    files.push(["spinner", theme.spinner.src]);
+    files.push(["spinner still", theme.spinner.still]);
+  }
+
+  if (theme.icons !== undefined) {
+    files.push(["favicon", theme.icons.favicon]);
+    files.push(["touch icon", theme.icons.apple_touch_icon]);
+    files.push(["manifest", theme.icons.manifest]);
+  }
+
+  return files;
+}
+
+describe.each(Object.keys(appThemes))(
+  "every file the %s brand names",
+  (name) => {
+    it.each(filesNamed(name))("has its %s at %s", (_what, src) => {
+      expect(existsSync(path.join(frontend, "public", src))).toBe(true);
+    });
+
+    it("names only manifest icons that are there", () => {
+      const manifestPath = appThemes[name]?.icons?.manifest;
+
+      if (manifestPath === undefined) {
+        return;
+      }
+
+      const manifest = JSON.parse(
+        readFileSync(path.join(frontend, "public", manifestPath), "utf8"),
+      ) as { icons: { src: string }[] };
+
+      expect(manifest.icons.length).toBeGreaterThan(0);
+
+      for (const icon of manifest.icons) {
+        expect(existsSync(path.join(frontend, "public", icon.src))).toBe(true);
+      }
+    });
+  },
+);

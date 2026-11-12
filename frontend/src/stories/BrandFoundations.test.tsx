@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { createTheme, MantineThemeProvider } from "@mantine/core";
 import { screen } from "@testing-library/react";
 import type { ReactElement } from "react";
@@ -100,6 +102,23 @@ describe("BrandFoundations under Let's Do Digital", () => {
 
     expect(sources.some((src) => src?.includes("quill"))).toBe(false);
   });
+
+  it("draws each wordmark no wider than the room inside its tile", () => {
+    const { container } = renderAs("ldd", <BrandLogos />);
+    const svgImages = [...container.querySelectorAll("img")].filter((img) =>
+      img.getAttribute("src")?.endsWith(".svg"),
+    );
+
+    expect(svgImages).toHaveLength(2);
+
+    for (const img of svgImages) {
+      const tile = img.parentElement as HTMLElement;
+      const room = rem(tile.style.width) - 2 * rem(tile.style.padding);
+      const drawn = rem(img.style.height) * svgAspect(img);
+
+      expect(drawn).toBeLessThanOrEqual(room);
+    }
+  });
 });
 
 describe("a brand with no words", () => {
@@ -121,6 +140,32 @@ describe("a brand with no words", () => {
     quiet.mockRestore();
   });
 });
+
+/** A length the page sets in rem, as a number. */
+function rem(length: string): number {
+  expect(length).toMatch(/^[\d.]+rem$/);
+
+  return parseFloat(length);
+}
+
+/** Width over height, from the viewBox of the SVG file an image shows. */
+function svgAspect(img: HTMLImageElement): number {
+  const file = img.getAttribute("src")?.replace(/^.*?\/brands\//, "brands/");
+
+  expect(file).toMatch(/^brands\//);
+
+  const svg = readFileSync(
+    join(__dirname, "../../public", file as string),
+    "utf8",
+  );
+  const viewBox = /viewBox="([^"]+)"/.exec(svg)?.[1].split(/\s+/).map(Number);
+
+  expect(viewBox).toHaveLength(4);
+
+  const [, , width, height] = viewBox as number[];
+
+  return width / height;
+}
 
 /** Any four colours: the words are what is missing, not the colours. */
 function makeColours() {

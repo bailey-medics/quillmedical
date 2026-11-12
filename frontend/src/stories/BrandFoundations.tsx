@@ -338,7 +338,7 @@ const BRAND_WORDS: Readonly<Record<string, BrandWords>> = {
           <Image
             src={publicAsset("/brands/ldd/wordmark-white.svg")}
             alt="White Let's Do Digital wordmark"
-            height={3}
+            height={2.1}
           />
         ),
         width: 20,
@@ -353,7 +353,7 @@ const BRAND_WORDS: Readonly<Record<string, BrandWords>> = {
           <Image
             src={publicAsset("/brands/ldd/wordmark-dark.svg")}
             alt="Blue Let's Do Digital wordmark"
-            height={3}
+            height={2.1}
           />
         ),
         width: 20,

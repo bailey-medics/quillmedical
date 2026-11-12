@@ -343,6 +343,20 @@ diff for the alternative brand's name finds nothing.
       centred `Stack` shrinks the card. The card now hugs the logo
       (`w="fit-content"`), and a test in each holds it.
 
+      **The EoEETA and Let's Do Digital "On public background" stories
+      fill the whole canvas with navy** (Mark, 11 November 2026), rather
+      than a band across the top. They are on the top branch,
+      `brand-guide`: switching down the stack during a review broke the
+      running Storybook.
+
+      **Foundations/Colours no longer cuts the ends off Let's Do
+      Digital's wordmarks** (Mark, 11 November 2026). The Geostar Fill
+      wordmark is about 8.55 times as wide as it is tall, so at 3rem it
+      came out 25.7rem wide in a tile with 18.5rem of room, and the tile
+      clipped both ends. Both are now drawn at 2.1rem, the ribbon's
+      height, and `BrandFoundations.test.tsx` reads each SVG's viewBox
+      to check every wordmark fits its tile.
+
 - [x] **`brand-colour-fixes`: contrast and colours held for every
       brand.** From `brand-inbox-icon`,
       `brand-<alternative brand name>-contrast` and `brand-dark-ribbon`,
@@ -441,10 +455,9 @@ diff for the alternative brand's name finds nothing.
         animated webp and a still frame under
         `frontend/public/brands/ldd/`, rendered from `logo.png`), so the
         later swap is a change of files only.
-      - **Mark's own spinner, later** - when Mark provides it, its
-        source goes under `frontend/brand-sources/ldd/`, the files are
-        replaced on this branch with `just stu`, which rebases anything
-        above it.
+      - **No later swap** - the stand-in became the final spinner once
+        it was lit as it turns (below), so Mark's own spinner is not
+        coming and nothing waits to replace these files.
       - **Tab and home screen icons, and the manifest** - rendered from
         `logo.png` with Playwright's Chromium, as the source's were from
         its logo.
@@ -487,7 +500,7 @@ diff for the alternative brand's name finds nothing.
 
 ## Phase 3: Make it a feature for clients
 
-- [ ] **Write `docs/docs/frontend/branding.md`: how to add a brand, and
+- [x] **Write `docs/docs/frontend/branding.md`: how to add a brand, and
       what was learnt.** The steps a developer follows for a new client,
       in order: the block in `shared/brand.yaml`, the files under
       `frontend/public/brands/<brand>/` and how each is made, running
@@ -511,23 +524,33 @@ diff for the alternative brand's name finds nothing.
 
       Link it from the docs index.
 
-- [ ] **A test that every brand in `brand.yaml` is complete.** Every
+- [x] **A test that every brand in `brand.yaml` is complete.** Every
       file a brand names exists under `frontend/public/` (as
       `brandSplash.test.ts` already checks for the manifest icons), for
       every brand, so a new client's brand cannot ship with a missing
       icon.
 
-- [ ] **Name the accessibility journeys this touches.** The ribbon's
+- [x] **Name the accessibility journeys this touches.** The ribbon's
       colours, the logo and the splash change for a brand, so per the plan
       rules, list the journeys in
       `docs/docs/frontend/accessibility/journeys.md` that pass through the
       ribbon and navigation, and add them to the "Not yet run" list in
       `testing-log.md`, for Let's Do Digital as well as Quill.
 
-## Phase 4: Afterwards
+      **Done, as one unit, `brand-guide`, with the two steps above.** The
+      guide is `docs/docs/frontend/branding.md`, linked from the
+      Frontend section of `docs/mkdocs.yml`, and also lists the two
+      hand-written brand lists a new brand must join (the `storybook`
+      recipe's `case` and `scripts/start-app-args.sh`) and its words in
+      `BrandFoundations.tsx`. The completeness test is in
+      `frontend/scripts/brandSplash.test.ts`, run for every app theme;
+      it was seen to fail with Let's Do Digital's favicon moved away. All
+      four journeys pass through the ribbon and the side navigation, and
+      journey 1 opens on the logo and the splash, so one entry in
+      "Not yet run" asks for journeys 1 to 4 as Let's Do Digital and
+      again as Quill. `just uf scripts/brandSplash.test.ts` passes (33).
 
-- [ ] **Swap in Mark's Let's Do Digital spinner** when he provides it,
-      on `brand-splash-and-icons`, as that unit's step describes.
+## Phase 4: Afterwards
 
 - [ ] **Once the brand stack has merged, decide what happens to the
       source stack's own brand branches.** Rebasing the source stack onto
