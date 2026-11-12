@@ -101,6 +101,14 @@ export const greyScale: readonly string[] = brand.palette.grey;
 /** A brand's four colours: primary, secondary, background and mark. */
 export type BrandColours = typeof brandColours;
 
+/** A brand's own spinner, in place of the quill. */
+export interface BrandSpinner {
+  /** The animation's path under frontend/public */
+  src: string;
+  /** Its first frame, for somebody who has asked for less motion */
+  still: string;
+}
+
 /**
  * A brand's name drawn as an image: white for the top ribbon, and
  * optionally dark, for a light background.
@@ -127,6 +135,8 @@ declare module "@mantine/core" {
     logoTile?: string;
     /** The brand's wordmark image. Unset for Quill, whose is a PNG. */
     wordmark?: Wordmark;
+    /** The brand's own spinner. Unset for a brand that keeps the quill. */
+    spinner?: BrandSpinner;
   }
 }
 
@@ -212,6 +222,7 @@ interface BrandLook {
   logo?: string;
   logoTile?: string;
   wordmark?: Wordmark;
+  spinner?: BrandSpinner;
 }
 
 /**
@@ -258,6 +269,9 @@ function brandLook(name: string): BrandLook {
         darkSrc: source.wordmark.dark_src,
       }),
     },
+    ...(source.spinner !== undefined && {
+      spinner: { src: source.spinner.src, still: source.spinner.still },
+    }),
   };
 }
 
@@ -584,6 +598,7 @@ function buildTheme(look: BrandLook): MantineThemeOverride {
       ...(look.logo !== undefined && { logo: look.logo }),
       ...(look.logoTile !== undefined && { logoTile: look.logoTile }),
       ...(look.wordmark !== undefined && { wordmark: look.wordmark }),
+      ...(look.spinner !== undefined && { spinner: look.spinner }),
     },
 
     /** Use primary navy as the default colour for all components */

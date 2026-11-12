@@ -20,10 +20,25 @@
  * as `quillSpinnerClock` says the first has reached. One spinner taking
  * over from another therefore carries on, and does not snap back to face
  * on.
+ *
+ * Under a theme that carries a spinner of its own, such as Let's Do
+ * Digital's turning logo, the spinner is that animation in place of the
+ * quill, with its still first frame for somebody who has asked for less
+ * motion. It is an image, so it keeps its own time rather than the
+ * quill's clock; the
+ * browser shares one image's animation between the places it shows, so
+ * the start-up spinner hands over to it without a jump. A brand with no
+ * spinner keeps the quill.
  */
 
 import { useState } from "react";
-import { Box, VisuallyHidden, type BoxProps } from "@mantine/core";
+import {
+  Box,
+  VisuallyHidden,
+  useMantineTheme,
+  type BoxProps,
+} from "@mantine/core";
+import publicAsset from "@lib/publicAsset";
 import classes from "./QuillSpinner.module.css";
 import { QUILL_OUTLINE } from "./quillOutline";
 import { quillSpinnerElapsedMs } from "./quillSpinnerClock";
@@ -55,6 +70,7 @@ export default function QuillSpinner({
   // Read once, as the spinner appears: the animation starts then, and a
   // later render must not move it.
   const [elapsedMs] = useState(quillSpinnerElapsedMs);
+  const { other } = useMantineTheme();
 
   return (
     <Box
@@ -63,13 +79,29 @@ export default function QuillSpinner({
       h={size}
       __vars={{ "--quill-spinner-delay": `${-elapsedMs}ms` }}
     >
-      <div className={classes.tilt} aria-hidden="true">
-        <div className={classes.spin}>
-          <QuillLayer className={classes.face} />
-          <QuillLayer className={classes.lit} />
-          <QuillLayer className={classes.shadow} />
+      {other.spinner === undefined ? (
+        <div className={classes.tilt} aria-hidden="true">
+          <div className={classes.spin}>
+            <QuillLayer className={classes.face} />
+            <QuillLayer className={classes.lit} />
+            <QuillLayer className={classes.shadow} />
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className={classes.still} aria-hidden="true">
+          <picture className={classes.brandPicture}>
+            <source
+              media="(prefers-reduced-motion: reduce)"
+              srcSet={publicAsset(other.spinner.still)}
+            />
+            <img
+              className={classes.brandSpinner}
+              src={publicAsset(other.spinner.src)}
+              alt=""
+            />
+          </picture>
+        </div>
+      )}
       <VisuallyHidden role="status">{label}</VisuallyHidden>
     </Box>
   );

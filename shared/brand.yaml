@@ -162,6 +162,25 @@ app_themes:
     # blue and would be lost on the dark-mode page, which is that blue's
     # darker shade. A brand with no tile shows its logo as it is.
     logo_tile: "#ffffff"
+    # The spinner: the two heads, with no tile, turning on their upright
+    # axis as the quill does, one turn in 2.4 seconds, made from logo.png.
+    # They are lit by a bright light from the left: in deep shade as they
+    # widen from edge on, easing into their own colours around full width,
+    # and close to white as they narrow again. The still, for
+    # somebody who has asked their device for less motion, is the heads as
+    # drawn. A brand with none keeps the quill.
+    spinner:
+      src: /brands/ldd/logo-spinner.webp
+      still: /brands/ldd/logo-spinner-still.png
+    # The browser tab's icon and the installed app's: the logo on white at
+    # each size a browser asks for, made from logo.png, with a manifest
+    # naming Let's Do Digital and those icons, and the colour a phone gives
+    # its status bar. A brand with none keeps Quill's.
+    icons:
+      favicon: /brands/ldd/favicon.ico
+      apple_touch_icon: /brands/ldd/apple-touch-icon.png
+      manifest: /brands/ldd/manifest.webmanifest
+      theme_colour: "#0848a9"
     # The name drawn as an image, white for the blue ribbon, as Quill's is
     # quill-name-white.png. Set in Geostar Fill, Let's Do Digital's own
     # font, at its one weight, kept with its licence in

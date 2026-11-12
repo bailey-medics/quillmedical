@@ -425,7 +425,7 @@ diff for the alternative brand's name finds nothing.
       (81), and `just ts scripts/tests` (438, the seven new among them).
       `just sa ldd` itself waits for the main checkout, as Phase 0 says.
 
-- [ ] **`brand-splash-and-icons`: the brand from the first paint.** From
+- [x] **`brand-splash-and-icons`: the brand from the first paint.** From
       `<alternative brand name>-spinner`, `brand-icons` and
       `brand-splash-first`: the Vite plugin in
       `frontend/scripts/brandSplash.ts` that rewrites `index.html` for
@@ -448,6 +448,42 @@ diff for the alternative brand's name finds nothing.
       - **Tab and home screen icons, and the manifest** - rendered from
         `logo.png` with Playwright's Chromium, as the source's were from
         its logo.
+
+      **Built.** The stand-in spinner is the logo on its white tile,
+      turning on its upright axis, 48 frames of 50 ms, so one turn in 2.4
+      seconds as the quill's; `logo-spinner.webp` (230 KB) and
+      `logo-spinner-still.png`. It and the icons were drawn with Pillow
+      in the scratchpad rather than Playwright's Chromium, because the
+      source is a PNG, not an SVG, so there is nothing to render; no
+      script is kept, as the artwork is made once. The icons are the logo
+      cropped to its mark and set on white inside the 80% safe zone a
+      maskable Android icon needs: 512, 192, the 180 pixel touch icon,
+      and a favicon of 16, 32 and 48. `just uf scripts/brandSplash.test.ts
+      src/components/loading-spinner/QuillSpinner.test.tsx
+      src/theme.test.ts` passes (124), and `just ub
+      app/email/brand_test.py` (41). The spinner stories were looked at
+      in Storybook, in light and dark.
+
+      **Mark kept the stand-in, and asked for it to be lit as the quill
+      is** (10 November 2026). The quill fades lit and shadowed copies
+      over its face; the brand spinner is one image, so the light is
+      drawn into its frames instead. After a first try, Mark asked for no
+      tile and a bright light from the left: the two heads alone, on a
+      transparent ground. He then asked for a darker shade, a slower
+      change into the light, and a much lighter end. Counting each half
+      turn from 0 degrees, edge on, through 90, face on, to 180: the
+      heads are at 30% of their colours until 45 degrees, ease up to the
+      colours as drawn by 110, hold them to 120, then ease 80% of the way
+      to white by 165. The change into the light starts earlier than the
+      70 degrees Mark first named, because 70 to 100 still looked like a
+      light switched on. 72 frames of 33 ms, so still 2.4 seconds a
+      turn, at webp quality 70 (340 KB). The still frame is the heads as
+      drawn, with no tile. The blue head is faint on the dark-mode page
+      while in shade, and the very light end fades into a white page.
+      The two spinner stories and two page spinner stories that wrapped
+      the spinner in Let's Do Digital's theme were taken out (Mark,
+      11 November 2026): under `just sb ldd` they repeated the stories
+      above them.
 
 ## Phase 3: Make it a feature for clients
 

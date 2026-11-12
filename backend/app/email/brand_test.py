@@ -228,6 +228,80 @@ class TestAppThemes:
         with pytest.raises(ValidationError, match="Not a hex colour"):
             load_brand(_write_brand(tmp_path, data))
 
+    def test_the_real_file_gives_ldd_its_turning_logo(self) -> None:
+        spinner = BRAND.app_themes["ldd"].spinner
+
+        assert spinner is not None
+        assert spinner.src == "/brands/ldd/logo-spinner.webp"
+        assert spinner.still == "/brands/ldd/logo-spinner-still.png"
+
+    def test_a_theme_with_no_spinner_keeps_the_quill(
+        self, tmp_path: Path
+    ) -> None:
+        data = _brand_data()
+        del data["app_themes"]["ldd"]["spinner"]  # type: ignore[index]
+
+        brand = load_brand(_write_brand(tmp_path, data))
+
+        assert brand.app_themes["ldd"].spinner is None
+
+    @pytest.mark.parametrize("field", ["src", "still"])
+    def test_refuses_a_spinner_path_not_from_the_root(
+        self, tmp_path: Path, field: str
+    ) -> None:
+        data = _brand_data()
+        data["app_themes"]["ldd"]["spinner"][field] = "spinner.webp"  # type: ignore[index]
+
+        with pytest.raises(ValidationError):
+            load_brand(_write_brand(tmp_path, data))
+
+    def test_refuses_a_spinner_with_no_still_frame(
+        self, tmp_path: Path
+    ) -> None:
+        data = _brand_data()
+        del data["app_themes"]["ldd"]["spinner"]["still"]  # type: ignore[index]
+
+        with pytest.raises(ValidationError):
+            load_brand(_write_brand(tmp_path, data))
+
+    def test_the_real_file_gives_ldd_its_own_icons(self) -> None:
+        icons = BRAND.app_themes["ldd"].icons
+
+        assert icons is not None
+        assert icons.favicon == "/brands/ldd/favicon.ico"
+        assert icons.apple_touch_icon == "/brands/ldd/apple-touch-icon.png"
+        assert icons.manifest == "/brands/ldd/manifest.webmanifest"
+        assert icons.theme_colour == "#0848a9"
+
+    def test_a_theme_with_no_icons_keeps_quills(self, tmp_path: Path) -> None:
+        data = _brand_data()
+        del data["app_themes"]["ldd"]["icons"]  # type: ignore[index]
+
+        brand = load_brand(_write_brand(tmp_path, data))
+
+        assert brand.app_themes["ldd"].icons is None
+
+    @pytest.mark.parametrize(
+        "field", ["favicon", "apple_touch_icon", "manifest"]
+    )
+    def test_refuses_an_icon_path_not_from_the_root(
+        self, tmp_path: Path, field: str
+    ) -> None:
+        data = _brand_data()
+        data["app_themes"]["ldd"]["icons"][field] = "favicon.ico"  # type: ignore[index]
+
+        with pytest.raises(ValidationError):
+            load_brand(_write_brand(tmp_path, data))
+
+    def test_refuses_a_theme_colour_that_is_not_hex(
+        self, tmp_path: Path
+    ) -> None:
+        data = _brand_data()
+        data["app_themes"]["ldd"]["icons"]["theme_colour"] = "blue"  # type: ignore[index]
+
+        with pytest.raises(ValidationError):
+            load_brand(_write_brand(tmp_path, data))
+
     def test_refuses_an_unknown_field(self, tmp_path: Path) -> None:
         data = _brand_data()
         data["app_themes"]["ldd"]["favicon"] = "/x.svg"  # type: ignore[index]

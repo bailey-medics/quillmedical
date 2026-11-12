@@ -1,6 +1,9 @@
+import type { ReactElement } from "react";
 import { afterEach, describe, expect, it } from "vitest";
+import { MantineThemeProvider } from "@mantine/core";
 import { screen } from "@testing-library/react";
 import { renderWithMantine } from "@test/test-utils";
+import { makeTheme } from "@/theme";
 import QuillSpinner from "./QuillSpinner";
 import stylesheet from "./QuillSpinner.module.css?raw";
 import {
@@ -131,6 +134,14 @@ describe("QuillSpinner stylesheet", () => {
     );
   });
 
+  it("keeps a still spinner fading in and out, quill or brand", () => {
+    const reducedMotion = stylesheet.split(
+      "@media (prefers-reduced-motion: reduce)",
+    )[1];
+
+    expect(reducedMotion).toMatch(/\.tilt,\s*\.still\s*{\s*animation:\s*pulse/);
+  });
+
   // A browser ignores a custom property given as the curve at a step of
   // an animation and falls back to its default, with no warning. That
   // made the whole turn lurch for a while before anybody measured it.
@@ -170,5 +181,75 @@ describe("QuillSpinner stylesheet", () => {
       "--quill-spinner-lit: var(--mantine-color-primary-2);",
     );
     expect(stylesheet).toContain("--quill-spinner-shadow: #000a17;");
+  });
+});
+
+describe("QuillSpinner under another brand", () => {
+  const ldd = makeTheme("ldd").theme;
+
+  function renderAsLdd(ui: ReactElement) {
+    return renderWithMantine(
+      <MantineThemeProvider theme={ldd}>{ui}</MantineThemeProvider>,
+    );
+  }
+
+  it("shows the brand's own spinner in place of the quill", () => {
+    const { container } = renderAsLdd(<QuillSpinner />);
+
+    expect(container.querySelector("img")).toHaveAttribute(
+      "src",
+      expect.stringContaining("brands/ldd/logo-spinner.webp"),
+    );
+    expect(container.querySelectorAll("svg")).toHaveLength(0);
+  });
+
+  it("shows its still frame to somebody who asked for less motion", () => {
+    const { container } = renderAsLdd(<QuillSpinner />);
+    const still = container.querySelector("picture source");
+
+    expect(still).toHaveAttribute("media", "(prefers-reduced-motion: reduce)");
+    expect(still).toHaveAttribute(
+      "srcset",
+      expect.stringContaining("brands/ldd/logo-spinner-still.png"),
+    );
+  });
+
+  it("still tells screen readers it is loading", () => {
+    renderAsLdd(<QuillSpinner />);
+
+    expect(screen.getByRole("status")).toHaveTextContent("Loading");
+  });
+
+  it("hides the spinner from assistive technology", () => {
+    const { container } = renderAsLdd(<QuillSpinner />);
+    const hidden = container.querySelector('[aria-hidden="true"]');
+
+    expect(hidden?.querySelector("img")).toHaveAttribute("alt", "");
+    expect(screen.queryByRole("img")).not.toBeInTheDocument();
+  });
+
+  it("is the size it is given", () => {
+    renderAsLdd(<QuillSpinner size="8rem" />);
+    const box = screen.getByRole("status").parentElement;
+
+    expect(box?.style.width).toContain("8rem");
+  });
+});
+
+describe("QuillSpinner under a brand with a logo and no spinner", () => {
+  it("keeps the quill", () => {
+    const base = makeTheme("ldd").theme;
+    const noSpinner = {
+      ...base,
+      other: { ...base.other, spinner: undefined },
+    };
+    const { container } = renderWithMantine(
+      <MantineThemeProvider theme={noSpinner}>
+        <QuillSpinner />
+      </MantineThemeProvider>,
+    );
+
+    expect(container.querySelectorAll("svg")).toHaveLength(3);
+    expect(container.querySelector("img")).toBeNull();
   });
 });
