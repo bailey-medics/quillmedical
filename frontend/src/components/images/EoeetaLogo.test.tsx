@@ -25,6 +25,17 @@ describe("EoeetaLogo Component", () => {
     });
   });
 
+  describe("Shape", () => {
+    it("keeps its card to the logo's width, so the logo is not stretched", () => {
+      const { container } = renderWithMantine(<EoeetaLogo />);
+      const card = container
+        .querySelector("img")
+        ?.closest(".mantine-Card-root");
+
+      expect(card).toHaveStyle({ width: "fit-content" });
+    });
+  });
+
   describe("Props customisation", () => {
     it("accepts custom alt text", () => {
       const { getByAltText } = renderWithMantine(<EoeetaLogo alt="EoEETA" />);

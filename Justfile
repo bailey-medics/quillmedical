@@ -292,7 +292,7 @@ _python-guard:
 
 # Prefix a bare name with feature/, leaving an already-prefixed one alone.
 #
-# Branch protection rejects anything outside feature/*, hotfix/*, copilot/*
+# Branch protection rejects anything outside feature/*, hotfix/*
 # and renovate/*, and it rejects it at creation time - so a stack branch
 # named without the prefix fails at the push, once the commits already
 # exist. Cheaper to add it here than to unpick a branch by hand.
@@ -301,7 +301,7 @@ _stack-branch-name name:
     set -euo pipefail
 
     case "{{name}}" in
-        feature/*|hotfix/*|copilot/*|renovate/*) echo "{{name}}" ;;
+        feature/*|hotfix/*|renovate/*) echo "{{name}}" ;;
         *) echo "feature/{{name}}" ;;
     esac
 
@@ -2364,7 +2364,7 @@ stack-update message="":
 
 
 alias stw := stack-watch
-# Redraw the stack with PR and CI state every minute; keys ready, sync, move and rebase
+# Redraw the stack with PR and CI state every minute; keys ready, sync, move, rebase, expand and open a file's diff
 stack-watch:
     #!/usr/bin/env bash
     set +x
@@ -2399,11 +2399,33 @@ stack-watch:
         fi
     }
 
+    # Whether `e` has expanded the branch checked out, listing its files.
+    # While it is on, a digit opens a file rather than moving branch.
+    expanded=0
+
+    # Opening a file's diff changes nothing in the stack, so the drawing
+    # already on screen is kept rather than fetched from GitHub again.
+    refetch=1
+
     while true; do
+
+        # The branch is read afresh each time, so moving branch with a
+        # number moves the expansion with it. Spelt out so an empty array
+        # expands to nothing: a bare "${expand[@]}" stops a Mac's bash 3.2
+        # under `set -u`.
+        expand=()
+
+        if [ "${expanded}" -eq 1 ]; then
+            expand=(--expand "$(git branch --show-current)")
+        fi
 
         # Fetch first, then clear, so the old stack stays on screen during
         # the ~3s call.
-        drawn=$(python3 "{{stack_scripts}}"/stack-status.py --prs --numbered --colour 2>&1 || true)
+        if [ "${refetch}" -eq 1 ]; then
+            drawn=$(python3 "{{stack_scripts}}"/stack-status.py --prs --numbered --colour ${expand[@]+"${expand[@]}"} 2>&1 || true)
+        fi
+
+        refetch=1
 
         # Stop the dots a keypress started, further down.
         stop_dots
@@ -2417,11 +2439,18 @@ stack-watch:
         k='\033[1;94m'
         n='\033[0m'
 
+        # What a digit does depends on whether the files are listed.
+        picks="branch"
+
+        if [ "${expanded}" -eq 1 ]; then
+            picks="file"
+        fi
+
         # The colour codes split each word at its key letter, which the
         # spelling check reads as fragments.
         # cspell:disable
         printf '%b\n' \
-            "ready ${k}a${n}ll - ${k}s${n}ync - ${k}number${n} branch - re${k}b${n}ase - re${k}f${n}resh - ${k}ctrl-c${n} to stop"
+            "ready ${k}a${n}ll - ${k}s${n}ync - ${k}number${n} ${picks} - re${k}b${n}ase - re${k}f${n}resh - ${k}e${n}xpand - ${k}ctrl-c${n} to stop"
 
         # cspell:enable
         # Flush with the left edge, like the line above. stack-status.py
@@ -2430,7 +2459,9 @@ stack-watch:
 
         # The minute's wait doubles as the keyboard: a is `stack-ready`, s is
         # `stack-sync`, a number is `stack-move`, b is `stack-rebase`, f
-        # refreshes.
+        # refreshes, and e lists the files the branch checked out changes,
+        # or stops listing them. While they are listed, a number opens that
+        # file side by side with its parent's copy, with `code --diff`.
         #
         # With no terminal on stdin `read` returns at once and the loop
         # would spin against GitHub, so that case just sleeps.
@@ -2463,7 +2494,7 @@ stack-watch:
             fi
 
             case "${key}" in
-                a|A|s|S|[1-9]|b|B|f|F)
+                a|A|s|S|[1-9]|b|B|f|F|e|E)
                     break
                     ;;
                 $'\e')
@@ -2494,6 +2525,58 @@ stack-watch:
                 ;;
             [1-9])
 
+                # While the files are listed, a digit picks a file. The same
+                # option that lists them says which, so the numbers on screen
+                # and the one picked come from one reading of the branch.
+                # With ten or more, wait 5s for a second digit, as for a
+                # branch below.
+                if [ "${expanded}" -eq 1 ]; then
+                    pick=(python3 "{{stack_scripts}}"/stack-status.py ${expand[@]+"${expand[@]}"} --diff-at)
+                    number="${key}"
+
+                    if "${pick[@]}" "$((key * 10))" >/dev/null 2>&1; then
+                        printf '%s · a second digit within 5s for %s0 and up, or any other key for file %s ' \
+                            "${key}" "${key}" "${key}"
+                        second=""
+                        read -rsn1 -t 5 second || true
+                        echo ""
+
+                        case "${second}" in
+                            [0-9]) number="${key}${second}" ;;
+                        esac
+                    fi
+
+                    # The drawing on screen stays as it is whatever happens
+                    # next: nothing in the stack has changed.
+                    refetch=0
+
+                    if ! sides="$("${pick[@]}" "${number}" 2>/dev/null)"; then
+                        start_dots "${number} · there is no file ${number}"
+                        continue
+                    fi
+
+                    # Two lines: the parent's copy, then the working file.
+                    # vscode-code.sh finds the VS Code window this terminal
+                    # belongs to, from a tmux window opened by `just tw` as
+                    # well as from VS Code's own terminal, and runs `code`
+                    # for it. When it cannot, or `code` fails, the message
+                    # is shown and waits, since the redraw would wipe it.
+                    left="${sides%%$'\n'*}"
+                    right="${sides#*$'\n'}"
+                    opened=0
+                    opening=$(bash "{{stack_scripts}}"/vscode-code.sh --diff "${left}" "${right}" 2>&1) || opened=$?
+
+                    if [ "${opened}" -ne 0 ]; then
+                        printf '\n%s\n\n' "${opening}"
+                        read -rsn1 -p "file ${number} did not open · any key to carry on" _ || true
+                        echo ""
+                        continue
+                    fi
+
+                    start_dots "${number} · opened file ${number} side by side with its parent"
+                    continue
+                fi
+
                 # With ten or more branches, wait 5s for a second digit.
                 # "Is there a branch ten times this one" says whether any
                 # two-digit number starts with it.
@@ -2523,6 +2606,19 @@ stack-watch:
 
                 recipe=(stack-move "${number}")
                 start_dots "${number} · checking out branch ${number}"
+                ;;
+            e|E)
+
+                # A redraw, as f is, with the files listed or no longer.
+                if [ "${expanded}" -eq 1 ]; then
+                    expanded=0
+                    start_dots "e · no longer listing the branch's files"
+                else
+                    expanded=1
+                    start_dots "e · listing the branch's files"
+                fi
+
+                continue
                 ;;
             *)
 
@@ -2556,14 +2652,25 @@ stack-watch:
 
 
 alias sa := start-app
-# Start the dev app without the EHR services, FHIR and EHRbase (build: 'b' will also build the images)
-start-app build="":
+# Start the dev app without the EHR services, as a brand: quill (default) or ldd; add 'b' to build the images
+start-app *args:
     #!/usr/bin/env bash
     {{initialise}} "start-app"
+
+    # `b` builds and anything else is the brand, in either order, so
+    # `just sa b` and `just sa ldd b` both work. Sorted, and an unknown
+    # brand refused, before anything starts.
+    parsed="$(bash scripts/start-app-args.sh {{args}})" || exit 1
+    read -r brand build <<< "${parsed}"
+
+    # Read by compose.dev.yml, as BRAND for the backend and VITE_BRAND for
+    # the frontend, so the two cannot run as different brands.
+    export BRAND="${brand}"
 
     just _dev-stack-guard
     just _start-docker-daemon
     echo "Access the frontend at: http://$(just _host-address)"
+    echo "Brand: ${brand}"
     echo "Clinical services (FHIR/EHRbase) disabled"
 
     # The backend bind-mounts teaching-repos/. Left for Docker to make, it
@@ -2572,7 +2679,7 @@ start-app build="":
 
     build_args=""
 
-    if [ "{{build}}" = "b" ]; then
+    if [ "${build}" = "yes" ]; then
         docker compose -f compose.dev.yml down
         docker volume rm -f quillmedical_frontend_node_modules >/dev/null 2>&1 || true
         cd frontend && yarn install && cd ..
@@ -2650,10 +2757,19 @@ stop:
 
 
 alias sb := storybook
-# Run storybook dev server
-storybook:
+# Run storybook dev server, in one brand: quill (default) or ldd
+storybook brand="quill":
     #!/usr/bin/env bash
     {{initialise}} "storybook"
+
+    # Checked before anything else runs, so a mistyped brand costs nothing.
+    # The list is written out by hand and widened when a new brand is
+    # ready; the preview checks again against shared/brand.yaml.
+    case "{{brand}}" in
+        quill|ldd) ;;
+        *) echo "✗ Unknown brand '{{brand}}': quill or ldd."; exit 1 ;;
+    esac
+
     just _frontend-packages-current || exit 1
 
     # Render the emails first: the email stories show saved HTML files and
@@ -2682,8 +2798,9 @@ storybook:
     cd frontend
 
     # Written so an empty list expands to nothing under `set -u` in the
-    # bash 3.2 a Mac ships, which otherwise calls it unbound.
-    yarn storybook ${host_args[@]+"${host_args[@]}"}
+    # bash 3.2 a Mac ships, which otherwise calls it unbound. The preview
+    # reads STORYBOOK_BRAND and builds every story's theme from it.
+    STORYBOOK_BRAND="{{brand}}" yarn storybook ${host_args[@]+"${host_args[@]}"}
 
 
 alias sbt := storybook-test
@@ -2721,6 +2838,9 @@ terraform-aws:
     {{initialise}} "terraform-aws"
     set -euo pipefail
 
+    # The Terraform here must be the one CI runs, since the state is shared.
+    bash scripts/check-terraform-version.sh host
+
     # The account numbers live in backend/.env, which is gitignored, and not
     # in a tfvars file: this repository is public. Trace off while they are
     # read, so they are not printed.
@@ -2753,8 +2873,8 @@ terraform-aws:
 
     cd infra/aws
 
-    # -upgrade: see terraform-github; the lock file is not committed.
-    terraform init -input=false -upgrade
+    # No -upgrade: the providers are the ones in the committed lock file.
+    terraform init -input=false
     terraform plan
     read -rp "Apply these changes? (yes/no): " confirm
 
@@ -2771,6 +2891,10 @@ terraform-github:
     #!/usr/bin/env bash
     {{initialise}} "terraform-github"
     set -euo pipefail
+
+    # The Terraform here must be the one CI runs, since the state is shared.
+    bash scripts/check-terraform-version.sh host
+
     cd infra/github
 
     # Trace off, so the token is not printed.
@@ -2792,9 +2916,9 @@ terraform-github:
     fi
 
     # -reconfigure: an old checkout may still record a local backend; the
-    # state is in the bucket. -upgrade: the lock file is not committed, so
-    # an older provider could not read state a newer one wrote.
-    terraform init -input=false -reconfigure -upgrade
+    # state is in the bucket. No -upgrade: the providers are the ones in the
+    # committed lock file.
+    terraform init -input=false -reconfigure
     terraform plan -var-file=terraform.tfvars
     read -rp "Apply these changes? (yes/no): " confirm
 
@@ -3138,9 +3262,9 @@ worktree-create branch="":
     # Branch protection rejects anything outside this set, and finding
     # that out after the worktree exists means unpicking it by hand.
     case "{{branch}}" in
-        feature/*|hotfix/*|copilot/*|renovate/*) ;;
+        feature/*|hotfix/*|renovate/*) ;;
         *)
-            echo "Branch must start with feature/, hotfix/, copilot/ or renovate/"
+            echo "Branch must start with feature/, hotfix/ or renovate/"
             exit 1
             ;;
     esac

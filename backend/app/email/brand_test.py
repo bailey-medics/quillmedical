@@ -11,7 +11,9 @@ from app.email.brand import (
     BRAND,
     BRAND_YAML_PATH,
     EmailTheme,
+    brand_names,
     email_theme,
+    identity,
     load_brand,
 )
 
@@ -119,5 +121,163 @@ class TestAMistakeFailsAtLoad:
             load_brand(_write_brand(tmp_path, data))
 
 
+class TestAppThemes:
+    def test_the_real_file_holds_ldd_from_its_logo(self) -> None:
+        ldd = BRAND.app_themes["ldd"]
+
+        assert ldd.brand.primary == "#0848a9"
+        assert ldd.brand.secondary == "#d0d0d0"
+        assert ldd.palette.primary[5] == ldd.brand.primary
+        assert ldd.palette.secondary[5] == ldd.brand.secondary
+        assert ldd.ribbon_icon_idle == "#c0c0c0"
+        assert ldd.link == "#0848a9"
+        assert ldd.logo == "/brands/ldd/logo.png"
+        assert ldd.logo_tile == "#ffffff"
+        assert ldd.wordmark.src == "/brands/ldd/wordmark-white.svg"
+        assert ldd.wordmark.dark_src == "/brands/ldd/wordmark-dark.svg"
+        assert ldd.wordmark.alt == "Let's Do Digital"
+
+    def test_refuses_a_ramp_of_nine_shades(self, tmp_path: Path) -> None:
+        data = _brand_data()
+        palette = data["app_themes"]["ldd"]["palette"]  # type: ignore[index]
+        palette["primary"] = palette["primary"][:9]
+
+        with pytest.raises(ValidationError):
+            load_brand(_write_brand(tmp_path, data))
+
+    def test_refuses_a_shade_that_is_not_hex(self, tmp_path: Path) -> None:
+        data = _brand_data()
+        data["app_themes"]["ldd"]["palette"]["secondary"][2] = "primary.2"  # type: ignore[index]
+
+        with pytest.raises(ValidationError, match="Not a hex colour"):
+            load_brand(_write_brand(tmp_path, data))
+
+    def test_refuses_a_brand_colour_that_is_not_hex(
+        self, tmp_path: Path
+    ) -> None:
+        data = _brand_data()
+        data["app_themes"]["ldd"]["brand"]["mark"] = "white"  # type: ignore[index]
+
+        with pytest.raises(ValidationError, match="Not a hex colour"):
+            load_brand(_write_brand(tmp_path, data))
+
+    def test_refuses_a_logo_path_not_from_the_root(
+        self, tmp_path: Path
+    ) -> None:
+        data = _brand_data()
+        data["app_themes"]["ldd"]["logo"] = "brands/ldd/logo.png"  # type: ignore[index]
+
+        with pytest.raises(ValidationError):
+            load_brand(_write_brand(tmp_path, data))
+
+    def test_refuses_a_logo_tile_that_is_not_hex(self, tmp_path: Path) -> None:
+        data = _brand_data()
+        data["app_themes"]["ldd"]["logo_tile"] = "white"  # type: ignore[index]
+
+        with pytest.raises(ValidationError, match="Not a hex colour"):
+            load_brand(_write_brand(tmp_path, data))
+
+    def test_a_logo_tile_may_be_left_out(self, tmp_path: Path) -> None:
+        data = _brand_data()
+        del data["app_themes"]["ldd"]["logo_tile"]  # type: ignore[index]
+
+        loaded = load_brand(_write_brand(tmp_path, data))
+
+        assert loaded.app_themes["ldd"].logo_tile is None
+
+    def test_refuses_a_wordmark_with_no_alt_text(self, tmp_path: Path) -> None:
+        data = _brand_data()
+        data["app_themes"]["ldd"]["wordmark"]["alt"] = ""  # type: ignore[index]
+
+        with pytest.raises(ValidationError):
+            load_brand(_write_brand(tmp_path, data))
+
+    def test_a_wordmark_needs_no_dark_version(self, tmp_path: Path) -> None:
+        data = _brand_data()
+        del data["app_themes"]["ldd"]["wordmark"]["dark_src"]  # type: ignore[index]
+
+        loaded = load_brand(_write_brand(tmp_path, data))
+
+        assert loaded.app_themes["ldd"].wordmark.dark_src is None
+
+    def test_refuses_a_dark_wordmark_path_not_from_the_root(
+        self, tmp_path: Path
+    ) -> None:
+        data = _brand_data()
+        wordmark = data["app_themes"]["ldd"]["wordmark"]  # type: ignore[index]
+        wordmark["dark_src"] = "brands/ldd/wordmark-dark.svg"
+
+        with pytest.raises(ValidationError):
+            load_brand(_write_brand(tmp_path, data))
+
+    def test_refuses_a_ribbon_icon_colour_that_is_not_hex(
+        self, tmp_path: Path
+    ) -> None:
+        data = _brand_data()
+        data["app_themes"]["ldd"]["ribbon_icon_idle"] = "secondary.3"  # type: ignore[index]
+
+        with pytest.raises(ValidationError, match="Not a hex colour"):
+            load_brand(_write_brand(tmp_path, data))
+
+    def test_refuses_a_link_colour_that_is_not_hex(
+        self, tmp_path: Path
+    ) -> None:
+        data = _brand_data()
+        data["app_themes"]["ldd"]["link"] = "primary.5"  # type: ignore[index]
+
+        with pytest.raises(ValidationError, match="Not a hex colour"):
+            load_brand(_write_brand(tmp_path, data))
+
+    def test_refuses_an_unknown_field(self, tmp_path: Path) -> None:
+        data = _brand_data()
+        data["app_themes"]["ldd"]["favicon"] = "/x.svg"  # type: ignore[index]
+
+        with pytest.raises(ValidationError, match="favicon"):
+            load_brand(_write_brand(tmp_path, data))
+
+
 def test_resolved_themes_are_still_email_themes() -> None:
     assert isinstance(email_theme("ldd"), EmailTheme)
+
+
+class TestIdentity:
+    """What each brand calls itself, and the address it commits from."""
+
+    def test_quill_is_the_first_brand(self) -> None:
+        assert brand_names() == ("quill", "ldd")
+
+    def test_quill_is_quill_medical(self) -> None:
+        quill = identity("quill")
+
+        assert quill.name == "Quill Medical"
+        assert quill.short_name == "Quill"
+        assert quill.committer_email == "noreply@quill-medical.com"
+
+    def test_ldd_is_lets_do_digital(self) -> None:
+        ldd = identity("ldd")
+
+        assert ldd.name == "Let's Do Digital"
+        assert ldd.short_name == "LDD"
+        assert ldd.committer_email == "info@letsdodigital.org"
+
+    def test_an_unknown_brand_is_refused_with_the_list(self) -> None:
+        with pytest.raises(ValueError, match="Known brands: quill, ldd"):
+            identity("constructor")
+
+    def test_refuses_a_committer_address_that_is_not_one(
+        self, tmp_path: Path
+    ) -> None:
+        data = _brand_data()
+        data["identity"]["committer_email"] = "Quill Medical"  # type: ignore[index]
+
+        with pytest.raises(ValidationError):
+            load_brand(_write_brand(tmp_path, data))
+
+    def test_refuses_an_app_theme_without_an_identity(
+        self, tmp_path: Path
+    ) -> None:
+        data = _brand_data()
+        del data["app_themes"]["ldd"]["identity"]  # type: ignore[index]
+
+        with pytest.raises(ValidationError):
+            load_brand(_write_brand(tmp_path, data))

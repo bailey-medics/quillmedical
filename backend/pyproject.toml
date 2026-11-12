@@ -16,10 +16,10 @@ package-mode = false
 
 [tool.poetry.dependencies]
 python = "~3.14"
-fastapi = "0.162.0"
+fastapi = "0.162.2"
 uvicorn = { extras = ["standard"], version = "0.54.0" }
-pydantic = "2.14.2"
-sqlalchemy = "2.1.6"
+pydantic = "2.14.3"
+sqlalchemy = "2.1.8"
 psycopg = { extras = ["binary"], version = ">=3.2,<4.0" }
 python-dotenv = "1.2.4"
 httpx = "0.28.1"
@@ -72,7 +72,7 @@ email-validator = "^2.3.0"
 # and a subprocess per write, which is where the predecessor project's
 # push code stalled. Ships manylinux and macOS wheels, so it adds no
 # build dependency to the image.
-pygit2 = ">=1.20.0,<1.21.0"
+pygit2 = ">=1.21.0,<1.22.0"
 
 [tool.poetry.group.dev.dependencies]
 mypy = "^2.0.0"

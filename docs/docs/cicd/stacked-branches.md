@@ -74,6 +74,14 @@ Three recipes only look: `stack-log` draws the stack from the local
 record, `stack-log-long` adds each pull request's state, and `stack-files`
 lists what each branch changes against its own parent.
 
+`stack-watch` redraws `stack-log-long` every minute and takes keys. Its
+`e` key lists the files the branch checked out changes, against its own
+parent as `stack-files` does, each with a number. While they are listed a
+digit opens that file side by side with its parent's copy in VS Code,
+through `code --diff`, from VS Code's own terminal or from a tmux window
+opened from one with `just tw`, over Remote SSH too; `e` again puts the
+digits back to moving branch.
+
 ## How a stack meets CI
 
 A stacked pull request's base is the branch below it, not `main`. Two

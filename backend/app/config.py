@@ -148,6 +148,17 @@ class Settings(BaseSettings):
         ),
     )
 
+    # --- Brand ---
+    BRAND: str = Field(
+        "quill",
+        description=(
+            "The brand this deployment runs as: 'quill', or a key of "
+            "app_themes in shared/brand.yaml. Decides the name the app "
+            "commits under; the frontend's VITE_BRAND decides its look, "
+            "and `just sa <brand>` sets the two from one variable."
+        ),
+    )
+
     # --- Permanent API-compatibility test harness flag ---
     TEST_API_ENDPOINTS_ENABLED: bool = Field(
         False,
@@ -513,6 +524,26 @@ class Settings(BaseSettings):
     )
 
     # --- Startup validation ---
+    @model_validator(mode="after")
+    def _validate_brand(self) -> Settings:
+        """Refuse a brand the brand file does not hold.
+
+        Imported here rather than at the top: the brand module reads
+        ``shared/brand.yaml`` when it is imported, and nothing else in
+        this module needs it.
+        """
+        from app.email.brand import brand_names
+
+        known = brand_names()
+
+        if self.BRAND not in known:
+            raise ValueError(
+                f"BRAND is {self.BRAND!r}, which is not a brand. Known "
+                f"brands: {', '.join(known)}"
+            )
+
+        return self
+
     @model_validator(mode="after")
     def _validate_core_db_password(self) -> Settings:
         """Require a password unless a token signs the connection in."""

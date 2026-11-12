@@ -9,13 +9,20 @@ describe("useDocumentTitle", () => {
     document.title = original;
   });
 
-  it("puts the page first and the site second", async () => {
-    // The site name is read from index.html's title when the module
-    // loads, so load a fresh copy with one set.
-    document.title = "Quill Medical";
+  it("puts the page first and the site second", () => {
+    expect(documentTitle("Settings")).toBe("Settings - Quill Medical");
+  });
+
+  it("takes the site's name from the brand, not from index.html", async () => {
+    // A build run as Let's Do Digital must say so in every tab, whatever
+    // the static index.html said before the app started.
+    document.title = "Something else";
+    vi.stubEnv("VITE_BRAND", "ldd");
     vi.resetModules();
     const fresh = await import("./useDocumentTitle");
-    expect(fresh.documentTitle("Settings")).toBe("Settings - Quill Medical");
+
+    expect(fresh.documentTitle("Settings")).toBe("Settings - Let's Do Digital");
+    vi.unstubAllEnvs();
   });
 
   it("sets the title while mounted and restores it after", () => {

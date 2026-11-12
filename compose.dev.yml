@@ -20,6 +20,9 @@ services:
       TEACHING_QUESTION_BANK_PATH: /teaching-repos
       TEACHING_IMAGES_BASE_URL: /api/teaching/images
       CLINICAL_SERVICES_ENABLED: ${CLINICAL_SERVICES_ENABLED:-false}
+      # The brand the stack runs as, from `just sa <brand>`; the frontend
+      # takes the same variable as VITE_BRAND.
+      BRAND: ${BRAND:-quill}
       EMAIL_DRY_RUN: "false"
     expose:
       - "8000"
@@ -52,6 +55,7 @@ services:
     environment:
       - NODE_ENV=development
       - VITE_CLINICAL_SERVICES_ENABLED=${CLINICAL_SERVICES_ENABLED:-false}
+      - VITE_BRAND=${BRAND:-quill}
       # Runs as root, for the node_modules volumes. dev-start.sh hands what
       # it generates back to the host user: see scripts/hand-back-ownership.sh.
       - HOST_UID=${HOST_UID:-}
@@ -184,7 +188,7 @@ services:
 
   ehrbase:
     profiles: ["clinical"]
-    image: ehrbase/ehrbase:2.36.0
+    image: ehrbase/ehrbase:2.37.1
     container_name: quill_ehrbase
     env_file: backend/.env
     environment:

@@ -51,11 +51,12 @@ class _Strict(BaseModel):
 
 
 class BrandColours(_Strict):
-    """The Quill app's own colours, which its CSS variables are built from.
+    """The app's brand colours, which its CSS variables are built from.
 
-    One set, not one per brand: the app is always Quill. A brand an
-    email goes out as, Let's Do Digital among them, has an
-    ``EmailTheme`` and nothing here.
+    The app ships as Quill, and the top-level set is Quill's. An entry
+    in ``app_themes`` carries its own set, for the app shown in another
+    brand's look. A brand an email goes out as has an ``EmailTheme``,
+    which is separate from these.
 
     ``mark`` is the colour of the logo's symbol, the quill, as drawn on
     a navy tile for the email avatar and the app icon. The rest are the app's
@@ -111,6 +112,147 @@ class Palette(_Strict):
             )
 
         return ramp[shade]
+
+
+def _check_hex(value: str) -> str:
+    """Refuse anything but a six-digit hex colour.
+
+    Args:
+        value: The colour as written in the file.
+
+    Returns:
+        The colour, unchanged.
+
+    Raises:
+        ValueError: If *value* is not ``#`` and six hex digits.
+    """
+    if not _HEX.match(value):
+        raise ValueError(f"Not a hex colour: {value!r}")
+
+    return value
+
+
+class AppBrandColours(BrandColours):
+    """An app theme's brand colours, each a hex value."""
+
+    @model_validator(mode="after")
+    def _all_hex(self) -> AppBrandColours:
+        """Refuse a colour that is not hex, since nothing resolves it.
+
+        Returns:
+            The model, unchanged.
+        """
+        for name in BrandColours.model_fields:
+            _check_hex(getattr(self, name))
+
+        return self
+
+
+class AppPalette(_Strict):
+    """An app theme's two ramps, lightest first, each a hex value.
+
+    The grey ramp is not here: it is Mantine's neutral greys, shared by
+    every theme.
+
+    Attributes:
+        primary: Ten shades; shade 5 is the filled-button colour.
+        secondary: Ten shades.
+    """
+
+    primary: list[str] = Field(min_length=10, max_length=10)
+    secondary: list[str] = Field(min_length=10, max_length=10)
+
+    @model_validator(mode="after")
+    def _all_hex(self) -> AppPalette:
+        """Refuse a shade that is not a hex colour.
+
+        Returns:
+            The model, unchanged.
+        """
+        for shade in [*self.primary, *self.secondary]:
+            _check_hex(shade)
+
+        return self
+
+
+class Identity(_Strict):
+    """What one brand calls itself.
+
+    Attributes:
+        name: The full name, for page titles, and the name every commit
+            the app makes is committed under. The author of a commit is
+            always the person who acted.
+        short_name: The name where room is short, such as under a home
+            screen icon.
+        committer_email: The address commits are made from, never a
+            person's.
+    """
+
+    name: str = Field(min_length=1)
+    short_name: str = Field(min_length=1)
+    committer_email: str = Field(pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
+class Wordmark(_Strict):
+    """A brand's name drawn as an image, for the app's top ribbon.
+
+    Attributes:
+        src: The image's path under ``frontend/public``, white, for the
+            ribbon.
+        dark_src: The same name drawn dark, for a light background.
+            Unset shows the white one there too.
+        alt: What a screen reader says for it, such as
+            ``"Let's Do Digital"``.
+    """
+
+    src: str = Field(pattern=r"^/\S+$")
+    dark_src: str | None = Field(default=None, pattern=r"^/\S+$")
+    alt: str = Field(min_length=1)
+
+
+class AppTheme(_Strict):
+    """Another look for the app, beside Quill's own.
+
+    Nothing in the backend reads it beyond checking it here, so a
+    mistake in the file fails when the backend starts rather than in
+    the browser.
+
+    Attributes:
+        identity: What the brand calls itself, and its committer address.
+        brand: The brand colours.
+        palette: The primary and secondary ramps.
+        ribbon_icon_idle: The ribbon's mail icon while nothing waits.
+        link: Links in light mode.
+        logo: The logo's path under ``frontend/public``.
+        logo_tile: The colour of a tile drawn behind the logo, for a logo
+            that would be lost on the brand's own colours. Unset draws
+            the logo as it is.
+        wordmark: The name, drawn as an image.
+    """
+
+    identity: Identity
+    brand: AppBrandColours
+    palette: AppPalette
+    ribbon_icon_idle: str
+    link: str
+    logo: str = Field(pattern=r"^/\S+$")
+    logo_tile: str | None = None
+    wordmark: Wordmark
+
+    @model_validator(mode="after")
+    def _colours_are_hex(self) -> AppTheme:
+        """Refuse a ribbon icon, link or logo tile colour that is not hex.
+
+        Returns:
+            The model, unchanged.
+        """
+        _check_hex(self.ribbon_icon_idle)
+        _check_hex(self.link)
+
+        if self.logo_tile is not None:
+            _check_hex(self.logo_tile)
+
+        return self
 
 
 class EmailFont(_Strict):
@@ -250,8 +392,10 @@ class EmailTheme(_Strict):
 class BrandFile(_Strict):
     """The whole of ``shared/brand.yaml``, with every colour resolved."""
 
+    identity: Identity
     brand: BrandColours
     palette: Palette
+    app_themes: dict[str, AppTheme]
     email_themes: dict[EmailThemeName, EmailTheme]
 
     @model_validator(mode="after")
@@ -306,6 +450,44 @@ def load_brand(path: Path) -> BrandFile:
 
 
 BRAND: BrandFile = load_brand(BRAND_YAML_PATH)
+
+
+#: The name the app's own look goes by. Every other brand is a key of
+#: ``app_themes``.
+QUILL = "quill"
+
+
+def brand_names() -> tuple[str, ...]:
+    """Every brand the app can run as: Quill, then each app theme.
+
+    Returns:
+        The names, ``"quill"`` first, as ``BRAND`` may be set to.
+    """
+    return (QUILL, *BRAND.app_themes)
+
+
+def identity(name: str) -> Identity:
+    """What the brand called *name* calls itself.
+
+    Args:
+        name: ``"quill"``, or a key of ``app_themes``.
+
+    Returns:
+        The brand's identity.
+
+    Raises:
+        ValueError: If *name* is not a brand.
+    """
+    if name == QUILL:
+        return BRAND.identity
+
+    if name not in BRAND.app_themes:
+        raise ValueError(
+            f"Unknown brand {name!r}. Known brands: "
+            f"{', '.join(brand_names())}"
+        )
+
+    return BRAND.app_themes[name].identity
 
 
 def email_theme(name: EmailThemeName) -> EmailTheme:

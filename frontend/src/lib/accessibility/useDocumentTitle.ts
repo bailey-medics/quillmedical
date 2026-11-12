@@ -9,10 +9,15 @@
  */
 
 import { useEffect } from "react";
+import { appIdentity } from "@/theme";
 
-/** The site's own name, as `index.html` sets it. */
-const SITE_TITLE =
-  typeof document === "undefined" ? "Quill Medical" : document.title;
+/**
+ * The site's own name: the brand's, from shared/brand.yaml, so a build
+ * run as Let's Do Digital says Let's Do Digital. `index.html` still says
+ * Quill Medical for the moment before the app starts, and `main.tsx`
+ * replaces it.
+ */
+const SITE_TITLE = appIdentity.name;
 
 /** Build "Page - Site", the GOV.UK pattern, most specific part first. */
 export function documentTitle(pageTitle: string): string {

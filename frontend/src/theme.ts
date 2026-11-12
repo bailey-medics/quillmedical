@@ -30,6 +30,7 @@ import {
   v8CssVariablesResolver,
   type CSSVariablesResolver,
   type MantineColorsTuple,
+  type MantineThemeOverride,
 } from "@mantine/core";
 
 import brand from "@/generated/brand.json";
@@ -96,6 +97,169 @@ export const secondaryScale = toColoursTuple(
  * Matches the Mantine `gray` colour key so `gray.0` === greyScale[0], etc.
  */
 export const greyScale: readonly string[] = brand.palette.grey;
+
+/** A brand's four colours: primary, secondary, background and mark. */
+export type BrandColours = typeof brandColours;
+
+/**
+ * A brand's name drawn as an image: white for the top ribbon, and
+ * optionally dark, for a light background.
+ */
+export interface Wordmark {
+  src: string;
+  darkSrc?: string;
+  alt: string;
+}
+
+declare module "@mantine/core" {
+  /**
+   * Which brand a theme is, so a component can ask the theme around it
+   * rather than a context of its own. Set by `makeTheme`.
+   */
+  export interface MantineThemeOther {
+    /** "quill", or a key of `app_themes` in shared/brand.yaml. */
+    brand?: string;
+    /** The brand's four colours, as Foundations/Colours shows them. */
+    colours?: BrandColours;
+    /** The brand's logo under frontend/public. Unset for Quill. */
+    logo?: string;
+    /** The colour of the tile behind the logo. Unset for no tile. */
+    logoTile?: string;
+    /** The brand's wordmark image. Unset for Quill, whose is a PNG. */
+    wordmark?: Wordmark;
+  }
+}
+
+/**
+ * Every brand the app can be shown in: Quill, then each entry of
+ * `app_themes` in shared/brand.yaml. Storybook offers them through
+ * `just sb <brand>`, and the dev stack runs as one through
+ * `just sa <brand>`.
+ */
+export const BRAND_NAMES: readonly string[] = [
+  "quill",
+  ...Object.keys(brand.app_themes),
+];
+
+/** What a brand calls itself. */
+export interface Identity {
+  /** The full name, for page titles */
+  name: string;
+  /** The name where room is short */
+  shortName: string;
+}
+
+/**
+ * What the brand called *name* calls itself, from shared/brand.yaml.
+ *
+ * @throws Error if *name* is not one of `BRAND_NAMES`.
+ */
+export function brandIdentity(name: string): Identity {
+  // hasOwn, not a lookup: "constructor" would find Object's own
+  if (name !== "quill" && !Object.hasOwn(brand.app_themes, name)) {
+    throw new Error(
+      `Unknown brand "${name}". Known brands: ${BRAND_NAMES.join(", ")}`,
+    );
+  }
+
+  const source =
+    name === "quill" ? brand.identity : brand.app_themes[name]?.identity;
+
+  if (source === undefined) {
+    throw new Error(`The brand "${name}" has no identity in brand.yaml`);
+  }
+
+  return { name: source.name, shortName: source.short_name };
+}
+
+/**
+ * The brand the app runs as, from `VITE_BRAND`. Unset or empty means
+ * Quill, so a build that sets nothing is Quill as it always was. An
+ * unknown brand stops the app here rather than showing Quill under
+ * another name, as `.storybook/preview.tsx` does for `STORYBOOK_BRAND`.
+ *
+ * @throws Error if *value* is set and is not one of `BRAND_NAMES`.
+ */
+export function resolveAppBrand(value: string | undefined): string {
+  const name = value || "quill";
+
+  if (!BRAND_NAMES.includes(name)) {
+    throw new Error(
+      `VITE_BRAND is "${name}", which is not a brand. ` +
+        `Known brands: ${BRAND_NAMES.join(", ")}`,
+    );
+  }
+
+  return name;
+}
+
+/** The brand this build runs as. */
+export const APP_BRAND: string = resolveAppBrand(import.meta.env.VITE_BRAND);
+
+/** What this build calls itself. */
+export const appIdentity: Identity = brandIdentity(APP_BRAND);
+
+/** What a brand changes: its colours, ramps, logo and wordmark. */
+interface BrandLook {
+  name: string;
+  colours: BrandColours;
+  primary: MantineColorsTuple;
+  secondary: MantineColorsTuple;
+  /** The ribbon's mail icon while nothing is waiting */
+  ribbonIconIdle: string;
+  /** Links in light mode */
+  link: string;
+  logo?: string;
+  logoTile?: string;
+  wordmark?: Wordmark;
+}
+
+/**
+ * The look called *name*, from shared/brand.yaml.
+ *
+ * @throws Error if *name* is not one of `BRAND_NAMES`.
+ */
+function brandLook(name: string): BrandLook {
+  if (name === "quill") {
+    return {
+      name,
+      colours: brandColours,
+      primary: primaryScale,
+      secondary: secondaryScale,
+      // Grey 6: quiet on the navy ribbon, and 5.3:1 against it
+      ribbonIconIdle: greyScale[6],
+      // Primary 4: 6.9:1 on white
+      link: primaryScale[4],
+    };
+  }
+
+  // hasOwn, not a lookup: "constructor" would find Object's own
+  if (!Object.hasOwn(brand.app_themes, name)) {
+    throw new Error(
+      `Unknown brand "${name}". Known brands: ${BRAND_NAMES.join(", ")}`,
+    );
+  }
+
+  const source = brand.app_themes[name];
+
+  return {
+    name,
+    colours: source.brand,
+    primary: toColoursTuple(`${name} primary`, source.palette.primary),
+    secondary: toColoursTuple(`${name} secondary`, source.palette.secondary),
+    ribbonIconIdle: source.ribbon_icon_idle,
+    link: source.link,
+    logo: source.logo,
+    logoTile: source.logo_tile,
+    wordmark: {
+      src: source.wordmark.src,
+      alt: source.wordmark.alt,
+      ...(source.wordmark.dark_src !== undefined && {
+        darkSrc: source.wordmark.dark_src,
+      }),
+    },
+  };
+}
 
 /**
  * Status colour tokens - semantic colours for badges, alerts, and buttons.
@@ -237,282 +401,338 @@ export const layoutTokens = {
  * opt-in that restores the Mantine 8 derivation, so we build on it
  * rather than the default.
  */
-const appCssVariables = {
-  variables: {
-    // App brand
-    "--brand-primary": brandColours.primary,
-    "--brand-secondary": brandColours.secondary,
-    "--brand-background": brandColours.background,
-    "--brand-mark": brandColours.mark,
-    // Button interaction colours - amber button text/active states.
-    // Brand navy, not #333: on the amber fill #333 was 4.75:1, and on the
-    // hover and pressed shades 3.3:1 and 3.1:1, under WCAG AA. Navy is
-    // 6.6:1 at rest and 4.6:1 on hover.
-    "--button-text-dark": brandColours.primary,
-    // Pressed shares the hover amber, secondary.6. The old #a07728 was one
-    // step darker and gave navy text 4.3:1; nothing darker than the hover
-    // shade keeps AA. Pressing still shows: Mantine's Button moves down a
-    // pixel while active.
-    "--button-active-bg": secondaryScale[6],
-    "--button-outline-hover-text": "#d4a854",
-    // Burger menu hover background
-    "--burger-hover-bg": "#1e2d4a",
-    // Typography - fixed font sizes (applied on :root in typography.css)
-    "--typo-xs": typographyTokens.fontSizes.xs,
-    "--typo-sm": typographyTokens.fontSizes.sm,
-    "--typo-md": typographyTokens.fontSizes.md,
-    "--typo-lg": typographyTokens.fontSizes.lg,
-    "--typo-xl": typographyTokens.fontSizes.xl,
-    // A field's placeholder while the field is in error. Mantine paints
-    // it the full error colour, the same red as the border, so an empty
-    // field read as if somebody had typed something wrong into it. Part
-    // transparent, so it thins towards whatever the field sits on in
-    // either colour scheme, and still reads as a placeholder.
-    "--error-placeholder-color":
-      "color-mix(in srgb, var(--error-color) 55%, transparent)",
-    // Status colours - semantic design tokens
-    "--success-color": statusColourValues.success,
-    "--warning-color": statusColourValues.warning,
-    "--alert-color": statusColourValues.alert,
-    "--info-color": statusColourValues.info,
-    "--neutral-color": statusColourValues.neutral,
-    "--accent-color": statusColourValues.accent,
-    "--outstanding-color": statusColourValues.outstanding,
-    "--update-color": statusColourValues.update,
-    // Text on a status fill that asks for dark. Near-black rather than
-    // the app's navy body colour: navy on the yellow `neutral` fill is
-    // a markedly weaker contrast than black, and these fills exist to
-    // be read at a glance.
-    "--status-text-dark": "#1a1a1a",
-  },
-  dark: {
-    // Text - light grey on dark background (placeholder values, to be refined)
-    "--mantine-color-text": "#c9d1d9",
-    // Muted text (`c="dimmed"`). Mantine's default is `dark-2`, which this
-    // theme repurposes as a navy surface, leaving dimmed text at 1.2:1.
-    // primary.1 is at least 6.3:1 on the body, card and input navies.
-    "--mantine-color-dimmed": primaryScale[1],
-    "--mantine-color-placeholder": "#5c6370",
-    // Body background - primary colour (#001a36, shade 8)
-    "--mantine-color-body": "#001a36",
-    "--brand-background": "#001a36",
-    // Card/surface background - primary shade 7 (one lighter than body)
-    "--card-bg": "#042340",
-    "--card-border": "#0a2f56",
-    "--card-border-color": "transparent",
-    // Input background - Mantine dark uses --mantine-color-dark-6 for inputs
-    "--mantine-color-default": "#0a2f56",
-    "--mantine-color-dark-6": "#0a2f56",
-    // Input border - deepest navy (shade 9)
-    "--mantine-color-dark-4": "#000d1f",
-    // Pill (multi-select tags) - text and background
-    "--mantine-color-dark-0": "#c9d1d9",
-    "--mantine-color-dark-7": "#0a2f56",
-    // Dimmed text / input arrows
-    "--mantine-color-dark-2": "#0a2f56",
-    // Stepper inactive circles, outline separator
-    "--mantine-color-dark-5": "#042340",
-    // Error text/border - accessible orange-red for colour-blind users.
-    // A light coral in dark mode: 5.8:1 on the input navy, where the
-    // light-mode value is 3.9:1.
-    "--mantine-color-error": "var(--error-color)",
-    "--error-color": "#ff8a65",
-    "--error-focus-color": "#ffb3b3",
-    // Links: primary.4 is 2.3:1 on the card navy, primary.1 is 6.3:1 or
-    // better on every dark surface. Hover goes lighter, not darker.
-    "--link-color": primaryScale[1],
-    "--link-hover-color": primaryScale[0],
-    // Mantine's own Anchor colour, pointed at the link token. TextLink's
-    // CSS module sets the same colour, but which of the two wins depends
-    // on stylesheet order, which differs between Storybook and the
-    // production build: the e2e scan caught primary.4 on the login page.
-    "--mantine-color-anchor": "var(--link-color)",
-    // Chat bubble backgrounds. Mine is primary.5 rather than primary.4:
-    // body text on primary.4 was 4.47:1, just under AA.
-    "--bubble-mine-bg": primaryScale[5],
-    "--bubble-theirs-bg": "#0a2f56",
-    "--bubble-shadow": "none",
-    "--bubble-border-top": "1px solid #0a2f56",
-    // Current nav link - brand amber, ample contrast on navy
-    "--nav-active-colour": "var(--mantine-color-secondary-5)",
-    // Nav link hover - Mantine's own non-active hover shade
-    "--nav-hover-bg": "var(--mantine-color-dark-6)",
-    // Current nav link fill. The hover shade rather than dark.5: amber
-    // secondary.5 is 5.2:1 on dark.6 and only 4.3:1 on dark.5, under AA
-    // for 19px body text.
-    "--nav-active-bg": "var(--mantine-color-dark-6)",
-    ...statusTextVariables(statusTextColourValues.dark),
-  },
-  light: {
-    "--mantine-color-text": "#143f6b",
-    // Muted text (`c="dimmed"`). Mantine's default gray.6 is 3.3:1 on
-    // white, under the WCAG AA 4.5:1 for body text; gray.7 is 8.2:1 on
-    // white and 6.9:1 on gray.2.
-    "--mantine-color-dimmed": greyScale[7],
-    "--mantine-color-placeholder": "var(--mantine-color-gray-4)",
-    // Error text/border - accessible orange-red for colour-blind users.
-    // The same hue as before, darkened: the old #f55142 was 3.4:1 on
-    // white, #c4320a is 5.5:1 on white and 4.7:1 on gray.2.
-    "--mantine-color-error": "var(--error-color)",
-    "--error-color": "#c4320a",
-    "--error-focus-color": "#ffb3b3",
-    // Links: primary.4 is 6.9:1 on white; hover darkens to the brand navy.
-    "--link-color": primaryScale[4],
-    "--link-hover-color": primaryScale[8],
-    "--mantine-color-anchor": "var(--link-color)",
-    "--bubble-mine-bg": "#bdd2eb",
-    "--bubble-theirs-bg": "#fae8cc",
-    "--bubble-shadow": "0 1px 0 rgba(0,0,0,0.06)",
-    "--bubble-border-top": "1px solid rgba(0,0,0,0.06)",
-    // Current nav link - amber, darkened to secondary.7 for light mode:
-    // the brand secondary.5 is 2.7:1 on white, secondary.7 is 5.5:1
-    "--nav-active-colour": "var(--mantine-color-secondary-7)",
-    "--nav-hover-bg": "var(--mantine-color-gray-0)",
-    // Current nav link fill: a mild grey, one step darker than the hover
-    // so the current link still reads as current under the pointer.
-    // secondary.7 is 4.9:1 on gray.1.
-    "--nav-active-bg": "var(--mantine-color-gray-1)",
-    ...statusTextVariables(statusTextColourValues.light),
-  },
-};
+function appCssVariables(look: BrandLook) {
+  const { colours, primary, secondary } = look;
 
-export const cssVariablesResolver: CSSVariablesResolver = (mantineTheme) =>
-  deepMerge(v8CssVariablesResolver(mantineTheme), appCssVariables);
+  return {
+    variables: {
+      // App brand
+      "--brand-primary": colours.primary,
+      "--brand-secondary": colours.secondary,
+      "--brand-background": colours.background,
+      "--brand-mark": colours.mark,
+      // The ribbon's mail icon while nothing is waiting: grey 6 on Quill's
+      // navy, a light grey on Let's Do Digital's blue, each 3:1 or more
+      "--ribbon-icon-idle": look.ribbonIconIdle,
+      // Button interaction colours - amber button text/active states.
+      // Brand navy, not #333: on the amber fill #333 was 4.75:1, and on the
+      // hover and pressed shades 3.3:1 and 3.1:1, under WCAG AA. Navy is
+      // 6.6:1 at rest and 4.6:1 on hover.
+      "--button-text-dark": colours.primary,
+      // Pressed shares the hover amber, secondary.6. The old #a07728 was one
+      // step darker and gave navy text 4.3:1; nothing darker than the hover
+      // shade keeps AA. Pressing still shows: Mantine's Button moves down a
+      // pixel while active.
+      "--button-active-bg": secondary[6],
+      "--button-outline-hover-text": "#d4a854",
+      // Burger menu hover background
+      "--burger-hover-bg": "#1e2d4a",
+      // Typography - fixed font sizes (applied on :root in typography.css)
+      "--typo-xs": typographyTokens.fontSizes.xs,
+      "--typo-sm": typographyTokens.fontSizes.sm,
+      "--typo-md": typographyTokens.fontSizes.md,
+      "--typo-lg": typographyTokens.fontSizes.lg,
+      "--typo-xl": typographyTokens.fontSizes.xl,
+      // A field's placeholder while the field is in error. Mantine paints
+      // it the full error colour, the same red as the border, so an empty
+      // field read as if somebody had typed something wrong into it. Part
+      // transparent, so it thins towards whatever the field sits on in
+      // either colour scheme, and still reads as a placeholder.
+      "--error-placeholder-color":
+        "color-mix(in srgb, var(--error-color) 55%, transparent)",
+      // Status colours - semantic design tokens
+      "--success-color": statusColourValues.success,
+      "--warning-color": statusColourValues.warning,
+      "--alert-color": statusColourValues.alert,
+      "--info-color": statusColourValues.info,
+      "--neutral-color": statusColourValues.neutral,
+      "--accent-color": statusColourValues.accent,
+      "--outstanding-color": statusColourValues.outstanding,
+      "--update-color": statusColourValues.update,
+      // Text on a status fill that asks for dark. Near-black rather than
+      // the app's navy body colour: navy on the yellow `neutral` fill is
+      // a markedly weaker contrast than black, and these fills exist to
+      // be read at a glance.
+      "--status-text-dark": "#1a1a1a",
+    },
+    dark: {
+      // Text - light grey on dark background (placeholder values, to be refined)
+      "--mantine-color-text": "#c9d1d9",
+      // Muted text (`c="dimmed"`). Mantine's default is `dark-2`, which this
+      // theme repurposes as a navy surface, leaving dimmed text at 1.2:1.
+      // primary.1 is at least 6.3:1 on the body, card and input navies.
+      "--mantine-color-dimmed": primary[1],
+      "--mantine-color-placeholder": "#5c6370",
+      // Body background - primary shade 8 (Quill's brand navy)
+      "--mantine-color-body": primary[8],
+      // The ribbon is the page's own colour in dark mode, for every brand.
+      // Quill's brand navy is primary 8, so its ribbon does not change; a
+      // brand whose primary is its shade 5 would otherwise sit as a mid
+      // bar over a dark page.
+      "--ribbon-bg": primary[8],
+      "--brand-background": primary[8],
+      // Card/surface background - primary shade 7 (one lighter than body)
+      "--card-bg": primary[7],
+      "--card-border": primary[6],
+      "--card-border-color": "transparent",
+      // Input background - Mantine dark uses --mantine-color-dark-6 for inputs
+      "--mantine-color-default": primary[6],
+      "--mantine-color-dark-6": primary[6],
+      // Input border - deepest shade (9)
+      "--mantine-color-dark-4": primary[9],
+      // Pill (multi-select tags) - text and background
+      "--mantine-color-dark-0": "#c9d1d9",
+      "--mantine-color-dark-7": primary[6],
+      // Dimmed text / input arrows
+      "--mantine-color-dark-2": primary[6],
+      // Stepper inactive circles, outline separator
+      "--mantine-color-dark-5": primary[7],
+      // Error text/border - accessible orange-red for colour-blind users.
+      // A light coral in dark mode: 5.8:1 on the input navy, where the
+      // light-mode value is 3.9:1.
+      "--mantine-color-error": "var(--error-color)",
+      "--error-color": "#ff8a65",
+      "--error-focus-color": "#ffb3b3",
+      // Links: primary.4 is 2.3:1 on the card navy, primary.1 is 6.3:1 or
+      // better on every dark surface. Hover goes lighter, not darker.
+      "--link-color": primary[1],
+      "--link-hover-color": primary[0],
+      // Mantine's own Anchor colour, pointed at the link token. TextLink's
+      // CSS module sets the same colour, but which of the two wins depends
+      // on stylesheet order, which differs between Storybook and the
+      // production build: the e2e scan caught primary.4 on the login page.
+      "--mantine-color-anchor": "var(--link-color)",
+      // Chat bubble backgrounds. Mine is primary.5 rather than primary.4:
+      // body text on primary.4 was 4.47:1, just under AA.
+      "--bubble-mine-bg": primary[5],
+      "--bubble-theirs-bg": primary[6],
+      "--bubble-shadow": "none",
+      "--bubble-border-top": `1px solid ${primary[6]}`,
+      // Current nav link - brand amber, ample contrast on navy
+      "--nav-active-colour": "var(--mantine-color-secondary-5)",
+      // Nav link hover - Mantine's own non-active hover shade
+      "--nav-hover-bg": "var(--mantine-color-dark-6)",
+      // Current nav link fill. The hover shade rather than dark.5: amber
+      // secondary.5 is 5.2:1 on dark.6 and only 4.3:1 on dark.5, under AA
+      // for 19px body text.
+      "--nav-active-bg": "var(--mantine-color-dark-6)",
+      ...statusTextVariables(statusTextColourValues.dark),
+    },
+    light: {
+      "--mantine-color-text": primary[5],
+      // The ribbon in light mode: the brand primary
+      "--ribbon-bg": colours.primary,
+      // Muted text (`c="dimmed"`). Mantine's default gray.6 is 3.3:1 on
+      // white, under the WCAG AA 4.5:1 for body text; gray.7 is 8.2:1 on
+      // white and 6.9:1 on gray.2.
+      "--mantine-color-dimmed": greyScale[7],
+      "--mantine-color-placeholder": "var(--mantine-color-gray-4)",
+      // Error text/border - accessible orange-red for colour-blind users.
+      // The same hue as before, darkened: the old #f55142 was 3.4:1 on
+      // white, #c4320a is 5.5:1 on white and 4.7:1 on gray.2.
+      "--mantine-color-error": "var(--error-color)",
+      "--error-color": "#c4320a",
+      "--error-focus-color": "#ffb3b3",
+      // Links: the brand's own, primary.4 for Quill at 6.9:1 on white;
+      // hover darkens to shade 8, Quill's brand navy.
+      "--link-color": look.link,
+      "--link-hover-color": primary[8],
+      "--mantine-color-anchor": "var(--link-color)",
+      "--bubble-mine-bg": primary[0],
+      "--bubble-theirs-bg": secondary[1],
+      "--bubble-shadow": "0 1px 0 rgba(0,0,0,0.06)",
+      "--bubble-border-top": "1px solid rgba(0,0,0,0.06)",
+      // Current nav link - amber, darkened to secondary.7 for light mode:
+      // the brand secondary.5 is 2.7:1 on white, secondary.7 is 5.5:1
+      "--nav-active-colour": "var(--mantine-color-secondary-7)",
+      "--nav-hover-bg": "var(--mantine-color-gray-0)",
+      // Current nav link fill: a mild grey, one step darker than the hover
+      // so the current link still reads as current under the pointer.
+      // secondary.7 is 4.9:1 on gray.1.
+      "--nav-active-bg": "var(--mantine-color-gray-1)",
+      ...statusTextVariables(statusTextColourValues.light),
+    },
+  };
+}
 
-export const theme = createTheme({
-  /** App font - Atkinson Hyperlegible Next (Braille Institute) */
-  fontFamily: "'Atkinson Hyperlegible Next Variable', sans-serif",
+/** The theme for *look*: Quill's shape, in that brand's colours. */
+function buildTheme(look: BrandLook): MantineThemeOverride {
+  return createTheme({
+    /** App font - Atkinson Hyperlegible Next (Braille Institute) */
+    fontFamily: "'Atkinson Hyperlegible Next Variable', sans-serif",
 
-  /** Monospace font - for code blocks, inline code, and technical data */
-  fontFamilyMonospace:
-    "'SF Mono', SFMono-Regular, ui-monospace, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
+    /** Monospace font - for code blocks, inline code, and technical data */
+    fontFamilyMonospace:
+      "'SF Mono', SFMono-Regular, ui-monospace, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
 
-  /** Default text colour - brand navy instead of pure black */
-  black: "#143f6b",
+    /** Default text colour - primary shade 5 (Quill's navy) instead of pure black */
+    black: look.primary[5],
 
-  /** Colour scales - primary (navy) and secondary (amber) */
-  colors: {
-    primary: primaryScale,
-    secondary: secondaryScale,
-  },
+    /** Colour scales - primary (Quill's navy) and secondary (Quill's amber) */
+    colors: {
+      primary: look.primary,
+      secondary: look.secondary,
+    },
 
-  /** Use primary navy as the default colour for all components */
-  primaryColor: "primary",
-  primaryShade: 5,
+    /** Which brand this is, for components that change with it */
+    // Left out, never set to undefined, when a brand has none: Mantine's
+    // deepMerge turns undefined merged with an object into {}, so a
+    // theme nested inside Quill's would lose its wordmark.
+    other: {
+      brand: look.name,
+      colours: look.colours,
+      ...(look.logo !== undefined && { logo: look.logo }),
+      ...(look.logoTile !== undefined && { logoTile: look.logoTile }),
+      ...(look.wordmark !== undefined && { wordmark: look.wordmark }),
+    },
 
-  /**
-   * Focus ring on keyboard focus only (Mantine's default, set so it is
-   * a decision rather than an accident), and no animation for anyone
-   * whose system asks for reduced motion. Mantine defaults
-   * respectReducedMotion to false.
-   */
-  focusRing: "auto",
-  respectReducedMotion: true,
+    /** Use primary navy as the default colour for all components */
+    primaryColor: "primary",
+    primaryShade: 5,
 
-  /**
-   * Font sizes - handled in typography.css via CSS custom properties.
-   * Fixed across all screen widths (no responsive scaling).
-   */
+    /**
+     * Focus ring on keyboard focus only (Mantine's default, set so it is
+     * a decision rather than an accident), and no animation for anyone
+     * whose system asks for reduced motion. Mantine defaults
+     * respectReducedMotion to false.
+     */
+    focusRing: "auto",
+    respectReducedMotion: true,
 
-  /** Heading sizes - fixed values from typographyTokens */
-  headings: {
-    sizes: {
-      h1: {
-        fontSize: typographyTokens.headings.h1.fontSize,
-        lineHeight: typographyTokens.headings.h1.lineHeight,
-      },
-      h2: {
-        fontSize: typographyTokens.headings.h2.fontSize,
-        lineHeight: typographyTokens.headings.h2.lineHeight,
-      },
-      h3: {
-        fontSize: typographyTokens.headings.h3.fontSize,
-        lineHeight: typographyTokens.headings.h3.lineHeight,
-      },
-      h4: {
-        fontSize: typographyTokens.headings.h4.fontSize,
-        lineHeight: typographyTokens.headings.h4.lineHeight,
-      },
-      h5: {
-        fontSize: typographyTokens.headings.h5.fontSize,
-        lineHeight: typographyTokens.headings.h5.lineHeight,
-      },
-      h6: {
-        fontSize: typographyTokens.headings.h6.fontSize,
-        lineHeight: typographyTokens.headings.h6.lineHeight,
+    /**
+     * Font sizes - handled in typography.css via CSS custom properties.
+     * Fixed across all screen widths (no responsive scaling).
+     */
+
+    /** Heading sizes - fixed values from typographyTokens */
+    headings: {
+      sizes: {
+        h1: {
+          fontSize: typographyTokens.headings.h1.fontSize,
+          lineHeight: typographyTokens.headings.h1.lineHeight,
+        },
+        h2: {
+          fontSize: typographyTokens.headings.h2.fontSize,
+          lineHeight: typographyTokens.headings.h2.lineHeight,
+        },
+        h3: {
+          fontSize: typographyTokens.headings.h3.fontSize,
+          lineHeight: typographyTokens.headings.h3.lineHeight,
+        },
+        h4: {
+          fontSize: typographyTokens.headings.h4.fontSize,
+          lineHeight: typographyTokens.headings.h4.lineHeight,
+        },
+        h5: {
+          fontSize: typographyTokens.headings.h5.fontSize,
+          lineHeight: typographyTokens.headings.h5.lineHeight,
+        },
+        h6: {
+          fontSize: typographyTokens.headings.h6.fontSize,
+          lineHeight: typographyTokens.headings.h6.lineHeight,
+        },
       },
     },
-  },
 
-  /**
-   * Breakpoints, from breakpoints.json: xs 576px, sm 640px (the main
-   * mobile/desktop split), md 992px, lg 1200px, xl 1408px.
-   *
-   * One file, read here and by the three PostCSS configurations
-   * (postcss.config.ts, .storybook/main.ts, public_pages/vite.config.ts),
-   * so `theme.breakpoints.sm` in a component and `$mantine-breakpoint-sm`
-   * in a CSS module cannot name different widths.
-   */
-  breakpoints,
+    /**
+     * Breakpoints, from breakpoints.json: xs 576px, sm 640px (the main
+     * mobile/desktop split), md 992px, lg 1200px, xl 1408px.
+     *
+     * One file, read here and by the three PostCSS configurations
+     * (postcss.config.ts, .storybook/main.ts, public_pages/vite.config.ts),
+     * so `theme.breakpoints.sm` in a component and `$mantine-breakpoint-sm`
+     * in a CSS module cannot name different widths.
+     */
+    breakpoints,
 
-  components: {
-    /** Current nav link - amber label and icon on a mild grey fill (see navLink.module.css) */
-    NavLink: NavLink.extend({
-      // A button unless a caller says otherwise. Mantine renders an <a>,
-      // and an <a> with no href is not focusable, so every NavLink that
-      // navigated in an onClick (the whole side navigation) could not be
-      // reached from the keyboard. Links pass `component={Link}`.
-      defaultProps: { component: "button" },
-      classNames: navLinkClasses,
-      vars: () => ({
-        root: {
-          "--nl-color": "var(--nav-active-colour)",
-          // A mild grey fill on the current link, there without hovering,
-          // and the same under the pointer: hovering the page you are on
-          // changes nothing, so it should not look as if it would. The
-          // fill was taken out on 24 September 2026 with the amber label,
-          // and put back on 28 September at the product owner's request.
-          "--nl-bg": "var(--nav-active-bg)",
-          "--nl-hover": "var(--nav-active-bg)",
-        },
-        children: {},
+    components: {
+      /** Current nav link - amber label and icon on a mild grey fill (see navLink.module.css) */
+      NavLink: NavLink.extend({
+        // A button unless a caller says otherwise. Mantine renders an <a>,
+        // and an <a> with no href is not focusable, so every NavLink that
+        // navigated in an onClick (the whole side navigation) could not be
+        // reached from the keyboard. Links pass `component={Link}`.
+        defaultProps: { component: "button" },
+        classNames: navLinkClasses,
+        vars: () => ({
+          root: {
+            "--nl-color": "var(--nav-active-colour)",
+            // A mild grey fill on the current link, there without hovering,
+            // and the same under the pointer: hovering the page you are on
+            // changes nothing, so it should not look as if it would. The
+            // fill was taken out on 24 September 2026 with the amber label,
+            // and put back on 28 September at the product owner's request.
+            "--nl-bg": "var(--nav-active-bg)",
+            "--nl-hover": "var(--nav-active-bg)",
+          },
+          children: {},
+        }),
       }),
-    }),
-    // Mantine's modal close button is an icon with no accessible name,
-    // so a screen reader announces only "button" (axe button-name).
-    // Set once here for every modal rather than at each call site.
-    // "Close dialog" rather than "Close": several modals end on a text
-    // button that says "Close", and two buttons of one name are
-    // indistinguishable in a screen reader's list of buttons.
-    Modal: {
-      defaultProps: {
-        closeButtonProps: { "aria-label": "Close dialog" },
-      },
-    },
-    Badge: {
-      defaultProps: {
-        size: "lg",
-      },
-      // A badge is never cut short, and never changes to fit. Mantine
-      // lets it shrink below its text and ends the label in an
-      // ellipsis; a status that reads "Awaiting sig…" tells nobody
-      // anything. So a badge is always exactly as wide as its text, on
-      // one line, at its usual height: it does not shrink, wrap or
-      // clip. When a row runs out of room it is the layout around the
-      // badge that has to give way, not the badge.
-      styles: {
-        root: {
-          minWidth: "max-content",
-          flexShrink: 0,
-          overflow: "visible",
-        },
-        label: {
-          fontSize: "1.1875rem", // 19px - GOV.UK minimum
-          whiteSpace: "nowrap",
-          overflow: "visible",
-          textOverflow: "clip",
+      // Mantine's modal close button is an icon with no accessible name,
+      // so a screen reader announces only "button" (axe button-name).
+      // Set once here for every modal rather than at each call site.
+      // "Close dialog" rather than "Close": several modals end on a text
+      // button that says "Close", and two buttons of one name are
+      // indistinguishable in a screen reader's list of buttons.
+      Modal: {
+        defaultProps: {
+          closeButtonProps: { "aria-label": "Close dialog" },
         },
       },
+      Badge: {
+        defaultProps: {
+          size: "lg",
+        },
+        // A badge is never cut short, and never changes to fit. Mantine
+        // lets it shrink below its text and ends the label in an
+        // ellipsis; a status that reads "Awaiting sig…" tells nobody
+        // anything. So a badge is always exactly as wide as its text, on
+        // one line, at its usual height: it does not shrink, wrap or
+        // clip. When a row runs out of room it is the layout around the
+        // badge that has to give way, not the badge.
+        styles: {
+          root: {
+            minWidth: "max-content",
+            flexShrink: 0,
+            overflow: "visible",
+          },
+          label: {
+            fontSize: "1.1875rem", // 19px - GOV.UK minimum
+            whiteSpace: "nowrap",
+            overflow: "visible",
+            textOverflow: "clip",
+          },
+        },
+      },
     },
-  },
-});
+  });
+}
+
+/**
+ * The theme and CSS variables for one brand: "quill", or a key of
+ * `app_themes` in shared/brand.yaml. The app uses the one `VITE_BRAND`
+ * names, through the exports below.
+ *
+ * @throws Error if *name* is not one of `BRAND_NAMES`.
+ */
+export function makeTheme(name: string): {
+  theme: MantineThemeOverride;
+  cssVariablesResolver: CSSVariablesResolver;
+} {
+  const look = brandLook(name);
+  const variables = appCssVariables(look);
+
+  return {
+    theme: buildTheme(look),
+    cssVariablesResolver: (mantineTheme) =>
+      deepMerge(v8CssVariablesResolver(mantineTheme), variables),
+  };
+}
+
+const app = makeTheme(APP_BRAND);
+
+/** The theme of the brand this build runs as, Quill's unless set. */
+export const theme = app.theme;
+
+/** That brand's CSS variables, layered on Mantine's. */
+export const cssVariablesResolver = app.cssVariablesResolver;

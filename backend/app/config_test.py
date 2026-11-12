@@ -148,6 +148,29 @@ class TestCoreDbSignIn:
         assert settings.CORE_DB_IAM_AUTH is False
 
 
+class TestBrand:
+    """The deployment's brand must be one the brand file holds."""
+
+    @staticmethod
+    def _settings(**overrides: object) -> Settings:
+        return Settings(
+            JWT_SECRET="test_secret_long_enough_32_chars_min",
+            VAPID_PRIVATE="vapid_key",
+            CORE_DB_PASSWORD="auth_pass",
+            **overrides,
+        )
+
+    def test_quill_unless_set(self):
+        assert self._settings().BRAND == "quill"
+
+    def test_a_brand_from_the_brand_file_is_accepted(self):
+        assert self._settings(BRAND="ldd").BRAND == "ldd"
+
+    def test_an_unknown_brand_is_refused_with_the_list(self):
+        with pytest.raises(ValidationError, match="Known brands: quill, ldd"):
+            self._settings(BRAND="not-a-brand")
+
+
 class TestParseAddressList:
     """A comma-separated setting, read as the addresses it names."""
 

@@ -1,17 +1,17 @@
 /**
- * Quill Logo Component Stories
+ * Brand Logo Component Stories
  *
- * Demonstrates the Quill Medical logo SVG component:
+ * Demonstrates the brand's logo, Quill's or the brand Storybook runs as:
  * - Default size (5px height for Storybook)
  * - Customizable height
  * - Accessible alt text
  * - Maintains aspect ratio
  */
-import type { Meta, StoryObj } from "@storybook/react-vite";
+import type { Decorator, Meta, StoryObj } from "@storybook/react-vite";
 import QuillLogo from "./QuillLogo";
 
 const meta: Meta<typeof QuillLogo> = {
-  title: "Images/Quill logo",
+  title: "Images/Brand logo",
   component: QuillLogo,
   parameters: {
     layout: "padded",
@@ -21,7 +21,7 @@ const meta: Meta<typeof QuillLogo> = {
     alt: { control: "text" },
     colour: {
       control: "select",
-      options: ["default", "light-grey", "white"],
+      options: ["auto", "default", "light-grey", "white"],
     },
   },
 };
@@ -31,80 +31,57 @@ export default meta;
 type Story = StoryObj<typeof QuillLogo>;
 
 /**
- * Default Quill Medical logo.
+ * Fills the whole canvas with the brand's own colour, in light and dark
+ * mode alike. The logo sits in the top left, 1rem in, where the padded
+ * layout puts the Default story's.
+ */
+const onBrandColour: Decorator = (Story) => (
+  <div
+    style={{
+      background: "var(--brand-primary)",
+      minHeight: "100vh",
+      padding: "1rem",
+    }}
+  >
+    <Story />
+  </div>
+);
+
+/**
+ * The brand's logo: for Quill, the navy feather. The story is held in
+ * light mode, so the whole canvas is white whatever the toolbar says.
  * Standard size (5px height) suitable for Storybook display.
  */
 export const Default: Story = {
+  globals: { colorScheme: "light" },
   args: {
     height: 5,
-    alt: "Quill",
+    colour: "default",
   },
-  decorators: [
-    (Story) => (
-      <div
-        style={{
-          background: "white",
-          padding: "2rem",
-          display: "inline-flex",
-          alignItems: "center",
-          justifyContent: "center",
-          aspectRatio: "1",
-        }}
-      >
-        <Story />
-      </div>
-    ),
-  ],
 };
 
 /**
- * Light grey variant of the Quill Medical logo.
+ * Light grey variant of the logo, on the brand's colour. A brand with one
+ * logo shows it.
  */
 export const LightGrey: Story = {
   args: {
     height: 5,
     colour: "light-grey",
   },
-  decorators: [
-    (Story) => (
-      <div
-        style={{
-          background: "var(--brand-primary)",
-          padding: "2rem",
-          display: "inline-flex",
-          alignItems: "center",
-          justifyContent: "center",
-          aspectRatio: "1",
-        }}
-      >
-        <Story />
-      </div>
-    ),
-  ],
+  parameters: { layout: "fullscreen" },
+  decorators: [onBrandColour],
 };
 
 /**
- * White variant of the Quill Medical logo.
+ * White variant of the logo, on the brand's colour. A brand with one logo
+ * shows it.
  */
 export const White: Story = {
   args: {
     height: 5,
     colour: "white",
   },
-  decorators: [
-    (Story) => (
-      <div
-        style={{
-          background: "var(--brand-primary)",
-          padding: "2rem",
-          display: "inline-flex",
-          alignItems: "center",
-          justifyContent: "center",
-          aspectRatio: "1",
-        }}
-      >
-        <Story />
-      </div>
-    ),
-  ],
+  parameters: { layout: "fullscreen" },
+  decorators: [onBrandColour],
 };

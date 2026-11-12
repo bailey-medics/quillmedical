@@ -133,6 +133,16 @@ repos:
         files: ^(audit/ledger\.tsv|scripts/audit-stamp\.py)$
         pass_filenames: false
 
+      # .terraform-version is the one place the Terraform version is
+      # written. The workflows read it; the required_version floors in
+      # infra/ must write it out, so this keeps them equal to it.
+      - id: check-terraform-version
+        name: Terraform versions match .terraform-version
+        entry: bash scripts/check-terraform-version.sh
+        language: system
+        files: ^(infra/.*\.tf|\.terraform-version|\.github/workflows/.*\.ya?ml|scripts/check-terraform-version\.sh)$
+        pass_filenames: false
+
       # The repository is public, so an address on a home network or a
       # tailnet must not reach it. CI runs the patterns; a developer's
       # machine also refuses the literals in local/home-details-denylist.

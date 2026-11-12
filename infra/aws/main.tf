@@ -21,7 +21,7 @@
 # The policy that keeps every account in London is in organisation.tf.
 
 terraform {
-  required_version = ">= 1.15.0"
+  required_version = ">= 1.15.8"
 
   # Beside the GCP and GitHub state in the same bucket, under its own
   # prefix. State is read and written with the caller's own Google
@@ -34,7 +34,7 @@ terraform {
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = "~> 6.0"
+      version = "~> 6.71"
     }
   }
 }
