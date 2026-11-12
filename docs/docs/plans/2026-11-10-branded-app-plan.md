@@ -550,16 +550,6 @@ diff for the alternative brand's name finds nothing.
       "Not yet run" asks for journeys 1 to 4 as Let's Do Digital and
       again as Quill. `just uf scripts/brandSplash.test.ts` passes (33).
 
-## Phase 4: Afterwards
-
-- [ ] **Once the brand stack has merged, decide what happens to the
-      source stack's own brand branches.** Rebasing the source stack onto
-      a `main` that already has the branding would make its brand
-      branches conflict or empty out, as the offline fix did on
-      10 November. After the demo, rebase it with `just stack-rebase` in
-      `quillmedical-4` and resolve towards `main`'s version; empty
-      branches can then be dropped from that stack.
-
 ## Decisions
 
 - **The source stack is read, never changed** - it holds the demo for
