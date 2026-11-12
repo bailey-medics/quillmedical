@@ -14,7 +14,7 @@
 # ---------------------------------------------------------------------------
 
 terraform {
-  required_version = ">= 1.15.8"
+  required_version = ">= 1.17.1"
 
   # Terraform state sits beside the GCP state, in the same bucket under its
   # own prefix. Applies are manual; .github/workflows/github-rulesets.yml says
