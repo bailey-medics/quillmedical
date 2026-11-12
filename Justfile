@@ -193,8 +193,7 @@ _ensure-aws-login which:
         exit 0
     fi
 
-    echo "Not signed in to the AWS {{which}} account. Signing in now:"
-    echo "open the {{which}} account's console in the browser first."
+    echo "Not signed in to the AWS {{which}} account. Signing in now."
     just aws-login "{{which}}"
 
     if ! aws sts get-caller-identity --profile "$profile" >/dev/null 2>&1; then
@@ -512,6 +511,10 @@ aws-login which="emails":
     #!/usr/bin/env bash
     {{initialise}} "aws-login"
 
+    # No command tracing: it would bury the banner below that says which
+    # account to open.
+    set +x
+
     # `aws login` keeps short-lived credentials that renew themselves, so no
     # access key is left on disk. It does not ask which account: it takes
     # whichever AWS console session is active in the browser. So open the
@@ -546,6 +549,19 @@ aws-login which="emails":
     # everything in SES is per region: a resource made outside eu-west-2 is
     # email data outside the UK.
     aws configure set region eu-west-2 --profile "$profile"
+
+    # The sign-in link names no account, so say which one before showing it,
+    # in red on a terminal so it stands out from the link.
+    name="$(printf '%s' "{{which}}" | tr '[:lower:]' '[:upper:]')"
+
+    if [ -t 1 ]; then
+        name="$(printf '\033[31m%s\033[0m' "$name")"
+    fi
+
+    echo
+    echo "==> Sign in to the ${name} account (${want})."
+    echo "    Open that account's console in the browser, signing out of any"
+    echo "    other AWS account there."
 
     # On a Linux machine with no screen, such as the dev box over SSH,
     # there is no browser to open, so `--remote` prints a link to open on
@@ -2940,7 +2956,21 @@ terraform-aws:
 
     # No -upgrade: the providers are the ones in the committed lock file.
     terraform init -input=false
-    terraform plan
+
+    # -detailed-exitcode: 0 is no changes, 2 is changes, anything else an
+    # error. So an empty plan stops here rather than asking to apply nothing.
+    status=0
+    terraform plan -detailed-exitcode || status=$?
+
+    if [ "$status" -eq 0 ]; then
+        echo "Nothing to apply."
+        exit 0
+    fi
+
+    if [ "$status" -ne 2 ]; then
+        exit "$status"
+    fi
+
     read -rp "Apply these changes? (yes/no): " confirm
 
     if [ "$confirm" = "yes" ]; then
@@ -2987,7 +3017,21 @@ terraform-github:
     # state is in the bucket. No -upgrade: the providers are the ones in the
     # committed lock file.
     terraform init -input=false -reconfigure
-    terraform plan -var-file=terraform.tfvars
+
+    # -detailed-exitcode: 0 is no changes, 2 is changes, anything else an
+    # error. So an empty plan stops here rather than asking to apply nothing.
+    status=0
+    terraform plan -var-file=terraform.tfvars -detailed-exitcode || status=$?
+
+    if [ "$status" -eq 0 ]; then
+        echo "Nothing to apply."
+        exit 0
+    fi
+
+    if [ "$status" -ne 2 ]; then
+        exit "$status"
+    fi
+
     read -rp "Apply these changes? (yes/no): " confirm
 
     if [ "$confirm" = "yes" ]; then

@@ -182,5 +182,6 @@ infra/aws/policies/email-only.json	fbce2d2a6d6a1e662f60347f3e272e957218f752	2026
 infra/aws/policies/london-only.json	edf0418f615ce898a7d6f8a6684d888f948ae47e	2026-11-09	Cotswoldsmaker	mark.allan.bailey@gmail.com
 infra/environments/app/terraform.tfvars	2e2f460d50fdeff0d71aa4bb15fb1a18f0ba4667	2026-11-09	Cotswoldsmaker	mark.allan.bailey@gmail.com
 infra/github/actions_secrets.tf	bfe2084822796d2a93c627f2acf0ce8a64865202	2026-11-10	Cotswoldsmaker	mark.allan.bailey@gmail.com
-infra/github/branch_rules.tf	ac0c73c4e418fd42daf35312686afe12ff2c5b58	2026-11-11	Cotswoldsmaker	mark.allan.bailey@gmail.com
+infra/github/branch_rules.tf	6f0dbfaa076b58b98b6aa0d65d115afc515b5cf5	2026-11-11	Cotswoldsmaker	mark.allan.bailey@gmail.com
+infra/github/environments.tf	58bb9458b434c14c676dc2ada829471b84891b9a	2026-11-12	Cotswoldsmaker	mark.allan.bailey@gmail.com
 scripts/check-python-version.sh	e9ba5acc38524cdd3b8c10fdd371c2e9771ce114	2026-10-11	Cotswoldsmaker	mark.allan.bailey@gmail.com
