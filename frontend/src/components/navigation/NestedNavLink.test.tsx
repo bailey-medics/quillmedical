@@ -489,10 +489,10 @@ describe("NestedNavLink Component", () => {
         <NestedNavLink item={singleNavItem} />,
       );
 
-      const navLink = container.querySelector(".mantine-NavLink-root");
-      expect(navLink).toHaveStyle({
-        fontSize: "var(--mantine-font-size-md)",
-      });
+      const navLink = container.querySelector<HTMLElement>(
+        ".mantine-NavLink-root",
+      );
+      expect(navLink?.style.fontSize).toBe("var(--mantine-font-size-md)");
     });
   });
 

@@ -46,9 +46,7 @@ describe("BaseCard", () => {
       </BaseCard>,
     );
     const card = screen.getByTestId("bg-card");
-    expect(card).not.toHaveStyle({
-      borderColor: "var(--mantine-color-gray-2)",
-    });
+    expect(card.style.borderColor).toBe("");
   });
 
   it("defaults to white text on a coloured background", () => {
@@ -57,9 +55,9 @@ describe("BaseCard", () => {
         Content
       </BaseCard>,
     );
-    expect(screen.getByTestId("bg-card")).toHaveStyle({
-      color: "var(--mantine-color-white)",
-    });
+    expect(screen.getByTestId("bg-card").style.color).toBe(
+      "var(--mantine-color-white)",
+    );
   });
 
   it("lets an explicit text colour override that default", () => {
@@ -75,9 +73,9 @@ describe("BaseCard", () => {
         Content
       </BaseCard>,
     );
-    expect(screen.getByTestId("bg-card")).toHaveStyle({
-      color: "var(--status-text-dark)",
-    });
+    expect(screen.getByTestId("bg-card").style.color).toBe(
+      "var(--status-text-dark)",
+    );
   });
 
   it("breaks a word longer than the card, unless told not to", () => {

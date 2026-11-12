@@ -115,9 +115,9 @@ describe("StateMessage Component", () => {
         />,
       );
 
-      expect(screen.getByText("Nothing yet")).toHaveStyle({
-        color: "var(--status-text-dark)",
-      });
+      expect(screen.getByText("Nothing yet").style.color).toBe(
+        "var(--status-text-dark)",
+      );
     });
 
     it("keeps white text on a saturated colour", () => {
@@ -130,9 +130,9 @@ describe("StateMessage Component", () => {
         />,
       );
 
-      expect(screen.getByText("Something happened")).toHaveStyle({
-        color: "var(--mantine-color-white)",
-      });
+      expect(screen.getByText("Something happened").style.color).toBe(
+        "var(--mantine-color-white)",
+      );
     });
   });
 
