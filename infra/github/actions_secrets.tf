@@ -10,10 +10,13 @@
 # repositories that send a message may read it, never ALL.
 
 locals {
-  # quill-medical-framework-testing is protected beside the other framework
-  # repositories in framework_rulesets.tf, but its caller passes no
-  # secrets, so it is left out here.
-  repositories_without_secrets = ["quill-medical-framework-testing"]
+  # The two testing repositories are protected beside the other framework
+  # repositories in framework_rulesets.tf, but their callers pass no
+  # secrets, so they are left out here.
+  repositories_without_secrets = [
+    "quill-medical-framework-testing",
+    "quill-medical-2-framework-testing",
+  ]
 
   slack_webhook_repositories = concat(
     [var.github_repository],

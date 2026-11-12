@@ -24,8 +24,9 @@ locals {
     "royal-united-hospitals-bath-sact-passport-framework",
     "uk-sact-board-prescribing-framework",
     "general-clinical-skills-quill-medical-framework",
-    # Quill's own, for tests: not read by App production. See Phase 15.
+    # Quill's own, for tests: not read by App production.
     "quill-medical-framework-testing",
+    "quill-medical-2-framework-testing",
   ]
 }
 

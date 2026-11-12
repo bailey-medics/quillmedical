@@ -45,8 +45,9 @@ locals {
 
   # Every repository that may act as content-sync: the teaching
   # repositories, and each framework repository App production reads.
-  # quill-medical-framework-testing is not here, because it is on no
-  # framework list and starts no sync.
+  # The two testing repositories, quill-medical-framework-testing and
+  # quill-medical-2-framework-testing, are not here, because they are on no
+  # framework list and start no sync.
   content_sync_repositories = concat(
     local.teaching_repositories,
     keys(local.framework_repositories),

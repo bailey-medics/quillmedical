@@ -128,3 +128,4 @@
 - [Tmux Does Not Inherit Owl's Restrictions](2026-11-07-tmux-does-not-inherit-owls-restrictions-plan.md)
 - [Branded App](2026-11-10-branded-app-plan.md)
 - [Stack Watch Expands the Current Branch](2026-11-10-stack-watch-expands-the-current-branch-plan.md)
+- [One Framework per Repository](2026-11-12-one-framework-per-repository-plan.md)
