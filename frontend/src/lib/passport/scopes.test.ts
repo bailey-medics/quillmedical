@@ -6,7 +6,7 @@ describe("scopesFor", () => {
   it("gives a scoped competency's scopes in the catalogue's order", () => {
     const ids = scopesFor(
       TEST_FRAMEWORK_CATALOGUE,
-      "uk_sact_board_2023_prescribe_sact",
+      "quill_test_give_a_course",
     ).map((scope) => scope.id);
 
     expect(ids[0]).toBe("breast");
@@ -16,7 +16,7 @@ describe("scopesFor", () => {
   it("always offers other, and offers it last", () => {
     const ids = scopesFor(
       TEST_FRAMEWORK_CATALOGUE,
-      "uk_sact_board_2023_prescribe_sact",
+      "quill_test_give_a_course",
     ).map((scope) => scope.id);
 
     expect(ids[ids.length - 1]).toBe("other");
@@ -24,7 +24,7 @@ describe("scopesFor", () => {
 
   it("gives nothing for a competency assessed as a whole", () => {
     expect(
-      scopesFor(TEST_FRAMEWORK_CATALOGUE, "clinical_perform_cannulation"),
+      scopesFor(TEST_FRAMEWORK_CATALOGUE, "quill_2_test_insert_a_cannula"),
     ).toEqual([]);
   });
 
@@ -48,6 +48,6 @@ describe("nameWithScope", () => {
 
 describe("scopesFor before the frameworks have loaded", () => {
   it("gives nothing, so a form offers no choice yet", () => {
-    expect(scopesFor(null, "uk_sact_board_2023_prescribe_sact")).toEqual([]);
+    expect(scopesFor(null, "quill_test_give_a_course")).toEqual([]);
   });
 });

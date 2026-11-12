@@ -117,7 +117,7 @@ describe("PassportCpdEntryPage", () => {
     const stored = {
       ...entry("als-course", "Advanced life support"),
       competencies: [
-        { id: "clinical_perform_cannulation", name: "Cannulation" },
+        { id: "quill_2_test_insert_a_cannula", name: "Cannulation" },
       ],
       certificate: "als-2026",
     };
@@ -160,7 +160,7 @@ describe("PassportCpdEntryPage", () => {
         "als-course",
         expect.objectContaining({
           title: "ALS refresher",
-          competencies: ["clinical_perform_cannulation"],
+          competencies: ["quill_2_test_insert_a_cannula"],
           certificate: "als-2026",
         }),
       );

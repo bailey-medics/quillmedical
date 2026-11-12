@@ -25,13 +25,11 @@ describe("CompetencyRow", () => {
         <CompetencyRow competency={lungCompetency} onSelect={vi.fn()} />,
       );
       expect(
-        screen.getByText(
-          "Review and prescribe systemic anti-cancer therapy: Lung",
-        ),
+        screen.getByText("Give a course of treatment: Lung"),
       ).toBeInTheDocument();
       expect(
         screen.getByRole("button", {
-          name: /Review and prescribe systemic anti-cancer therapy: Lung/,
+          name: /Give a course of treatment: Lung/,
         }),
       ).toBeInTheDocument();
     });

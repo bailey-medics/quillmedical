@@ -11,7 +11,7 @@
 import { test, expect } from "../../fixtures/axe";
 import {
   FRAMEWORK_NAMES,
-  REFER_PALLIATIVE,
+  EXAMINE_THE_CHEST,
   addOnTheForm,
   asPassportAdmin,
   createPassport,
@@ -46,7 +46,7 @@ test.describe("Running the passport, and a read-only passport", () => {
     await admin.context().close();
 
     await signIn(page, username);
-    await createPassport(page, ["clinical"]);
+    await createPassport(page, ["quill_2_test"]);
   });
 
   test("17. a passport admin gives passport_write to a member of their place", async ({
@@ -77,10 +77,10 @@ test.describe("Running the passport, and a read-only passport", () => {
         page.getByRole("button", { name: "Create my passport" }),
       ).toBeVisible({ timeout: 3_000 });
     });
-    await toggleFrameworks(page, ["clinical"]);
+    await toggleFrameworks(page, ["quill_2_test"]);
     await page.getByRole("button", { name: "Create my passport" }).click();
     await expect(
-      page.getByRole("heading", { name: FRAMEWORK_NAMES.clinical }),
+      page.getByRole("heading", { name: FRAMEWORK_NAMES.quill_2_test }),
     ).toBeVisible();
   });
 
@@ -173,9 +173,9 @@ test.describe("Running the passport, and a read-only passport", () => {
     await page.goto("/passport");
     await expect(page.getByText("Your passport is read-only")).toBeVisible();
 
-    await page.goto(`/passport/competencies/${REFER_PALLIATIVE.id}`);
+    await page.goto(`/passport/competencies/${EXAMINE_THE_CHEST.id}`);
     await expect(
-      page.getByRole("heading", { level: 1, name: REFER_PALLIATIVE.name }),
+      page.getByRole("heading", { level: 1, name: EXAMINE_THE_CHEST.name }),
     ).toBeVisible();
     // Nothing offers a way to write. The API's refusal is
     // passport_api_contract_test.py's
@@ -229,9 +229,9 @@ test.describe("Running the passport, and a read-only passport", () => {
     await expect(
       page.getByTestId("competency-framework-table").first(),
     ).toBeVisible();
-    await page.goto(`/passport/competencies/${REFER_PALLIATIVE.id}`);
+    await page.goto(`/passport/competencies/${EXAMINE_THE_CHEST.id}`);
     await expect(
-      page.getByRole("heading", { level: 1, name: REFER_PALLIATIVE.name }),
+      page.getByRole("heading", { level: 1, name: EXAMINE_THE_CHEST.name }),
     ).toBeVisible();
 
     // Writing stays behind the feature gate: nothing offers it. The API's

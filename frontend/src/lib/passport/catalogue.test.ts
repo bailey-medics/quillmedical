@@ -54,8 +54,8 @@ const SHEET: FrameworkDefinition = {
 };
 
 const GENERAL: FrameworkDefinition = {
-  id: "clinical",
-  name: "General clinical skills",
+  id: "quill_2_test",
+  name: "Quill second test framework",
   publisher: "Quill Medical",
   version: 1,
   specialties: [],
@@ -68,7 +68,7 @@ describe("FrameworkCatalogue", () => {
   it("lists the frameworks alphabetically by name", () => {
     expect(catalogue.frameworks.map((f) => f.id)).toEqual([
       "sheet",
-      "clinical",
+      "quill_2_test",
     ]);
   });
 

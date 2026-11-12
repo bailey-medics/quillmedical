@@ -83,7 +83,7 @@ export const Loading: Story = {
 export const WithScopes: Story = {
   args: {
     logbook: scopedLogbook,
-    competencyName: "Review and prescribe systemic anti-cancer therapy",
+    competencyName: "Give a course of treatment",
     onSelect: fn(),
   },
 };
@@ -95,7 +95,7 @@ export const WithScopes: Story = {
 export const WithConfirmations: Story = {
   args: {
     logbook: confirmedLogbook,
-    competencyName: "Review and prescribe systemic anti-cancer therapy",
+    competencyName: "Give a course of treatment",
     onSelect: fn(),
   },
 };

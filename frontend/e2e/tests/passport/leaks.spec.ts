@@ -18,7 +18,7 @@
 import type { Page } from "@playwright/test";
 import { test, expect } from "../../fixtures/axe";
 import {
-  REFER_PALLIATIVE,
+  EXAMINE_THE_CHEST,
   addLogbookEntry,
   asPassportAdmin,
   askForSignOff,
@@ -120,12 +120,12 @@ test.describe("What must not leak", () => {
     // The control: the request they were asked about opens.
     await signIn(page, assessor.username);
     await page.goto("/inbox");
-    await page.getByText(REFER_PALLIATIVE.name).first().click();
+    await page.getByText(EXAMINE_THE_CHEST.name).first().click();
     await expect(page).toHaveURL(/\/passport\/sign-off\//);
     await expect(
       page.getByRole("heading", { level: 1, name: "Sign off" }),
     ).toBeVisible();
-    await expect(page.getByText(REFER_PALLIATIVE.name).first()).toBeVisible();
+    await expect(page.getByText(EXAMINE_THE_CHEST.name).first()).toBeVisible();
 
     // The rest of the holder's record is not on any page they can open.
     await expectNowhere(page, HOLDER_PAGES, reflectionOf(holder));

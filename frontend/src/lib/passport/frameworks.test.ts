@@ -13,8 +13,8 @@ describe("frameworks", () => {
   });
 
   it("finds a framework by id, and nothing for one Quill does not hold", () => {
-    expect(TEST_FRAMEWORK_CATALOGUE.getFramework("clinical")?.name).toBe(
-      "General clinical skills",
+    expect(TEST_FRAMEWORK_CATALOGUE.getFramework("quill_2_test")?.name).toBe(
+      "Quill second test framework",
     );
     expect(
       TEST_FRAMEWORK_CATALOGUE.getFramework("not_a_framework"),
@@ -22,19 +22,18 @@ describe("frameworks", () => {
   });
 
   it("gives a framework's items in the order its file lists them", () => {
-    const ids = TEST_FRAMEWORK_CATALOGUE.frameworkItems("clinical").map(
+    const ids = TEST_FRAMEWORK_CATALOGUE.frameworkItems("quill_2_test").map(
       (item) => item.id,
     );
 
-    expect(ids).toContain("clinical_perform_cannulation");
-    expect(ids.indexOf("clinical_perform_venepuncture")).toBeLessThan(
-      ids.indexOf("clinical_perform_cannulation"),
+    expect(ids).toContain("quill_2_test_insert_a_cannula");
+    expect(ids.indexOf("quill_2_test_insert_a_cannula")).toBeLessThan(
+      ids.indexOf("quill_2_test_take_blood"),
     );
   });
 
   it("leaves a file's permissions out of its framework's items", () => {
-    // clinical.yaml holds permissions beside its skills.
-    const ids = TEST_FRAMEWORK_CATALOGUE.frameworkItems("clinical").map(
+    const ids = TEST_FRAMEWORK_CATALOGUE.frameworkItems("quill_2_test").map(
       (item) => item.id,
     );
 
@@ -49,8 +48,8 @@ describe("frameworks", () => {
 
   it("says which framework a competency belongs to", () => {
     expect(
-      TEST_FRAMEWORK_CATALOGUE.frameworkOf("clinical_perform_cannulation")?.id,
-    ).toBe("clinical");
+      TEST_FRAMEWORK_CATALOGUE.frameworkOf("quill_2_test_insert_a_cannula")?.id,
+    ).toBe("quill_2_test");
     expect(
       TEST_FRAMEWORK_CATALOGUE.frameworkOf("manage_users"),
     ).toBeUndefined();

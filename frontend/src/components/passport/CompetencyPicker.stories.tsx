@@ -30,12 +30,12 @@ function Controlled({ frameworks }: { frameworks: string[] }) {
 
 /** One framework: its competencies, in its document's order. */
 export const OneFramework: Story = {
-  render: () => <Controlled frameworks={["clinical"]} />,
+  render: () => <Controlled frameworks={["quill_2_test"]} />,
 };
 
 /** Two frameworks, each under its own heading. Nothing else is listed. */
 export const TwoFrameworks: Story = {
-  render: () => <Controlled frameworks={["clinical", "uk_sact_board_2023"]} />,
+  render: () => <Controlled frameworks={["quill_2_test", "quill_test"]} />,
 };
 
 /**

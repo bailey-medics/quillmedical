@@ -53,14 +53,14 @@ describe("The competency catalogue", () => {
   it("never offers a statement from a paper form to be granted", () => {
     const ids = ACTIVE_COMPETENCIES.map((competency) => competency.id);
 
-    expect(ids).not.toContain("uk_sact_board_2023_prescribe_sact");
-    expect(ids).not.toContain("ruh_sact_passport_ctcae_grading");
+    expect(ids).not.toContain("quill_test_give_a_course");
+    expect(ids).not.toContain("quill_test_take_a_history");
   });
 
   it("never offers Quill's own framework's competencies to be granted", () => {
     const ids = ACTIVE_COMPETENCIES.map((competency) => competency.id);
 
-    expect(ids).not.toContain("clinical_perform_cannulation");
+    expect(ids).not.toContain("quill_2_test_insert_a_cannula");
     expect(ids).toContain("prescribe_non_controlled");
   });
 
@@ -81,8 +81,8 @@ describe("The bundle", () => {
     const ids = ALL_COMPETENCIES.map((competency) => competency.id);
 
     expect(ids).toContain("prescribe_non_controlled");
-    expect(ids).not.toContain("clinical_perform_cannulation");
-    expect(ids).not.toContain("uk_sact_board_2023_prescribe_sact");
+    expect(ids).not.toContain("quill_2_test_insert_a_cannula");
+    expect(ids).not.toContain("quill_test_give_a_course");
     // A procedure is not a permission: Quill cannot stop anybody doing one.
     expect(ids).not.toContain("perform_cannulation");
   });

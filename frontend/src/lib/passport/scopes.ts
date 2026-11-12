@@ -18,7 +18,7 @@ export interface ScopeOption {
 
 /**
  * A competency's name with what a record covers after it, as in
- * "Review and prescribe systemic anti-cancer therapy: Lung".
+ * "Give a course of treatment: Lung".
  *
  * Used wherever a record's competency is named, so two records for the
  * same competency and different scopes never read the same. Unchanged
