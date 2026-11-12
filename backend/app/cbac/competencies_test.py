@@ -530,12 +530,8 @@ def test_the_fixture_frameworks_versions() -> None:
     versions = {f.id: f.version for f in files_catalogue().frameworks.values()}
 
     assert versions == {
-        "clinical": 1,
-        "ghnft_radiotherapy_record": 1,
         "quill_2_test": 1,
         "quill_test": 4,
-        "ruh_sact_passport": 1,
-        "uk_sact_board_2023": 1,
     }
 
 

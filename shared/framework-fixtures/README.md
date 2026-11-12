@@ -5,10 +5,8 @@ depends on a publisher's framework repository.
 
 Each file is a framework file in the shape a framework repository holds.
 They are fixtures: a test that names a competency here names a fixture.
-The aim is that every fixture is a made-up framework, `quill_test` or
-`quill_2_test`, so no test changes when a real framework does. The four
-copies of real frameworks still here are on their way out; see the one
-framework per repository plan.
+Every fixture is a made-up framework, `quill_test` or `quill_2_test`, so
+no test changes when a real framework does.
 
 ## Where they come from
 

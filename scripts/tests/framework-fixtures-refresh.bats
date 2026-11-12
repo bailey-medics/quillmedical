@@ -71,6 +71,20 @@ make_repository() {
     grep -q "version: 1" "${FIXTURES}/history/quill_2_test/1.yaml"
 }
 
+@test "a framework deleted from its repository leaves no history here" {
+    framework_text old_one 1 > "${FIRST}/frameworks/old_one.yaml"
+    git -C "${FIRST}" add -A
+    git -C "${FIRST}" commit -q -m "Add old_one"
+    git -C "${FIRST}" rm -q frameworks/old_one.yaml
+    git -C "${FIRST}" commit -q -m "Remove old_one"
+
+    run bash "$SCRIPT" "$FIXTURES" "$FIRST" "$SECOND"
+
+    [ "$status" -eq 0 ]
+    [ ! -e "${FIXTURES}/history/old_one" ]
+    [ -e "${FIXTURES}/history/quill_test/1.yaml" ]
+}
+
 @test "a history/ left over from an earlier refresh is replaced" {
     mkdir -p "${FIXTURES}/history/gone"
     echo "old" > "${FIXTURES}/history/gone/1.yaml"
