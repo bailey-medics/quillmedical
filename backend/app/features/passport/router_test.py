@@ -88,17 +88,17 @@ pytestmark = pytest.mark.usefixtures("stored_frameworks")
 #: From the oncology set drafted in Phase 0. Chosen because it declares
 #: the UK SACT Board's four levels, so the level paths are exercised
 #: rather than only the bare signed-off-or-not case.
-COMPETENCY = "uk_sact_board_2023_prescribe_sact"
+COMPETENCY = "quill_test_give_a_course"
 # The frameworks a test holder works to. A passport offers the
 # competencies in its holder's frameworks and no others, so one made with
 # none could record nothing.
-WORKING_TO = {"frameworks": ["clinical", "uk_sact_board_2023"]}
+WORKING_TO = {"frameworks": ["quill_2_test", "quill_test"]}
 # What a sign-off for it covers. It is signed off one tumour site at a
 # time, so every request names one.
 SCOPE = "lung"
 
 #: One of that competency's levels, quoted from the framework.
-LEVEL = "review_and_authorise"
+LEVEL = "review"
 
 
 @pytest.fixture
@@ -759,7 +759,7 @@ class TestRequestSignOff:
         )
 
         response = holder_client.post(
-            f"/api/passport/{passport_id}/competencies/clinical_perform_cannulation"
+            f"/api/passport/{passport_id}/competencies/quill_2_test_insert_a_cannula"
             "/requests",
             json={
                 "assessor_email": assessor.email,
@@ -1295,7 +1295,7 @@ class TestSignOff:
             json={
                 "meaning": "directly observed",
                 "declaration_confirmed": True,
-                "level_id": "observation_only",
+                "level_id": "observe",
                 "comments": "Watched me do it; not yet reviewing alone.",
             },
         )
@@ -1304,7 +1304,7 @@ class TestSignOff:
         record = client.get(
             f"/api/passport/{passport_id}/sign-offs/{name}"
         ).json()
-        assert record["level"]["id"] == "observation_only"
+        assert record["level"]["id"] == "observe"
         assert record["requested_level"]["id"] == LEVEL
 
     def test_a_different_level_without_a_reason_is_refused(
@@ -1318,7 +1318,7 @@ class TestSignOff:
             json={
                 "meaning": "directly observed",
                 "declaration_confirmed": True,
-                "level_id": "observation_only",
+                "level_id": "observe",
             },
         )
 
@@ -2087,7 +2087,7 @@ class TestAcceptingAnInvitation:
 
         assert response.status_code == 200, response.text
         assert response.json()["competency_name"] == (
-            "Review and prescribe systemic anti-cancer therapy"
+            "Give a course of treatment"
         )
 
     def test_the_preview_says_who_is_asking_and_nothing_more(
@@ -3100,9 +3100,9 @@ class TestTheWholeLogbook:
         passport_id = _create_passport(holder_client)
 
         for competency, day in (
-            ("clinical_perform_venepuncture", "2026-03-01"),
-            ("clinical_perform_venepuncture", "2026-03-02"),
-            ("clinical_certify_death", "2026-03-03"),
+            ("quill_2_test_take_blood", "2026-03-01"),
+            ("quill_2_test_take_blood", "2026-03-02"),
+            ("quill_2_test_confirm_a_death", "2026-03-03"),
         ):
             holder_client.post(
                 f"/api/passport/{passport_id}/logbook/{competency}",
@@ -3116,8 +3116,8 @@ class TestTheWholeLogbook:
         assert body["count"] == 3
         groups = {g["competency"]: g["count"] for g in body["competencies"]}
         assert groups == {
-            "clinical_perform_venepuncture": 2,
-            "clinical_certify_death": 1,
+            "quill_2_test_take_blood": 2,
+            "quill_2_test_confirm_a_death": 1,
         }
 
     def test_an_empty_logbook_is_not_an_error(
@@ -3139,7 +3139,7 @@ class TestTheWholeLogbook:
 
         for day in ("2026-03-09", "2026-03-02", "2026-03-05"):
             holder_client.post(
-                f"/api/passport/{passport_id}/logbook/clinical_perform_venepuncture",
+                f"/api/passport/{passport_id}/logbook/quill_2_test_take_blood",
                 json={"performed_on": day},
             )
 
@@ -5136,7 +5136,7 @@ class TestOnlyAssessableCompetencies:
         passport_id = _create_passport(holder_client)
 
         response = holder_client.post(
-            f"/api/passport/{passport_id}/logbook/clinical_perform_cannulation",
+            f"/api/passport/{passport_id}/logbook/quill_2_test_insert_a_cannula",
             json={"performed_on": "2026-03-14"},
         )
 
@@ -5154,7 +5154,7 @@ class TestOnlyAssessableCompetencies:
         """
         passport_id = _create_passport(holder_client)
         written = holder_client.post(
-            f"/api/passport/{passport_id}/logbook/clinical_perform_cannulation",
+            f"/api/passport/{passport_id}/logbook/quill_2_test_insert_a_cannula",
             json={"performed_on": "2026-03-14"},
         )
         assert written.status_code == 201, written.text
@@ -5166,7 +5166,7 @@ class TestOnlyAssessableCompetencies:
             update(PassportFrameworkCompetency)
             .where(
                 PassportFrameworkCompetency.competency_id
-                == "clinical_perform_cannulation"
+                == "quill_2_test_insert_a_cannula"
             )
             .values(retired_on=date(2026, 3, 15))
         )
@@ -5179,7 +5179,7 @@ class TestOnlyAssessableCompetencies:
         assert logbook.status_code == 200, logbook.text
         assert [
             group["competency"] for group in logbook.json()["competencies"]
-        ] == ["clinical_perform_cannulation"]
+        ] == ["quill_2_test_insert_a_cannula"]
         assert exported.status_code == 200, exported.text
 
 
@@ -5188,10 +5188,10 @@ class TestFrameworkVersionsNotHeld:
 
     Written straight into the store at a version above the newest, as a
     passport moved from another app could carry, then read back through
-    the routes, which refuse it rather than show it against version 1.
+    the routes, which refuse it rather than show it against version 4.
     """
 
-    def _sign_off_at_version_2(
+    def _sign_off_at_version_5(
         self, passport_store: LocalPassportStore, passport_id: str
     ) -> None:
         held = files_catalogue()
@@ -5199,9 +5199,9 @@ class TestFrameworkVersionsNotHeld:
             held,
             frameworks={
                 **held.frameworks,
-                "uk_sact_board_2023": held.frameworks[
-                    "uk_sact_board_2023"
-                ].model_copy(update={"version": 2}),
+                "quill_test": held.frameworks["quill_test"].model_copy(
+                    update={"version": 5}
+                ),
             },
         )
         service.request_sign_off(
@@ -5219,19 +5219,19 @@ class TestFrameworkVersionsNotHeld:
         self, holder_client: TestClient, passport_store: LocalPassportStore
     ) -> None:
         passport_id = _create_passport(holder_client)
-        self._sign_off_at_version_2(passport_store, passport_id)
+        self._sign_off_at_version_5(passport_store, passport_id)
 
         response = holder_client.get(f"/api/passport/{passport_id}/export.md")
 
         assert response.status_code == 409, response.text
-        assert "version 2" in response.json()["detail"]
-        assert "uk_sact_board_2023" in response.json()["detail"]
+        assert "version 5" in response.json()["detail"]
+        assert "quill_test" in response.json()["detail"]
 
     def test_its_sign_offs_will_not_list(
         self, holder_client: TestClient, passport_store: LocalPassportStore
     ) -> None:
         passport_id = _create_passport(holder_client)
-        self._sign_off_at_version_2(passport_store, passport_id)
+        self._sign_off_at_version_5(passport_store, passport_id)
 
         response = holder_client.get(f"/api/passport/{passport_id}/sign-offs")
 

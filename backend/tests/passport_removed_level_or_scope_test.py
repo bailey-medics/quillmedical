@@ -23,9 +23,9 @@ from tests.frameworks import files_catalogue
 
 PASSPORT_ID = "3f2a8c1e4b7d49f0a6c2e8b1d5a7f309"
 NOW = datetime(2026, 3, 14, 14, 32, tzinfo=UTC)
-SACT = "uk_sact_board_2023_prescribe_sact"
-DROPPED_LEVEL = "review_and_authorise"
-HIGHER_LEVEL = "prescribe_subsequent_cycles"
+SACT = "quill_test_give_a_course"
+DROPPED_LEVEL = "review"
+HIGHER_LEVEL = "continue"
 DROPPED_SCOPE = "lung"
 
 HOLDER = commits.Actor(

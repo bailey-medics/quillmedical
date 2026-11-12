@@ -169,7 +169,7 @@ class TestTheLastRun:
                     started_at=newer,
                     finished_at=newer,
                     status="failed",
-                    error="Framework 'clinical' skipped version 2.",
+                    error="Framework 'quill_2_test' skipped version 2.",
                 ),
             ]
         )
@@ -181,5 +181,5 @@ class TestTheLastRun:
         assert body["last_run"]["status"] == "failed"
         assert body["last_run"]["versions_written"] == 0
         assert body["last_run"]["error"] == (
-            "Framework 'clinical' skipped version 2."
+            "Framework 'quill_2_test' skipped version 2."
         )

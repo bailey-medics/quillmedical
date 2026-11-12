@@ -213,7 +213,7 @@ for a deploy, are in the last section, "Merge order".
 
 ## Phase 3: Move every test onto the made-up frameworks
 
-- [ ] **Move the backend tests.** Every test naming `uk_sact_board_2023`
+- [x] **Move the backend tests.** Every test naming `uk_sact_board_2023`
       or `ruh_sact_passport` moves to `quill_test`. Every test naming
       `clinical` or `ghnft_radiotherapy_record` as a framework moves to
       `quill_2_test`. A test that needs two frameworks takes one of each.
@@ -222,6 +222,38 @@ for a deploy, are in the last section, "Merge order".
       router, sign-off, export, PDF and audit tests. Grep for the four ids
       to find the rest. A test that only needs "a second framework" takes
       `quill_2_test`, not a third fixture.
+
+      **Done on 12 November 2026**, by one mapping applied to every
+      backend Python file, then the failures fixed by hand:
+      - `uk_sact_board_2023_prescribe_sact` became
+        `quill_test_give_a_course`, its levels `observation_only`,
+        `review_and_authorise`, `prescribe_subsequent_cycles`,
+        `prescribe_first_cycle` and `prescribe_for_complex_patients`
+        became `observe`, `review`, `continue`, `start` and `adapt`, and
+        its wording became `quill_test`'s.
+      - The eight `clinical` competencies the tests use became the eight
+        in `quill_2_test`, such as `clinical_perform_cannulation` to
+        `quill_2_test_insert_a_cannula`, and the framework id
+        `"clinical"` became `"quill_2_test"`.
+      - Tests that assumed version 1 now use `quill_test`'s version 4: a
+        version "above the newest" is 5.
+      - `test_general_clinical_skills_holds_its_own_ids`, about the real
+        framework's split from the permissions, became
+        `test_a_framework_holds_ids_of_its_own`: `quill_2_test`'s ids all
+        carry its prefix and none is a permission.
+      - `backend/scripts/seed_guides.py` reads the synced fixtures, so it
+        moved too, and the guide screenshots will show
+        "Quill second test framework". `backend/app/email/previews.py`
+        only holds example wording and reads no fixture, so it was left
+        alone.
+      - `test_the_gloucestershire_record_carries_every_signed_line`
+        checked the real Gloucestershire record's content, which now
+        belongs to that framework's own repository and pipeline. It
+        became `test_a_framework_keeps_its_competencies_in_the_files_order`,
+        over `quill_test`.
+      - The `clinical`, `ruh_sact_passport`, `ghnft_radiotherapy_record`
+        and `uk_sact_board_2023` lines left in the two fixture version
+        lists go in Phase 4, with the files.
 
 - [ ] **Move the frontend.** That is `components/passport/fixtures.ts`,
       the passport stories, `SignOffForm.test.tsx` and

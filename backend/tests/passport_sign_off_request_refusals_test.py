@@ -42,8 +42,8 @@ from tests.competencies import hold
 pytestmark = pytest.mark.usefixtures("stored_frameworks")
 
 PASSWORD = "Made-up-password-1"
-COMPETENCY = "uk_sact_board_2023_prescribe_sact"
-WORKING_TO = {"frameworks": ["clinical", "uk_sact_board_2023"]}
+COMPETENCY = "quill_test_give_a_course"
+WORKING_TO = {"frameworks": ["quill_2_test", "quill_test"]}
 #: An address with no account.
 OUTSIDE = "outside.assessor@example.com"
 
@@ -131,7 +131,7 @@ def _ask(client: TestClient, passport_id: str, email: str) -> Response:
             "assessor_email": email,
             "scope_id": "lung",
             "observed_on": "2026-03-14",
-            "level_id": "review_and_authorise",
+            "level_id": "review",
         },
     )
 

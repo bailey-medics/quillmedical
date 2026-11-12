@@ -20,7 +20,7 @@ from tests.frameworks import files_catalogue
 
 PASSPORT_ID = "3f2a8c1e4b7d49f0a6c2e8b1d5a7f309"
 NOW = datetime(2026, 3, 14, 14, 32, 7, tzinfo=UTC)
-CANNULATION = "clinical_perform_cannulation"
+CANNULATION = "quill_2_test_insert_a_cannula"
 
 
 @pytest.fixture
@@ -71,7 +71,7 @@ def test_a_first_record_is_placed_by_the_catalogue(
 ) -> None:
     assert layout.framework_for(
         passport, PASSPORT_ID, CANNULATION, files_catalogue()
-    ) == ("clinical")
+    ) == ("quill_2_test")
 
 
 def test_a_competency_filed_nowhere_has_nothing_to_read(
@@ -130,7 +130,7 @@ def test_a_logbook_entry_lands_under_its_framework_and_competency(
     )
 
     assert layout.logbook_dirs(passport, PASSPORT_ID) == [
-        (CANNULATION, paths.logbook_dir("clinical", CANNULATION))
+        (CANNULATION, paths.logbook_dir("quill_2_test", CANNULATION))
     ]
 
 
@@ -142,12 +142,12 @@ def test_every_sign_off_is_listed_by_its_id(
         actor,
         {
             paths.sign_off_file(
-                "clinical", f"{CANNULATION}.2026-03-14"
+                "quill_2_test", f"{CANNULATION}.2026-03-14"
             ): "id: 1\n",
             paths.sign_off_file(
-                "clinical", f"{CANNULATION}.2026-03-14-2"
+                "quill_2_test", f"{CANNULATION}.2026-03-14-2"
             ): "id: 2\n",
-            paths.sign_offs_dir("clinical", CANNULATION)
+            paths.sign_offs_dir("quill_2_test", CANNULATION)
             / "notes"
             / "sign-off.yaml": "id: 3\n",
         },

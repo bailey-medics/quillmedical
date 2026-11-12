@@ -559,6 +559,52 @@ def test_a_framework_the_repository_may_not_publish_is_refused(
         )
 
 
+def test_a_framework_deleted_from_main_is_passed_over(
+    local_clones: Path, tmp_path: Path
+) -> None:
+    """History keeps a deleted file for good, so it cannot be refused."""
+    repo = _repository(local_clones / "owner", "sheet-framework")
+    _commit(
+        repo,
+        _SHEET.format(version=1, words="Refer a patient").replace(
+            "sheet", "chart"
+        ),
+        name="chart",
+    )
+    _commit(repo, _SHEET.format(version=1, words="Refer a patient"))
+    _git(repo, "rm", "frameworks/chart.yaml")
+    _git(repo, "commit", "-m", "Delete the chart")
+
+    versions = read_repository_versions(
+        "owner/sheet-framework", {"sheet"}, tmp_path / "clone"
+    )
+
+    assert sorted(versions) == ["sheet"]
+    assert sorted(versions["sheet"]) == [1]
+
+
+def test_a_framework_still_on_main_is_refused_whatever_came_before(
+    local_clones: Path, tmp_path: Path
+) -> None:
+    """The listed framework is read first, then the unlisted one refused."""
+    repo = _repository(local_clones / "owner", "sheet-framework")
+    _commit(repo, _SHEET.format(version=1, words="Refer a patient"))
+    _commit(
+        repo,
+        _SHEET.format(version=1, words="Refer a patient").replace(
+            "sheet", "chart"
+        ),
+        name="chart",
+    )
+
+    with pytest.raises(
+        FrameworkSyncError, match="holds frameworks/chart.yaml"
+    ):
+        read_repository_versions(
+            "owner/sheet-framework", {"sheet"}, tmp_path / "clone"
+        )
+
+
 def test_a_repository_with_no_main_yet_holds_nothing(
     local_clones: Path, tmp_path: Path
 ) -> None:
