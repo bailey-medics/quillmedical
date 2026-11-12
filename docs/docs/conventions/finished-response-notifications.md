@@ -58,41 +58,57 @@ so a banner posted on it would reach nobody.
 `notification.sh` therefore only works out *what* to say: the title, the
 summary, the group and the spoken name. Showing it is
 `scripts/notification-show.sh`, which holds everything Mac-specific above.
-On a Mac it is called directly. On Linux, when `QUILL_NOTIFY_SSH_HOST` names
-the Mac, the file is streamed over SSH and run there as `bash -s`, so the
-Mac needs no checkout of the repository and no copy of the script that
-could fall out of date. Unset, the box falls back to `notify-send`, which
-on a headless box shows nothing.
+On a Mac it is called directly.
 
-`ssh` runs with `BatchMode` and is detached with `setsid -f`, so a Mac that
-is asleep, off the tailnet or refusing connections costs the turn nothing.
+**On Linux the box offers the banner, and the Mac fetches it.** The box
+never connects to the Mac:
+
+- **The box writes.** `notification.sh` hands the banner to
+  `scripts/notification-queue.py`, which appends it as one JSON line to
+  `~/.local/state/quill-notify/banners.jsonl`. The file is cut back to the
+  last 50 lines once it passes 200, so it never grows.
+- **The Mac listens.** `scripts/notification-listen.sh` holds one SSH
+  connection from the Mac to the box, follows the queue with `tail -F`, and
+  shows each banner with the Mac's own `notification-show.sh`. Nothing
+  polls: a banner arrives as soon as it is written.
+- **Drops are expected.** After sleep or a change of network the
+  connection breaks, and the listener tries again every 10 seconds.
+  Each new connection starts with the last 20 lines, so a banner written
+  while the Mac was away still shows. Anything older than five minutes,
+  or already shown, is skipped, so opening the lid does not replay the
+  afternoon.
+- **What arrives is text, never code.** Each line is parsed as JSON and its
+  fields checked: control characters become spaces, lengths are capped,
+  the group must be a plain name, and a worktree path that does not look
+  like one is dropped. A text field starting with a dash gets a space in
+  front, because `say` and the notifier would read it as an option, and
+  `say -o <file>` writes over a file on the Mac. The fields go to the show script as arguments,
+  never through a shell, and a line that is not a banner is ignored.
+
+The direction matters. A box that connects to the Mac to show a banner can
+connect to it to do anything, so a box that was taken over would have a
+way onto the Mac. Fetching leaves the box with no route to the Mac at all,
+and the worst a taken-over box can send is a misleading banner.
 
 What the Mac needs, once:
 
-1. **Remote Login on**, under System Settings, General, Sharing. Under its
-   (i), "Allow access for" must include the account the box logs in as. If
-   it does not, the Mac accepts the key and then closes the connection,
-   which looks like a key problem and is not.
-2. **The box's public key** in the Mac's `~/.ssh/authorized_keys`. Pasting
-   it in on the Mac is the dependable way; `ssh-copy-id` needs a password
-   login, and fails the same way while the account is not allowed.
-3. **One interactive `ssh` from the box to the Mac**, to accept its host
-   key. `BatchMode` will never accept an unknown key on its own.
+1. **SSH to the box without a prompt.** `ssh devbox` from a Mac terminal
+   should log straight in, since the listener runs with `BatchMode` and
+   cannot answer a password or a host-key question.
+2. **`just notify-listen-install`**, run on the Mac. It copies the listener
+   and the scripts it calls into `~/Library/Application Support/quill-notify`,
+   so the banners do not change with whichever branch the Mac's checkout
+   is on, and loads a launchd agent that starts the listener at login and
+   restarts it if it stops. Run it again after changing any of these
+   scripts. Its errors go to `~/Library/Logs/quill-notify-listen.log`.
 
-Then set the variable where Claude Code passes it to hooks, in the box's
-`~/.claude/settings.json`:
+`QUILL_NOTIFY_BOX` names the box, when the Mac's `ssh` and VS Code know it
+by something other than `devbox`. The same name is what a click looks for
+in a window title, `quillmedical-5 [SSH: devbox]`, to bring that window
+forward.
 
-```json
-"env": { "QUILL_NOTIFY_SSH_HOST": "<you>@<the Mac's Tailscale name>" }
-```
-
-Two things are lost on the way:
-
-- **A click focuses nothing.** The focus script is not sent, and a Remote-SSH
-  window's title ends with `[SSH: devbox]`, so it would not find the window
-  anyway.
-- **The other `QUILL_NOTIFY_*` settings are the Mac's defaults**, not the
-  box's, because they are not forwarded.
+The other `QUILL_NOTIFY_*` settings are the Mac's, not the box's, because
+the box sends only the banner.
 
 ## Where the banner text comes from
 
@@ -210,7 +226,8 @@ All of these are read from the environment by `scripts/notification.sh`:
 - `QUILL_NOTIFY_CHIME=1` brings back the completion sound.
 - `QUILL_NOTIFY_APP` points at the notifier if it is not in the default
   place.
-- `QUILL_NOTIFY_SSH_HOST` names the Mac a Linux box forwards to, as
+- `QUILL_NOTIFY_QUEUE` moves the box's queue file, which the tests use.
+- `QUILL_NOTIFY_BOX` names the box the Mac's listener fetches from, as
   above.
 - `QUILL_NOTIFY_DEBUG=1` prints the title, body and group that would be
   used and stops, which is how the behaviour above is checked.

@@ -6,13 +6,10 @@
 #   notification-show.sh <title> <body> <group> <spoken> [<worktree path>
 #       [<remote name>]]
 #
-# notification.sh works out what to say and calls this to say it. On a Mac
-# it runs it directly. On the Linux dev box it streams this file over SSH to
-# the Mac, as `bash -s`, because the box has no screen of its own: there the
-# file has no path, so SCRIPT_DIR is wherever the shell started and the
-# click-to-focus script is not beside it. The box sends that script too, as
-# QUILL_NOTIFY_FOCUS_SOURCE, and this saves it under ~/Library/Caches. The
-# remote name is what VS Code calls the box, "devbox" in a window titled
+# notification.sh works out what to say and calls this to say it, on a Mac.
+# For the Linux dev box, which has no screen, notification-listen.sh calls
+# it on the Mac with each banner the box offers, and passes the remote name:
+# what VS Code calls the box, "devbox" in a window titled
 # "quillmedical-5 [SSH: devbox]".
 #
 # The Mac's bash is 3.2, so nothing newer than that is used here.
@@ -90,21 +87,6 @@ if [ "$BANNER" = "1" ]; then
         # click on a stale one fires that, which is easy to misread
         # as a new banner firing on delivery rather than on click.
         FOCUS_SCRIPT="$SCRIPT_DIR/notification-focus.sh"
-
-        # Streamed from the box, so there is no file beside this one.
-        # Save the copy the box sent, through a temporary file so that a
-        # click arriving mid-write never runs half a script.
-        if [ ! -x "$FOCUS_SCRIPT" ] \
-            && [ -n "${QUILL_NOTIFY_FOCUS_SOURCE:-}" ]; then
-            cache="$HOME/Library/Caches/quill-notifier"
-            FOCUS_SCRIPT="$cache/notification-focus.sh"
-            tmp="$FOCUS_SCRIPT.$$"
-
-            mkdir -p "$cache" 2>/dev/null \
-                && printf '%s\n' "$QUILL_NOTIFY_FOCUS_SOURCE" >"$tmp" \
-                && chmod +x "$tmp" && mv -f "$tmp" "$FOCUS_SCRIPT"
-            rm -f "$tmp" 2>/dev/null
-        fi
 
         set -- -title "$title" -message "$body" -group "$group"
         if [ "${QUILL_NOTIFY_ACTIVATE-1}" != "" ] && [ -n "$cwd" ] \
