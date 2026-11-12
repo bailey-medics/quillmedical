@@ -219,6 +219,15 @@
       "dependencyDashboardApproval": true
     },
     {
+      "description": "Major stylelint upgrades move as one group, held behind Dependency Dashboard approval. stylelint's own major and the majors of the add-ons .stylelintrc.json extends land in one pull request, so a new stylelint never arrives beside add-ons that still require the old one. stylelint 18 was the first: stylelint-config-standard-scss 17 and stylelint-scss 7 both declared a peer of stylelint ^17, and stylelint 18 stopped at an unknown rule on every stylesheet. It is held rather than filtered with allowedVersions, so it stays listed under Pending Approval. Tick the box once every add-on in the group supports the new major, and Renovate raises the one pull request.",
+      "matchManagers": ["npm"],
+      "matchPackageNames": ["stylelint", "stylelint-*"],
+      "matchUpdateTypes": ["major"],
+      "groupName": "stylelint major",
+      "groupSlug": "stylelint-major",
+      "dependencyDashboardApproval": true
+    },
+    {
       "description": "Hold each new Python minor behind Dependency Dashboard approval until every compiled backend dependency publishes a wheel for it. Python 3.15 was the first: pygit2 had no cp315 wheel and does not build in the slim image without libgit2. Patch releases are not held, so security fixes keep arriving. The minor bump gets its own group, because an update awaiting approval holds its whole branch, and in the Docker base images group it would hold every digest update with it. Nobody has to remember to come back: .github/workflows/python-hold-check.yml checks monthly and opens an issue once the next minor is ready. Tick the box then, and move every pin in one PR.",
       "matchManagers": ["pyenv", "dockerfile"],
       "matchDepNames": ["/(^|/)python$/"],
