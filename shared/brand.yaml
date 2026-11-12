@@ -21,6 +21,17 @@
 #
 # See docs/docs/plans/2026-09-25-email-branding-plan.md.
 
+# What Quill calls itself: the name in page titles, and who commits to the
+# git repositories the app writes, such as a passport. The author of a
+# commit is always the person who acted; the committer is the
+# application, named by its full name, and saying so is more honest than
+# attributing the mechanism to a clinician. Each brand under app_themes
+# carries its own, so a deployment run as that brand says its own name.
+identity:
+  name: Quill Medical
+  short_name: Quill
+  committer_email: noreply@quill-medical.com
+
 brand:
   primary: "#001a36"
   secondary: "#C8963E"
@@ -68,6 +79,118 @@ palette:
     - "#adb5bd" # 5 icons, borders (2.1:1 on white, never text)
     - "#868e96" # 6 icons, graphics (3.3:1 on white, never text)
     - "#495057" # 7 muted text, dimmed in light mode (8.2:1 on white)
+
+# Other looks the app can be shown in, beside Quill's own above. Each
+# holds what differs from Quill: the brand colours, the primary and
+# secondary ramps, the logo and the wordmark. The grey ramp is Mantine's neutral greys
+# and is shared, so it is not repeated. The backend checks every value
+# here when it starts.
+#
+# See docs/docs/plans/2026-11-10-branded-app-plan.md.
+app_themes:
+  # Let's Do Digital, from its logo (media/ldd-logo.png in
+  # letsdodigital/letsdodigital.github.io): a grey head drawn as a mesh,
+  # shading from white to dark grey, in front of a blue one. Taken on
+  # 10 November 2026. Each ramp keeps the logo colour's hue in OKLCH and
+  # steps the lightness, with the logo colour at shade 5.
+  ldd:
+    # As the top-level identity. The short name is what fits under a home
+    # screen icon, about twelve letters.
+    identity:
+      name: Let's Do Digital
+      short_name: LDD
+      committer_email: info@letsdodigital.org
+    brand:
+      # The back head's blue, the same blue the email theme uses
+      primary: "#0848a9"
+      # A light grey from the front head, from the lighter half of its
+      # shading. Light, as Quill's amber is, because the app sets the
+      # secondary against the brand blue: on the public pages, on buttons
+      # and on dark-mode surfaces. A mid-dark grey, #707070, was tried
+      # first and failed 54 Storybook contrast checks, at 1.7:1 on the blue.
+      secondary: "#d0d0d0"
+      background: "#ffffff"
+      # The logo sits on a white tile wherever it is drawn on the brand
+      # blue, since its back head is that blue
+      mark: "#ffffff"
+    palette:
+      # Blue, 0 lightest to 9 darkest. Shade 5 is the logo's colour and
+      # the brand primary. Shades 6 to 9 are the dark-mode surfaces, as
+      # Quill's navy 6 to 9 are.
+      primary:
+        - "#edf2fb" # 0 subtle backgrounds, variant="light" fills
+        - "#d2dff4" # 1 light tint, hover on light variant
+        - "#aac2e9" # 2 borders, disabled states
+        - "#7b9fdb" # 3 muted/secondary indicators
+        - "#3d6fc0" # 4 medium prominence (5.0:1 with white text)
+        - "#0848a9" # 5 primary actions, primaryShade (8.4:1 with white)
+        - "#053785" # 6 dark-mode inputs and card borders
+        - "#032967" # 7 dark-mode cards
+        - "#011b4a" # 8 dark-mode body
+        - "#000d2b" # 9 deepest blue (dark-mode input borders)
+      # Grey, 0 lightest to 9 darkest, a neutral grey as the logo's is.
+      # Shade 5 is the brand secondary, 5.4:1 against the blue. It takes
+      # dark text, never white. Shade 6 stays light because a hovered or
+      # pressed secondary button is shade 6 with blue text on it; shade 7
+      # is dark, for the current navigation link's text.
+      secondary:
+        - "#f7f7f7" # 0 subtle grey backgrounds
+        - "#efefef" # 1 light grey fill
+        - "#e8e8e8" # 2 grey borders
+        - "#e0e0e0" # 3 decorative grey
+        - "#d8d8d8" # 4 secondary grey
+        - "#d0d0d0" # 5 brand grey
+        - "#c0c0c0" # 6 hover and pressed (4.6:1 with blue text)
+        - "#686868" # 7 dark grey, the current nav link (5.0:1 on gray.1)
+        - "#4f4f4f" # 8 darker grey
+        - "#363636" # 9 darkest grey
+    # The ribbon's mail icon while nothing is waiting. Secondary 6, a light
+    # grey: Quill's grey 6 would be 2.5:1 on the blue ribbon, short of the
+    # 3:1 an icon that is the whole control needs (WCAG 1.4.11). This is
+    # 4.6:1 on the light ribbon and 9.2:1 on the dark one.
+    ribbon_icon_idle: "#c0c0c0"
+    # Links in light mode: the logo blue, primary 5, 8.4:1 on white, as
+    # the Let's Do Digital emails' links are. Quill's primary 4 would be
+    # 4.3:1 here.
+    link: "#0848a9"
+    # The logo, unchanged from media/ldd-logo.png in
+    # letsdodigital/letsdodigital.github.io (commit 2970845dfdd9), 714
+    # pixels square. No SVG of it exists, and the app never draws it
+    # larger than that.
+    logo: /brands/ldd/logo.png
+    # Drawn on a white tile, because the logo's back head is the brand
+    # blue and would be lost on the dark-mode page, which is that blue's
+    # darker shade. A brand with no tile shows its logo as it is.
+    logo_tile: "#ffffff"
+    # The spinner: the two heads, with no tile, turning on their upright
+    # axis as the quill does, one turn in 2.4 seconds, made from logo.png.
+    # They are lit by a bright light from the left: in deep shade as they
+    # widen from edge on, easing into their own colours around full width,
+    # and close to white as they narrow again. The still, for
+    # somebody who has asked their device for less motion, is the heads as
+    # drawn. A brand with none keeps the quill.
+    spinner:
+      src: /brands/ldd/logo-spinner.webp
+      still: /brands/ldd/logo-spinner-still.png
+    # The browser tab's icon and the installed app's: the logo on white at
+    # each size a browser asks for, made from logo.png, with a manifest
+    # naming Let's Do Digital and those icons, and the colour a phone gives
+    # its status bar. A brand with none keeps Quill's.
+    icons:
+      favicon: /brands/ldd/favicon.ico
+      apple_touch_icon: /brands/ldd/apple-touch-icon.png
+      manifest: /brands/ldd/manifest.webmanifest
+      theme_colour: "#0848a9"
+    # The name drawn as an image, white for the blue ribbon, as Quill's is
+    # quill-name-white.png. Set in Geostar Fill, Let's Do Digital's own
+    # font, at its one weight, kept with its licence in
+    # frontend/brand-sources/ldd/. Drawn by scripts/brand-wordmark.py;
+    # each letter is a path, so no font loads.
+    # The dark version, in the brand blue, is for a light background.
+    wordmark:
+      src: /brands/ldd/wordmark-white.svg
+      dark_src: /brands/ldd/wordmark-dark.svg
+      alt: Let's Do Digital
 
 # Each email theme is one brand's look for every email: the layout is the
 # same, only these values change. Mark approved these values when the

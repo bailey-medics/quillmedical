@@ -27,18 +27,13 @@
 # App environment - deployable from main only
 # ---------------------------------------------------------------------------
 #
-# The environment every main-branch job that reaches GCP runs in: deploy.yml
-# and terraform.yml, and the scheduled jobs. It holds GCP_PROJECT_ID,
+# The environment every main-branch job that reaches GCP runs in: deploy.yml,
+# terraform.yml and the scheduled jobs. It holds GCP_PROJECT_ID,
 # GCP_WIF_PROVIDER, GCP_SERVICE_ACCOUNT and GCP_DEPLOY_SERVICE_ACCOUNT, named
-# without the environment so a matrix job reads `secrets.GCP_PROJECT_ID` and
+# without the environment, so a matrix job reads `secrets.GCP_PROJECT_ID` and
 # the environment decides which project that is. An index such as
 # `secrets[format('GCP_{0}_...')]` would send the runner every repository
-# secret, which zizmor's overprovisioned-secrets refuses. It replaced `teaching` here on 2026-09-25:
-# teaching's project had been deleted, and its main-only policy had drifted
-# away in GitHub while app's had been set by hand, outside Terraform. Imported
-# rather than created, so the live policy was adopted, not replaced. See
-# Batch 10a Phase 4 of
-# docs/docs/plans/2026-09-18-environment-isolation-and-iap-plan.md.
+# secret, which zizmor's overprovisioned-secrets check refuses.
 
 resource "github_repository_environment" "app" {
   repository  = var.github_repository
@@ -68,8 +63,7 @@ resource "github_repository_environment_deployment_policy" "app_main" {
 # Kept apart from `app` on purpose. `app` takes main only, so a pull request
 # cannot run in it; and opening `app` to every branch would hand the apply
 # and deploy accounts to any branch somebody can push. Here the worst a
-# branch can reach is a read. See Phase 6 of
-# docs/docs/plans/2026-10-30-claude-security-plugin-plan.md.
+# branch can reach is a read.
 #
 # No deployment_branch_policy: every branch may use it, which is the point.
 
@@ -82,22 +76,20 @@ resource "github_repository_environment" "app_plan" {
 # API breaking-change review environment - required-reviewer approval gate
 # ---------------------------------------------------------------------------
 #
-# API compatibility context (item 15 of the alembic review plan, see
-# docs/docs/backend/api-compatibility.md):
-#   Gates an undeclared breaking API change (detected by `oasdiff` in CI)
-#   behind one deliberate, separate approval action from the change's own
-#   author. `prevent_self_review = false` is intentional, not an oversight -
-#   a second reviewer is not inherently more careful than the person who
-#   wrote the change, so the goal is forcing one genuine action out of
-#   whoever is accountable, not diffusing accountability across more people.
+# Holds back a breaking API change that was not declared, which `oasdiff`
+# finds in CI, until someone approves it as a separate, deliberate step. See
+# docs/docs/backend/api-compatibility.md.
 #
-#   `can_admins_bypass = false` for the same reason as
-#   db_destructive_migration_review below: an admin is not necessarily the
-#   role that should be able to wave a breaking change through, and the two
-#   gates should not differ in how binding they are.
+# `prevent_self_review = false`: the author may approve. A second reviewer is
+# not more careful than the person accountable for the change; the point is
+# one genuine action from them.
 #
-# No deployment_branch_policy: this environment gates a CI job that runs on
-# pull requests, not a deployment, so it is not restricted to a branch.
+# `can_admins_bypass = false`, as for db_destructive_migration_review below:
+# an admin is not the role to wave a breaking change through, and the two
+# gates should be equally binding.
+#
+# No deployment_branch_policy: this gates a CI job on pull requests, not a
+# deployment, so it is not restricted to a branch.
 
 data "github_user" "api_breaking_change_reviewer" {
   username = "Cotswoldsmaker"
@@ -118,37 +110,25 @@ resource "github_repository_environment" "api_breaking_change_review" {
 # Destructive DB migration review environment - required-reviewer approval gate
 # ---------------------------------------------------------------------------
 #
-# Destructive migration context (see
-# docs/docs/plans/2026-08-25-db-destructive-migration-review-plan.md):
-#   Gates a newly-added migration that drops a column, table, or constraint
-#   (detected by check_migrations.py --report-destructive in CI) behind one
-#   deliberate approval action. The existing
-#   `# migration-check: allow-destructive` marker is self-attested - whoever
-#   writes the migration adds the comment themself, so it proves the comment
-#   exists, not that anyone weighed the cost of discarding clinical audit
-#   history. This environment supplies the part the marker cannot: an action
-#   nothing in the diff can produce.
+# Holds back a new migration that drops a column, table or constraint, which
+# check_migrations.py --report-destructive finds in CI, until someone
+# approves it. The `# migration-check: allow-destructive` marker cannot do
+# this alone: the migration's author writes it, so it proves only that the
+# comment exists, not that anyone weighed losing clinical audit history. An
+# approval is the one thing nothing in the diff can produce.
 #
-#   `prevent_self_review = false` is intentional, matching
-#   api_breaking_change_review above - a second reviewer is not inherently
-#   more careful than the person who wrote the migration, so the goal is
-#   forcing one genuine, separate, deliberate action out of whoever is
-#   accountable, not diffusing accountability across more people.
+# `prevent_self_review = false`, as for api_breaking_change_review above: the
+# author may approve, since the point is one deliberate action from whoever
+# is accountable.
 #
-#   The reviewer is reused from api_breaking_change_review rather than looked
-#   up a second time: same person, same accountability, one data source.
+# The reviewer is the same one api_breaking_change_review looks up.
 #
-#   `can_admins_bypass = false` is deliberate and is what makes this gate
-#   binding rather than advisory. Today the sole admin and the sole reviewer
-#   are the same person, so the setting looks redundant - but the roles are
-#   expected to diverge: a Clinical Safety Officer with coding experience is
-#   the right approver for discarding clinical audit history, whereas a repo
-#   admin may have minimal clinical experience. Leaving the default (`true`)
-#   would let exactly the wrong role wave the change through. Set now, while
-#   it costs nothing, rather than after the roles have split.
+# `can_admins_bypass = false` makes the gate binding. One person is both
+# admin and reviewer today, The default, `true`, would let the wrong role
+# wave it through.
 #
-# No deployment_branch_policy: this environment gates a CI job that runs on
-# pull requests, not a deployment, so it is not restricted to a branch.
+# No deployment_branch_policy: this gates a CI job on pull requests, not a
+# deployment, so it is not restricted to a branch.
 
 resource "github_repository_environment" "db_destructive_migration_review" {
   repository          = var.github_repository

@@ -87,16 +87,16 @@ describe("InboxButton", () => {
     ).toBeInTheDocument();
   });
 
-  it("sits back on a dark background when nothing is waiting", () => {
-    // A mid grey, not white: an idle envelope should not be the
-    // brightest thing on the ribbon.
+  it("takes the brand's idle colour on a dark background when nothing is waiting", () => {
+    // Set per brand in the theme: grey 6 on Quill's navy, a light grey
+    // on Let's Do Digital's blue (theme.test.ts holds the values).
     const { container } = renderWithMantine(
       <InboxButton label={LABEL} count={0} onDark onClick={vi.fn()} />,
     );
 
     expect(container.querySelector("svg")).toHaveAttribute(
       "stroke",
-      "var(--mantine-color-gray-6)",
+      "var(--ribbon-icon-idle)",
     );
   });
 

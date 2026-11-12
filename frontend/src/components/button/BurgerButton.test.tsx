@@ -41,6 +41,18 @@ describe("BurgerButton", () => {
       expect(button.style.getPropertyValue("--ai-size")).toContain("2.75rem");
     });
   });
+  describe("Brand colour", () => {
+    it("takes its amber from the theme, so it follows the brand", () => {
+      renderWithMantine(<BurgerButton navOpen={false} onClick={vi.fn()} />);
+      const button = screen.getByRole("button", { name: "Open navigation" });
+
+      expect(button.style.color).toBe("var(--mantine-color-secondary-5)");
+      expect(button.style.getPropertyValue("--ai-hover-color")).toBe(
+        "var(--mantine-color-secondary-5)",
+      );
+    });
+  });
+
   describe("Rendering", () => {
     it("renders as a button", () => {
       renderWithMantine(<BurgerButton navOpen={false} onClick={vi.fn()} />);

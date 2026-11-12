@@ -22,8 +22,8 @@
   .mantine-ActionIcon-root[data-variant="filled"]:disabled,
 [data-mantine-color-scheme="dark"]
   .mantine-ActionIcon-root[data-variant="filled"][data-disabled] {
-  background-color: #0a2f56 !important;
-  border-color: #0a2f56 !important;
+  background-color: var(--mantine-color-primary-6) !important;
+  border-color: var(--mantine-color-primary-6) !important;
   color: white !important;
 }
 

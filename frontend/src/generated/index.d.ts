@@ -261,18 +261,65 @@ declare module "@/generated/brand.json" {
     dark: EmailDarkTheme;
   }
 
-  const data: {
-    brand: {
-      primary: string;
-      secondary: string;
-      background: string;
-      mark: string;
+  interface BrandColoursSource {
+    primary: string;
+    secondary: string;
+    background: string;
+    mark: string;
+  }
+
+  // What a brand calls itself, and the address it commits from. The
+  // backend checks the address is one.
+  interface IdentitySource {
+    name: string;
+    short_name: string;
+    committer_email: string;
+  }
+
+  // Another look for the app, beside Quill's own, such as Let's Do
+  // Digital's: Storybook shows one with `just sb ldd`, and the dev stack
+  // runs as one with `just sa ldd`. The backend checks every value is hex.
+  interface AppThemeSource {
+    identity: IdentitySource;
+    brand: BrandColoursSource;
+    palette: {
+      primary: string[];
+      secondary: string[];
     };
+    // The ribbon's mail icon while nothing is waiting
+    ribbon_icon_idle: string;
+    // Links in light mode
+    link: string;
+    logo: string;
+    logo_tile?: string;
+    // The brand's own spinner; a brand with none keeps the quill
+    spinner?: {
+      src: string;
+      still: string;
+    };
+    // The brand's own tab and app icons; a brand with none keeps Quill's
+    icons?: {
+      favicon: string;
+      apple_touch_icon: string;
+      manifest: string;
+      theme_colour: string;
+    };
+    wordmark: {
+      src: string;
+      dark_src?: string;
+      alt: string;
+    };
+  }
+
+  const data: {
+    identity: IdentitySource;
+    brand: BrandColoursSource;
     palette: {
       primary: string[];
       secondary: string[];
       grey: string[];
     };
+    app_themes: Record<string, AppThemeSource>;
     // Keyed by the theme names in emailThemes.ts, which is generated
     // from the same file, so the names are not written out again here.
     email_themes: Record<

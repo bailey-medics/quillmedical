@@ -20,7 +20,8 @@
    * paler one fades into a white page as the quill goes edge on, which
    * reads as the turn rushing through that moment.
    * The shadowed colour is the one the animation was drawn with, written
-   * out because it is not a shade in the palette.
+   * out because it is not a shade in the palette. It is Quill's navy in
+   * every brand: the spinner is the quill itself, and is not rebranded.
    */
   --quill-spinner-face: var(--mantine-color-primary-8);
   --quill-spinner-lit: var(--mantine-color-primary-2);
@@ -222,6 +223,31 @@
   }
 }
 
+/*
+ * Another brand's own spinner, in place of the quill under its theme. It
+ * is an animated image, so nothing here moves it; the box only holds it,
+ * and fades it for somebody who has asked for less motion, when the
+ * picture shows its still first frame instead.
+ */
+.still {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.brandPicture {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.brandSpinner {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
 @keyframes pulse {
   0%,
   100% {
@@ -234,8 +260,9 @@
 }
 
 /*
- * Somebody who has asked for less motion gets a still quill that fades
- * gently in and out, so the page still shows it is working.
+ * Somebody who has asked for less motion gets a still quill, or a
+ * brand's still frame, that fades gently in and out, so the page still
+ * shows it is working.
  */
 @media (prefers-reduced-motion: reduce) {
   .spin,
@@ -246,7 +273,8 @@
     animation: none;
   }
 
-  .tilt {
+  .tilt,
+  .still {
     animation: pulse 1.6s ease-in-out infinite;
   }
 }

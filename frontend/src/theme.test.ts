@@ -9,12 +9,23 @@
  */
 
 import { DEFAULT_THEME, mergeMantineTheme } from "@mantine/core";
-import { describe, expect, it } from "vitest";
-import { AA_TEXT, contrastRatio } from "@lib/colour-contrast/contrast";
-import brand from "@/generated/brand.json";
+import { describe, expect, it, vi } from "vitest";
 import {
+  AA_LARGE_OR_GRAPHIC,
+  AA_TEXT,
+  contrastRatio,
+} from "@lib/colour-contrast/contrast";
+import brand from "@/generated/brand.json";
+import baseline from "./theme.quill-baseline.json";
+import {
+  APP_BRAND,
+  appIdentity,
+  brandIdentity,
+  resolveAppBrand,
+  BRAND_NAMES,
   brandColours,
   cssVariablesResolver,
+  makeTheme,
   greyScale,
   primaryScale,
   secondaryScale,
@@ -305,5 +316,237 @@ describe("the theme reads its colours from shared/brand.yaml", () => {
   it("keeps the brand primary at shade 8 and the brand amber at shade 5", () => {
     expect(primaryScale[8]).toBe(brandColours.primary);
     expect(secondaryScale[5]).toBe(brandColours.secondary.toLowerCase());
+  });
+});
+
+describe("makeTheme", () => {
+  it("gives Quill exactly the variables it had before brands existed", () => {
+    // Recorded from theme.ts on 6 November 2026, before makeTheme: every
+    // variable theme.ts sets itself, in each scheme. Mantine's own are
+    // left out, so a Mantine upgrade does not break this.
+    const before = baseline as Record<
+      "variables" | "light" | "dark",
+      Record<string, string>
+    > & { black: string };
+
+    expect(resolved.black).toBe(before.black);
+
+    for (const scheme of ["variables", "light", "dark"] as const) {
+      const now: Record<string, string> = { ...vars[scheme] };
+
+      for (const [name, value] of Object.entries(before[scheme])) {
+        expect([scheme, name, now[name]]).toEqual([scheme, name, value]);
+      }
+    }
+  });
+
+  it("builds the same Quill theme the app uses", () => {
+    const quill = makeTheme("quill");
+    const rebuilt = mergeMantineTheme(DEFAULT_THEME, quill.theme);
+
+    // Through JSON: each build makes its own NavLink `vars` function, so
+    // the two are equal in what they hold but never the same function.
+    expect(JSON.parse(JSON.stringify(rebuilt))).toEqual(
+      JSON.parse(JSON.stringify(resolved)),
+    );
+    expect(quill.cssVariablesResolver(rebuilt)).toEqual(vars);
+    expect(resolved.other.brand).toBe("quill");
+    expect(resolved.other.logo).toBeUndefined();
+    expect(resolved.other.wordmark).toBeUndefined();
+  });
+
+  it("builds Let's Do Digital from its entry in the brand file", () => {
+    const ldd = brand.app_themes["ldd"];
+    const built = mergeMantineTheme(DEFAULT_THEME, makeTheme("ldd").theme);
+
+    expect(ldd).toBeDefined();
+    expect([...built.colors.primary]).toEqual(ldd?.palette.primary);
+    expect([...built.colors.secondary]).toEqual(ldd?.palette.secondary);
+    expect(built.black).toBe(ldd?.palette.primary[5]);
+    expect(built.other).toEqual({
+      brand: "ldd",
+      colours: ldd?.brand,
+      logo: "/brands/ldd/logo.png",
+      logoTile: "#ffffff",
+      wordmark: {
+        src: "/brands/ldd/wordmark-white.svg",
+        darkSrc: "/brands/ldd/wordmark-dark.svg",
+        alt: "Let's Do Digital",
+      },
+      spinner: {
+        src: "/brands/ldd/logo-spinner.webp",
+        still: "/brands/ldd/logo-spinner-still.png",
+      },
+    });
+  });
+
+  it("points Let's Do Digital's brand and dark-mode surfaces at its own colours", () => {
+    const ldd = makeTheme("ldd");
+    const built = mergeMantineTheme(DEFAULT_THEME, ldd.theme);
+    const lddVars = ldd.cssVariablesResolver(built);
+    const blue = brand.app_themes["ldd"]?.palette.primary ?? [];
+
+    expect(lddVars.variables["--brand-primary"]).toBe("#0848a9");
+    expect(lddVars.variables["--brand-secondary"]).toBe("#d0d0d0");
+    expect(lddVars.dark["--mantine-color-body"]).toBe(blue[8]);
+    expect(lddVars.dark["--card-bg"]).toBe(blue[7]);
+    expect(lddVars.light["--mantine-color-text"]).toBe(blue[5]);
+  });
+
+  it("keeps Let's Do Digital's logo and wordmark when nested inside Quill's theme", () => {
+    // As MantineThemeProvider merges a story's theme over Storybook's.
+    // Quill's theme must not carry the keys as undefined: Mantine's
+    // deepMerge turns undefined merged with an object into {}.
+    const nested = mergeMantineTheme(resolved, makeTheme("ldd").theme);
+
+    expect(nested.other.logo).toBe("/brands/ldd/logo.png");
+    expect(nested.other.wordmark?.alt).toBe("Let's Do Digital");
+    expect("wordmark" in resolved.other).toBe(false);
+  });
+
+  it("carries each brand's four colours on the theme", () => {
+    const ldd = mergeMantineTheme(DEFAULT_THEME, makeTheme("ldd").theme);
+
+    expect(resolved.other.colours).toEqual(brandColours);
+    expect(ldd.other.colours).toEqual({
+      primary: "#0848a9",
+      secondary: "#d0d0d0",
+      background: "#ffffff",
+      mark: "#ffffff",
+    });
+  });
+
+  it("gives the ribbon's idle mail icon each brand's own colour", () => {
+    const ldd = makeTheme("ldd");
+    const lddVars = ldd.cssVariablesResolver(
+      mergeMantineTheme(DEFAULT_THEME, ldd.theme),
+    );
+
+    expect(vars.variables["--ribbon-icon-idle"]).toBe(greyScale[6]);
+    expect(lddVars.variables["--ribbon-icon-idle"]).toBe("#c0c0c0");
+  });
+
+  it.each(BRAND_NAMES)(
+    "gives %s's ribbon the dark page's colour in dark mode, and its brand primary in light",
+    (name) => {
+      const built = makeTheme(name);
+      const resolvedBrand = mergeMantineTheme(DEFAULT_THEME, built.theme);
+      const brandVars = built.cssVariablesResolver(resolvedBrand);
+
+      expect(brandVars.dark["--ribbon-bg"]).toBe(
+        brandVars.dark["--mantine-color-body"],
+      );
+      expect(brandVars.light["--ribbon-bg"]).toBe(
+        resolvedBrand.other.colours?.primary,
+      );
+    },
+  );
+
+  it.each(BRAND_NAMES)(
+    "keeps %s's idle mail icon at 3:1 or more on its ribbon in both schemes",
+    (name) => {
+      const built = makeTheme(name);
+      const brandVars = built.cssVariablesResolver(
+        mergeMantineTheme(DEFAULT_THEME, built.theme),
+      );
+      const icon = brandVars.variables["--ribbon-icon-idle"] ?? "";
+
+      for (const scheme of ["light", "dark"] as const) {
+        expect(
+          contrastRatio(icon, brandVars[scheme]["--ribbon-bg"] ?? ""),
+        ).toBeGreaterThanOrEqual(AA_LARGE_OR_GRAPHIC);
+      }
+    },
+  );
+
+  // Every app theme's text colours, held to WCAG AA as Quill's are
+  // above. An app theme's link and current nav link once fell short in
+  // light mode, found by the Storybook accessibility test.
+  it.each(Object.keys(brand.app_themes))(
+    "keeps %s's light-mode text at 4.5:1 or more",
+    (name) => {
+      const built = makeTheme(name);
+      const light = built.cssVariablesResolver(
+        mergeMantineTheme(DEFAULT_THEME, built.theme),
+      ).light;
+      const ramps = brand.app_themes[name];
+
+      expect(
+        contrastRatio(light["--link-color"] ?? "", "#ffffff"),
+      ).toBeGreaterThanOrEqual(AA_TEXT);
+      expect(
+        contrastRatio(ramps?.palette.secondary[7] ?? "", greyScale[1] ?? ""),
+      ).toBeGreaterThanOrEqual(AA_TEXT);
+      expect(
+        contrastRatio(ramps?.palette.primary[5] ?? "", "#ffffff"),
+      ).toBeGreaterThanOrEqual(AA_TEXT);
+    },
+  );
+
+  it("lists Quill first, then every app theme", () => {
+    expect(BRAND_NAMES).toEqual(["quill", ...Object.keys(brand.app_themes)]);
+    expect(BRAND_NAMES).toContain("ldd");
+  });
+
+  it.each(["purple", "constructor", ""])(
+    "refuses a brand the file does not hold: %j",
+    (name) => {
+      expect(() => makeTheme(name)).toThrow(/Unknown brand/);
+    },
+  );
+});
+
+describe("the brand the app runs as", () => {
+  it("is Quill when VITE_BRAND is unset", () => {
+    expect(APP_BRAND).toBe("quill");
+    expect(appIdentity.name).toBe("Quill Medical");
+  });
+
+  it("is Quill when VITE_BRAND is empty", () => {
+    expect(resolveAppBrand("")).toBe("quill");
+  });
+
+  it("is the brand VITE_BRAND names", () => {
+    expect(resolveAppBrand("ldd")).toBe("ldd");
+  });
+
+  it("refuses a brand the brand file does not hold, naming the known ones", () => {
+    expect(() => resolveAppBrand("not-a-brand")).toThrow(
+      'VITE_BRAND is "not-a-brand", which is not a brand. Known brands: quill, ldd',
+    );
+  });
+
+  it("gives the app Let's Do Digital's look when built as it", async () => {
+    vi.stubEnv("VITE_BRAND", "ldd");
+    vi.resetModules();
+    const fresh = await import("./theme");
+    const built = mergeMantineTheme(DEFAULT_THEME, fresh.theme);
+
+    expect(fresh.APP_BRAND).toBe("ldd");
+    expect(built.other.brand).toBe("ldd");
+    expect([...built.colors.primary]).toEqual(
+      brand.app_themes["ldd"]?.palette.primary,
+    );
+    vi.unstubAllEnvs();
+  });
+});
+
+describe("brandIdentity", () => {
+  it("names Quill from the top of the brand file", () => {
+    expect(brandIdentity("quill")).toEqual({
+      name: "Quill Medical",
+      shortName: "Quill",
+    });
+  });
+
+  it("names Let's Do Digital from its app theme", () => {
+    expect(brandIdentity("ldd")).toEqual({
+      name: "Let's Do Digital",
+      shortName: "LDD",
+    });
+  });
+
+  it("refuses an unknown brand, including one of Object's own names", () => {
+    expect(() => brandIdentity("constructor")).toThrow(/Unknown brand/);
   });
 });

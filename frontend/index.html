@@ -34,6 +34,10 @@
         The colours are written out, since the theme that names them has
         not loaded either. No script: the content security policy runs
         none written inside the page.
+
+        Built as another brand, scripts/brandSplash.ts swaps what lies
+        between the brand-splash markers for that brand's logo, turning,
+        and gives the page the brand's title.
       -->
       <style>
         /*
@@ -256,6 +260,7 @@
       </style>
       <div class="quill-splash">
         <div class="quill-splash-box">
+          <!-- brand-splash:start -->
           <div class="quill-splash-tilt" aria-hidden="true">
             <div class="quill-splash-spin" id="quill-splash-spin">
               <!-- The outline is drawn once and shown three times. -->
@@ -286,6 +291,7 @@
               </svg>
             </div>
           </div>
+          <!-- brand-splash:end -->
           <span class="quill-splash-status" role="status">Loading</span>
         </div>
       </div>

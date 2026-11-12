@@ -26,7 +26,7 @@ from app import passport_storage
 from app.config import settings
 from app.features.passport.blobs import BlobStore
 from app.features.passport.gcs_store import GcsBlobStore, GcsPassportStore
-from app.features.passport.store import LocalPassportStore
+from app.features.passport.store import Committer, LocalPassportStore
 
 
 @pytest.fixture(autouse=True)
@@ -96,7 +96,7 @@ class TestWithABucket:
         monkeypatch.setattr(
             passport_storage,
             "build_store",
-            lambda bucket: GcsPassportStore(MagicMock()),
+            lambda bucket, committer: GcsPassportStore(MagicMock()),
         )
 
         assert isinstance(
@@ -136,9 +136,11 @@ class TestWithABucket:
         than assumed.
         """
         seen: list[str] = []
+        committers: list[str] = []
 
-        def record(bucket: str) -> GcsPassportStore:
+        def record(bucket: str, committer: Committer) -> GcsPassportStore:
             seen.append(bucket)
+            committers.append(committer.name)
 
             return GcsPassportStore(MagicMock())
 
@@ -150,6 +152,7 @@ class TestWithABucket:
         passport_storage.get_passport_store()
 
         assert seen == ["quill-passports-prod"]
+        assert committers == ["Quill Medical"]
 
 
 class TestTheTwoStoresAgree:
@@ -175,7 +178,7 @@ class TestTheTwoStoresAgree:
         monkeypatch.setattr(
             passport_storage,
             "build_store",
-            lambda bucket: GcsPassportStore(MagicMock()),
+            lambda bucket, committer: GcsPassportStore(MagicMock()),
         )
         monkeypatch.setattr(
             passport_storage,
@@ -236,3 +239,35 @@ class TestCaching:
         passport_storage.reset_caches()
 
         assert passport_storage.get_passport_store() is not first
+
+
+class TestTheCommitter:
+    """The application commits under the full name of its brand."""
+
+    def test_quill_commits_as_quill_medical(self) -> None:
+        committer = passport_storage.brand_committer("quill")
+
+        assert committer.name == "Quill Medical"
+        assert committer.email == "noreply@quill-medical.com"
+
+    def test_ldd_commits_as_lets_do_digital(self) -> None:
+        committer = passport_storage.brand_committer("ldd")
+
+        assert committer.name == "Let's Do Digital"
+        assert committer.email == "info@letsdodigital.org"
+
+    def test_the_store_commits_as_the_brand_settings_name(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        monkeypatch.setattr(settings, "PASSPORT_GCS_BUCKET", None)
+        monkeypatch.setattr(settings, "PASSPORT_LOCAL_ROOT", str(tmp_path))
+        monkeypatch.setattr(settings, "BRAND", "ldd")
+
+        built = passport_storage.get_passport_store()
+
+        assert isinstance(built, LocalPassportStore)
+        assert built._committer.name == "Let's Do Digital"
+
+    def test_an_unknown_brand_is_refused(self) -> None:
+        with pytest.raises(ValueError, match="Known brands"):
+            passport_storage.brand_committer("purple")

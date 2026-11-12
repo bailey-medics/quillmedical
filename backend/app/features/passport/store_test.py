@@ -422,7 +422,29 @@ class TestWrite:
 
         assert commit.author.name == "Dr Amara Okonkwo"
         assert commit.author.email == "amara@example.nhs.uk"
-        assert commit.committer.name == store.COMMITTER_NAME
+        assert commit.committer.name == store.DEFAULT_COMMITTER.name
+        assert commit.committer.email == store.DEFAULT_COMMITTER.email
+
+    def test_the_committer_is_the_one_the_store_was_given(
+        self, actor: Actor, tmp_path: Path
+    ) -> None:
+        """The application passes the committer for the brand it runs as."""
+        branded = LocalPassportStore(
+            tmp_path,
+            store.Committer(
+                name="Let's Do Digital", email="info@letsdodigital.org"
+            ),
+        )
+        _created(branded, actor)
+
+        repository = pygit2.Repository(
+            str(tmp_path / paths.shard(PASSPORT_ID))
+        )
+        commit = repository.get(repository.head.target)
+
+        assert commit.committer.name == "Let's Do Digital"
+        assert commit.committer.email == "info@letsdodigital.org"
+        assert commit.author.name == "Dr Amara Okonkwo"
 
     def test_deletes_in_the_same_commit(
         self, passport_store: LocalPassportStore, actor: Actor

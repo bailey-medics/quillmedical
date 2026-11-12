@@ -176,6 +176,58 @@ _e2e-up:
     echo "http://localhost:${port}"
 
 
+# Signs in to an AWS account (emails or management) unless already signed
+# in, so a lapsed session is renewed before Terraform starts, not halfway
+# through a plan. `just al` itself refuses the wrong account.
+_ensure-aws-login which:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    case "{{which}}" in
+        emails)     profile="quill-emails" ;;
+        management) profile="quill-management" ;;
+        *) echo "✗ Unknown account '{{which}}': emails or management."; exit 1 ;;
+    esac
+
+    if aws sts get-caller-identity --profile "$profile" >/dev/null 2>&1; then
+        exit 0
+    fi
+
+    echo "Not signed in to the AWS {{which}} account. Signing in now."
+    just aws-login "{{which}}"
+
+    if ! aws sts get-caller-identity --profile "$profile" >/dev/null 2>&1; then
+        echo "✗ Still not signed in to the AWS {{which}} account."
+        exit 1
+    fi
+
+
+# Signs in to Google Cloud unless both of its sign-ins work: gcloud's own,
+# which gcloud commands use, and application default, which Terraform uses
+# for its state bucket. An expired one otherwise fails as invalid_rapt
+# partway through. Never call it inside $( ), which would hide the prompt.
+_ensure-gcp-login:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    signed_in() {
+        gcloud auth print-access-token >/dev/null 2>&1 \
+            && gcloud auth application-default print-access-token >/dev/null 2>&1
+    }
+
+    if signed_in; then
+        exit 0
+    fi
+
+    echo "Not signed in to Google Cloud. Signing in now."
+    just gcp-login
+
+    if ! signed_in; then
+        echo "✗ Still not signed in to Google Cloud."
+        exit 1
+    fi
+
+
 # Installs the frontend packages on the host when they have fallen behind
 # package.json or yarn.lock, as they do after a pull that bumps a version.
 # Yarn then refuses to run a script at all ("command not found: storybook"),
@@ -434,6 +486,8 @@ add-role-remote env:
     {{initialise}} "add-role ({{env}})"
     set -euo pipefail
 
+    just _ensure-gcp-login
+
     PROJECT=$(just _gcp_env_project "{{env}}")
     REGION="europe-west2"
 
@@ -456,6 +510,10 @@ alias al := aws-login
 aws-login which="emails":
     #!/usr/bin/env bash
     {{initialise}} "aws-login"
+
+    # No command tracing: it would bury the banner below that says which
+    # account to open.
+    set +x
 
     # `aws login` keeps short-lived credentials that renew themselves, so no
     # access key is left on disk. It does not ask which account: it takes
@@ -491,6 +549,19 @@ aws-login which="emails":
     # everything in SES is per region: a resource made outside eu-west-2 is
     # email data outside the UK.
     aws configure set region eu-west-2 --profile "$profile"
+
+    # The sign-in link names no account, so say which one before showing it,
+    # in red on a terminal so it stands out from the link.
+    name="$(printf '%s' "{{which}}" | tr '[:lower:]' '[:upper:]')"
+
+    if [ -t 1 ]; then
+        name="$(printf '\033[31m%s\033[0m' "$name")"
+    fi
+
+    echo
+    echo "==> Sign in to the ${name} account (${want})."
+    echo "    Open that account's console in the browser, signing out of any"
+    echo "    other AWS account there."
 
     # On a Linux machine with no screen, such as the dev box over SSH,
     # there is no browser to open, so `--remote` prints a link to open on
@@ -541,6 +612,8 @@ build-admin env:
     {{initialise}} "build-admin ({{env}})"
     set -euo pipefail
 
+    just _ensure-gcp-login
+
     PROJECT=$(just _gcp_env_project "{{env}}")
     REGION="europe-west2"
     REGISTRY="${REGION}-docker.pkg.dev"
@@ -582,6 +655,8 @@ check-competency-seeding env:
     {{initialise}} "check-competency-seeding ({{env}})"
     set -euo pipefail
 
+    just _ensure-gcp-login
+
     PROJECT=$(just _gcp_env_project "{{env}}")
     REGION="europe-west2"
 
@@ -620,6 +695,8 @@ create-superadmin env:
     #!/usr/bin/env bash
     {{initialise}} "create-superadmin ({{env}})"
     set -euo pipefail
+
+    just _ensure-gcp-login
 
     PROJECT=$(just _gcp_env_project "{{env}}")
     REGION="europe-west2"
@@ -985,6 +1062,8 @@ migrate-current env:
     {{initialise}} "migrate-current ({{env}})"
     set -euo pipefail
 
+    just _ensure-gcp-login
+
     PROJECT=$(just _gcp_env_project "{{env}}")
     REGION="europe-west2"
 
@@ -1062,6 +1141,8 @@ migrate-remote env:
     {{initialise}} "migrate-remote ({{env}})"
     set -euo pipefail
 
+    just _ensure-gcp-login
+
     PROJECT=$(just _gcp_env_project "{{env}}")
     REGION="europe-west2"
 
@@ -1081,6 +1162,8 @@ newsletter-send env campaign confirm="" only_to="" limit="":
     #!/usr/bin/env bash
     {{initialise}} "newsletter-send ({{env}})"
     set -euo pipefail
+
+    just _ensure-gcp-login
 
     PROJECT=$(just _gcp_env_project "{{env}}")
     REGION="europe-west2"
@@ -1207,6 +1290,8 @@ passport-delete env username confirm="":
     #!/usr/bin/env bash
     {{initialise}} "passport-delete ({{env}})"
     set -euo pipefail
+
+    just _ensure-gcp-login
 
     PROJECT=$(just _gcp_env_project "{{env}}")
     REGION="europe-west2"
@@ -2652,14 +2737,25 @@ stack-watch:
 
 
 alias sa := start-app
-# Start the dev app without the EHR services, FHIR and EHRbase (build: 'b' will also build the images)
-start-app build="":
+# Start the dev app without the EHR services, as a brand: quill (default) or ldd; add 'b' to build the images
+start-app *args:
     #!/usr/bin/env bash
     {{initialise}} "start-app"
+
+    # `b` builds and anything else is the brand, in either order, so
+    # `just sa b` and `just sa ldd b` both work. Sorted, and an unknown
+    # brand refused, before anything starts.
+    parsed="$(bash scripts/start-app-args.sh {{args}})" || exit 1
+    read -r brand build <<< "${parsed}"
+
+    # Read by compose.dev.yml, as BRAND for the backend and VITE_BRAND for
+    # the frontend, so the two cannot run as different brands.
+    export BRAND="${brand}"
 
     just _dev-stack-guard
     just _start-docker-daemon
     echo "Access the frontend at: http://$(just _host-address)"
+    echo "Brand: ${brand}"
     echo "Clinical services (FHIR/EHRbase) disabled"
 
     # The backend bind-mounts teaching-repos/. Left for Docker to make, it
@@ -2668,7 +2764,7 @@ start-app build="":
 
     build_args=""
 
-    if [ "{{build}}" = "b" ]; then
+    if [ "${build}" = "yes" ]; then
         docker compose -f compose.dev.yml down
         docker volume rm -f quillmedical_frontend_node_modules >/dev/null 2>&1 || true
         cd frontend && yarn install && cd ..
@@ -2746,10 +2842,19 @@ stop:
 
 
 alias sb := storybook
-# Run storybook dev server
-storybook:
+# Run storybook dev server, in one brand: quill (default) or ldd
+storybook brand="quill":
     #!/usr/bin/env bash
     {{initialise}} "storybook"
+
+    # Checked before anything else runs, so a mistyped brand costs nothing.
+    # The list is written out by hand and widened when a new brand is
+    # ready; the preview checks again against shared/brand.yaml.
+    case "{{brand}}" in
+        quill|ldd) ;;
+        *) echo "✗ Unknown brand '{{brand}}': quill or ldd."; exit 1 ;;
+    esac
+
     just _frontend-packages-current || exit 1
 
     # Render the emails first: the email stories show saved HTML files and
@@ -2778,8 +2883,9 @@ storybook:
     cd frontend
 
     # Written so an empty list expands to nothing under `set -u` in the
-    # bash 3.2 a Mac ships, which otherwise calls it unbound.
-    yarn storybook ${host_args[@]+"${host_args[@]}"}
+    # bash 3.2 a Mac ships, which otherwise calls it unbound. The preview
+    # reads STORYBOOK_BRAND and builds every story's theme from it.
+    STORYBOOK_BRAND="{{brand}}" yarn storybook ${host_args[@]+"${host_args[@]}"}
 
 
 alias sbt := storybook-test
@@ -2838,23 +2944,33 @@ terraform-aws:
     export TF_VAR_management_account_id="$(grep '^AWS_MANAGEMENT_ACCOUNT_ID=' backend/.env | cut -d= -f2-)"
     export TF_VAR_identity_account_id="$(grep '^AWS_ID_ACCOUNT_ID=' backend/.env | cut -d= -f2-)"
 
-    # Both sign-ins are needed: the emails account for App production, and
-    # the management account, which holds the organisation's policy and is
-    # where the development account is reached from.
-    # Checked here so a lapsed session says so plainly, and not as a
-    # provider error halfway through a plan.
-    for profile in quill-emails quill-management; do
-        if ! aws sts get-caller-identity --profile "$profile" >/dev/null 2>&1; then
-            echo "✗ Not signed in to AWS as ${profile}. Run: just al$([ "$profile" = quill-management ] && echo ' management')"
-            exit 1
-        fi
-    done
+    # The state is in the Cloud Storage bucket, so Google is needed too.
+    # Both AWS sign-ins are needed: the emails account for App production,
+    # and the management account, which holds the organisation's policy and
+    # is where the development account is reached from.
+    just _ensure-gcp-login
+    just _ensure-aws-login emails
+    just _ensure-aws-login management
 
     cd infra/aws
 
     # No -upgrade: the providers are the ones in the committed lock file.
     terraform init -input=false
-    terraform plan
+
+    # -detailed-exitcode: 0 is no changes, 2 is changes, anything else an
+    # error. So an empty plan stops here rather than asking to apply nothing.
+    status=0
+    terraform plan -detailed-exitcode || status=$?
+
+    if [ "$status" -eq 0 ]; then
+        echo "Nothing to apply."
+        exit 0
+    fi
+
+    if [ "$status" -ne 2 ]; then
+        exit "$status"
+    fi
+
     read -rp "Apply these changes? (yes/no): " confirm
 
     if [ "$confirm" = "yes" ]; then
@@ -2873,6 +2989,9 @@ terraform-github:
 
     # The Terraform here must be the one CI runs, since the state is shared.
     bash scripts/check-terraform-version.sh host
+
+    # The state is in the Cloud Storage bucket.
+    just _ensure-gcp-login
 
     cd infra/github
 
@@ -2898,7 +3017,21 @@ terraform-github:
     # state is in the bucket. No -upgrade: the providers are the ones in the
     # committed lock file.
     terraform init -input=false -reconfigure
-    terraform plan -var-file=terraform.tfvars
+
+    # -detailed-exitcode: 0 is no changes, 2 is changes, anything else an
+    # error. So an empty plan stops here rather than asking to apply nothing.
+    status=0
+    terraform plan -var-file=terraform.tfvars -detailed-exitcode || status=$?
+
+    if [ "$status" -eq 0 ]; then
+        echo "Nothing to apply."
+        exit 0
+    fi
+
+    if [ "$status" -ne 2 ]; then
+        exit "$status"
+    fi
+
     read -rp "Apply these changes? (yes/no): " confirm
 
     if [ "$confirm" = "yes" ]; then

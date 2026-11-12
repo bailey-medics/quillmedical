@@ -30,7 +30,7 @@ function StartUpLoop() {
 
   return (
     <LoginForm
-      title="Sign in to Quill Medical"
+      title="Sign in"
       registerPath={null}
       onSubmit={() => new Promise(() => {})}
     />
@@ -38,7 +38,7 @@ function StartUpLoop() {
 }
 
 const meta: Meta<typeof QuillSpinner> = {
-  title: "Feedback/Quill spinner",
+  title: "Feedback/Brand spinner",
   component: QuillSpinner,
   parameters: { layout: "padded" },
 };
@@ -83,15 +83,15 @@ export const AllSizes: Story = {
  * How starting the app will look: the spinner for three seconds, then the
  * sign-in screen for ten, and round again.
  */
-export const LoadingQuillApp: Story = {
-  name: "Loading Quill app",
+export const LoadingApp: Story = {
+  name: "Loading the app",
   globals: { colorScheme: "light" },
   // The note goes above here, not below: what is under it changes height
   // every few seconds, and a note beneath would jump about with it.
   render: () => (
     <>
       <StoryNote mt={0}>
-        What somebody sees when they open Quill. The spinner shows while the app
+        What somebody sees when they open the app. The spinner shows while it
         starts, here for three seconds, then gives way to the sign-in screen.
         That stays for ten seconds and the loop starts again.
       </StoryNote>

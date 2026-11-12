@@ -1,7 +1,8 @@
 /**
- * Quill Name Component Stories
+ * Brand Name Component Stories
  *
- * Demonstrates the "Quill Medical" text logo SVG:
+ * Demonstrates the brand's name drawn as an image, Quill's or the brand
+ * Storybook runs as:
  * - Default size (5px height for Storybook)
  * - Customizable height
  * - Accessible alt text
@@ -9,16 +10,15 @@
  */
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import QuillName from "./QuillName";
-import Image from "@components/images/Image";
-import publicAsset from "@lib/publicAsset";
 
 const meta: Meta<typeof QuillName> = {
-  title: "Images/Quill name",
+  title: "Images/Brand name",
   component: QuillName,
   parameters: {
     layout: "padded",
   },
   argTypes: {
+    colour: { control: "inline-radio", options: ["white", "dark"] },
     height: { control: "number" },
     alt: { control: "text" },
   },
@@ -29,13 +29,12 @@ export default meta;
 type Story = StoryObj<typeof QuillName>;
 
 /**
- * Default "Quill Medical" text logo.
+ * The brand's name, white, as the ribbon shows it.
  * Standard height (5px) suitable for Storybook display.
  */
 export const Default: Story = {
   args: {
     height: 5,
-    alt: "Quill Medical",
   },
   decorators: [
     (Story) => (
@@ -52,8 +51,15 @@ export const Default: Story = {
   ],
 };
 
-/** Dark font variant for light backgrounds. */
+/**
+ * Dark font variant for light backgrounds. It follows the brand Storybook
+ * runs as, so `just sb ldd` shows Let's Do Digital's.
+ */
 export const DarkFont: Story = {
+  args: {
+    colour: "dark",
+    height: 5,
+  },
   decorators: [
     (Story) => (
       <div
@@ -67,12 +73,4 @@ export const DarkFont: Story = {
       </div>
     ),
   ],
-  render: () => (
-    <Image
-      src={publicAsset("/quill-name.png")}
-      alt="Quill Medical"
-      height={5}
-      style={{ marginRight: "0.5rem" }}
-    />
-  ),
 };

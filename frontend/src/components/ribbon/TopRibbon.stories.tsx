@@ -4,7 +4,7 @@ import { demoPatientsList } from "@/demo-data/patients/demoPatients";
  * TopRibbon Component Stories
  *
  * Demonstrates the top navigation ribbon:
- * - Quill Medical branding/logo
+ * - The brand's name
  * - User profile menu
  * - Notification bell
  * - Navigation drawer toggle
@@ -65,7 +65,7 @@ export const WithPatientNarrow: Story = {
 };
 
 /** A right section - the timer and "End exam" of a running assessment.
- * Below 26em the Quill name gives way to it. */
+ * Below 26em the brand's name gives way to it. */
 export const WithRightSection: Story = {
   args: {
     onBurgerClick: () => {},
@@ -83,7 +83,7 @@ export const WithRightSection: Story = {
   },
 };
 
-/** Loading state - shows skeleton + Quill mark (narrow screen) */
+/** Loading state - shows skeleton + the brand's mark (narrow screen) */
 export const LoadingNarrow: Story = {
   args: {
     onBurgerClick: () => {},
@@ -94,7 +94,7 @@ export const LoadingNarrow: Story = {
   },
 };
 
-/** Loading state - shows skeleton with ProfilePic + Quill mark (wide screen) */
+/** Loading state - shows skeleton with ProfilePic + the brand's mark (wide screen) */
 export const LoadingWide: Story = {
   args: {
     onBurgerClick: () => {},

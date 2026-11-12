@@ -41,10 +41,10 @@ describe("SelectField", () => {
 
     const label = screen.getByText("Patient");
     expect(label).toHaveStyle({
-      fontSize: "var(--mantine-font-size-md)",
-      color: "var(--mantine-color-text)",
       marginBottom: remToPx("0.25rem"),
     });
+    expect(label.style.fontSize).toBe("var(--mantine-font-size-md)");
+    expect(label.style.color).toBe("var(--mantine-color-text)");
   });
 
   it("applies standardised input font size", () => {
@@ -53,9 +53,7 @@ describe("SelectField", () => {
     );
 
     const input = screen.getByRole("combobox");
-    expect(input).toHaveStyle({
-      fontSize: "var(--mantine-font-size-md)",
-    });
+    expect(input.style.fontSize).toBe("var(--mantine-font-size-md)");
   });
 
   it("renders as disabled when disabled prop is set", () => {
