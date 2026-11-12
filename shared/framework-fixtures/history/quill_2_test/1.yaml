@@ -1,0 +1,59 @@
+# frameworks/quill_2_test.yaml
+#
+# A PLAIN FRAMEWORK MADE ONLY FOR TESTING QUILL
+#
+# Nobody is assessed against this. Quill's tests read a copy of it, and its
+# integration test syncs this repository. It is the plain shape: no
+# competency has levels or scopes, and it names no specialty. The other
+# shape, with levels and scopes, is quill_test, in
+# quill-medical-framework-testing.
+#
+# Every id starts with the framework's id and an underscore, which the
+# loader checks for every framework.
+
+# VERSION
+#
+# `version` goes up by exactly one with every change to this file except
+# its comments, its spacing and `description`. The pipeline's version
+# check refuses a pull request that changes the framework without it.
+
+framework:
+  id: quill_2_test
+  name: "Quill second test framework"
+  publisher: "Quill Medical"
+  version: 1
+  description: "A plain test framework, for Quill's own tests. Not for assessing anybody."
+  specialties: []
+
+competencies:
+  - id: quill_2_test_insert_a_cannula
+    display_name: "Insert a cannula"
+    assessable: true
+
+  - id: quill_2_test_take_blood
+    display_name: "Take blood from a vein"
+    assessable: true
+
+  - id: quill_2_test_perform_a_lumbar_puncture
+    display_name: "Perform a lumbar puncture"
+    assessable: true
+
+  - id: quill_2_test_take_consent
+    display_name: "Take consent for a procedure"
+    assessable: true
+
+  - id: quill_2_test_read_an_ecg
+    display_name: "Read an electrocardiogram"
+    assessable: true
+
+  - id: quill_2_test_manage_an_airway
+    display_name: "Manage an airway"
+    assessable: true
+
+  - id: quill_2_test_insert_a_chest_drain
+    display_name: "Insert a chest drain"
+    assessable: true
+
+  - id: quill_2_test_confirm_a_death
+    display_name: "Confirm a death"
+    assessable: true

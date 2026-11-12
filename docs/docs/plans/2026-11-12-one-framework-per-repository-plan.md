@@ -24,6 +24,14 @@ framework. Only then can the one-framework rule be enforced, in two
 deploys, so the setting's new form never reaches a backend that cannot
 read it.
 
+**Built in one unattended run, then reviewed and merged in order.** The
+pull requests in the testing repositories are opened without waiting for
+each other to merge: each branches from the one before it, and shows red
+until that one merges and its branch is updated. Quill's fixture copy
+records the exact commits it copied, so the Quill pull requests pass CI
+while the testing ones are still open. The merge order, and the one wait
+for a deploy, are in the last section, "Merge order".
+
 ## Phase 1: Two made-up frameworks, each in its own testing repository
 
 - [x] **List what the tests need from a framework before writing one.**
@@ -84,7 +92,7 @@ read it.
         `clinical_services_enabled` are positions and settings. The move
         in Phase 3 touches only the competencies in `clinical.yaml`.
 
-- [ ] **Grow `quill_test` into the full made-up framework**, in
+- [x] **Grow `quill_test` into the full made-up framework**, in
       `bailey-medics/quill-medical-framework-testing`, by a pull request
       there. It is at version 2 on `main`, and `check_framework_version.py`
       requires each change to raise the version by exactly one, so this
@@ -100,6 +108,28 @@ read it.
       at one version and retired at the next, with sign-offs given at
       the earlier version still naming it. Every competency id starts
       `quill_test_`, as the loader requires.
+
+      **Built on 12 November 2026** as the testing repository's #4 and
+      #5, #5 branched from #4.
+      - **Version 3** keeps the four competencies of versions 1 and 2,
+        adds the specialties `oncology` and `haematology`, and adds
+        three competencies. `quill_test_give_a_course` stands in for
+        `uk_sact_board_2023_prescribe_sact`: five levels in order,
+        `observe`, `review`, `continue`, `start` and `adapt`, and the
+        scopes `breast`, `lung`, `bowel`, `skin` and `other`. The scope
+        ids `lung` and `breast` are kept from the real fixture, because
+        they are ordinary words and many tests name them.
+        `quill_test_refer_to_a_team` is the second competency with
+        levels. `quill_test_use_the_old_system` is plain.
+      - **Version 4 retires only what no other test relies on**: the
+        level `with_direct_supervision` and the scope `liver`, both on
+        `quill_test_refer_to_a_team`, and the whole of
+        `quill_test_use_the_old_system`. So the tests moved onto
+        `quill_test_give_a_course` never meet a retired item by
+        accident.
+      - Both passed Quill's `validate_frameworks` and
+        `check_framework_version`, version 4 checked against version 3's
+        branch.
 
 - [x] **Make a second testing repository holding one plain made-up
       framework**: no levels and no scopes. The repository is
@@ -136,22 +166,49 @@ read it.
 
 ## Phase 2: Copy the fixtures from both testing repositories
 
-- [ ] **Copy from both repositories in `scripts/framework-fixtures-refresh.sh`.**
+- [x] **Copy from both repositories in `scripts/framework-fixtures-refresh.sh`.**
       It copies every file in each repository's `frameworks/` folder.
       `quill_test.yaml` is no longer left out, because it is now a fixture
       the tests use. `SOURCE` names both repositories, each with the
-      commit copied from. The four real fixtures still come across from
-      the first repository until Phase 4 deletes them, so nothing breaks
-      while Phase 3 moves the tests.
+      commit copied from, as one `source=<repository> <commit>` line
+      each. The four real fixtures still come across from the first
+      repository until Phase 4 deletes them, so nothing breaks while
+      Phase 3 moves the tests.
 
-- [ ] **Check both repositories in `.github/scripts/ci/check-framework-fixtures.sh`.**
+      A repository may be named with `#<branch>`, so a Quill pull request
+      can copy from a testing pull request that has not merged. This
+      stack copies from #5's branch. `just framework-fixtures-refresh`
+      passes its arguments on.
+
+- [x] **Copy every version too, not only the newest.** Found while
+      building: the sync stores a framework from a folder of newest files
+      only if it is at version 1. It refuses one first seen at version 4,
+      on purpose, and
+      `test_a_framework_first_stored_above_version_1_is_refused` pins
+      that. So `quill_test` at version 4 could not be synced from its
+      newest file, and nor could any fixture that ever changed. That rule
+      is right, so the fixtures carry their history instead:
+      `shared/framework-fixtures/history/<id>/<version>.yaml`, read from
+      each repository's first-parent history, oldest first, keeping the
+      first text of each version, exactly as `read_repository_versions`
+      in `sync.py` reads a repository. The newest files stay where they
+      were for everything that reads a framework as it stands. The
+      `stored_frameworks` fixture in `backend/conftest.py`,
+      `backend/scripts/seed_ci.py` and `python -m
+      app.features.passport.sync` with no folder now catch up from
+      `history/` with `sync_framework_versions`, keeping every rule.
+      `FRAMEWORK_FIXTURE_HISTORY_DIR` in `backend/app/paths.py` names it,
+      and `sync_frameworks` no longer defaults to the fixtures folder.
+
+- [x] **Check both repositories in `.github/scripts/ci/check-framework-fixtures.sh`.**
       It clones each repository at its commit in `SOURCE`, and fails a
-      pull request whose fixtures differ from either. Add bats (Bash
-      Automated Testing System) cases to
+      pull request whose fixtures differ from either, in the newest files
+      or in `history/`. It also refuses one framework held by both
+      repositories. Add bats (Bash Automated Testing System) cases to
       `check-framework-fixtures.bats` for a second repository, and for a
       fixture that differs from it.
 
-- [ ] **Update `shared/framework-fixtures/README.md`** to say there are
+- [x] **Update `shared/framework-fixtures/README.md`** to say there are
       two testing repositories, one made-up framework in each, and why.
 
 ## Phase 3: Move every test onto the made-up frameworks

@@ -525,17 +525,15 @@ def test_a_retired_entry_in_no_framework_names_no_version(
         _load_catalogue(tmp_path)
 
 
-def test_the_real_frameworks_versions() -> None:
-    """Every framework starts at 1, Gloucestershire's record included.
-
-    Its pilot edition was never numbered, so the record started afresh at
-    version 1 on 4 November 2026 rather than at 2.
-    """
+def test_the_fixture_frameworks_versions() -> None:
+    """Each fixture framework is read at the version its file holds."""
     versions = {f.id: f.version for f in files_catalogue().frameworks.values()}
 
     assert versions == {
         "clinical": 1,
         "ghnft_radiotherapy_record": 1,
+        "quill_2_test": 1,
+        "quill_test": 4,
         "ruh_sact_passport": 1,
         "uk_sact_board_2023": 1,
     }
