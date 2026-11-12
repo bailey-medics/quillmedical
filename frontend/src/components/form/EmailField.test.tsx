@@ -55,19 +55,17 @@ describe("EmailField", () => {
 
     const label = screen.getByText("Email");
     expect(label).toHaveStyle({
-      fontSize: "var(--mantine-font-size-md)",
-      color: "var(--mantine-color-text)",
       marginBottom: remToPx("0.25rem"),
     });
+    expect(label.style.fontSize).toBe("var(--mantine-font-size-md)");
+    expect(label.style.color).toBe("var(--mantine-color-text)");
   });
 
   it("applies standardised input font size", () => {
     renderWithMantine(<EmailField label="Email" placeholder="Type here" />);
 
     const input = screen.getByRole("textbox");
-    expect(input).toHaveStyle({
-      fontSize: "var(--mantine-font-size-md)",
-    });
+    expect(input.style.fontSize).toBe("var(--mantine-font-size-md)");
   });
 
   it("renders as disabled when disabled prop is set", () => {

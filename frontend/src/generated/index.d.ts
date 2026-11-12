@@ -292,6 +292,18 @@ declare module "@/generated/brand.json" {
     link: string;
     logo: string;
     logo_tile?: string;
+    // The brand's own spinner; a brand with none keeps the quill
+    spinner?: {
+      src: string;
+      still: string;
+    };
+    // The brand's own tab and app icons; a brand with none keeps Quill's
+    icons?: {
+      favicon: string;
+      apple_touch_icon: string;
+      manifest: string;
+      theme_colour: string;
+    };
     wordmark: {
       src: string;
       dark_src?: string;

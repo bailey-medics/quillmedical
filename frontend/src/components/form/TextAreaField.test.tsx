@@ -33,10 +33,10 @@ describe("TextAreaField", () => {
 
     const label = screen.getByText("Message");
     expect(label).toHaveStyle({
-      fontSize: "var(--mantine-font-size-md)",
-      color: "var(--mantine-color-text)",
       marginBottom: remToPx("0.25rem"),
     });
+    expect(label.style.fontSize).toBe("var(--mantine-font-size-md)");
+    expect(label.style.color).toBe("var(--mantine-color-text)");
   });
 
   it("applies standardised input font size", () => {
@@ -45,9 +45,7 @@ describe("TextAreaField", () => {
     );
 
     const textarea = screen.getByRole("textbox");
-    expect(textarea).toHaveStyle({
-      fontSize: "var(--mantine-font-size-md)",
-    });
+    expect(textarea.style.fontSize).toBe("var(--mantine-font-size-md)");
   });
 
   it("renders as disabled when disabled prop is set", () => {

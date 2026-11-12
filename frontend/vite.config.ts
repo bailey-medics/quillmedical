@@ -6,6 +6,7 @@ import { fileURLToPath } from "url";
 import { defineConfig, type Plugin } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
 import tsconfigPaths from "vite-tsconfig-paths";
+import { brandSplash } from "./scripts/brandSplash";
 import { colourSchemeScript } from "./scripts/colourSchemeScript";
 import { computeRequiredClientGeneration } from "./scripts/computeCompatGeneration";
 
@@ -121,6 +122,11 @@ export default defineConfig({
     tsconfigPaths(),
     pdfjsDecoders(),
     colourSchemeScript(path.resolve(__dirname, "src/colour-scheme.ts")),
+    brandSplash(
+      path.resolve(__dirname, "index.html"),
+      path.resolve(__dirname, "src/generated/brand.json"),
+      process.env["VITE_BRAND"],
+    ),
     VitePWA({
       strategies: "injectManifest",
       srcDir: "src",

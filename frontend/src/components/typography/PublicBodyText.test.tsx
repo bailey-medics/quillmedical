@@ -12,13 +12,13 @@ describe("PublicBodyText", () => {
   it("defaults to gray.4 colour", () => {
     renderWithMantine(<PublicBodyText>Coloured text</PublicBodyText>);
     const el = screen.getByText("Coloured text");
-    expect(el).toHaveStyle({ color: "var(--mantine-color-gray-4)" });
+    expect(el.style.color).toBe("var(--mantine-color-gray-4)");
   });
 
   it("allows colour override", () => {
     renderWithMantine(<PublicBodyText c="white">White text</PublicBodyText>);
     const el = screen.getByText("White text");
-    expect(el).toHaveStyle({ color: "var(--mantine-color-white)" });
+    expect(el.style.color).toBe("var(--mantine-color-white)");
   });
 
   it("supports centre alignment", () => {

@@ -88,13 +88,22 @@ runs locally, the app under `just sa ldd` and Storybook under
       'feature/*-spinner'` and the like give it; `just stl` in
       `quillmedical-4` draws the whole order.
 
-- [ ] **Check the branding in Storybook; run the app as a brand only from
+- [x] **Check the branding in Storybook; run the app as a brand only from
       the main checkout.** `just sb ldd` (once the switch is carried
       over) runs from any worktree, as do `just uf`, `just ub` and
       `just ts`. The dev stack runs only from the main checkout, and this
       plan keeps it that way (Phase 1), so `just sa ldd` is tried there,
       once `quillmedical-4` has released the stack after the demo on
       11 November 2026.
+
+      **Reviewed.** Mark ran `just sa ldd` from the main checkout on
+      12 November 2026, and the app looks right
+      as Let's Do Digital. The first start failed with "Couldn't find a
+      script named vite": pulling `main` had changed the frontend's
+      packages, and the dev stack's `node_modules` volume was older than
+      them, so `just sa ldd b` rebuilt it. The one difference seen is
+      that the guides' screenshots are still Quill's, which is left for
+      later (below).
 
 ## Phase 1: Questions answered before building
 
@@ -343,6 +352,20 @@ diff for the alternative brand's name finds nothing.
       centred `Stack` shrinks the card. The card now hugs the logo
       (`w="fit-content"`), and a test in each holds it.
 
+      **The EoEETA and Let's Do Digital "On public background" stories
+      fill the whole canvas with navy** (Mark, 11 November 2026), rather
+      than a band across the top. They are on the top branch,
+      `brand-guide`: switching down the stack during a review broke the
+      running Storybook.
+
+      **Foundations/Colours no longer cuts the ends off Let's Do
+      Digital's wordmarks** (Mark, 11 November 2026). The Geostar Fill
+      wordmark is about 8.55 times as wide as it is tall, so at 3rem it
+      came out 25.7rem wide in a tile with 18.5rem of room, and the tile
+      clipped both ends. Both are now drawn at 2.1rem, the ribbon's
+      height, and `BrandFoundations.test.tsx` reads each SVG's viewBox
+      to check every wordmark fits its tile.
+
 - [x] **`brand-colour-fixes`: contrast and colours held for every
       brand.** From `brand-inbox-icon`,
       `brand-<alternative brand name>-contrast` and `brand-dark-ribbon`,
@@ -425,7 +448,7 @@ diff for the alternative brand's name finds nothing.
       (81), and `just ts scripts/tests` (438, the seven new among them).
       `just sa ldd` itself waits for the main checkout, as Phase 0 says.
 
-- [ ] **`brand-splash-and-icons`: the brand from the first paint.** From
+- [x] **`brand-splash-and-icons`: the brand from the first paint.** From
       `<alternative brand name>-spinner`, `brand-icons` and
       `brand-splash-first`: the Vite plugin in
       `frontend/scripts/brandSplash.ts` that rewrites `index.html` for
@@ -441,17 +464,52 @@ diff for the alternative brand's name finds nothing.
         animated webp and a still frame under
         `frontend/public/brands/ldd/`, rendered from `logo.png`), so the
         later swap is a change of files only.
-      - **Mark's own spinner, later** - when Mark provides it, its
-        source goes under `frontend/brand-sources/ldd/`, the files are
-        replaced on this branch with `just stu`, which rebases anything
-        above it.
+      - **No later swap** - the stand-in became the final spinner once
+        it was lit as it turns (below), so Mark's own spinner is not
+        coming and nothing waits to replace these files.
       - **Tab and home screen icons, and the manifest** - rendered from
         `logo.png` with Playwright's Chromium, as the source's were from
         its logo.
 
+      **Built.** The stand-in spinner is the logo on its white tile,
+      turning on its upright axis, 48 frames of 50 ms, so one turn in 2.4
+      seconds as the quill's; `logo-spinner.webp` (230 KB) and
+      `logo-spinner-still.png`. It and the icons were drawn with Pillow
+      in the scratchpad rather than Playwright's Chromium, because the
+      source is a PNG, not an SVG, so there is nothing to render; no
+      script is kept, as the artwork is made once. The icons are the logo
+      cropped to its mark and set on white inside the 80% safe zone a
+      maskable Android icon needs: 512, 192, the 180 pixel touch icon,
+      and a favicon of 16, 32 and 48. `just uf scripts/brandSplash.test.ts
+      src/components/loading-spinner/QuillSpinner.test.tsx
+      src/theme.test.ts` passes (124), and `just ub
+      app/email/brand_test.py` (41). The spinner stories were looked at
+      in Storybook, in light and dark.
+
+      **Mark kept the stand-in, and asked for it to be lit as the quill
+      is** (10 November 2026). The quill fades lit and shadowed copies
+      over its face; the brand spinner is one image, so the light is
+      drawn into its frames instead. After a first try, Mark asked for no
+      tile and a bright light from the left: the two heads alone, on a
+      transparent ground. He then asked for a darker shade, a slower
+      change into the light, and a much lighter end. Counting each half
+      turn from 0 degrees, edge on, through 90, face on, to 180: the
+      heads are at 30% of their colours until 45 degrees, ease up to the
+      colours as drawn by 110, hold them to 120, then ease 80% of the way
+      to white by 165. The change into the light starts earlier than the
+      70 degrees Mark first named, because 70 to 100 still looked like a
+      light switched on. 72 frames of 33 ms, so still 2.4 seconds a
+      turn, at webp quality 70 (340 KB). The still frame is the heads as
+      drawn, with no tile. The blue head is faint on the dark-mode page
+      while in shade, and the very light end fades into a white page.
+      The two spinner stories and two page spinner stories that wrapped
+      the spinner in Let's Do Digital's theme were taken out (Mark,
+      11 November 2026): under `just sb ldd` they repeated the stories
+      above them.
+
 ## Phase 3: Make it a feature for clients
 
-- [ ] **Write `docs/docs/frontend/branding.md`: how to add a brand, and
+- [x] **Write `docs/docs/frontend/branding.md`: how to add a brand, and
       what was learnt.** The steps a developer follows for a new client,
       in order: the block in `shared/brand.yaml`, the files under
       `frontend/public/brands/<brand>/` and how each is made, running
@@ -475,31 +533,53 @@ diff for the alternative brand's name finds nothing.
 
       Link it from the docs index.
 
-- [ ] **A test that every brand in `brand.yaml` is complete.** Every
+- [x] **A test that every brand in `brand.yaml` is complete.** Every
       file a brand names exists under `frontend/public/` (as
       `brandSplash.test.ts` already checks for the manifest icons), for
       every brand, so a new client's brand cannot ship with a missing
       icon.
 
-- [ ] **Name the accessibility journeys this touches.** The ribbon's
+- [x] **Name the accessibility journeys this touches.** The ribbon's
       colours, the logo and the splash change for a brand, so per the plan
       rules, list the journeys in
       `docs/docs/frontend/accessibility/journeys.md` that pass through the
       ribbon and navigation, and add them to the "Not yet run" list in
       `testing-log.md`, for Let's Do Digital as well as Quill.
 
-## Phase 4: Afterwards
+      **Done, as one unit, `brand-guide`, with the two steps above.** The
+      guide is `docs/docs/frontend/branding.md`, linked from the
+      Frontend section of `docs/mkdocs.yml`, and also lists the two
+      hand-written brand lists a new brand must join (the `storybook`
+      recipe's `case` and `scripts/start-app-args.sh`) and its words in
+      `BrandFoundations.tsx`. The completeness test is in
+      `frontend/scripts/brandSplash.test.ts`, run for every app theme;
+      it was seen to fail with Let's Do Digital's favicon moved away. All
+      four journeys pass through the ribbon and the side navigation, and
+      journey 1 opens on the logo and the splash, so one entry in
+      "Not yet run" asks for journeys 1 to 4 as Let's Do Digital and
+      again as Quill. `just uf scripts/brandSplash.test.ts` passes (33).
 
-- [ ] **Swap in Mark's Let's Do Digital spinner** when he provides it,
-      on `brand-splash-and-icons`, as that unit's step describes.
+## Later
 
-- [ ] **Once the brand stack has merged, decide what happens to the
-      source stack's own brand branches.** Rebasing the source stack onto
-      a `main` that already has the branding would make its brand
-      branches conflict or empty out, as the offline fix did on
-      10 November. After the demo, rebase it with `just stack-rebase` in
-      `quillmedical-4` and resolve towards `main`'s version; empty
-      branches can then be dropped from that stack.
+Not part of this plan, and not needed for it to be complete. Kept here
+so the next piece of branding work starts from what is already known.
+
+- [ ] **The guides' screenshots in the brand the app runs as.** Under
+      `just sa ldd` the guides at `/guides` show screenshots of Quill.
+      They are not drawn by the app: `just gsh` takes them with
+      Playwright from a `compose.ci.yml` stack and writes them to
+      `frontend/public/guide-assets/`, which git ignores and the dev
+      server serves, and nothing in that stack knows a brand. Phase 1
+      left this out ("guides per brand can be a later change if
+      wanted"). The likely shape is `just gsh <brand>`, sorted like
+      `just sa <brand>`, with `compose.ci.yml` taking `BRAND` for the
+      backend and passing `VITE_BRAND` to the frontend as a build
+      argument, since its frontend is a production build. Writing into
+      the same folder keeps it local only: the guide screenshots
+      workflow and the production buckets stay Quill. A folder per brand
+      would spare a retake when switching, but `guideImageBase` and the
+      buckets would then need to know the brand, which belongs with
+      choosing a brand for a deployment (see Decisions).
 
 ## Decisions
 
