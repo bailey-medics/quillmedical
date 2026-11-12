@@ -88,13 +88,22 @@ runs locally, the app under `just sa ldd` and Storybook under
       'feature/*-spinner'` and the like give it; `just stl` in
       `quillmedical-4` draws the whole order.
 
-- [ ] **Check the branding in Storybook; run the app as a brand only from
+- [x] **Check the branding in Storybook; run the app as a brand only from
       the main checkout.** `just sb ldd` (once the switch is carried
       over) runs from any worktree, as do `just uf`, `just ub` and
       `just ts`. The dev stack runs only from the main checkout, and this
       plan keeps it that way (Phase 1), so `just sa ldd` is tried there,
       once `quillmedical-4` has released the stack after the demo on
       11 November 2026.
+
+      **Reviewed.** Mark ran `just sa ldd` from the main checkout on
+      12 November 2026, and the app looks right
+      as Let's Do Digital. The first start failed with "Couldn't find a
+      script named vite": pulling `main` had changed the frontend's
+      packages, and the dev stack's `node_modules` volume was older than
+      them, so `just sa ldd b` rebuilt it. The one difference seen is
+      that the guides' screenshots are still Quill's, which is left for
+      later (below).
 
 ## Phase 1: Questions answered before building
 
@@ -549,6 +558,28 @@ diff for the alternative brand's name finds nothing.
       journey 1 opens on the logo and the splash, so one entry in
       "Not yet run" asks for journeys 1 to 4 as Let's Do Digital and
       again as Quill. `just uf scripts/brandSplash.test.ts` passes (33).
+
+## Later
+
+Not part of this plan, and not needed for it to be complete. Kept here
+so the next piece of branding work starts from what is already known.
+
+- [ ] **The guides' screenshots in the brand the app runs as.** Under
+      `just sa ldd` the guides at `/guides` show screenshots of Quill.
+      They are not drawn by the app: `just gsh` takes them with
+      Playwright from a `compose.ci.yml` stack and writes them to
+      `frontend/public/guide-assets/`, which git ignores and the dev
+      server serves, and nothing in that stack knows a brand. Phase 1
+      left this out ("guides per brand can be a later change if
+      wanted"). The likely shape is `just gsh <brand>`, sorted like
+      `just sa <brand>`, with `compose.ci.yml` taking `BRAND` for the
+      backend and passing `VITE_BRAND` to the frontend as a build
+      argument, since its frontend is a production build. Writing into
+      the same folder keeps it local only: the guide screenshots
+      workflow and the production buckets stay Quill. A folder per brand
+      would spare a retake when switching, but `guideImageBase` and the
+      buckets would then need to know the brand, which belongs with
+      choosing a brand for a deployment (see Decisions).
 
 ## Decisions
 
