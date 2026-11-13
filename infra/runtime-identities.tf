@@ -162,46 +162,11 @@ resource "google_secret_manager_secret_iam_member" "runtime" {
 # the admin job for it in the same way, and not be granted the secret.
 
 # ---------- The plan account's secrets ----------
-# `terraform plan` reads a secret's value in two cases: a data source that
-# reads a version, and a version Terraform writes itself, which it refreshes.
-# The plan account may read those secrets and no other, so a secret only the
-# app reads, such as the mail key, is out of its reach.
-#
-# A new data source or version on a secret needs that secret added here,
-# or every plan after it fails with permission denied on the secret.
-locals {
-  plan_reads_secrets = concat(
-    [
-      # Data sources in main.tf, handed to the monitoring module.
-      "pagerduty-service-key",
-      "alert-sms-number",
-
-      # Versions written in main.tf and the core cloud-sql module.
-      "jwt-secret",
-      "vapid-private",
-      "core-db-password",
-    ],
-    var.enable_fhir ? [
-      "fhir-db-password",
-      "ehrbase-db-password",
-    ] : [],
-    # Written by the teaching video pipeline module.
-    local.is_teaching_product ? [
-      "teaching-video-signing-key",
-    ] : []
-  )
-}
-
-resource "google_secret_manager_secret_iam_member" "plan" {
-  for_each = var.plan_service_account != "" ? toset(local.plan_reads_secrets) : toset([])
-
-  project = var.project_id
-  # Through the module's output, as the runtime grants above are, so a
-  # secret the module does not create fails the plan instead of the apply.
-  secret_id = module.secrets.secret_ids[each.value]
-  role      = "roles/secretmanager.secretAccessor"
-  member    = "serviceAccount:${var.plan_service_account}"
-}
+# None. `terraform plan` signs in as its own read-only account, and no plan
+# reads a secret's value: every version Terraform writes is write-only, and
+# nothing reads one through a data source. Keep it that way. A value
+# Terraform needs goes in through an ephemeral resource and a `_wo`
+# argument, never a data source, and the plan account is granted nothing.
 
 # ---------- Buckets ----------
 # The backend reads published question banks. Silent when missing: an

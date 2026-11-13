@@ -267,18 +267,6 @@ locals {
   vapid_private_version = 1
 }
 
-# The values Terraform used before, used by nothing now. Kept for one apply:
-# dropping them in the same apply that stops using them forms a cycle.
-resource "random_password" "jwt_secret" {
-  length  = 64
-  special = true
-}
-
-resource "random_password" "vapid_placeholder" {
-  length  = 32
-  special = false
-}
-
 ephemeral "random_password" "jwt_secret" {
   length  = 64
   special = true

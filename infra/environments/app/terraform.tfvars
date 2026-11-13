@@ -71,10 +71,6 @@ retention_decision_email = "mark@quill-medical.com"
 content_ci_service_account = "content-sync@quill-medical-app.iam.gserviceaccount.com"
 deploy_service_account     = "github-deploy@quill-medical-app.iam.gserviceaccount.com"
 
-# `terraform plan` on a pull request signs in as this account. It may read
-# the secrets the plan reads, listed in runtime-identities.tf, and no other.
-plan_service_account = "github-plan@quill-medical-app.iam.gserviceaccount.com"
-
 # The monitoring module looks a Slack channel up by display name rather
 # than creating one, because a Slack channel can only be made through the
 # console's OAuth consent flow, which produces an auth_token nothing else
