@@ -125,13 +125,6 @@ locals {
   password_version = 1
 }
 
-# The password Terraform used before, used by nothing now. Kept for one apply:
-# dropping it in the same apply that stops using it forms a cycle.
-resource "random_password" "db_password" {
-  length  = 32
-  special = false
-}
-
 ephemeral "random_password" "db_password" {
   length  = 32
   special = false # Avoid shell-escaping issues in connection strings
