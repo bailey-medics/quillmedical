@@ -403,7 +403,7 @@ it, and the backend reads it, in separate deploys. So this step teaches
 the backend to read both forms, and Phase 6 changes what Terraform
 writes. App production must run this step before Phase 6 merges.
 
-- [ ] **The framework pipeline refuses a second framework.**
+- [x] **The framework pipeline refuses a second framework.**
       `validate` in
       `backend/app/features/passport/tooling/validate_frameworks.py`
       fails when the `frameworks/` folder holds anything other than
@@ -413,19 +413,19 @@ writes. App production must run this step before Phase 6 merges.
       it merges. By this point every repository, both testing ones
       included, holds one file, so none goes red.
 
-- [ ] **`FRAMEWORK_REPOSITORIES` accepts one id or a list of one.** In
+- [x] **`FRAMEWORK_REPOSITORIES` accepts one id or a list of one.** In
       `backend/app/config.py`, a validator turns each repository's value
       into a single id. It accepts a string, or a list of exactly one,
       which is the form Terraform writes today. It refuses an empty list
       or a list of two or more, and names the repository.
 
-- [ ] **The sync takes one id per repository.** In `sync.py`,
+- [x] **The sync takes one id per repository.** In `sync.py`,
       `may_publish: set[str]` becomes `framework_id: str`. A file under
       `frameworks/` with any other id is refused with "this repository
       publishes <id>". The check that two repositories never publish the
       same framework stays.
 
-- [ ] **Say "one repository per framework" everywhere.** Update:
+- [x] **Say "one repository per framework" everywhere.** Update:
       - the comment in `infra/github/passport_framework_rulesets.tf`,
         which says "one repository per publisher";
       - the docstring of `validate_frameworks.py`;
@@ -433,9 +433,24 @@ writes. App production must run this step before Phase 6 merges.
         which says "its publisher's own repository", then
         `/sync-copilot-config` into `CLAUDE.md`.
 
-- [ ] **Tests**: the pipeline check refuses two files and an empty
+- [x] **Tests**: the pipeline check refuses two files and an empty
       folder. The setting accepts both forms and refuses the rest. The
       sync refuses a file whose id is not the repository's one.
+
+      **Built on 13 November 2026.** Found while building:
+      - **The pipeline check counts every file in `frameworks/`**, not
+        only `.yaml` ones, so a `.yml` file or a README there is refused
+        too. All six framework repositories hold exactly one `.yaml`
+        file today, checked on GitHub, so none goes red.
+      - **`CLAUDE.md` was edited by hand alongside
+        `.github/copilot-instructions.md`**, with the same words, rather
+        than by `/sync-copilot-config`, which is interactive and reports
+        drift. The next sync finds nothing to change.
+      - **`docs/docs/backend/passport/index.md` said the same thing**, in
+        its bullet on what the sync reads, so it changed too.
+      - **The comments in `infra/main.tf` still say "framework ids"**,
+        because Terraform still writes a list. Phase 6 changes them with
+        the form.
 
 ## Phase 6: One framework per repository, step two
 

@@ -534,7 +534,7 @@ def test_every_version_is_read_from_main_s_history(
     )
 
     versions = read_repository_versions(
-        "owner/sheet-framework", {"sheet"}, tmp_path / "clone"
+        "owner/sheet-framework", "sheet", tmp_path / "clone"
     )
 
     assert sorted(versions["sheet"]) == [1, 2]
@@ -549,9 +549,11 @@ def test_a_framework_the_repository_may_not_publish_is_refused(
     repo = _repository(local_clones / "owner", "other-framework")
     _commit(repo, _SHEET.format(version=1, words="Refer a patient"))
 
-    with pytest.raises(FrameworkSyncError, match="may publish only other"):
+    with pytest.raises(
+        FrameworkSyncError, match="this repository publishes other"
+    ):
         read_repository_versions(
-            "owner/other-framework", {"other"}, tmp_path / "clone"
+            "owner/other-framework", "other", tmp_path / "clone"
         )
 
 
@@ -572,7 +574,7 @@ def test_a_framework_deleted_from_main_is_passed_over(
     _git(repo, "commit", "-m", "Delete the chart")
 
     versions = read_repository_versions(
-        "owner/sheet-framework", {"sheet"}, tmp_path / "clone"
+        "owner/sheet-framework", "sheet", tmp_path / "clone"
     )
 
     assert sorted(versions) == ["sheet"]
@@ -597,7 +599,7 @@ def test_a_framework_still_on_main_is_refused_whatever_came_before(
         FrameworkSyncError, match="holds frameworks/chart.yaml"
     ):
         read_repository_versions(
-            "owner/sheet-framework", {"sheet"}, tmp_path / "clone"
+            "owner/sheet-framework", "sheet", tmp_path / "clone"
         )
 
 
@@ -607,7 +609,7 @@ def test_a_repository_with_no_main_yet_holds_nothing(
     _repository(local_clones / "owner", "empty-framework")
 
     versions = read_repository_versions(
-        "owner/empty-framework", {"sheet"}, tmp_path / "clone"
+        "owner/empty-framework", "sheet", tmp_path / "clone"
     )
 
     assert versions == {}
@@ -622,7 +624,7 @@ def test_a_framework_file_too_large_is_refused_before_it_is_read(
 
     with pytest.raises(FrameworkSyncError, match="larger than 10 bytes"):
         read_repository_versions(
-            "owner/big-framework", {"sheet"}, tmp_path / "clone"
+            "owner/big-framework", "sheet", tmp_path / "clone"
         )
 
 
@@ -631,7 +633,7 @@ def test_a_repository_not_named_owner_slash_name_is_refused(
 ) -> None:
     """So a setting cannot point the clone at a path or another host."""
     with pytest.raises(FrameworkSyncError, match="not a repository named"):
-        read_repository_versions("../etc", {"sheet"}, tmp_path / "clone")
+        read_repository_versions("../etc", "sheet", tmp_path / "clone")
 
 
 def test_only_https_may_be_cloned(
@@ -651,7 +653,7 @@ def test_one_framework_paired_with_two_repositories_is_refused(
 ) -> None:
     with pytest.raises(FrameworkSyncError, match="paired with both"):
         read_repositories(
-            {"owner/a-framework": ["sheet"], "owner/b-framework": ["sheet"]},
+            {"owner/a-framework": "sheet", "owner/b-framework": "sheet"},
             tmp_path,
         )
 
@@ -664,7 +666,7 @@ def test_the_repository_sync_stores_every_version_it_read(
     _commit(repo, _SHEET.format(version=2, words="Refer two patients"))
 
     result = sync_from_repositories(
-        db_session, {"owner/sheet-framework": ["sheet"]}
+        db_session, {"owner/sheet-framework": "sheet"}
     )
 
     assert result.succeeded
@@ -678,7 +680,7 @@ def test_repositories_that_hold_no_framework_yet_say_so(
     _repository(local_clones / "owner", "sheet-framework")
 
     result = sync_from_repositories(
-        db_session, {"owner/sheet-framework": ["sheet"]}
+        db_session, {"owner/sheet-framework": "sheet"}
     )
 
     assert not result.succeeded

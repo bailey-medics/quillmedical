@@ -2,7 +2,7 @@
 # Organisation-level rulesets for the passport framework repositories
 # ---------------------------------------------------------------------------
 #
-# One repository per publisher, each ending -framework, each calling Quill's
+# One repository per framework, each ending -framework, each calling Quill's
 # framework-pipeline.yml. The same rules as the teaching repositories in
 # teaching_rulesets.tf: main changes only by pull request, after the
 # pipeline's two checks pass on a branch up to date with main. There are no

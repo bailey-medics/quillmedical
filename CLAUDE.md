@@ -226,9 +226,10 @@ profession.
   framework, one published document as a set of competencies, and every
   entry in it is that framework's. Anybody may publish one: a trust, a
   college, a national board, or Quill, whose "General clinical skills" is
-  `clinical`. Each lives in its publisher's own repository, such as
-  `bailey-medics/general-clinical-skills-quill-medical-framework`, as
-  `frameworks/<id>.yaml`. Every entry is assessable and its id starts with the
+  `clinical`. Each lives in a repository of its own, one repository per
+  framework, such as
+  `bailey-medics/general-clinical-skills-quill-medical-framework`, as the
+  one file `frameworks/<id>.yaml`. Every entry is assessable and its id starts with the
   framework's id and an underscore, so the same procedure under two
   frameworks is two competencies. Quill never maps one framework's
   competency onto another's. **The app reads the frameworks from the

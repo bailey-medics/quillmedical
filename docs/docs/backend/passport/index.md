@@ -352,10 +352,12 @@ nothing. The job's one action, `sync-frameworks`, runs
 - **The first text of each version**, walking `main`'s first-parent
   history oldest first. A later commit that changed only comments or the
   description keeps its version, so it is not read again.
-- **Each repository may publish only the framework ids it is paired
-  with**, in the job's settings in Terraform. A file naming any other id
-  is refused, so one publisher cannot add a version to another's
-  framework.
+- **Each repository publishes one framework**, the id it is paired with
+  in the job's settings in Terraform. A file on `main` naming any other
+  id is refused, so one publisher cannot add a version to another's
+  framework. A file that `main` no longer holds is passed over, because a
+  repository's history cannot be rewritten. The framework pipeline
+  refuses a second file in `frameworks/` before it can merge.
 - **A time limit on every git command, and on the job.** A huge or
   hostile repository stops one run and nothing else.
 

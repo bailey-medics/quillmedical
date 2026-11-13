@@ -39,7 +39,7 @@ FIRST = "bailey-medics/quill-medical-framework-testing"
 SECOND = "bailey-medics/quill-medical-2-framework-testing"
 
 #: Each testing repository with the framework it publishes.
-REPOSITORIES = {FIRST: ["quill_test"], SECOND: ["quill_2_test"]}
+REPOSITORIES = {FIRST: "quill_test", SECOND: "quill_2_test"}
 
 #: The day version 4 of quill_test retired what it retired.
 RETIRED_ON = date(2026, 11, 12)
@@ -193,10 +193,10 @@ def test_one_testing_repository_cannot_publish_the_others_framework(
 ) -> None:
     """Each repository listed as publishing the other's framework."""
     result = sync_from_repositories(
-        db_session, {FIRST: ["quill_2_test"], SECOND: ["quill_test"]}
+        db_session, {FIRST: "quill_2_test", SECOND: "quill_test"}
     )
 
     assert not result.succeeded
-    assert "may publish only" in (result.error or "")
+    assert "this repository publishes" in (result.error or "")
     assert _versions(db_session, "quill_test") == []
     assert _versions(db_session, "quill_2_test") == []

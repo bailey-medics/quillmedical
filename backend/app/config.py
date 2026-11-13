@@ -18,6 +18,7 @@ from pydantic import (
     Field,
     SecretStr,
     computed_field,
+    field_validator,
     model_validator,
 )
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -271,12 +272,12 @@ class Settings(BaseSettings):
         None,
         description="GCS bucket for teaching question bank images",
     )
-    FRAMEWORK_REPOSITORIES: dict[str, list[str]] = Field(
+    FRAMEWORK_REPOSITORIES: dict[str, str] = Field(
         default_factory=dict,
         description=(
             "The framework repositories the framework sync job reads, as "
-            "JSON: each owner/name on GitHub, with the framework ids it "
-            "may publish"
+            "JSON: each owner/name on GitHub, with the one framework id it "
+            "publishes. A list of one id is read the same way"
         ),
     )
     TEACHING_IMAGES_BASE_URL: str | None = Field(
@@ -524,6 +525,33 @@ class Settings(BaseSettings):
     )
 
     # --- Startup validation ---
+    @field_validator("FRAMEWORK_REPOSITORIES", mode="before")
+    @classmethod
+    def _one_framework_per_repository(cls, value: object) -> object:
+        """Read each repository's framework as one id.
+
+        Terraform writes a list of one id until it writes the id alone, and
+        a backend must read both while the two deploy apart. A list of any
+        other length is refused, naming the repository.
+        """
+        if not isinstance(value, dict):
+            return value
+
+        single: dict[object, object] = {}
+
+        for repository, framework in value.items():
+            if isinstance(framework, list):
+                if len(framework) != 1:
+                    raise ValueError(
+                        f"FRAMEWORK_REPOSITORIES gives {repository} "
+                        f"{len(framework)} frameworks. A repository "
+                        "publishes exactly one."
+                    )
+                framework = framework[0]
+            single[repository] = framework
+
+        return single
+
     @model_validator(mode="after")
     def _validate_brand(self) -> Settings:
         """Refuse a brand the brand file does not hold.

@@ -80,3 +80,35 @@ def test_a_permissions_id_is_refused(tmp_path: Path) -> None:
 
 def test_a_missing_folder_is_refused(tmp_path: Path) -> None:
     assert main([str(tmp_path / "absent")]) == 1
+
+
+def test_a_second_framework_is_refused(tmp_path: Path) -> None:
+    """Each framework needs a repository of its own."""
+    folder = _folder(tmp_path, _SHEET.format(id="sheet_refer"))
+    chart = _SHEET.format(id="chart_refer").replace(
+        "id: sheet\n", "id: chart\n"
+    )
+    (folder / "chart.yaml").write_text(chart)
+
+    assert validate(folder) == [
+        "A framework repository publishes one framework, so frameworks/ "
+        "holds exactly one .yaml file. It holds chart.yaml, sheet.yaml."
+    ]
+    assert main([str(folder)]) == 1
+
+
+def test_an_empty_folder_is_refused(tmp_path: Path) -> None:
+    folder = tmp_path / "frameworks"
+    folder.mkdir()
+
+    assert validate(folder) == [
+        "A framework repository publishes one framework, so frameworks/ "
+        "holds exactly one .yaml file. It holds nothing."
+    ]
+
+
+def test_a_file_that_is_not_yaml_is_refused(tmp_path: Path) -> None:
+    """A .yml or a README beside the framework is not passed over."""
+    folder = _folder(tmp_path, _SHEET.format(id="sheet_refer"), "sheet.yml")
+
+    assert "It holds sheet.yml." in validate(folder)[0]

@@ -1,13 +1,17 @@
 """Validate a framework repository's files with the catalogue's own rules.
 
-A framework repository holds one file per framework, in ``frameworks/``,
-and nothing else. This runs Quill's loader over that folder, so a file the
-backend would refuse is refused on the pull request instead: a missing
-prefix, a duplicate id, a level list that is empty, a specialty that is
-not listed, and the rest of what :func:`app.cbac.competencies._load_catalogue`
-checks. Two more rules apply to a framework repository alone:
+There is one repository per framework, and it holds that framework as
+the one file in ``frameworks/``. This runs Quill's loader over that
+folder, so a file the backend would refuse is refused on the pull request
+instead: a missing prefix, a duplicate id, a level list that is empty, a
+specialty that is not listed, and the rest of what
+:func:`app.cbac.competencies._load_catalogue` checks. Three more rules
+apply to a framework repository alone:
 
-- **Every file declares a framework.** A permission lives in Quill's code,
+- **The folder holds exactly one ``.yaml`` file.** A second framework
+  needs a repository of its own, so that each framework has its own
+  history, reviewers and pipeline run.
+- **The file declares a framework.** A permission lives in Quill's code,
   never in a content repository.
 - **No id is one of Quill's permissions.** The sync refuses that too, but
   the pull request is where it can be fixed.
@@ -33,6 +37,21 @@ from pydantic import ValidationError
 from app.cbac.competencies import COMPETENCIES, _load_catalogue
 
 
+def _not_one_framework_file(directory: Path) -> str | None:
+    """Why *directory* does not hold exactly one ``.yaml`` file, if so."""
+    names = sorted(path.name for path in directory.iterdir())
+
+    if len(names) == 1 and names[0].endswith(".yaml"):
+        return None
+
+    found = ", ".join(names) if names else "nothing"
+
+    return (
+        "A framework repository publishes one framework, so frameworks/ "
+        f"holds exactly one .yaml file. It holds {found}."
+    )
+
+
 def _files_without_a_framework(directory: Path) -> list[str]:
     """The files in *directory* that declare no framework."""
     found: list[str] = []
@@ -56,6 +75,11 @@ def validate(directory: Path) -> list[str]:
     """
     if not directory.is_dir():
         return [f"No folder at {directory}."]
+
+    not_one = _not_one_framework_file(directory)
+
+    if not_one is not None:
+        return [not_one]
 
     unframed = _files_without_a_framework(directory)
 
