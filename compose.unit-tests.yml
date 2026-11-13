@@ -57,6 +57,11 @@ services:
       - ./backend:/app
       - ./shared:/shared
       - ./api-compatibility:/api-compatibility
+      # Read by tests/no_real_framework_in_tests_test.py, which checks that
+      # no frontend test names a framework infra/main.tf lists.
+      - ./infra/main.tf:/infra/main.tf:ro
+      - ./frontend/src:/frontend/src:ro
+      - ./frontend/e2e:/frontend/e2e:ro
       # The committed email previews: `just email-preview` writes them, and
       # app/email/previews_test.py checks they match the templates.
       - ./frontend/src/stories/emails/rendered:/frontend/src/stories/emails/rendered

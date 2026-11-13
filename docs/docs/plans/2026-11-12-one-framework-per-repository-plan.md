@@ -150,7 +150,7 @@ for a deploy, are in the last section, "Merge order".
       the `workflow` scope on the `gh` sign-in, added with
       `gh auth refresh -h github.com -s workflow`.
 
-- [ ] **Protect the second testing repository like the first.**
+- [x] **Protect the second testing repository like the first.**
       - Add it to `local.passport_framework_repos` in
         `infra/github/passport_framework_rulesets.tf`, after its first
         commit is on `main`. An empty repository has no `main` for the ruleset's
@@ -163,6 +163,8 @@ for a deploy, are in the last section, "Merge order".
       Then apply the rulesets with `just terraform-github`. The note in
       `infra/github-sign-in.tf` is a comment only, and CI applies that
       folder on merge.
+
+      **Done on 13 November 2026**, and `just terraform-github` run.
 
 ## Phase 2: Copy the fixtures from both testing repositories
 
@@ -289,14 +291,42 @@ for a deploy, are in the last section, "Merge order".
       `CompetencyFrameworkTable.tsx` name a real framework only as an
       example. They name a made-up one instead.
 
-- [ ] **Add a check that keeps real frameworks out of the tests.** A
+- [x] **Add a check that keeps real frameworks out of the tests.** A
       pytest test reads the framework ids from `local.framework_repositories`
       in `infra/main.tf`. It fails if any of them appears in a test, a
       story, an end-to-end test or `shared/framework-fixtures/`. Without
       it, the next test written by copying a real id brings the problem
       back.
 
-- [ ] **Run the network test against both testing repositories.**
+      **Built on 13 November 2026** as
+      `backend/tests/no_real_framework_in_tests_test.py`. It reads both
+      the list form and the single-id form of the setting, so Phase 6
+      needs no change to it.
+      - **It looks at quoted strings only**: a real id itself, or one
+        starting with the id and an underscore, which is how a
+        competency id is formed. Competency ids are always written as
+        strings, so a variable such as `clinical_disabled_client` is
+        never mistaken for one.
+      - **A name the application code uses is Quill's own.** `clinical`
+        is a real id, and Quill also has `clinical_lead`,
+        `clinical_services_enabled` and others. No application code
+        names a framework, so any word in `backend/app` or
+        `frontend/src` outside the tests is passed over, unless it is a
+        real id itself.
+      - **One file is exempt**: `frontend/src/featureChunks.test.ts`,
+        where `clinical` is the clinical feature chunk.
+      - **The unit-test container mounts what it reads**:
+        `infra/main.tf`, `frontend/src` and `frontend/e2e`, read-only,
+        in `compose.unit-tests.yml`. CI's backend job runs on the full
+        checkout, so needs nothing.
+      - **It found five frontend files still naming `clinical`** as a
+        framework, in stories and tests of the passport frameworks card,
+        the framework sync panel, the org unit and passport API clients.
+        They now name `quill_2_test`. The card's stories had shown no
+        framework chosen, because `clinical` is not in the test
+        catalogue.
+
+- [x] **Run the network test against both testing repositories.**
       `backend/tests/framework_repository_sync_test.py` syncs both
       repositories from GitHub. It checks that each framework is stored
       from its own repository, and that `quill_test` versions 1 to 4 all
@@ -306,6 +336,10 @@ for a deploy, are in the last section, "Merge order".
       repository holds no such file and the second does. The offline
       tests in `sync_test.py` already cover the refusal. This proves it
       over two real clones.
+
+      **Done in Phase 4**, with the sync decision there, and passing
+      since the testing repositories' pull requests merged on
+      13 November 2026.
 
 ## Phase 4: Remove the real frameworks from the testing repository
 
