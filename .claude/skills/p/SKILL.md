@@ -13,6 +13,7 @@ only loads on its own once a plan file is being touched.
 
 The plan is written to be built by `/f`, so follow "Write it to be built
 by `/f`" in those rules closely: one phase per reviewable unit, a first
-phase safe to be live on its own, and an `## Open questions` section for
-anything the conversation left undecided. If there is one, list those
-questions in the reply as well, so they are answered before `/f` runs.
+phase safe to be live on its own, and an `## Open questions` checklist
+for anything the conversation left undecided. If there is one, list
+those questions in the reply as well; `/g` settles them before `/f`
+runs.

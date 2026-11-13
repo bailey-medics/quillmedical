@@ -79,9 +79,12 @@ anything:
   since is missing simply because the branch is behind `main`.
 - **Every checkbox in it is already ticked**, so there is nothing left to
   follow.
-- **It has an `## Open questions` section.** `/p` writes one while
-  something is undecided, and the plan is not ready until it is gone.
-  List the questions and wait for the answers.
+- **A box is unticked under `## Open questions` or `## Before running
+  /f`.** The first is a decision nobody has made, the second a job only
+  the human can do, and either would stop the run halfway. List the
+  unticked boxes, suggest `/g` to settle them, and wait. Ticked boxes in
+  either section are the record of what was settled: read them as part
+  of the plan, and never delete them.
 
 ## What is different from `/nst-follow-the-plan-document`
 
