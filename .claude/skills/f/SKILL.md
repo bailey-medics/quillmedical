@@ -79,6 +79,9 @@ anything:
   since is missing simply because the branch is behind `main`.
 - **Every checkbox in it is already ticked**, so there is nothing left to
   follow.
+- **It has an `## Open questions` section.** `/p` writes one while
+  something is undecided, and the plan is not ready until it is gone.
+  List the questions and wait for the answers.
 
 ## What is different from `/nst-follow-the-plan-document`
 
@@ -133,8 +136,9 @@ using the format stated in the latter mentioned agent.
 ## Sizing a unit
 
 **One unit is twenty to thirty minutes of human reading.** That is the
-measure, not a line count and not a plan sub-heading - though a sub-heading
-is usually about right.
+measure, not a line count. A plan written by `/p` makes each phase one
+unit, so a phase is the default; where one is plainly two units, split
+the phase in the plan document first, then build it.
 
 - **Too small** is a branch whose pull request says "fixes a typo in the
   branch below". That belongs folded into the branch below with
@@ -152,7 +156,7 @@ is usually about right.
 One constraint on ordering, from the plan:
 
 - **The bottom unit must be safe to deploy on its own.** Merging to `main`
-  deploys to teaching with no further gate. "Not finished yet" is fine;
+  deploys to App production with no further gate. "Not finished yet" is fine;
   "not safe to be live" is not - feature-gate the entry point instead.
 
 **Several migrations in one stack are fine**, as are several API changes.
@@ -276,7 +280,8 @@ Then, for each unit in the plan:
    which "Before building" has already made current - and lifted onto
    its own branch when it is finished.
 
-2. **Tick the plan.** Mark the unit's checkbox `- [x]` before finishing, so
+2. **Tick the plan.** Mark every checkbox the unit completed `- [x]`,
+   which for a whole phase is all of them, before finishing, so
    the tick is committed with the unit it describes rather than trailing a
    unit behind.
 

@@ -61,6 +61,39 @@ so its order is part of its content.
   should see the work in the order it was done. If they would not,
   the document is out of date, not the memory of it.
 
+## Write it to be built by `/f`
+
+`/f` builds a plan unattended, one stacked branch and draft pull request
+per phase, and the human is gone by the time it finds a problem. So the
+plan settles what `/f` would otherwise discover mid-run.
+
+- **One phase is one reviewable unit**: twenty to thirty minutes of a
+  human reading its pull request. A phase that would need a long list
+  of changes to describe is two phases; one that only tidies the phase
+  before it belongs in that phase.
+
+- **Each phase stands on the phases above it alone**, so a change of
+  mind at Phase 3 does not undo Phase 1.
+
+- **Phase 1 is safe to be live on its own.** Merging to `main` deploys
+  to App production with no further gate. Unfinished is fine; unsafe
+  is not, so feature-gate the entry point where a phase would expose
+  something half-built.
+
+- **A migration sits in the phase whose code uses it**, never in an
+  earlier or later one.
+
+- **Name anything irreversible in its step**: a destructive migration,
+  a change to who can sign in. `/f` stops and asks before committing
+  that unit, and a named step means the question can be answered
+  before the run starts.
+
+- **End with `## Open questions`** while anything is undecided, one
+  bullet per question, and say so in the reply that writes the plan.
+  `/f` will not start on a plan with an open question, so settle each
+  one and delete the section before running it. A plan with nothing
+  open has no such section.
+
 ## Explain each step inside its own checkbox
 
 - **Put the reasoning, research and file paths in the step itself**,
