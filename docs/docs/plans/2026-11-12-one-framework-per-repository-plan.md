@@ -255,18 +255,36 @@ for a deploy, are in the last section, "Merge order".
         and `uk_sact_board_2023` lines left in the two fixture version
         lists go in Phase 4, with the files.
 
-- [ ] **Move the frontend.** That is `components/passport/fixtures.ts`,
+- [x] **Move the frontend.** That is `components/passport/fixtures.ts`,
       the passport stories, `SignOffForm.test.tsx` and
       `types/cbac.test.ts`.
 
-- [ ] **Move the end-to-end tests and the CI seed**:
+      **Done on 12 November 2026**, with the backend's mapping, then a
+      second for the two smaller fixtures. `oncologyFrameworks` in
+      `fixtures.ts`, which the By competency tests join to the fixture
+      catalogue, became `quill_2_test` and `quill_test`, its
+      radiotherapy items taking `quill_2_test` competencies the
+      cannulation tests do not use. The RUH competency in the sign-off
+      form tests became `quill_test_refer_to_a_team`, signed at
+      `with_indirect_supervision` rather than the level version 4
+      retires. The mapping must not run over the member practice files:
+      a permission such as `perform_venepuncture` shares its display
+      name with a `clinical` competency, and those names stayed.
+
+- [x] **Move the end-to-end tests and the CI seed**:
       `frontend/e2e/fixtures/passport.ts`,
       `tests/passport/holding-a-passport.spec.ts` and
       `backend/scripts/seed_ci.py`. The dev stack and the end-to-end stack
       then show the made-up frameworks. That is expected: they are test
       stacks.
 
-- [ ] **Change the examples in comments.** The docstring in
+      **Done on 12 November 2026.** A holder is given `quill_2_test`
+      and `quill_test`, and `REFER_PALLIATIVE` became
+      `EXAMINE_THE_CHEST`, `quill_test`'s competency with no levels and
+      no scopes. The guide `start-your-passport.spec.ts` now photographs
+      "Quill second test framework". `seed_ci.py` moved in Phase 2.
+
+- [x] **Change the examples in comments.** The docstring in
       `backend/app/features/passport/paths.py` and the doc comment in
       `CompetencyFrameworkTable.tsx` name a real framework only as an
       example. They name a made-up one instead.

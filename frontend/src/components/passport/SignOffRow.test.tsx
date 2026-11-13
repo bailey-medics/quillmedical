@@ -19,9 +19,7 @@ describe("SignOffRow", () => {
   it("says what the sign-off covers, where it has a scope", () => {
     renderWithMantine(<SignOffRow signOff={requestedForLung} />);
     expect(
-      screen.getByText(
-        "Review and prescribe systemic anti-cancer therapy: Lung",
-      ),
+      screen.getByText("Give a course of treatment: Lung"),
     ).toBeInTheDocument();
   });
 

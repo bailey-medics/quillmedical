@@ -11,8 +11,7 @@ import { test, expect } from "../../fixtures/axe";
 import { FRAMEWORK_NAMES, makeHolder } from "../../fixtures/passport";
 import { signIn } from "../../fixtures/signIn";
 
-const REFER_PALLIATIVE =
-  "Refer patients for palliative radiotherapy unsupervised";
+const EXAMINE_THE_CHEST = "Examine the chest";
 
 test.use({ storageState: { cookies: [], origins: [] } });
 test.describe.configure({ timeout: 120_000 });
@@ -34,12 +33,12 @@ test("25. a holder on a phone opens a competency and adds a logbook entry", asyn
 
   // Below `sm` each framework's rows are cards, not a table's rows.
   await expect(
-    page.getByRole("heading", { name: FRAMEWORK_NAMES.clinical }),
+    page.getByRole("heading", { name: FRAMEWORK_NAMES.quill_2_test }),
   ).toBeVisible();
   await expect(page.getByRole("table")).toHaveCount(0);
-  await page.getByText(REFER_PALLIATIVE).first().click();
+  await page.getByText(EXAMINE_THE_CHEST).first().click();
   await expect(
-    page.getByRole("heading", { level: 1, name: REFER_PALLIATIVE }),
+    page.getByRole("heading", { level: 1, name: EXAMINE_THE_CHEST }),
   ).toBeVisible();
 
   await page.getByRole("button", { name: "Add an entry" }).click();

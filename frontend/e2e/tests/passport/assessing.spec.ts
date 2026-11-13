@@ -13,7 +13,7 @@ import type { Browser } from "@playwright/test";
 import { test, expect } from "../../fixtures/axe";
 import { linkIn, waitForEmail } from "../../fixtures/mail";
 import {
-  REFER_PALLIATIVE,
+  EXAMINE_THE_CHEST,
   askAsHolder,
   makeAssessor,
   makeHolder,
@@ -32,7 +32,7 @@ async function holderRowText(
   const page = await pageAs(browser, holder.username);
 
   await page.goto("/passport");
-  const row = page.getByRole("row").filter({ hasText: REFER_PALLIATIVE.name });
+  const row = page.getByRole("row").filter({ hasText: EXAMINE_THE_CHEST.name });
   await expect(row).toBeVisible();
   const text = (await row.textContent()) ?? "";
   await page.context().close();
@@ -69,7 +69,7 @@ test.describe("Assessing a passport", () => {
     // On the sign-off page, from the inbox, with the reason asked for.
     await signIn(page, assessor.username);
     await page.goto("/inbox");
-    await page.getByText(REFER_PALLIATIVE.name).first().click();
+    await page.getByText(EXAMINE_THE_CHEST.name).first().click();
     await page.getByRole("button", { name: "Decline request" }).click();
     const dialog = page.getByRole("dialog", { name: "Decline this request" });
     await dialog
@@ -86,7 +86,7 @@ test.describe("Assessing a passport", () => {
     await expect(
       theirs.getByRole("heading", { name: "Declined" }),
     ).toBeVisible();
-    await theirs.getByText(REFER_PALLIATIVE.name).first().click();
+    await theirs.getByText(EXAMINE_THE_CHEST.name).first().click();
     await expect(
       theirs.getByText("Not yet ready to do this unsupervised."),
     ).toBeVisible();
@@ -142,7 +142,7 @@ test.describe("Assessing a passport", () => {
 
     // On screen: naming yourself is refused before anything is sent.
     await signIn(page, holder.username);
-    await page.goto(`/passport/competencies/${REFER_PALLIATIVE.id}`);
+    await page.goto(`/passport/competencies/${EXAMINE_THE_CHEST.id}`);
     await page.getByRole("button", { name: "Ask for a sign-off" }).click();
     await page.getByLabel(/Who should assess this/).fill(holder.email);
     await expect(
@@ -156,10 +156,10 @@ test.describe("Assessing a passport", () => {
     await askAsHolder(browser, holder, assessor.email);
     await page.goto("/inbox");
     await expect(page.getByRole("heading", { name: "Inbox" })).toBeVisible();
-    await expect(page.getByText(REFER_PALLIATIVE.name)).toHaveCount(0);
+    await expect(page.getByText(EXAMINE_THE_CHEST.name)).toHaveCount(0);
 
     await page.goto("/passport/sign-offs");
-    await page.getByText(REFER_PALLIATIVE.name).first().click();
+    await page.getByText(EXAMINE_THE_CHEST.name).first().click();
     await expect(page).toHaveURL(/\/passport\/sign-offs\/[^/]+$/);
     await expect(
       page.getByRole("button", { name: "Sign off competency" }),

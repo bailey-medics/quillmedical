@@ -93,8 +93,8 @@ vi.mock("react-router-dom", async () => {
 
 const FRAMEWORKS: FrameworkOption[] = [
   {
-    id: "clinical",
-    name: "General clinical skills",
+    id: "quill_2_test",
+    name: "Quill second test framework",
     publisher: "Quill Medical",
     specialties: [],
   },
@@ -110,7 +110,7 @@ const FRAMEWORKS: FrameworkOption[] = [
 const ONCOLOGY_FIRST: FrameworkOption[] = [FRAMEWORKS[1], FRAMEWORKS[0]];
 
 const ONCOLOGY_LABEL = "Oncology (proof of concept) (Quill Medical)";
-const GENERAL_LABEL = "General clinical skills (Quill Medical)";
+const GENERAL_LABEL = "Quill second test framework (Quill Medical)";
 
 /** The field the frameworks are chosen in, on the create step. */
 function frameworksField(): HTMLElement {
@@ -156,7 +156,7 @@ const detail = {
     holder_user_id: "42",
     holder_name: "Dr Mark Bailey",
     registrations: [],
-    frameworks: [{ id: "clinical", name: "General clinical skills" }],
+    frameworks: [{ id: "quill_2_test", name: "Quill second test framework" }],
     created_at: "2026-09-10",
     head_commit: null,
   },
@@ -593,7 +593,9 @@ describe("PassportPage", () => {
       renderWithRouter(<PassportPage />);
 
       expect(
-        await screen.findByRole("heading", { name: "General clinical skills" }),
+        await screen.findByRole("heading", {
+          name: "Quill second test framework",
+        }),
       ).toBeInTheDocument();
       expect(
         screen.getByTestId("competency-framework-table"),
@@ -612,7 +614,7 @@ describe("PassportPage", () => {
 
     it("opens a competency's own page from its row", async () => {
       const user = userEvent.setup();
-      const [first] = TEST_FRAMEWORK_CATALOGUE.frameworkItems("clinical");
+      const [first] = TEST_FRAMEWORK_CATALOGUE.frameworkItems("quill_2_test");
       fetchMyPassport.mockResolvedValue(detail);
       renderWithRouter(<PassportPage />);
 
