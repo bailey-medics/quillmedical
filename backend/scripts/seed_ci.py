@@ -24,7 +24,7 @@ from app.cbac.grants import sync_competency_rows  # noqa: E402
 from app.cbac.positions import set_clinical_lead  # noqa: E402
 from app.config import settings  # noqa: E402
 from app.db import CoreSessionLocal  # noqa: E402
-from app.features.passport.sync import sync_frameworks  # noqa: E402
+from app.features.passport.sync import sync_framework_versions  # noqa: E402
 from app.features.teaching.access import (  # noqa: E402
     enrol_everyone_with_a_place,
     give_place,
@@ -58,7 +58,7 @@ from app.models import (  # noqa: E402
     User,
 )
 from app.organisations import add_org_unit_member  # noqa: E402
-from app.paths import FRAMEWORK_FIXTURES_DIR  # noqa: E402
+from app.paths import FRAMEWORK_FIXTURE_HISTORY_DIR  # noqa: E402
 from app.security import hash_password  # noqa: E402
 
 # Base32 of RFC 4226's test key "12345678901234567890". Public, and only
@@ -250,7 +250,7 @@ def seed() -> None:
         # 9. The framework tables, as the pre-deploy job fills them, from
         # the framework fixtures, so no end-to-end test depends on a
         # publisher's repository.
-        frameworks = sync_frameworks(db, FRAMEWORK_FIXTURES_DIR)
+        frameworks = sync_framework_versions(db, FRAMEWORK_FIXTURE_HISTORY_DIR)
         if not frameworks.succeeded:
             raise RuntimeError(f"Framework sync failed: {frameworks.error}")
         db.commit()

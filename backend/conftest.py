@@ -162,13 +162,13 @@ def stored_frameworks(db_session: Session) -> Session:
     """The framework tables, filled from the framework fixtures.
 
     For a test that reads the frameworks from the tables, as a deploy
-    fills them, from shared/framework-fixtures/. Returns the session the
-    frameworks were stored in.
+    fills them, from every version in shared/framework-fixtures/history/.
+    Returns the session the frameworks were stored in.
     """
-    from app.features.passport.sync import sync_frameworks
-    from app.paths import FRAMEWORK_FIXTURES_DIR
+    from app.features.passport.sync import sync_framework_versions
+    from app.paths import FRAMEWORK_FIXTURE_HISTORY_DIR
 
-    result = sync_frameworks(db_session, FRAMEWORK_FIXTURES_DIR)
+    result = sync_framework_versions(db_session, FRAMEWORK_FIXTURE_HISTORY_DIR)
     assert result.succeeded, result.error
     db_session.commit()
 

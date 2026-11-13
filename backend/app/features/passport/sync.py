@@ -12,10 +12,11 @@ rather than retired, a version that skips or goes down, and a framework
 changed with no new version. One refusal stops the run and writes
 nothing, so the tables never hold half a sync.
 
-The frameworks live in their publishers' repositories, so this folder form
-reads ``shared/framework-fixtures/`` by default: the CI seed and the dev
-migrate recipe fill the tables from it, and every deploy reads the
-repositories instead. The passport reads them through :mod:`.catalogue`. See Phase 5 of
+The frameworks live in their publishers' repositories, so with no folder
+this reads every version of the fixtures, in
+``shared/framework-fixtures/history/``: the CI seed and the dev migrate
+recipe fill the tables from it, and every deploy reads the repositories
+instead. The passport reads them through :mod:`.catalogue`. See Phase 5 of
 docs/docs/plans/2026-11-01-passport-record-and-catalogue-plan.md.
 
 Usage::
@@ -23,10 +24,11 @@ Usage::
     python -m app.features.passport.sync [<definitions-directory>]
     python -m app.features.passport.sync --versions <folder>
 
-The first reads ``shared/framework-fixtures/`` when given no folder. The
-second form reads a folder of versions written by hand, one folder
-per framework and one file per version, and catches up on every version
-the tables lack. The framework sync job uses a third,
+With no folder, the first catches up on every version in
+``shared/framework-fixtures/history/``. Given a folder, it reads each
+framework as it stands now, one file each. The second form reads a folder
+of versions, one folder per framework and one file per version, and
+catches up on every version the tables lack. The framework sync job uses a third,
 :func:`sync_from_repositories`, which reads each framework repository's
 history from GitHub itself.
 """
@@ -57,7 +59,7 @@ from app.cbac.competencies import (
     _load_catalogue,
     load_framework_text,
 )
-from app.paths import FRAMEWORK_FIXTURES_DIR
+from app.paths import FRAMEWORK_FIXTURE_HISTORY_DIR
 
 from .models import (
     PassportFramework,
@@ -533,9 +535,7 @@ def _recorded_run(
     return FrameworkSyncResult(True, written, None)
 
 
-def sync_frameworks(
-    db: Session, directory: Path = FRAMEWORK_FIXTURES_DIR
-) -> FrameworkSyncResult:
+def sync_frameworks(db: Session, directory: Path) -> FrameworkSyncResult:
     """Read every framework in *directory* into the database.
 
     *directory* holds each framework as it stands now, one file each, as
@@ -859,6 +859,27 @@ def _clone(repository: str, destination: Path) -> None:
     )
 
 
+def _refuse_what_main_may_not_hold(
+    repository: str, may_publish: set[str], clone: Path
+) -> None:
+    """Refuse a framework file on ``main`` this repository may not publish.
+
+    Raises:
+        FrameworkSyncError: Naming the first such file.
+    """
+    listing = _git("ls-tree", "-r", "main", "--", "frameworks/", git_dir=clone)
+
+    for line in listing.splitlines():
+        path = line.split("\t", 1)[1]
+        match = _FRAMEWORK_PATH.match(path)
+        if match is not None and match["framework"] not in may_publish:
+            raise FrameworkSyncError(
+                f"{repository} holds {path}, but may publish only "
+                + ", ".join(sorted(may_publish))
+                + "."
+            )
+
+
 def read_repository_versions(
     repository: str, may_publish: set[str], clone: Path
 ) -> dict[str, dict[int, str]]:
@@ -868,6 +889,10 @@ def read_repository_versions(
     first text at which each version appears: the merge that set it. A
     later commit that changed only comments or the description keeps its
     version, so its text is not read again.
+
+    A framework file on ``main`` that the repository may not publish is
+    refused. One that history holds but ``main`` no longer does is passed
+    over, since a repository's history cannot be rewritten.
 
     Args:
         repository: ``owner/name`` on GitHub.
@@ -895,6 +920,8 @@ def read_repository_versions(
         # An empty repository: its first commit is not on main yet.
         return {}
 
+    _refuse_what_main_may_not_hold(repository, may_publish, clone)
+
     found: dict[str, dict[int, str]] = {}
     seen_blobs: set[str] = set()
     commits = _git(
@@ -914,13 +941,12 @@ def read_repository_versions(
             if match is None or blob in seen_blobs:
                 continue
 
+            # Main no longer holds it, or the check above would have
+            # refused it. History cannot be rewritten, so a file deleted
+            # from main is passed over rather than refused for ever.
             framework_id = match["framework"]
             if framework_id not in may_publish:
-                raise FrameworkSyncError(
-                    f"{repository} holds {path}, but may publish only "
-                    + ", ".join(sorted(may_publish))
-                    + "."
-                )
+                continue
 
             size = int(_git("cat-file", "-s", blob, git_dir=clone))
             if size > MAX_FRAMEWORK_FILE_BYTES:
@@ -1063,10 +1089,13 @@ def main(argv: list[str] | None = None) -> int:
 
         return _report(result)
 
-    directory = Path(args[0]) if args else FRAMEWORK_FIXTURES_DIR
-
     with CoreSessionLocal() as db:
-        result = sync_frameworks(db, directory)
+        if args:
+            result = sync_frameworks(db, Path(args[0]))
+        else:
+            # The fixtures with their history: a fixture past version 1
+            # cannot be stored from its newest file alone.
+            result = sync_framework_versions(db, FRAMEWORK_FIXTURE_HISTORY_DIR)
         # Its own session, so nothing else commits for it.
         db.commit()
 

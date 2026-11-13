@@ -24,6 +24,14 @@ framework. Only then can the one-framework rule be enforced, in two
 deploys, so the setting's new form never reaches a backend that cannot
 read it.
 
+**Built in one unattended run, then reviewed and merged in order.** The
+pull requests in the testing repositories are opened without waiting for
+each other to merge: each branches from the one before it, and shows red
+until that one merges and its branch is updated. Quill's fixture copy
+records the exact commits it copied, so the Quill pull requests pass CI
+while the testing ones are still open. The merge order, and the one wait
+for a deploy, are in the last section, "Merge order".
+
 ## Phase 1: Two made-up frameworks, each in its own testing repository
 
 - [x] **List what the tests need from a framework before writing one.**
@@ -84,7 +92,7 @@ read it.
         `clinical_services_enabled` are positions and settings. The move
         in Phase 3 touches only the competencies in `clinical.yaml`.
 
-- [ ] **Grow `quill_test` into the full made-up framework**, in
+- [x] **Grow `quill_test` into the full made-up framework**, in
       `bailey-medics/quill-medical-framework-testing`, by a pull request
       there. It is at version 2 on `main`, and `check_framework_version.py`
       requires each change to raise the version by exactly one, so this
@@ -100,6 +108,28 @@ read it.
       at one version and retired at the next, with sign-offs given at
       the earlier version still naming it. Every competency id starts
       `quill_test_`, as the loader requires.
+
+      **Built on 12 November 2026** as the testing repository's #4 and
+      #5, #5 branched from #4.
+      - **Version 3** keeps the four competencies of versions 1 and 2,
+        adds the specialties `oncology` and `haematology`, and adds
+        three competencies. `quill_test_give_a_course` stands in for
+        `uk_sact_board_2023_prescribe_sact`: five levels in order,
+        `observe`, `review`, `continue`, `start` and `adapt`, and the
+        scopes `breast`, `lung`, `bowel`, `skin` and `other`. The scope
+        ids `lung` and `breast` are kept from the real fixture, because
+        they are ordinary words and many tests name them.
+        `quill_test_refer_to_a_team` is the second competency with
+        levels. `quill_test_use_the_old_system` is plain.
+      - **Version 4 retires only what no other test relies on**: the
+        level `with_direct_supervision` and the scope `liver`, both on
+        `quill_test_refer_to_a_team`, and the whole of
+        `quill_test_use_the_old_system`. So the tests moved onto
+        `quill_test_give_a_course` never meet a retired item by
+        accident.
+      - Both passed Quill's `validate_frameworks` and
+        `check_framework_version`, version 4 checked against version 3's
+        branch.
 
 - [x] **Make a second testing repository holding one plain made-up
       framework**: no levels and no scopes. The repository is
@@ -121,9 +151,9 @@ read it.
       `gh auth refresh -h github.com -s workflow`.
 
 - [ ] **Protect the second testing repository like the first.**
-      - Add it to `local.framework_repos` in
-        `infra/github/framework_rulesets.tf`, after its first commit is
-        on `main`. An empty repository has no `main` for the ruleset's
+      - Add it to `local.passport_framework_repos` in
+        `infra/github/passport_framework_rulesets.tf`, after its first
+        commit is on `main`. An empty repository has no `main` for the ruleset's
         pull request rule to target.
       - Add it to `repositories_without_secrets` in
         `infra/github/actions_secrets.tf`.
@@ -136,27 +166,54 @@ read it.
 
 ## Phase 2: Copy the fixtures from both testing repositories
 
-- [ ] **Copy from both repositories in `scripts/framework-fixtures-refresh.sh`.**
+- [x] **Copy from both repositories in `scripts/framework-fixtures-refresh.sh`.**
       It copies every file in each repository's `frameworks/` folder.
       `quill_test.yaml` is no longer left out, because it is now a fixture
       the tests use. `SOURCE` names both repositories, each with the
-      commit copied from. The four real fixtures still come across from
-      the first repository until Phase 4 deletes them, so nothing breaks
-      while Phase 3 moves the tests.
+      commit copied from, as one `source=<repository> <commit>` line
+      each. The four real fixtures still come across from the first
+      repository until Phase 4 deletes them, so nothing breaks while
+      Phase 3 moves the tests.
 
-- [ ] **Check both repositories in `.github/scripts/ci/check-framework-fixtures.sh`.**
+      A repository may be named with `#<branch>`, so a Quill pull request
+      can copy from a testing pull request that has not merged. This
+      stack copies from #5's branch. `just framework-fixtures-refresh`
+      passes its arguments on.
+
+- [x] **Copy every version too, not only the newest.** Found while
+      building: the sync stores a framework from a folder of newest files
+      only if it is at version 1. It refuses one first seen at version 4,
+      on purpose, and
+      `test_a_framework_first_stored_above_version_1_is_refused` pins
+      that. So `quill_test` at version 4 could not be synced from its
+      newest file, and nor could any fixture that ever changed. That rule
+      is right, so the fixtures carry their history instead:
+      `shared/framework-fixtures/history/<id>/<version>.yaml`, read from
+      each repository's first-parent history, oldest first, keeping the
+      first text of each version, exactly as `read_repository_versions`
+      in `sync.py` reads a repository. The newest files stay where they
+      were for everything that reads a framework as it stands. The
+      `stored_frameworks` fixture in `backend/conftest.py`,
+      `backend/scripts/seed_ci.py` and `python -m
+      app.features.passport.sync` with no folder now catch up from
+      `history/` with `sync_framework_versions`, keeping every rule.
+      `FRAMEWORK_FIXTURE_HISTORY_DIR` in `backend/app/paths.py` names it,
+      and `sync_frameworks` no longer defaults to the fixtures folder.
+
+- [x] **Check both repositories in `.github/scripts/ci/check-framework-fixtures.sh`.**
       It clones each repository at its commit in `SOURCE`, and fails a
-      pull request whose fixtures differ from either. Add bats (Bash
-      Automated Testing System) cases to
+      pull request whose fixtures differ from either, in the newest files
+      or in `history/`. It also refuses one framework held by both
+      repositories. Add bats (Bash Automated Testing System) cases to
       `check-framework-fixtures.bats` for a second repository, and for a
       fixture that differs from it.
 
-- [ ] **Update `shared/framework-fixtures/README.md`** to say there are
+- [x] **Update `shared/framework-fixtures/README.md`** to say there are
       two testing repositories, one made-up framework in each, and why.
 
 ## Phase 3: Move every test onto the made-up frameworks
 
-- [ ] **Move the backend tests.** Every test naming `uk_sact_board_2023`
+- [x] **Move the backend tests.** Every test naming `uk_sact_board_2023`
       or `ruh_sact_passport` moves to `quill_test`. Every test naming
       `clinical` or `ghnft_radiotherapy_record` as a framework moves to
       `quill_2_test`. A test that needs two frameworks takes one of each.
@@ -166,18 +223,68 @@ read it.
       to find the rest. A test that only needs "a second framework" takes
       `quill_2_test`, not a third fixture.
 
-- [ ] **Move the frontend.** That is `components/passport/fixtures.ts`,
+      **Done on 12 November 2026**, by one mapping applied to every
+      backend Python file, then the failures fixed by hand:
+      - `uk_sact_board_2023_prescribe_sact` became
+        `quill_test_give_a_course`, its levels `observation_only`,
+        `review_and_authorise`, `prescribe_subsequent_cycles`,
+        `prescribe_first_cycle` and `prescribe_for_complex_patients`
+        became `observe`, `review`, `continue`, `start` and `adapt`, and
+        its wording became `quill_test`'s.
+      - The eight `clinical` competencies the tests use became the eight
+        in `quill_2_test`, such as `clinical_perform_cannulation` to
+        `quill_2_test_insert_a_cannula`, and the framework id
+        `"clinical"` became `"quill_2_test"`.
+      - Tests that assumed version 1 now use `quill_test`'s version 4: a
+        version "above the newest" is 5.
+      - `test_general_clinical_skills_holds_its_own_ids`, about the real
+        framework's split from the permissions, became
+        `test_a_framework_holds_ids_of_its_own`: `quill_2_test`'s ids all
+        carry its prefix and none is a permission.
+      - `backend/scripts/seed_guides.py` reads the synced fixtures, so it
+        moved too, and the guide screenshots will show
+        "Quill second test framework". `backend/app/email/previews.py`
+        only holds example wording and reads no fixture, so it was left
+        alone.
+      - `test_the_gloucestershire_record_carries_every_signed_line`
+        checked the real Gloucestershire record's content, which now
+        belongs to that framework's own repository and pipeline. It
+        became `test_a_framework_keeps_its_competencies_in_the_files_order`,
+        over `quill_test`.
+      - The `clinical`, `ruh_sact_passport`, `ghnft_radiotherapy_record`
+        and `uk_sact_board_2023` lines left in the two fixture version
+        lists go in Phase 4, with the files.
+
+- [x] **Move the frontend.** That is `components/passport/fixtures.ts`,
       the passport stories, `SignOffForm.test.tsx` and
       `types/cbac.test.ts`.
 
-- [ ] **Move the end-to-end tests and the CI seed**:
+      **Done on 12 November 2026**, with the backend's mapping, then a
+      second for the two smaller fixtures. `oncologyFrameworks` in
+      `fixtures.ts`, which the By competency tests join to the fixture
+      catalogue, became `quill_2_test` and `quill_test`, its
+      radiotherapy items taking `quill_2_test` competencies the
+      cannulation tests do not use. The RUH competency in the sign-off
+      form tests became `quill_test_refer_to_a_team`, signed at
+      `with_indirect_supervision` rather than the level version 4
+      retires. The mapping must not run over the member practice files:
+      a permission such as `perform_venepuncture` shares its display
+      name with a `clinical` competency, and those names stayed.
+
+- [x] **Move the end-to-end tests and the CI seed**:
       `frontend/e2e/fixtures/passport.ts`,
       `tests/passport/holding-a-passport.spec.ts` and
       `backend/scripts/seed_ci.py`. The dev stack and the end-to-end stack
       then show the made-up frameworks. That is expected: they are test
       stacks.
 
-- [ ] **Change the examples in comments.** The docstring in
+      **Done on 12 November 2026.** A holder is given `quill_2_test`
+      and `quill_test`, and `REFER_PALLIATIVE` became
+      `EXAMINE_THE_CHEST`, `quill_test`'s competency with no levels and
+      no scopes. The guide `start-your-passport.spec.ts` now photographs
+      "Quill second test framework". `seed_ci.py` moved in Phase 2.
+
+- [x] **Change the examples in comments.** The docstring in
       `backend/app/features/passport/paths.py` and the doc comment in
       `CompetencyFrameworkTable.tsx` name a real framework only as an
       example. They name a made-up one instead.
@@ -202,16 +309,58 @@ read it.
 
 ## Phase 4: Remove the real frameworks from the testing repository
 
-- [ ] **Delete the four real fixtures from
+- [x] **Delete the four real fixtures from
       `quill-medical-framework-testing`**, by a pull request there. It
       then holds `quill_test` alone. Merge it before the Quill change
       below. The copy check compares against the commit in `SOURCE`, so
       Quill's pull requests keep passing until that commit changes.
 
-- [ ] **Run `just framework-fixtures-refresh` in Quill** and open a pull
+      **Opened on 12 November 2026** as the testing repository's #6,
+      branched from #5, with its README saying it holds `quill_test`
+      alone.
+
+- [x] **Run `just framework-fixtures-refresh` in Quill** and open a pull
       request with the result. `shared/framework-fixtures/` then holds
       `quill_test.yaml` and `quill_2_test.yaml` and nothing else, and the
       check from Phase 3 passes.
+
+      **Done on 12 November 2026**, copying from the deletion branch.
+      `history/` keeps only frameworks the repository still holds at the
+      copied commit: the four real ones are in that repository's history
+      for good, and would otherwise have come back under `history/`.
+      The two fixture version lists in `competencies_test.py` and
+      `sync_test.py` now name `quill_test` and `quill_2_test` alone.
+
+- [x] **Decide what the sync does with a framework deleted from a
+      repository's history.** Found while rewriting the network test:
+      `read_repository_versions` refused any framework file anywhere in
+      `main`'s history that the repository may not publish. Once the
+      deletion above merges, `quill-medical-framework-testing` holds
+      `clinical.yaml` and the other three in its history for good,
+      because `main` is never rewritten. So a sync listing it as
+      publishing `quill_test` alone would fail, and under Phase 5's one
+      id per repository it could never be synced again.
+
+      **Decided on 13 November 2026: refuse what `main` holds now, pass
+      over what it no longer holds.** `_refuse_what_main_may_not_hold`
+      in `backend/app/features/passport/sync.py` lists `frameworks/` at
+      the tip of `main` and refuses any file the repository may not
+      publish, as loudly as before. The history walk then skips an
+      unlisted framework instead of refusing it, since nothing still on
+      `main` can be one. Nothing unlisted is ever stored either way. The
+      rejected options were a fresh testing repository, which keeps the
+      rule but replays four pull requests, and listing the four real
+      ids for that repository, which contradicts Phase 5's single id.
+      `check-framework-fixtures.sh` already skips a deleted framework
+      the same way, so the fixtures and the sync agree.
+
+      The network test, `backend/tests/framework_repository_sync_test.py`,
+      now syncs both testing repositories as they stand once #4, #5 and
+      #6 there merge: `quill_test` at versions 1 to 4, `quill_2_test` at
+      1, what version 4 retired, and each repository refused the other's
+      framework. Checked against local copies with #6 as `main`. Its CI
+      job reads the live repositories, so it is red until those three
+      merge.
 
 ## Phase 5: One framework per repository, step one
 
@@ -243,8 +392,8 @@ writes. App production must run this step before Phase 6 merges.
       same framework stays.
 
 - [ ] **Say "one repository per framework" everywhere.** Update:
-      - the comment in `infra/github/framework_rulesets.tf`, which says
-        "one repository per publisher";
+      - the comment in `infra/github/passport_framework_rulesets.tf`,
+        which says "one repository per publisher";
       - the docstring of `validate_frameworks.py`;
       - the frameworks paragraph in `.github/copilot-instructions.md`,
         which says "its publisher's own repository", then

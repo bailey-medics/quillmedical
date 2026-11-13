@@ -5,22 +5,15 @@ import { TEST_FRAMEWORK_CATALOGUE } from "@test/frameworkCatalogue";
 describe("levelsFor", () => {
   it("gives a scaled competency's levels in the scale's order", () => {
     expect(
-      levelsFor(
-        TEST_FRAMEWORK_CATALOGUE,
-        "uk_sact_board_2023_prescribe_sact",
-      ).map((l) => l.id),
-    ).toEqual([
-      "observation_only",
-      "review_and_authorise",
-      "prescribe_subsequent_cycles",
-      "prescribe_first_cycle",
-      "prescribe_for_complex_patients",
-    ]);
+      levelsFor(TEST_FRAMEWORK_CATALOGUE, "quill_test_give_a_course").map(
+        (l) => l.id,
+      ),
+    ).toEqual(["observe", "review", "continue", "start", "adapt"]);
   });
 
   it("gives nothing for a competency with no scale", () => {
     expect(
-      levelsFor(TEST_FRAMEWORK_CATALOGUE, "clinical_perform_cannulation"),
+      levelsFor(TEST_FRAMEWORK_CATALOGUE, "quill_2_test_insert_a_cannula"),
     ).toEqual([]);
   });
 
@@ -31,6 +24,6 @@ describe("levelsFor", () => {
 
 describe("levelsFor before the frameworks have loaded", () => {
   it("gives nothing, so a form offers no choice yet", () => {
-    expect(levelsFor(null, "uk_sact_board_2023_prescribe_sact")).toEqual([]);
+    expect(levelsFor(null, "quill_test_give_a_course")).toEqual([]);
   });
 });

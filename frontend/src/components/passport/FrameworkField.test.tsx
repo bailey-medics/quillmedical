@@ -11,8 +11,8 @@ import type { FrameworkOption } from "@lib/passport/frameworks";
 
 const options: FrameworkOption[] = [
   {
-    id: "clinical",
-    name: "General clinical skills",
+    id: "quill_2_test",
+    name: "Quill second test framework",
     publisher: "Quill Medical",
     specialties: [],
   },
@@ -60,7 +60,7 @@ describe("FrameworkField", () => {
       await screen.findByText("Theatre sign-off sheet (A Trust)"),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("General clinical skills (Quill Medical)"),
+      screen.getByText("Quill second test framework (Quill Medical)"),
     ).toBeInTheDocument();
   });
 
@@ -109,7 +109,7 @@ describe("FrameworkField", () => {
       await openFrameworks(user);
 
       expect(
-        await screen.findByText("General clinical skills (Quill Medical)"),
+        await screen.findByText("Quill second test framework (Quill Medical)"),
       ).toBeInTheDocument();
     });
 

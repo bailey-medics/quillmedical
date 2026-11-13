@@ -42,8 +42,8 @@ pytestmark = pytest.mark.usefixtures("stored_frameworks")
 
 # Two frameworks the catalogue is known to hold, named here so a change
 # to it surfaces as one failure.
-GENERAL = "clinical"
-ONCOLOGY = "uk_sact_board_2023"
+GENERAL = "quill_2_test"
+ONCOLOGY = "quill_test"
 
 
 def _make_user(
@@ -180,7 +180,7 @@ class TestSearchAndFilter:
     ) -> None:
         holder = _make_user(db_session, "holder")
 
-        assert _ids(db_session, holder, query="GENERAL skills") == [GENERAL]
+        assert _ids(db_session, holder, query="SECOND test") == [GENERAL]
 
     def test_words_are_found_in_the_publisher_too(
         self, db_session: Session
@@ -223,7 +223,7 @@ class TestSearchAndFilter:
     def test_a_framework_filed_under_no_specialty_is_never_filtered_out(
         self, db_session: Session
     ) -> None:
-        """General clinical skills belong to every specialty."""
+        """Quill second test framework belong to every specialty."""
         holder = _make_user(db_session, "holder")
 
         assert GENERAL in _ids(db_session, holder, specialty="haematology")
@@ -247,7 +247,9 @@ class TestChoosing:
         refs = frameworks.framework_refs(files_catalogue(), [GENERAL])
 
         assert refs == [
-            schemas.FrameworkRef(id=GENERAL, name="General clinical skills")
+            schemas.FrameworkRef(
+                id=GENERAL, name="Quill second test framework"
+            )
         ]
 
     def test_an_unknown_framework_is_refused_without_echoing_it(
@@ -274,7 +276,7 @@ class TestChoosing:
 
         assert (
             frameworks.current_name(files_catalogue(), stored)
-            == "General clinical skills"
+            == "Quill second test framework"
         )
 
     def test_a_framework_no_longer_held_keeps_its_stored_name(self) -> None:
@@ -335,9 +337,9 @@ class TestTheHoldersRoutes:
         sact = next(
             c
             for c in oncology["competencies"]
-            if c["id"] == "uk_sact_board_2023_prescribe_sact"
+            if c["id"] == "quill_test_give_a_course"
         )
-        entry = files_catalogue().entries["uk_sact_board_2023_prescribe_sact"]
+        entry = files_catalogue().entries["quill_test_give_a_course"]
         assert [lvl["id"] for lvl in sact["levels"]] == [
             lvl.id for lvl in entry.levels or []
         ]
@@ -356,7 +358,7 @@ class TestTheHoldersRoutes:
             update(PassportFrameworkCompetency)
             .where(
                 PassportFrameworkCompetency.competency_id
-                == "clinical_perform_cannulation"
+                == "quill_2_test_insert_a_cannula"
             )
             .values(retired_on=date(2026, 3, 15))
         )
@@ -369,7 +371,7 @@ class TestTheHoldersRoutes:
         cannulation = next(
             c
             for c in general["competencies"]
-            if c["id"] == "clinical_perform_cannulation"
+            if c["id"] == "quill_2_test_insert_a_cannula"
         )
         assert cannulation["retired_on"] == "2026-03-15"
 
@@ -403,7 +405,7 @@ class TestTheHoldersRoutes:
         self, holder_client: TestClient
     ) -> None:
         found = holder_client.get(
-            "/api/passport/frameworks", params={"q": "general"}
+            "/api/passport/frameworks", params={"q": "second"}
         )
         filtered = holder_client.get(
             "/api/passport/frameworks",
@@ -451,10 +453,10 @@ class TestTheHoldersRoutes:
 
         assert response.status_code == 200, response.text
         assert response.json()["frameworks"] == [
-            {"id": GENERAL, "name": "General clinical skills"},
+            {"id": GENERAL, "name": "Quill second test framework"},
             {
                 "id": ONCOLOGY,
-                "name": "Prescriber competencies for reviewing and prescribing SACT - The UK SACT Board",
+                "name": "Quill test framework",
             },
         ]
         again = holder_client.get("/api/passport/me").json()
@@ -515,7 +517,7 @@ class TestTheHoldersRoutes:
             "/api/passport", json={"frameworks": [GENERAL]}
         ).json()["passport_id"]
         holder_client.post(
-            f"/api/passport/{passport_id}/logbook/clinical_perform_cannulation",
+            f"/api/passport/{passport_id}/logbook/quill_2_test_insert_a_cannula",
             json={"performed_on": "2026-03-12"},
         )
 
@@ -524,7 +526,7 @@ class TestTheHoldersRoutes:
         )
 
         logbook = holder_client.get(
-            f"/api/passport/{passport_id}/logbook/clinical_perform_cannulation"
+            f"/api/passport/{passport_id}/logbook/quill_2_test_insert_a_cannula"
         ).json()
         assert logbook["count"] == 1
 
@@ -558,7 +560,7 @@ class TestOnlyWhatTheFrameworksHold:
         passport_id = self._passport(holder_client, GENERAL)
 
         response = holder_client.post(
-            f"/api/passport/{passport_id}/logbook/clinical_perform_cannulation",
+            f"/api/passport/{passport_id}/logbook/quill_2_test_insert_a_cannula",
             json={"performed_on": "2026-03-12"},
         )
 
@@ -570,14 +572,14 @@ class TestOnlyWhatTheFrameworksHold:
         passport_id = self._passport(holder_client, GENERAL)
 
         response = holder_client.post(
-            f"/api/passport/{passport_id}/logbook/uk_sact_board_2023_prescribe_sact",
+            f"/api/passport/{passport_id}/logbook/quill_test_give_a_course",
             json={"performed_on": "2026-03-12"},
         )
 
         assert response.status_code == 400, response.text
         detail = response.json()["detail"]
         assert "Settings" in detail
-        assert "uk_sact_board_2023_prescribe_sact" not in detail
+        assert "quill_test_give_a_course" not in detail
 
     def test_a_holder_with_no_frameworks_can_record_nothing(
         self, holder_client: TestClient
@@ -585,7 +587,7 @@ class TestOnlyWhatTheFrameworksHold:
         passport_id = self._passport(holder_client)
 
         response = holder_client.post(
-            f"/api/passport/{passport_id}/logbook/clinical_perform_cannulation",
+            f"/api/passport/{passport_id}/logbook/quill_2_test_insert_a_cannula",
             json={"performed_on": "2026-03-12"},
         )
 
@@ -596,7 +598,7 @@ class TestOnlyWhatTheFrameworksHold:
     ) -> None:
         passport_id = self._passport(holder_client, GENERAL)
         base = f"/api/passport/{passport_id}"
-        outside = "uk_sact_board_2023_prescribe_sact"
+        outside = "quill_test_give_a_course"
 
         attempts = [
             holder_client.post(
@@ -604,7 +606,7 @@ class TestOnlyWhatTheFrameworksHold:
                 json={
                     "assessor_email": "somebody@example.nhs.uk",
                     "observed_on": "2026-03-12",
-                    "level_id": "review_and_authorise",
+                    "level_id": "review",
                     "scope_id": "lung",
                 },
             ),
@@ -645,9 +647,7 @@ class TestOnlyWhatTheFrameworksHold:
     ) -> None:
         """Dropping a framework freezes nothing recorded under it."""
         passport_id = self._passport(holder_client, GENERAL)
-        url = (
-            f"/api/passport/{passport_id}/logbook/clinical_perform_cannulation"
-        )
+        url = f"/api/passport/{passport_id}/logbook/quill_2_test_insert_a_cannula"
         stem = holder_client.post(
             url, json={"performed_on": "2026-03-12"}
         ).json()["name"]

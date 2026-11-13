@@ -68,7 +68,7 @@ def test_names_what_the_sign_off_covers_where_there_is_a_scope() -> None:
     rendered = render_invite(
         assessor_name="Dr James Okafor",
         holder_name="Dr Priya Shah",
-        competency_name="Review and prescribe systemic anti-cancer therapy",
+        competency_name="Give a course of treatment",
         scope_name="Lung",
         level_name="Prescribe second cycle onwards",
         url="https://example.com/accept?token=t",

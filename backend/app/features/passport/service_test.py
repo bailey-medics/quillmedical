@@ -48,11 +48,11 @@ ASSESSOR_USER = "u-assessor"
 
 # A competency with a scale, and one without. Named here so a change to
 # the catalogue surfaces as one failure rather than twenty.
-SCALED = "uk_sact_board_2023_prescribe_sact"
+SCALED = "quill_test_give_a_course"
 # What a sign-off for it covers. It is signed off one tumour site at a
 # time, so every request names one.
 SCOPE = "lung"
-UNSCALED = "clinical_perform_cannulation"
+UNSCALED = "quill_2_test_insert_a_cannula"
 
 
 @pytest.fixture
@@ -356,7 +356,7 @@ class TestLevels:
         with pytest.raises(SignOffError) as raised:
             _request(passport, holder, competency_id=SCALED, scope_id=SCOPE)
 
-        assert "observation_only" not in str(raised.value)
+        assert "observe" not in str(raised.value)
         assert SCALED not in str(raised.value)
 
     def test_an_unscaled_competency_needs_none(
@@ -375,7 +375,7 @@ class TestLevels:
             holder,
             competency_id=SCALED,
             scope_id=SCOPE,
-            level_id="review_and_authorise",
+            level_id="review",
         )
 
         record = service.read_sign_off(passport, PASSPORT_ID, name)
@@ -394,7 +394,7 @@ class TestScope:
                 passport,
                 holder,
                 competency_id=SCALED,
-                level_id="observation_only",
+                level_id="observe",
             )
 
     def test_the_refusal_is_plain_english_without_ids(
@@ -405,7 +405,7 @@ class TestScope:
                 passport,
                 holder,
                 competency_id=SCALED,
-                level_id="observation_only",
+                level_id="observe",
             )
 
         assert SCALED not in str(raised.value)
@@ -419,7 +419,7 @@ class TestScope:
                 passport,
                 holder,
                 competency_id=SCALED,
-                level_id="observation_only",
+                level_id="observe",
                 scope_id="left_elbow",
             )
 
@@ -440,7 +440,7 @@ class TestScope:
                 passport,
                 holder,
                 competency_id=SCALED,
-                level_id="observation_only",
+                level_id="observe",
             )
 
         assert passport.head(PASSPORT_ID) == before
@@ -459,7 +459,7 @@ class TestScope:
             passport,
             holder,
             competency_id=SCALED,
-            level_id="observation_only",
+            level_id="observe",
             scope_id=SCOPE,
         )
 
@@ -478,7 +478,7 @@ class TestScope:
             passport,
             holder,
             competency_id=SCALED,
-            level_id="observation_only",
+            level_id="observe",
             scope_id=SCOPE,
         )
         _sign(passport, assessor, name)
@@ -535,14 +535,14 @@ class TestOneStatePerScope:
             holder,
             assessor,
             scope_id="lung",
-            level_id="prescribe_subsequent_cycles",
+            level_id="continue",
         )
         self._signed(
             passport,
             holder,
             assessor,
             scope_id="breast",
-            level_id="review_and_authorise",
+            level_id="review",
             observed_on=date(2026, 6, 1),
         )
 
@@ -551,8 +551,8 @@ class TestOneStatePerScope:
         assert set(entries) == {"lung", "breast"}
         lung, breast = entries["lung"], entries["breast"]
         assert lung.level is not None and breast.level is not None
-        assert lung.level.id == "prescribe_subsequent_cycles"
-        assert breast.level.id == "review_and_authorise"
+        assert lung.level.id == "continue"
+        assert breast.level.id == "review"
         assert lung.scope is not None and lung.scope.name == "Lung"
 
     def test_each_scope_keeps_its_own_history(
@@ -566,14 +566,14 @@ class TestOneStatePerScope:
             holder,
             assessor,
             scope_id="lung",
-            level_id="review_and_authorise",
+            level_id="review",
         )
         self._signed(
             passport,
             holder,
             assessor,
             scope_id="breast",
-            level_id="review_and_authorise",
+            level_id="review",
             observed_on=date(2026, 6, 1),
         )
         second_lung = self._signed(
@@ -581,7 +581,7 @@ class TestOneStatePerScope:
             holder,
             assessor,
             scope_id="lung",
-            level_id="prescribe_subsequent_cycles",
+            level_id="continue",
             observed_on=date(2026, 9, 1),
         )
 
@@ -603,7 +603,7 @@ class TestOneStatePerScope:
             holder,
             assessor,
             scope_id="lung",
-            level_id="prescribe_subsequent_cycles",
+            level_id="continue",
         )
 
         breast = _request(
@@ -611,7 +611,7 @@ class TestOneStatePerScope:
             holder,
             competency_id=SCALED,
             scope_id="breast",
-            level_id="review_and_authorise",
+            level_id="review",
             observed_on=date(2026, 6, 1),
         )
 
@@ -632,14 +632,14 @@ class TestOneStatePerScope:
             holder,
             assessor,
             scope_id="lung",
-            level_id="review_and_authorise",
+            level_id="review",
         )
         self._signed(
             passport,
             holder,
             assessor,
             scope_id="breast",
-            level_id="prescribe_first_cycle",
+            level_id="start",
             observed_on=date(2026, 6, 1),
         )
 
@@ -648,7 +648,7 @@ class TestOneStatePerScope:
             holder,
             competency_id=SCALED,
             scope_id="lung",
-            level_id="prescribe_subsequent_cycles",
+            level_id="continue",
             observed_on=date(2026, 9, 1),
         )
 
@@ -668,14 +668,14 @@ class TestOneStatePerScope:
             holder,
             assessor,
             scope_id="lung",
-            level_id="prescribe_first_cycle",
+            level_id="start",
         )
         breast = self._signed(
             passport,
             holder,
             assessor,
             scope_id="breast",
-            level_id="review_and_authorise",
+            level_id="review",
             observed_on=date(2026, 6, 1),
         )
 
@@ -713,7 +713,7 @@ class TestOneStatePerScope:
             holder,
             competency_id=SCALED,
             scope_id="lung",
-            level_id="review_and_authorise",
+            level_id="review",
         )
 
         evidence = service.read_sign_off(passport, PASSPORT_ID, name).evidence
@@ -750,7 +750,7 @@ class TestOneStatePerScope:
             holder,
             assessor,
             scope_id="lung",
-            level_id="review_and_authorise",
+            level_id="review",
         )
 
         assert service.status_for(passport, PASSPORT_ID, SCALED) == (
@@ -785,7 +785,7 @@ class TestKind:
             holder,
             competency_id=SCALED,
             scope_id=SCOPE,
-            level_id="review_and_authorise",
+            level_id="review",
         )
         _sign(passport, assessor, first)
 
@@ -794,7 +794,7 @@ class TestKind:
             holder,
             competency_id=SCALED,
             scope_id=SCOPE,
-            level_id="prescribe_first_cycle",
+            level_id="start",
             observed_on=date(2026, 9, 1),
         )
 
@@ -814,7 +814,7 @@ class TestKind:
             holder,
             competency_id=SCALED,
             scope_id=SCOPE,
-            level_id="review_and_authorise",
+            level_id="review",
         )
         _sign(passport, assessor, first)
 
@@ -823,7 +823,7 @@ class TestKind:
             holder,
             competency_id=SCALED,
             scope_id=SCOPE,
-            level_id="review_and_authorise",
+            level_id="review",
             observed_on=date(2026, 9, 1),
         )
 
@@ -845,7 +845,7 @@ class TestKind:
             holder,
             competency_id=SCALED,
             scope_id=SCOPE,
-            level_id="review_and_authorise",
+            level_id="review",
         )
         _sign(passport, assessor, first)
 
@@ -854,7 +854,7 @@ class TestKind:
             holder,
             competency_id=SCALED,
             scope_id=SCOPE,
-            level_id="prescribe_first_cycle",
+            level_id="start",
             observed_on=date(2026, 9, 1),
         )
         _sign(passport, assessor, second)
@@ -877,13 +877,13 @@ class TestTheAssessorDecidesTheLevel:
         holder: commits.Actor,
         assessor: commits.Actor,
     ) -> str:
-        """Signed at review_and_authorise, now asking for a higher level."""
+        """Signed at review, now asking for a higher level."""
         first = _request(
             passport,
             holder,
             competency_id=SCALED,
             scope_id=SCOPE,
-            level_id="review_and_authorise",
+            level_id="review",
         )
         _sign(passport, assessor, first)
 
@@ -892,7 +892,7 @@ class TestTheAssessorDecidesTheLevel:
             holder,
             competency_id=SCALED,
             scope_id=SCOPE,
-            level_id="prescribe_first_cycle",
+            level_id="start",
             observed_on=date(2026, 9, 1),
         )
 
@@ -904,12 +904,12 @@ class TestTheAssessorDecidesTheLevel:
             holder,
             competency_id=SCALED,
             scope_id=SCOPE,
-            level_id="observation_only",
+            level_id="observe",
         )
 
         record = service.read_sign_off(passport, PASSPORT_ID, name)
         assert record.requested_level is not None
-        assert record.requested_level.id == "observation_only"
+        assert record.requested_level.id == "observe"
 
     def test_the_request_records_its_frameworks_version(
         self, passport: store.LocalPassportStore, holder: commits.Actor
@@ -931,7 +931,7 @@ class TestTheAssessorDecidesTheLevel:
             holder,
             competency_id=SCALED,
             scope_id=SCOPE,
-            level_id="observation_only",
+            level_id="observe",
         )
         again = _request(passport, holder)
 
@@ -939,7 +939,7 @@ class TestTheAssessorDecidesTheLevel:
         assert again == f"{UNSCALED}.2026-03-12-2"
         assert scoped == f"{SCALED}.2026-03-12-lung"
         assert passport.read(
-            PASSPORT_ID, paths.sign_off_file("uk_sact_board_2023", scoped)
+            PASSPORT_ID, paths.sign_off_file("quill_test", scoped)
         )
 
     def test_signing_without_naming_a_level_signs_the_one_asked_for(
@@ -955,7 +955,7 @@ class TestTheAssessorDecidesTheLevel:
 
         record = service.read_sign_off(passport, PASSPORT_ID, name)
         assert record.level is not None
-        assert record.level.id == "prescribe_first_cycle"
+        assert record.level.id == "start"
         assert record.kind == "progression"
 
     def test_a_lower_level_is_signed_and_the_ask_is_kept(
@@ -971,15 +971,15 @@ class TestTheAssessorDecidesTheLevel:
             passport,
             assessor,
             name,
-            level_id="review_and_authorise",
+            level_id="review",
             comments="Not yet the first cycle on your own.",
         )
 
         record = service.read_sign_off(passport, PASSPORT_ID, name)
         assert record.level is not None
-        assert record.level.id == "review_and_authorise"
+        assert record.level.id == "review"
         assert record.requested_level is not None
-        assert record.requested_level.id == "prescribe_first_cycle"
+        assert record.requested_level.id == "start"
 
     def test_the_index_tells_the_holder_why_the_level_changed(
         self,
@@ -994,7 +994,7 @@ class TestTheAssessorDecidesTheLevel:
             passport,
             assessor,
             name,
-            level_id="review_and_authorise",
+            level_id="review",
             comments="Not yet the first cycle on your own.",
         )
 
@@ -1004,9 +1004,9 @@ class TestTheAssessorDecidesTheLevel:
             if e.id == SCALED
         )
         assert entry.level is not None
-        assert entry.level.id == "review_and_authorise"
+        assert entry.level.id == "review"
         assert entry.requested_level is not None
-        assert entry.requested_level.id == "prescribe_first_cycle"
+        assert entry.requested_level.id == "start"
         assert (
             entry.level_change_reason == "Not yet the first cycle on your own."
         )
@@ -1049,7 +1049,7 @@ class TestTheAssessorDecidesTheLevel:
             passport,
             assessor,
             name,
-            level_id="review_and_authorise",
+            level_id="review",
             comments="Same level as before.",
         )
 
@@ -1069,7 +1069,7 @@ class TestTheAssessorDecidesTheLevel:
             holder,
             competency_id=SCALED,
             scope_id=SCOPE,
-            level_id="review_and_authorise",
+            level_id="review",
         )
         _sign(passport, assessor, first)
         second = _request(
@@ -1077,7 +1077,7 @@ class TestTheAssessorDecidesTheLevel:
             holder,
             competency_id=SCALED,
             scope_id=SCOPE,
-            level_id="review_and_authorise",
+            level_id="review",
             observed_on=date(2026, 9, 1),
         )
 
@@ -1085,7 +1085,7 @@ class TestTheAssessorDecidesTheLevel:
             passport,
             assessor,
             second,
-            level_id="prescribe_first_cycle",
+            level_id="start",
             comments="Well beyond what you asked for.",
         )
 
@@ -1105,13 +1105,13 @@ class TestTheAssessorDecidesTheLevel:
         )
 
         with pytest.raises(LevelReasonMissingError):
-            _sign(passport, assessor, name, level_id="review_and_authorise")
+            _sign(passport, assessor, name, level_id="review")
         with pytest.raises(LevelReasonMissingError):
             _sign(
                 passport,
                 assessor,
                 name,
-                level_id="review_and_authorise",
+                level_id="review",
                 comments="   ",
             )
 
@@ -1131,7 +1131,7 @@ class TestTheAssessorDecidesTheLevel:
             passport, holder, assessor
         )
 
-        _sign(passport, assessor, name, level_id="prescribe_first_cycle")
+        _sign(passport, assessor, name, level_id="start")
 
         assert (
             service.read_sign_off(passport, PASSPORT_ID, name).status
