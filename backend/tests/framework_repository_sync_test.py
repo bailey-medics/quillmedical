@@ -7,8 +7,9 @@ credential, as App production's sync does, so it is the one test that a
 change to how GitHub serves a clone would turn red.
 
 Each testing repository holds one made-up framework, merged by reviewed
-pull requests: ``quill_test`` at versions 1 to 4 in the first, and
-``quill_2_test`` at version 1 in the second. Neither is on a
+pull requests: ``quill_test`` in the first, and ``quill_2_test`` in the
+second. A new version there must not turn this test red before Quill
+copies it, so the checks below hold for any newest version. Neither is on a
 ``FRAMEWORK_REPOSITORIES`` list, so App production never stores them: the
 test names them itself. Two repositories let it check, over real clones,
 that one repository cannot publish the other's framework.
@@ -124,10 +125,14 @@ def test_both_testing_repositories_sync_every_version_they_hold(
     db_session: Session,
 ) -> None:
     result = sync_from_repositories(db_session, REPOSITORIES)
+    quill_test = _versions(db_session, "quill_test")
+    quill_2_test = _versions(db_session, "quill_2_test")
 
     assert result.succeeded, result.error
-    assert _versions(db_session, "quill_test") == [1, 2, 3, 4]
-    assert _versions(db_session, "quill_2_test") == [1]
+    assert quill_test == list(range(1, len(quill_test) + 1))
+    assert len(quill_test) >= 4
+    assert quill_2_test == list(range(1, len(quill_2_test) + 1))
+    assert len(quill_2_test) >= 1
 
 
 def test_each_quill_test_version_holds_what_its_commit_set(

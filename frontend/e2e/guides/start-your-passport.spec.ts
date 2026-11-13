@@ -24,7 +24,7 @@ test("a passport with something in it", async ({ page }) => {
   // The By competency view, which every passport opens in until its
   // holder chooses otherwise: a table for the framework they work to.
   await expect(
-    page.getByRole("heading", { name: "Quill second test framework" }),
+    page.getByRole("heading", { name: "Core clinical skills" }),
   ).toBeVisible();
   await shot(page, "start-your-passport/passport");
 });

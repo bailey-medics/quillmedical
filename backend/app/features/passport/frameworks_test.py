@@ -180,7 +180,7 @@ class TestSearchAndFilter:
     ) -> None:
         holder = _make_user(db_session, "holder")
 
-        assert _ids(db_session, holder, query="SECOND test") == [GENERAL]
+        assert _ids(db_session, holder, query="CORE clinical") == [GENERAL]
 
     def test_words_are_found_in_the_publisher_too(
         self, db_session: Session
@@ -223,7 +223,7 @@ class TestSearchAndFilter:
     def test_a_framework_filed_under_no_specialty_is_never_filtered_out(
         self, db_session: Session
     ) -> None:
-        """Quill second test framework belong to every specialty."""
+        """Core clinical skills belongs to every specialty."""
         holder = _make_user(db_session, "holder")
 
         assert GENERAL in _ids(db_session, holder, specialty="haematology")
@@ -247,9 +247,7 @@ class TestChoosing:
         refs = frameworks.framework_refs(files_catalogue(), [GENERAL])
 
         assert refs == [
-            schemas.FrameworkRef(
-                id=GENERAL, name="Quill second test framework"
-            )
+            schemas.FrameworkRef(id=GENERAL, name="Core clinical skills")
         ]
 
     def test_an_unknown_framework_is_refused_without_echoing_it(
@@ -276,7 +274,7 @@ class TestChoosing:
 
         assert (
             frameworks.current_name(files_catalogue(), stored)
-            == "Quill second test framework"
+            == "Core clinical skills"
         )
 
     def test_a_framework_no_longer_held_keeps_its_stored_name(self) -> None:
@@ -405,7 +403,7 @@ class TestTheHoldersRoutes:
         self, holder_client: TestClient
     ) -> None:
         found = holder_client.get(
-            "/api/passport/frameworks", params={"q": "second"}
+            "/api/passport/frameworks", params={"q": "core"}
         )
         filtered = holder_client.get(
             "/api/passport/frameworks",
@@ -453,10 +451,10 @@ class TestTheHoldersRoutes:
 
         assert response.status_code == 200, response.text
         assert response.json()["frameworks"] == [
-            {"id": GENERAL, "name": "Quill second test framework"},
+            {"id": GENERAL, "name": "Core clinical skills"},
             {
                 "id": ONCOLOGY,
-                "name": "Quill test framework",
+                "name": "Medical and oncology skills",
             },
         ]
         again = holder_client.get("/api/passport/me").json()

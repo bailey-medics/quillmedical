@@ -542,11 +542,11 @@ export const passportRecords: PassportRecord[] = collectRecords({
 export const oncologyFrameworks: FrameworkRef[] = [
   {
     id: "quill_2_test",
-    name: "Quill second test framework",
+    name: "Core clinical skills",
   },
   {
     id: "quill_test",
-    name: "Quill test framework",
+    name: "Medical and oncology skills",
   },
 ];
 

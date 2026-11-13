@@ -10,13 +10,13 @@ import type { FrameworkOption } from "@lib/passport/frameworks";
 const options: FrameworkOption[] = [
   {
     id: "quill_2_test",
-    name: "Quill second test framework",
+    name: "Core clinical skills",
     publisher: "Quill Medical",
     specialties: [],
   },
   {
     id: "quill_test",
-    name: "Quill test framework",
+    name: "Medical and oncology skills",
     publisher: "Quill Medical",
     specialties: ["oncology", "haematology"],
   },

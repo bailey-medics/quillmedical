@@ -12,7 +12,7 @@ import type { FrameworkOption } from "@lib/passport/frameworks";
 const options: FrameworkOption[] = [
   {
     id: "quill_2_test",
-    name: "Quill second test framework",
+    name: "Core clinical skills",
     publisher: "Quill Medical",
     specialties: [],
   },
@@ -39,7 +39,7 @@ describe("PassportFrameworksCard", () => {
 
     expect(screen.getByText("Clinician passport")).toBeInTheDocument();
     expect(
-      screen.getAllByText("Quill second test framework (Quill Medical)").length,
+      screen.getAllByText("Core clinical skills (Quill Medical)").length,
     ).toBeGreaterThan(0);
   });
 

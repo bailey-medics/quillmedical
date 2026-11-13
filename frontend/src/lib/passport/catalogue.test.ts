@@ -55,7 +55,7 @@ const SHEET: FrameworkDefinition = {
 
 const GENERAL: FrameworkDefinition = {
   id: "quill_2_test",
-  name: "Quill second test framework",
+  name: "Core clinical skills",
   publisher: "Quill Medical",
   version: 1,
   specialties: [],

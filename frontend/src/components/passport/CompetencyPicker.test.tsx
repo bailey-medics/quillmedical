@@ -56,7 +56,7 @@ describe("CompetencyPicker", () => {
       await open(user);
 
       expect(
-        await screen.findByText("Quill second test framework"),
+        await screen.findByText("Core clinical skills"),
       ).toBeInTheDocument();
       expect(screen.getByText("Insert a cannula")).toBeInTheDocument();
     });
@@ -66,7 +66,7 @@ describe("CompetencyPicker", () => {
       renderPicker({ frameworks: ["quill_2_test"] });
 
       await open(user);
-      await screen.findByText("Quill second test framework");
+      await screen.findByText("Core clinical skills");
 
       expect(screen.queryByText("Examine the chest")).not.toBeInTheDocument();
     });
@@ -78,9 +78,11 @@ describe("CompetencyPicker", () => {
       await open(user);
 
       expect(
-        await screen.findByText("Quill second test framework"),
+        await screen.findByText("Core clinical skills"),
       ).toBeInTheDocument();
-      expect(screen.getByText("Quill test framework")).toBeInTheDocument();
+      expect(
+        screen.getByText("Medical and oncology skills"),
+      ).toBeInTheDocument();
       expect(screen.getByText("Examine the chest")).toBeInTheDocument();
     });
 
@@ -89,7 +91,7 @@ describe("CompetencyPicker", () => {
       renderPicker({ frameworks: ["quill_2_test"] });
 
       await open(user);
-      await screen.findByText("Quill second test framework");
+      await screen.findByText("Core clinical skills");
 
       expect(screen.queryByText(/Access Own Patient/i)).not.toBeInTheDocument();
     });

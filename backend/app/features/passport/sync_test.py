@@ -90,10 +90,10 @@ def test_the_framework_fixtures_are_stored_with_their_history(
     ).all()
 
     assert result.succeeded, result.error
-    assert quill_test == [1, 2, 3, 4]
+    assert quill_test == [1, 2, 3, 4, 5]
     assert newest == {
-        "quill_2_test": 1,
-        "quill_test": 4,
+        "quill_2_test": 2,
+        "quill_test": 5,
     }
 
 

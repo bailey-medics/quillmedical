@@ -5188,10 +5188,10 @@ class TestFrameworkVersionsNotHeld:
 
     Written straight into the store at a version above the newest, as a
     passport moved from another app could carry, then read back through
-    the routes, which refuse it rather than show it against version 4.
+    the routes, which refuse it rather than show it against version 5.
     """
 
-    def _sign_off_at_version_5(
+    def _sign_off_at_version_6(
         self, passport_store: LocalPassportStore, passport_id: str
     ) -> None:
         held = files_catalogue()
@@ -5200,7 +5200,7 @@ class TestFrameworkVersionsNotHeld:
             frameworks={
                 **held.frameworks,
                 "quill_test": held.frameworks["quill_test"].model_copy(
-                    update={"version": 5}
+                    update={"version": 6}
                 ),
             },
         )
@@ -5219,19 +5219,19 @@ class TestFrameworkVersionsNotHeld:
         self, holder_client: TestClient, passport_store: LocalPassportStore
     ) -> None:
         passport_id = _create_passport(holder_client)
-        self._sign_off_at_version_5(passport_store, passport_id)
+        self._sign_off_at_version_6(passport_store, passport_id)
 
         response = holder_client.get(f"/api/passport/{passport_id}/export.md")
 
         assert response.status_code == 409, response.text
-        assert "version 5" in response.json()["detail"]
+        assert "version 6" in response.json()["detail"]
         assert "quill_test" in response.json()["detail"]
 
     def test_its_sign_offs_will_not_list(
         self, holder_client: TestClient, passport_store: LocalPassportStore
     ) -> None:
         passport_id = _create_passport(holder_client)
-        self._sign_off_at_version_5(passport_store, passport_id)
+        self._sign_off_at_version_6(passport_store, passport_id)
 
         response = holder_client.get(f"/api/passport/{passport_id}/sign-offs")
 

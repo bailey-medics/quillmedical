@@ -41,8 +41,8 @@ export type FrameworkId = (typeof HOLDER_FRAMEWORKS)[number];
 
 /** Their display names, as the tables are headed. */
 export const FRAMEWORK_NAMES: Record<FrameworkId, string> = {
-  quill_2_test: "Quill second test framework",
-  quill_test: "Quill test framework",
+  quill_2_test: "Core clinical skills",
+  quill_test: "Medical and oncology skills",
 };
 
 /**

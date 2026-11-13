@@ -2,5 +2,5 @@
 # each testing repository, with the commit copied. Written by
 # just framework-fixtures-refresh, and read by
 # .github/scripts/ci/check-framework-fixtures.sh. Never edit it by hand.
-source=https://github.com/bailey-medics/quill-medical-framework-testing.git 89166f20e1da0ea56d6ed4dec1cd0b4ca7484d67
-source=https://github.com/bailey-medics/quill-medical-2-framework-testing.git 0fc17c47845a42a967bc099bf7d0e8fd4522540d
+source=https://github.com/bailey-medics/quill-medical-framework-testing.git a3b79cc6420ac6f4746397a2ad7b910b5988ac3b
+source=https://github.com/bailey-medics/quill-medical-2-framework-testing.git 57ab415347e770d86962ab6e52dcb7b2d22911a0
