@@ -31,7 +31,7 @@ SECRET_MESSAGE = "The case for Mrs Example-Leak shows the wrong dose"
 SECRET_REPLY = "Corrected for Mrs Example-Leak, thank you"
 
 #: A competency the catalogue names, and one it has never defined.
-KNOWN_COMPETENCY = "clinical_perform_venepuncture"
+KNOWN_COMPETENCY = "quill_2_test_take_blood"
 UNKNOWN_COMPETENCY = "chest_drain_insertion"
 
 #: Holds ``assess_clinician_passport``, so may be asked to assess.

@@ -63,9 +63,9 @@ retention_decision_email = "mark@quill-medical.com"
 # The content pipeline in eoeeta-teaching and respiratory-teaching
 # authenticates as this account and publishes question banks into
 # quill-images-app. The framework pipeline in the four -framework
-# repositories (infra/github/framework_rulesets.tf) uses it too, only to
-# start the framework sync job, which reads those repositories itself. It
-# is scoped to that bucket and those jobs, unlike the teaching CI
+# repositories (infra/github/passport_framework_rulesets.tf) uses it too,
+# only to start the framework sync job, which reads those repositories
+# itself. It is scoped to that bucket and those jobs, unlike the teaching CI
 # account it replaced, which carried roles/editor across the whole
 # project.
 content_ci_service_account = "content-sync@quill-medical-app.iam.gserviceaccount.com"

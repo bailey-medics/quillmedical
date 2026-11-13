@@ -9,15 +9,15 @@ import type { FrameworkOption } from "@lib/passport/frameworks";
 
 const options: FrameworkOption[] = [
   {
-    id: "clinical",
-    name: "General clinical skills",
+    id: "quill_2_test",
+    name: "Quill second test framework",
     publisher: "Quill Medical",
     specialties: [],
   },
   {
-    id: "uk_sact_board_2023",
-    name: "Prescriber competencies for reviewing and prescribing SACT - The UK SACT Board",
-    publisher: "UK SACT Board",
+    id: "quill_test",
+    name: "Quill test framework",
+    publisher: "Quill Medical",
     specialties: ["oncology", "haematology"],
   },
   {
@@ -56,9 +56,9 @@ export const Default: Story = {
 
 /** Two frameworks chosen. Narrowing the specialty keeps both listed. */
 export const Chosen: Story = {
-  render: () => <Controlled initial={["clinical", "uk_sact_board_2023"]} />,
+  render: () => <Controlled initial={["quill_2_test", "quill_test"]} />,
 };
 
 export const Disabled: Story = {
-  render: () => <Controlled initial={["clinical"]} disabled />,
+  render: () => <Controlled initial={["quill_2_test"]} disabled />,
 };

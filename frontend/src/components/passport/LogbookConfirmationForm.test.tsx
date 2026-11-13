@@ -25,9 +25,7 @@ function renderForm(
 describe("LogbookConfirmationForm", () => {
   it("says who is asking and about which competency", () => {
     renderForm();
-    expect(
-      screen.getByText("Review and prescribe systemic anti-cancer therapy"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Give a course of treatment")).toBeInTheDocument();
     expect(screen.getByText(/Dr Priya Shah has asked you/)).toBeInTheDocument();
   });
 

@@ -152,7 +152,7 @@ class TestTheYamlRoundTrip:
         entries = self._load("""
             competencies:
               - id: certify_death
-                display_name: "Certify Death"
+                display_name: "Confirm a death"
                 retired_on: 2026-09-08
             """)
         assert entries[0].retired_on == date(2026, 9, 8)
@@ -162,7 +162,7 @@ class TestTheYamlRoundTrip:
         entries = self._load("""
             competencies:
               - id: certify_death
-                display_name: "Certify Death"
+                display_name: "Confirm a death"
                 retired_on: "2026-09-08"
             """)
         assert entries[0].retired_on == date(2026, 9, 8)
@@ -171,7 +171,7 @@ class TestTheYamlRoundTrip:
         entries = self._load("""
             competencies:
               - id: certify_death
-                display_name: "Certify Death"
+                display_name: "Confirm a death"
             """)
         assert entries[0].retired_on is None
 
@@ -182,7 +182,7 @@ class TestTheYamlRoundTrip:
             self._load("""
                 competencies:
                   - id: certify_death
-                    display_name: "Certify Death"
+                    display_name: "Confirm a death"
                     retired: 2026-09-08
                 """)
 
@@ -191,7 +191,7 @@ class TestTheYamlRoundTrip:
             self._load("""
                 competencies:
                   - id: certify_death
-                    display_name: "Certify Death"
+                    display_name: "Confirm a death"
                     retired_on: "soon"
                 """)
 

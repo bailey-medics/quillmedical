@@ -326,10 +326,6 @@ class TestSignOffFolderName:
         from app.features.passport import paths
 
         folder = ids.sign_off_folder_name(date(2026, 4, 2), "lung")
-        sign_off = paths.sign_off_id(
-            "uk_sact_board_2023_prescribe_sact", folder
-        )
+        sign_off = paths.sign_off_id("quill_test_give_a_course", folder)
 
-        assert (
-            paths.sign_off_dir("uk_sact_board_2023", sign_off).name == folder
-        )
+        assert paths.sign_off_dir("quill_test", sign_off).name == folder

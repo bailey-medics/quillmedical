@@ -210,7 +210,7 @@ class ScopeRef(PassportModel):
 def name_with_scope(name: str, scope: ScopeRef | None) -> str:
     """A competency's name with what a record covers after it.
 
-    "Review and prescribe systemic anti-cancer therapy: Lung". Used
+    "Give a course of treatment: Lung". Used
     wherever a record's competency is named for a reader, so two records
     for one competency and different scopes never read the same.
     Unchanged where there is no scope.

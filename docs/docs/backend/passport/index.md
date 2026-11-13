@@ -432,7 +432,7 @@ branch cannot start the sync job. The content account names each
 repository allowed to act as it. The commands are in
 Phase 6 of the
 [passport record and catalogue plan](../../plans/2026-11-01-passport-record-and-catalogue-plan.md).
-The rulesets are in `infra/github/framework_rulesets.tf`, applied with
+The rulesets are in `infra/github/passport_framework_rulesets.tf`, applied with
 `just terraform-github` only after a repository's first commit is on
 `main`, because they refuse a push straight to `main`.
 

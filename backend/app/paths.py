@@ -22,6 +22,12 @@ API_COMPATIBILITY_DIR = PROJECT_ROOT / "api-compatibility"
 #: depends on a publisher's repository. See shared/framework-fixtures/.
 FRAMEWORK_FIXTURES_DIR = SHARED_DIR / "framework-fixtures"
 
+#: Every version of each framework fixture, <id>/<version>.yaml. The tests
+#: and the end-to-end seed sync from here rather than from the newest files
+#: above, because the sync refuses a framework whose first stored version
+#: is not 1.
+FRAMEWORK_FIXTURE_HISTORY_DIR = FRAMEWORK_FIXTURES_DIR / "history"
+
 #: Where the committed email previews live, for Storybook to show. Written by
 #: `just email-preview` and checked by app/email/previews_test.py. Inside
 #: the frontend, because Storybook serves them; the backend unit-test

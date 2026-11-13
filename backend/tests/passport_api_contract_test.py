@@ -50,12 +50,12 @@ from tests.registrations import declare
 # Every route here reads the frameworks from the tables.
 pytestmark = pytest.mark.usefixtures("stored_frameworks")
 
-COMPETENCY = "uk_sact_board_2023_prescribe_sact"
+COMPETENCY = "quill_test_give_a_course"
 # The frameworks a test holder works to. A passport offers the
 # competencies in its holder's frameworks and no others, so one made with
 # none could record nothing.
-WORKING_TO = {"frameworks": ["clinical", "uk_sact_board_2023"]}
-LEVEL = "review_and_authorise"
+WORKING_TO = {"frameworks": ["quill_2_test", "quill_test"]}
+LEVEL = "review"
 
 #: Every passport path, as the router declares them. Listed so a new
 #: route is a deliberate addition here too - a route that nobody thought

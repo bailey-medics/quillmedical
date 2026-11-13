@@ -21,7 +21,7 @@
 
 import { test, expect } from "../../fixtures/axe";
 import {
-  REFER_PALLIATIVE,
+  EXAMINE_THE_CHEST,
   askAsHolder,
   makeAssessor,
   makeHolder,
@@ -63,7 +63,7 @@ test.describe("The whole passport journey", () => {
     // 3. The holder opens the signed sign-off and reads Quill's check.
     await signIn(page, holder.username);
     await page.goto("/passport/sign-offs");
-    await page.getByText(REFER_PALLIATIVE.name).first().click();
+    await page.getByText(EXAMINE_THE_CHEST.name).first().click();
     await expect(page).toHaveURL(/\/passport\/sign-offs\//);
     await expect(page.getByText("Signed off").first()).toBeVisible();
     await expect(page.getByText(MATCHES)).toBeVisible();
@@ -84,7 +84,7 @@ test.describe("The whole passport journey", () => {
 
     // 6. The PDF prints the sign-off, who signed it, and that fingerprint.
     const printed = await textOfPdf(pdf);
-    expect(printed).toContain(REFER_PALLIATIVE.name.replace(/\s+/g, ""));
+    expect(printed).toContain(EXAMINE_THE_CHEST.name.replace(/\s+/g, ""));
     expect(printed).toContain(assessor.username);
     expect(printed).toContain(`Fingerprint${stored}`);
   });

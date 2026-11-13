@@ -50,15 +50,15 @@ from tests.registrations import declare
 # Every route here reads the frameworks from the tables.
 pytestmark = pytest.mark.usefixtures("stored_frameworks")
 
-COMPETENCY = "uk_sact_board_2023_prescribe_sact"
+COMPETENCY = "quill_test_give_a_course"
 # The frameworks a test holder works to. A passport offers the
 # competencies in its holder's frameworks and no others, so one made with
 # none could record nothing.
-WORKING_TO = {"frameworks": ["clinical", "uk_sact_board_2023"]}
+WORKING_TO = {"frameworks": ["quill_2_test", "quill_test"]}
 # What a sign-off for it covers. It is signed off one tumour site at a
 # time, so every request names one.
 SCOPE = "lung"
-LEVEL = "review_and_authorise"
+LEVEL = "review"
 
 
 @pytest.fixture
@@ -371,7 +371,7 @@ class TestLogbook:
         client, passport_id = passport
 
         response = client.post(
-            f"/api/passport/{passport_id}/logbook/clinical_perform_cannulation",
+            f"/api/passport/{passport_id}/logbook/quill_2_test_insert_a_cannula",
             json={"performed_on": "2026-03-12"},
         )
 
@@ -396,7 +396,7 @@ class TestLogbook:
         client, passport_id = passport
 
         response = client.post(
-            f"/api/passport/{passport_id}/logbook/clinical_perform_cannulation",
+            f"/api/passport/{passport_id}/logbook/quill_2_test_insert_a_cannula",
             json={"performed_on": "2026-03-12", "scope_id": SCOPE},
         )
 

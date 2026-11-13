@@ -1,17 +1,24 @@
 #!/usr/bin/env bash
-# Copy the framework fixtures from the testing repository's main into
-# shared/framework-fixtures/, and record the commit they came from in SOURCE.
+# Copy the framework fixtures from the testing repositories into
+# shared/framework-fixtures/, and record the commit each came from in SOURCE.
 #
-# Usage: framework-fixtures-refresh.sh [<repository> [<fixtures-dir>]]
+# Usage: framework-fixtures-refresh.sh [<fixtures-dir> [<repository>[#<branch>] ...]]
 #
-# The testing repository, bailey-medics/quill-medical-framework-testing, is
-# where a fixture is changed. This copies every file in its frameworks/
-# folder except its own test framework, quill_test.yaml, and removes a
-# fixture here that is no longer there. A refresh is an ordinary pull
-# request, so a fixture change is reviewed here as well as there.
+# With no arguments it copies from both testing repositories' main:
+# bailey-medics/quill-medical-framework-testing, which holds quill_test,
+# and bailey-medics/quill-medical-2-framework-testing, which holds
+# quill_2_test. A branch after `#` copies from that branch instead, so a
+# Quill pull request can use a fixture whose own pull request has not
+# merged yet; the commit in SOURCE still names exactly what was copied.
+#
+# Every framework file in each repository's frameworks/ folder is copied,
+# as it stands and, under history/, at every version it has had. A fixture
+# here that no repository holds any more is removed. A
+# refresh is an ordinary pull request, so a fixture change is reviewed here
+# as well as there.
 #
 # .github/scripts/ci/check-framework-fixtures.sh checks the copy against the
-# commit in SOURCE, and this sources it for the helpers both need.
+# commits in SOURCE, and this sources it for the helpers both need.
 set -euo pipefail
 
 # shellcheck source=../.github/scripts/ci/check-framework-fixtures.sh
@@ -21,54 +28,80 @@ source "$(dirname "${BASH_SOURCE[0]}")/../.github/scripts/ci/check-framework-fix
 # shellcheck source=../.github/scripts/shared/logging.sh
 source "$(dirname "${BASH_SOURCE[0]}")/../.github/scripts/shared/logging.sh" "framework-fixtures-refresh"
 
-TESTING_REPOSITORY="https://github.com/bailey-medics/quill-medical-framework-testing.git"
+TESTING_REPOSITORIES=(
+  "https://github.com/bailey-medics/quill-medical-framework-testing.git"
+  "https://github.com/bailey-medics/quill-medical-2-framework-testing.git"
+)
 
-# Writes SOURCE, naming the repository and the commit the copy came from.
-write_source() {
+# Writes SOURCE's header, which explains the file to a reader.
+write_source_header() {
   local source_file="$1"
-  local repository="$2"
-  local commit="$3"
 
   {
-    echo "# Where the fixtures beside this file were copied from. Written by"
+    echo "# Where the fixtures beside this file were copied from: one line for"
+    echo "# each testing repository, with the commit copied. Written by"
     echo "# just framework-fixtures-refresh, and read by"
     echo "# .github/scripts/ci/check-framework-fixtures.sh. Never edit it by hand."
-    echo "repository=${repository}"
-    echo "commit=${commit}"
   } > "${source_file}"
 }
 
-# Removes each fixture here that the testing repository no longer holds.
+# Removes each fixture here that no testing repository holds any more.
 remove_gone() {
-  local frameworks_dir="$1"
+  local gathered_dir="$1"
   local fixtures_dir="$2"
   local name
 
   while IFS= read -r name; do
-    if [ ! -f "${frameworks_dir}/${name}" ]; then
+    if [ ! -f "${gathered_dir}/${name}" ]; then
       rm "${fixtures_dir}/${name}"
       log "Removed ${name}"
     fi
   done < <(fixture_names "${fixtures_dir}")
 }
 
-# Copies each fixture in the testing repository's frameworks folder here.
+# Copies each fixture gathered from the testing repositories here.
 copy_fixtures() {
-  local frameworks_dir="$1"
+  local gathered_dir="$1"
   local fixtures_dir="$2"
   local name
 
   while IFS= read -r name; do
-    cp "${frameworks_dir}/${name}" "${fixtures_dir}/${name}"
+    cp "${gathered_dir}/${name}" "${fixtures_dir}/${name}"
     log "Copied ${name}"
-  done < <(fixture_names "${frameworks_dir}")
+  done < <(fixture_names "${gathered_dir}")
+}
+
+# Clones one repository, at a branch or at its default, into a folder.
+# Whole, not shallow, because history/ is read from every commit.
+clone_branch() {
+  local repository="$1"
+  local branch="$2"
+  local into="$3"
+
+  if [ -n "${branch}" ]; then
+    git clone --quiet --branch "${branch}" "${repository}" "${into}"
+  else
+    git clone --quiet "${repository}" "${into}"
+  fi
 }
 
 main() {
-  local repository="${1:-${TESTING_REPOSITORY}}"
-  local fixtures_dir="${2:-${DEFAULT_FIXTURES_DIR}}"
+  local fixtures_dir="${1:-${DEFAULT_FIXTURES_DIR}}"
   local scratch
+  local spec
+  local repository
+  local branch
   local commit
+  local count=0
+  local specs=()
+
+  shift || true
+
+  if [ "$#" -gt 0 ]; then
+    specs=("$@")
+  else
+    specs=("${TESTING_REPOSITORIES[@]}")
+  fi
 
   if [ ! -d "${fixtures_dir}" ]; then
     error "${fixtures_dir} does not exist. Run this from the top of a Quill worktree."
@@ -78,20 +111,39 @@ main() {
   scratch="$(mktemp -d)"
   # shellcheck disable=SC2064 # expand now: scratch is local to main
   trap "rm -rf '${scratch}'" EXIT
+  mkdir "${scratch}/gathered"
+  write_source_header "${scratch}/SOURCE"
 
-  git clone --quiet --depth 1 "${repository}" "${scratch}/testing"
-  commit="$(git -C "${scratch}/testing" rev-parse HEAD)"
+  for spec in "${specs[@]}"; do
+    repository="${spec%%#*}"
+    branch=""
 
-  if [ ! -d "${scratch}/testing/frameworks" ]; then
-    error "${repository} has no frameworks folder at ${commit}."
-    exit 1
-  fi
+    if [ "${spec}" != "${repository}" ]; then
+      branch="${spec#*#}"
+    fi
 
-  remove_gone "${scratch}/testing/frameworks" "${fixtures_dir}"
-  copy_fixtures "${scratch}/testing/frameworks" "${fixtures_dir}"
-  write_source "${fixtures_dir}/SOURCE" "${repository}" "${commit}"
+    count=$((count + 1))
+    clone_branch "${repository}" "${branch}" "${scratch}/testing-${count}"
+    commit="$(git -C "${scratch}/testing-${count}" rev-parse HEAD)"
 
-  log "The fixtures are now the testing repository's at ${commit}."
+    if [ ! -d "${scratch}/testing-${count}/frameworks" ]; then
+      error "${repository} has no frameworks folder at ${commit}."
+      exit 1
+    fi
+
+    gather "${scratch}/testing-${count}/frameworks" "${scratch}/gathered" "${repository}" || exit 1
+    gather_history "${scratch}/testing-${count}" HEAD "${scratch}/gathered/history" || exit 1
+    echo "source=${repository} ${commit}" >> "${scratch}/SOURCE"
+    log "Read ${repository} at ${commit}"
+  done
+
+  remove_gone "${scratch}/gathered" "${fixtures_dir}"
+  copy_fixtures "${scratch}/gathered" "${fixtures_dir}"
+  rm -rf "${fixtures_dir}/history"
+  cp -R "${scratch}/gathered/history" "${fixtures_dir}/history"
+  cp "${scratch}/SOURCE" "${fixtures_dir}/SOURCE"
+
+  log "The fixtures are now the testing repositories' at the commits in SOURCE."
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then

@@ -65,7 +65,7 @@ class TestUnknownFields:
         """Silently dropping it would lose data on the next write."""
         with pytest.raises(ValidationError):
             schemas.CompetencyRef(
-                id="clinical_perform_cannulation",
+                id="quill_2_test_insert_a_cannula",
                 name="Insert cannula",
                 risk_level="high",  # type: ignore[call-arg]
             )
@@ -193,11 +193,11 @@ class TestAssessor:
 class TestCompetencyRef:
     def test_carries_both_id_and_label(self) -> None:
         ref = schemas.CompetencyRef(
-            id="uk_sact_board_2023_prescribe_sact",
+            id="quill_test_give_a_course",
             name="Review and prescribe SACT",
         )
 
-        assert ref.id == "uk_sact_board_2023_prescribe_sact"
+        assert ref.id == "quill_test_give_a_course"
         assert ref.name
 
     @pytest.mark.parametrize(
@@ -211,7 +211,7 @@ class TestCompetencyRef:
     def test_refuses_an_empty_label(self) -> None:
         """A record whose label is blank is unreadable years later."""
         with pytest.raises(ValidationError):
-            schemas.CompetencyRef(id="clinical_perform_cannulation", name="")
+            schemas.CompetencyRef(id="quill_2_test_insert_a_cannula", name="")
 
 
 class TestSignOffCorrections:
@@ -354,7 +354,7 @@ class TestSelfDeclaredRecords:
                     id="perform_bronchoscopy", name="Perform bronchoscopy"
                 ),
                 schemas.CompetencyRef(
-                    id="clinical_take_informed_consent",
+                    id="quill_2_test_take_consent",
                     name="Take informed consent",
                 ),
             ],
@@ -478,7 +478,7 @@ class TestManifestAndProfile:
             name="Dr Sam Reeve",
             frameworks=[
                 schemas.FrameworkRef(
-                    id="clinical", name="General clinical skills"
+                    id="quill_2_test", name="Quill second test framework"
                 )
             ],
         )
@@ -518,7 +518,7 @@ class TestManifestAndProfile:
 
     def test_a_framework_needs_its_name(self) -> None:
         with pytest.raises(ValidationError):
-            schemas.FrameworkRef(id="clinical")  # type: ignore[call-arg]
+            schemas.FrameworkRef(id="quill_2_test")  # type: ignore[call-arg]
 
 
 class TestNameWithScope:

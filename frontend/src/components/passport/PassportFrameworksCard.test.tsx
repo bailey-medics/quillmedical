@@ -11,8 +11,8 @@ import type { FrameworkOption } from "@lib/passport/frameworks";
 
 const options: FrameworkOption[] = [
   {
-    id: "clinical",
-    name: "General clinical skills",
+    id: "quill_2_test",
+    name: "Quill second test framework",
     publisher: "Quill Medical",
     specialties: [],
   },
@@ -24,7 +24,7 @@ function renderCard(
   return renderWithRouter(
     <PassportFrameworksCard
       options={options}
-      value={["clinical"]}
+      value={["quill_2_test"]}
       onChange={vi.fn()}
       landingView="by_competency"
       onLandingViewChange={vi.fn()}
@@ -39,7 +39,7 @@ describe("PassportFrameworksCard", () => {
 
     expect(screen.getByText("Clinician passport")).toBeInTheDocument();
     expect(
-      screen.getAllByText("General clinical skills (Quill Medical)").length,
+      screen.getAllByText("Quill second test framework (Quill Medical)").length,
     ).toBeGreaterThan(0);
   });
 

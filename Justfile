@@ -837,11 +837,11 @@ enter-frontend:
 
 
 alias ffr := framework-fixtures-refresh
-# Copy the framework fixtures from the testing repository's main, and record the commit in SOURCE
-framework-fixtures-refresh:
+# Copy the framework fixtures from both testing repositories, and record each commit in SOURCE (repository#branch to copy a branch)
+framework-fixtures-refresh *repositories:
     #!/usr/bin/env bash
     {{initialise}} "framework-fixtures-refresh"
-    bash scripts/framework-fixtures-refresh.sh
+    bash scripts/framework-fixtures-refresh.sh shared/framework-fixtures {{repositories}}
 
 
 alias fc := frontend-chunks

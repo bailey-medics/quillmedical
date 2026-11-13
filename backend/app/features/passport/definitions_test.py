@@ -7,8 +7,8 @@ competency: no real framework has one yet, so those tests build a small
 catalogue by hand.
 
 The competencies named below are chosen for what they demonstrate:
-``uk_sact_board_2023_prescribe_sact`` has the UK SACT Board's four levels, and
-``clinical_perform_cannulation`` deliberately has no scale - it is signed off or
+``quill_test_give_a_course`` has the UK SACT Board's four levels, and
+``quill_2_test_insert_a_cannula`` deliberately has no scale - it is signed off or
 it is not. If either changes in ``shared/competency-definitions/`` these tests
 should be updated to name others with the same shape, not loosened.
 """
@@ -31,10 +31,10 @@ from app.features.passport.definitions import (
 )
 from tests.frameworks import files_catalogue
 
-LEVELLED = "uk_sact_board_2023_prescribe_sact"
+LEVELLED = "quill_test_give_a_course"
 # Signed off one tumour site at a time.
-SCOPED = "uk_sact_board_2023_prescribe_sact"
-NO_SCALE = "clinical_perform_cannulation"
+SCOPED = "quill_test_give_a_course"
+NO_SCALE = "quill_2_test_insert_a_cannula"
 
 
 @pytest.fixture
@@ -352,13 +352,11 @@ class TestTheStoredFrameworks:
 def test_a_frameworks_version_is_read_for_a_competency(
     catalogue: StoredCatalogue,
 ) -> None:
-    """Every real framework is at version 1, Gloucestershire's included."""
+    """Each competency reads its own framework's newest version."""
     assert definitions.framework_version(catalogue, NO_SCALE) == 1
     assert (
-        definitions.framework_version(
-            catalogue, "ghnft_radiotherapy_record_refer_palliative"
-        )
-        == 1
+        definitions.framework_version(catalogue, "quill_test_refer_to_a_team")
+        == 4
     )
 
 
@@ -386,9 +384,9 @@ class TestHeldVersions:
         """As a passport moved from another app could carry."""
         with pytest.raises(
             UnknownFrameworkVersionError,
-            match="version 2 of framework 'uk_sact_board_2023'",
+            match="version 5 of framework 'quill_test'",
         ):
-            definitions.check_held_version(catalogue, LEVELLED, 2)
+            definitions.check_held_version(catalogue, LEVELLED, 5)
 
     def test_version_0_cannot_be_read_from_a_record(self) -> None:
         """Below the version 1 every framework starts at."""

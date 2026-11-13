@@ -105,7 +105,7 @@ function detailWith(
       registrations: [],
       // The picker lists the competencies in these and no others.
       frameworks: [
-        { id: "clinical", name: "General clinical skills" },
+        { id: "quill_2_test", name: "Quill second test framework" },
         { id: "oncology", name: "Oncology (proof of concept)" },
       ],
       created_at: "2026-09-10",
@@ -336,7 +336,9 @@ describe("PassportSignOffsPage", () => {
       ...detail,
       passport: {
         ...detail.passport,
-        frameworks: [{ id: "clinical", name: "General clinical skills" }],
+        frameworks: [
+          { id: "quill_2_test", name: "Quill second test framework" },
+        ],
       },
     });
     renderWithRouter(<PassportSignOffsPage />);
@@ -349,7 +351,7 @@ describe("PassportSignOffsPage", () => {
     // The framework's own heading, and nothing from one not chosen.
     const listbox = await screen.findByRole("listbox");
     expect(
-      within(listbox).getByText("General clinical skills"),
+      within(listbox).getByText("Quill second test framework"),
     ).toBeInTheDocument();
     expect(
       within(listbox).queryByText("Oncology (proof of concept)"),
@@ -387,7 +389,7 @@ describe("PassportSignOffsPage", () => {
       await screen.findByRole("button", { name: "Ask for a sign-off" }),
     );
     await user.click(await screen.findByRole("combobox"));
-    await user.click(await screen.findByText("Insert Intravenous Cannula"));
+    await user.click(await screen.findByText("Insert a cannula"));
 
     await user.type(
       await screen.findByRole("textbox", { name: /Who should assess this/ }),
@@ -415,7 +417,7 @@ describe("PassportSignOffsPage", () => {
       await screen.findByRole("button", { name: "Ask for a sign-off" }),
     );
     await user.click(await screen.findByRole("combobox"));
-    await user.click(await screen.findByText("Insert Intravenous Cannula"));
+    await user.click(await screen.findByText("Insert a cannula"));
 
     await user.type(
       await screen.findByRole("textbox", { name: /Who should assess this/ }),

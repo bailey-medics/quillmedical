@@ -11,7 +11,7 @@
 import type { Page } from "@playwright/test";
 import { test, expect } from "../../fixtures/axe";
 import {
-  REFER_PALLIATIVE,
+  EXAMINE_THE_CHEST,
   addLogbookEntry,
   askForSignOff,
   makeAssessor,
@@ -55,9 +55,9 @@ test.describe("Passport accessibility", () => {
     const pages: [string, string, string][] = [
       ["/passport", "landing-by-competency", "My passport"],
       [
-        `/passport/competencies/${REFER_PALLIATIVE.id}`,
+        `/passport/competencies/${EXAMINE_THE_CHEST.id}`,
         "competency",
-        REFER_PALLIATIVE.name,
+        EXAMINE_THE_CHEST.name,
       ],
       ["/passport/sign-offs", "sign-offs", "Sign-offs"],
       ["/passport/logbook", "logbook", "Logbook"],
@@ -89,7 +89,7 @@ test.describe("Passport accessibility", () => {
     await page.context().clearCookies();
     await signIn(page, assessor.username);
     await page.goto("/inbox");
-    await page.getByText(REFER_PALLIATIVE.name).first().click();
+    await page.getByText(EXAMINE_THE_CHEST.name).first().click();
     await expect(
       page.getByRole("heading", { level: 1, name: "Sign off" }),
     ).toBeVisible();

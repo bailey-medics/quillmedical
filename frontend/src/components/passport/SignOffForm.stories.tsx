@@ -38,16 +38,16 @@ export const OnAScale: Story = {
     signOff: {
       ...requested,
       competency: {
-        id: "ruh_sact_passport_prescribe_sact",
-        name: "Prescribe SACT",
+        id: "quill_test_refer_to_a_team",
+        name: "Refer a patient to another team",
       },
       level: {
-        id: "independent",
-        name: "Considered competent to prescribe SACT independently (consultant level)",
+        id: "independently",
+        name: "Independently",
       },
       requested_level: {
-        id: "independent",
-        name: "Considered competent to prescribe SACT independently (consultant level)",
+        id: "independently",
+        name: "Independently",
       },
     },
     onSubmit: fn(),

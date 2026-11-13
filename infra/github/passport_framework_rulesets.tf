@@ -15,11 +15,10 @@
 #
 # Apply only after each repository's first commit is on main. An empty
 # repository has no main for a pull request to target, so its first commit
-# is pushed straight to main, and these rules refuse that push. See Phase 6
-# of docs/docs/plans/2026-11-01-passport-record-and-catalogue-plan.md.
+# is pushed straight to main, and these rules refuse that push.
 
 locals {
-  framework_repos = [
+  passport_framework_repos = [
     "gloucestershire-radiotherapy-record-framework",
     "royal-united-hospitals-bath-sact-passport-framework",
     "uk-sact-board-prescribing-framework",
@@ -31,9 +30,9 @@ locals {
 }
 
 # The required check names are composed from the caller's job name,
-# `pipeline`, plus the job names in Quill's framework-pipeline.yml.
-# Renaming either leaves a pull request waiting on a check that never
-# reports.
+# `pipeline`, plus the job names in Quill's framework-pipeline.yml,
+# for example "pipeline / validate". Renaming either leaves a pull
+# request waiting on a check that never reports.
 resource "github_organization_ruleset" "framework_protected_branches" {
   name        = "framework-protected-branches"
   target      = "branch"
@@ -46,7 +45,7 @@ resource "github_organization_ruleset" "framework_protected_branches" {
     }
 
     repository_name {
-      include = local.framework_repos
+      include = local.passport_framework_repos
       exclude = []
     }
   }
@@ -89,7 +88,7 @@ resource "github_organization_ruleset" "framework_branch_naming" {
     }
 
     repository_name {
-      include = local.framework_repos
+      include = local.passport_framework_repos
       exclude = []
     }
   }

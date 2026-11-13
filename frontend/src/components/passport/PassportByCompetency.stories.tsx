@@ -17,7 +17,7 @@ import { TEST_FRAMEWORK_CATALOGUE } from "@test/frameworkCatalogue";
 // The Gloucestershire radiotherapy record only: the SACT framework is left
 // out of this view's stories.
 const gloucestershire = oncologyFrameworks.filter(
-  (framework) => framework.id === "ghnft_radiotherapy_record",
+  (framework) => framework.id === "quill_2_test",
 );
 
 const meta: Meta<typeof PassportByCompetency> = {
