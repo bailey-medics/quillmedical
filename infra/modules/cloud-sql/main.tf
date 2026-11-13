@@ -112,23 +112,48 @@ resource "google_sql_database" "database" {
   deletion_policy = "ABANDON"
 }
 
-# Generate a strong random password for the DB user
+# A strong random password for the DB user, set on the user and stored in
+# Secret Manager for Cloud Run in the same apply. Both are written write-only,
+# so the password never enters Terraform's state. An ephemeral password is made
+# afresh on every run, but a write-only value is sent only when its version
+# changes, so the user and the secret keep the same password between runs.
+#
+# To rotate it, raise `password_version`. The apply sets the new password on
+# the user and writes a new secret version. A running container keeps the old
+# password and cannot open new connections, so run the deploy straight after.
+locals {
+  password_version = 1
+}
+
+# The password Terraform used before, used by nothing now. Kept for one apply:
+# dropping it in the same apply that stops using it forms a cycle.
 resource "random_password" "db_password" {
+  length  = 32
+  special = false
+}
+
+ephemeral "random_password" "db_password" {
   length  = 32
   special = false # Avoid shell-escaping issues in connection strings
 }
 
-# Store the generated password in Secret Manager so Cloud Run can read it
 resource "google_secret_manager_secret_version" "db_password" {
-  secret      = "projects/${var.project_id}/secrets/${var.db_password_secret_id}"
-  secret_data = random_password.db_password.result
+  secret                 = "projects/${var.project_id}/secrets/${var.db_password_secret_id}"
+  secret_data_wo         = ephemeral.random_password.db_password.result
+  secret_data_wo_version = local.password_version
 
   depends_on = [var.secret_depends_on]
+
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 resource "google_sql_user" "user" {
   project  = var.project_id
   name     = var.db_user
   instance = google_sql_database_instance.instance.name
-  password = random_password.db_password.result
+
+  password_wo         = ephemeral.random_password.db_password.result
+  password_wo_version = local.password_version
 }

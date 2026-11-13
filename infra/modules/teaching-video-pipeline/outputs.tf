@@ -21,5 +21,5 @@ output "processed_bucket_name" {
 
 output "signing_key_name" {
   description = "Signed-URL key name, which the backend puts in the KeyName field of each cookie"
-  value       = google_compute_backend_bucket_signed_url_key.videos.name
+  value       = local.signing_key_name
 }

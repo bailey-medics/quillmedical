@@ -84,13 +84,11 @@ plan_service_account = "github-plan@quill-medical-app.iam.gserviceaccount.com"
 slack_channel_display_name = "quill-medical-cicd"
 
 
-# Whether this environment should have these alert channels at all. Static
-# config rather than a test on whether the secret holds a value: a `count`
-# must be known at plan time, and those values are read from Secret Manager.
-# Both channels are deployed, so both are true - setting either false would
-# destroy the channel.
-enable_sms_channel       = true
-enable_pagerduty_channel = true
+# The SMS and PagerDuty alert channels, made by hand: each holds a value
+# kept out of this repository, the number and the integration key. Emptying
+# either drops the alert policy that notifies it.
+sms_notification_channel       = "projects/quill-medical-app/notificationChannels/17102705048485334732"
+pagerduty_notification_channel = "projects/quill-medical-app/notificationChannels/8260189718808892967"
 
 # Whose passport the admin job's `delete-passport` action may delete, for
 # testing. Exact usernames, never a pattern.

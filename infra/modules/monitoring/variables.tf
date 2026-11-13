@@ -38,20 +38,10 @@ variable "server_error_threshold" {
   default     = 5
 }
 
-variable "alert_sms_number" {
-  description = "E.164 phone number for escalated alerts, e.g. +447700900000. Must be verified by code in the Cloud console before it delivers. Leave empty to disable the escalation tier."
+variable "sms_channel" {
+  description = "The SMS notification channel for escalated alerts, made by hand, as projects/<project>/notificationChannels/<id>. Leave empty to disable the escalation tier."
   type        = string
   default     = ""
-
-  # Kept sensitive so the number never renders in plan output, which is
-  # posted publicly as a pull request comment. See infra/variables.tf.
-  sensitive = true
-}
-
-variable "enable_sms_channel" {
-  description = "Whether to create the SMS notification channel. Static config rather than a test on `alert_sms_number`, because a `count` must be known at plan time and that value is read from Secret Manager - see the note in main.tf."
-  type        = bool
-  default     = false
 }
 
 variable "escalation_duration" {
@@ -72,20 +62,10 @@ variable "sql_disk_threshold" {
   default     = 0.8
 }
 
-variable "pagerduty_service_key" {
-  description = "PagerDuty Events API v1 integration key for the on-call service. Leave empty to disable tier three entirely."
+variable "pagerduty_channel" {
+  description = "The PagerDuty notification channel for the on-call service, made by hand, as projects/<project>/notificationChannels/<id>. Leave empty to disable tier three entirely."
   type        = string
   default     = ""
-
-  # A credential, and this repository is public: plan output is posted as a
-  # pull request comment. See infra/variables.tf.
-  sensitive = true
-}
-
-variable "enable_pagerduty_channel" {
-  description = "Whether to create the PagerDuty notification channel. Static config rather than a test on `pagerduty_service_key`, for the same reason as `enable_sms_channel`."
-  type        = bool
-  default     = false
 }
 
 variable "critical_duration" {

@@ -139,37 +139,49 @@ resource "time_sleep" "wait_for_backend_bucket" {
 }
 
 # ---------- Signing key, shared between the edge and the backend ----------
-# One secret, two consumers: the load balancer validates cookies with it, and
-# the backend mints them with it. They must be the same bytes, so Terraform
-# generates it and writes the version, rather than the usual convention here of
-# creating an empty container for a human to fill.
-resource "random_bytes" "signing_key" {
-  length = 16
-}
-
+# One key, two consumers: the load balancer validates cookies with it, and
+# the backend mints them with it, so the two must hold the same bytes. Set by
+# hand on both, because the CDN key takes its value only as a plain argument,
+# which Terraform would keep a copy of in its state. Terraform names the key
+# for the backend and does nothing else with it.
+#
+# To set or replace it, 16 random bytes in base64url (Cloud CDN's encoding),
+# put on the backend bucket and in the secret from one file:
+#
+#   head -c 16 /dev/urandom | base64 | tr '+/' '-_' | tr -d '=\n' > key
+#   gcloud compute backend-buckets delete-signed-url-key <backend bucket> \
+#     --key-name=teaching-video-key
+#   gcloud compute backend-buckets add-signed-url-key <backend bucket> \
+#     --key-name=teaching-video-key --key-file=key
+#   gcloud secrets versions add teaching-video-signing-key --data-file=key
+#   shred -u key
+#
+# then run the deploy, so the backend reads the new version. Cookies minted
+# with the old key stop working, and a viewer reloads the page.
 locals {
-  # Cloud CDN wants base64url. `random_bytes` exposes standard base64 only, so
-  # translate the two differing characters and drop the padding. 16 bytes
-  # always encodes with a `==` suffix.
-  signing_key_base64url = replace(
-    replace(trimsuffix(random_bytes.signing_key.base64, "=="), "+", "-"),
-    "/", "_"
-  )
+  signing_key_name = "teaching-video-key"
 }
 
-resource "google_compute_backend_bucket_signed_url_key" "videos" {
-  project        = var.project_id
-  name           = "teaching-video-key"
-  backend_bucket = google_compute_backend_bucket.videos.name
-  key_value      = local.signing_key_base64url
+removed {
+  from = random_bytes.signing_key
 
   lifecycle {
-    # Replacing this silently would invalidate every cookie already minted.
-    create_before_destroy = true
+    destroy = false
   }
 }
 
-resource "google_secret_manager_secret_version" "signing_key" {
-  secret      = "projects/${var.project_id}/secrets/teaching-video-signing-key"
-  secret_data = local.signing_key_base64url
+removed {
+  from = google_compute_backend_bucket_signed_url_key.videos
+
+  lifecycle {
+    destroy = false
+  }
+}
+
+removed {
+  from = google_secret_manager_secret_version.signing_key
+
+  lifecycle {
+    destroy = false
+  }
 }
