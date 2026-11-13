@@ -434,7 +434,7 @@ describe("OrgFeaturesPage", () => {
       await screen.findByText("Passport frameworks");
       await waitFor(() =>
         expect(pills(container)).toEqual([
-          "Quill test framework (Quill Medical)",
+          "Medical and oncology skills (Quill Medical)",
         ]),
       );
       expect(get).toHaveBeenCalledWith("/org-units/3/passport-frameworks");
@@ -461,7 +461,7 @@ describe("OrgFeaturesPage", () => {
       const { container } = renderPage();
       await waitFor(() =>
         expect(pills(container)).toEqual([
-          "Quill test framework (Quill Medical)",
+          "Medical and oncology skills (Quill Medical)",
         ]),
       );
       // An unsaved switch change, so the form could submit if asked
@@ -491,14 +491,14 @@ describe("OrgFeaturesPage", () => {
       const { container } = renderPage();
       await waitFor(() =>
         expect(pills(container)).toEqual([
-          "Quill test framework (Quill Medical)",
+          "Medical and oncology skills (Quill Medical)",
         ]),
       );
 
       await user.click(screen.getByRole("combobox"));
       await user.click(
         await screen.findByRole("option", {
-          name: "Quill second test framework (Quill Medical)",
+          name: "Core clinical skills (Quill Medical)",
         }),
       );
 
@@ -514,14 +514,14 @@ describe("OrgFeaturesPage", () => {
       const { container } = renderPage();
       await waitFor(() =>
         expect(pills(container)).toEqual([
-          "Quill test framework (Quill Medical)",
+          "Medical and oncology skills (Quill Medical)",
         ]),
       );
 
       await user.click(screen.getByRole("combobox"));
       await user.click(
         await screen.findByRole("option", {
-          name: "Quill second test framework (Quill Medical)",
+          name: "Core clinical skills (Quill Medical)",
         }),
       );
 
@@ -531,7 +531,7 @@ describe("OrgFeaturesPage", () => {
         ),
       ).toBeInTheDocument();
       expect(pills(container)).toEqual([
-        "Quill test framework (Quill Medical)",
+        "Medical and oncology skills (Quill Medical)",
       ]);
     });
   });

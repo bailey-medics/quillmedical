@@ -161,10 +161,10 @@ describe("CompetencySummary", () => {
         />,
       );
 
+      expect(screen.getByText("Core clinical skills")).toBeInTheDocument();
       expect(
-        screen.getByText("Quill second test framework"),
+        screen.getByText("Medical and oncology skills"),
       ).toBeInTheDocument();
-      expect(screen.getByText("Quill test framework")).toBeInTheDocument();
     });
 
     it("keeps a competency in no framework, under its own heading", () => {

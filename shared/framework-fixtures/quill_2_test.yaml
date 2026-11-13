@@ -19,10 +19,10 @@
 
 framework:
   id: quill_2_test
-  name: "Quill second test framework"
+  name: "Core clinical skills"
   publisher: "Quill Medical"
-  version: 1
-  description: "A plain test framework, for Quill's own tests. Not for assessing anybody."
+  version: 2
+  description: "Practical procedures for doctors in training."
   specialties: []
 
 competencies:

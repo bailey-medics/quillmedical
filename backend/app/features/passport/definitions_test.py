@@ -353,10 +353,10 @@ def test_a_frameworks_version_is_read_for_a_competency(
     catalogue: StoredCatalogue,
 ) -> None:
     """Each competency reads its own framework's newest version."""
-    assert definitions.framework_version(catalogue, NO_SCALE) == 1
+    assert definitions.framework_version(catalogue, NO_SCALE) == 2
     assert (
         definitions.framework_version(catalogue, "quill_test_refer_to_a_team")
-        == 4
+        == 5
     )
 
 
@@ -384,9 +384,9 @@ class TestHeldVersions:
         """As a passport moved from another app could carry."""
         with pytest.raises(
             UnknownFrameworkVersionError,
-            match="version 5 of framework 'quill_test'",
+            match="version 6 of framework 'quill_test'",
         ):
-            definitions.check_held_version(catalogue, LEVELLED, 5)
+            definitions.check_held_version(catalogue, LEVELLED, 6)
 
     def test_version_0_cannot_be_read_from_a_record(self) -> None:
         """Below the version 1 every framework starts at."""

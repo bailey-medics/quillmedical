@@ -14,7 +14,7 @@ describe("frameworks", () => {
 
   it("finds a framework by id, and nothing for one Quill does not hold", () => {
     expect(TEST_FRAMEWORK_CATALOGUE.getFramework("quill_2_test")?.name).toBe(
-      "Quill second test framework",
+      "Core clinical skills",
     );
     expect(
       TEST_FRAMEWORK_CATALOGUE.getFramework("not_a_framework"),

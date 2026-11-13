@@ -324,7 +324,7 @@ No CPD date ranges have been set, so these run June to June by convention rather
 
 **Level:** Level 2: Review a course before it is given
 
-- Framework version: 4
+- Framework version: 5
 - Status: signed_off
 - Kind: initial
 - Observed: 2026-03-14

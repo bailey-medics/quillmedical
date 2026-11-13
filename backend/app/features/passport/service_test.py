@@ -919,7 +919,7 @@ class TestTheAssessorDecidesTheLevel:
 
         record = service.read_sign_off(passport, PASSPORT_ID, name)
 
-        assert record.framework_version == 1
+        assert record.framework_version == 2
 
     def test_a_request_is_filed_under_its_framework_and_competency(
         self, passport: store.LocalPassportStore, holder: commits.Actor

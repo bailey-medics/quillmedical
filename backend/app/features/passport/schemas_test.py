@@ -478,7 +478,7 @@ class TestManifestAndProfile:
             name="Dr Sam Reeve",
             frameworks=[
                 schemas.FrameworkRef(
-                    id="quill_2_test", name="Quill second test framework"
+                    id="quill_2_test", name="Core clinical skills"
                 )
             ],
         )

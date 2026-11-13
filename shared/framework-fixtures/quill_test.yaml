@@ -25,10 +25,10 @@
 
 framework:
   id: quill_test
-  name: "Quill test framework"
+  name: "Medical and oncology skills"
   publisher: "Quill Medical"
-  version: 4
-  description: "A test framework, for Quill's own tests. Not for assessing anybody."
+  version: 5
+  description: "Skills for doctors working on medical and cancer wards."
   specialties:
     - oncology
     - haematology

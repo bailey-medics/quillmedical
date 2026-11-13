@@ -71,7 +71,7 @@ vi.mock("@lib/passport", () => ({
 const FRAMEWORKS: FrameworkOption[] = [
   {
     id: "quill_2_test",
-    name: "Quill second test framework",
+    name: "Core clinical skills",
     publisher: "Quill Medical",
     specialties: [],
   },
@@ -86,7 +86,7 @@ const FRAMEWORKS: FrameworkOption[] = [
 const ONCOLOGY_FIRST: FrameworkOption[] = [FRAMEWORKS[1], FRAMEWORKS[0]];
 
 const ONCOLOGY_LABEL = "Oncology (proof of concept) (Quill Medical)";
-const GENERAL_LABEL = "Quill second test framework (Quill Medical)";
+const GENERAL_LABEL = "Core clinical skills (Quill Medical)";
 
 /** The field on the passport card that the frameworks are chosen in. */
 function frameworksField(): HTMLElement {

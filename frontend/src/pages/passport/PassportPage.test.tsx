@@ -94,7 +94,7 @@ vi.mock("react-router-dom", async () => {
 const FRAMEWORKS: FrameworkOption[] = [
   {
     id: "quill_2_test",
-    name: "Quill second test framework",
+    name: "Core clinical skills",
     publisher: "Quill Medical",
     specialties: [],
   },
@@ -110,7 +110,7 @@ const FRAMEWORKS: FrameworkOption[] = [
 const ONCOLOGY_FIRST: FrameworkOption[] = [FRAMEWORKS[1], FRAMEWORKS[0]];
 
 const ONCOLOGY_LABEL = "Oncology (proof of concept) (Quill Medical)";
-const GENERAL_LABEL = "Quill second test framework (Quill Medical)";
+const GENERAL_LABEL = "Core clinical skills (Quill Medical)";
 
 /** The field the frameworks are chosen in, on the create step. */
 function frameworksField(): HTMLElement {
@@ -156,7 +156,7 @@ const detail = {
     holder_user_id: "42",
     holder_name: "Dr Mark Bailey",
     registrations: [],
-    frameworks: [{ id: "quill_2_test", name: "Quill second test framework" }],
+    frameworks: [{ id: "quill_2_test", name: "Core clinical skills" }],
     created_at: "2026-09-10",
     head_commit: null,
   },
@@ -594,7 +594,7 @@ describe("PassportPage", () => {
 
       expect(
         await screen.findByRole("heading", {
-          name: "Quill second test framework",
+          name: "Core clinical skills",
         }),
       ).toBeInTheDocument();
       expect(

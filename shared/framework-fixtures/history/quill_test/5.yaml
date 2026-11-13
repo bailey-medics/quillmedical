@@ -1,0 +1,121 @@
+# frameworks/quill_test.yaml
+#
+# A FRAMEWORK MADE ONLY FOR TESTING QUILL
+#
+# Nobody is assessed against this. Quill's tests read a copy of it, and
+# its integration test syncs this repository and checks what it stores,
+# so this framework has a history: one pull request for each version.
+#
+# It is the full shape. quill_test_give_a_course has five levels in order
+# and several scopes, so a test can ask for a higher level or another
+# scope. quill_test_refer_to_a_team has levels too, and is where a level,
+# a scope and a whole competency are retired, so the retirement of each
+# is tested without touching what other tests rely on. The plain shape,
+# with no levels or scopes, is quill_2_test, in
+# quill-medical-2-framework-testing.
+#
+# Every id starts with the framework's id and an underscore, which the
+# loader checks for every framework.
+
+# VERSION
+#
+# `version` goes up by exactly one with every change to this file except
+# its comments, its spacing and `description`. The pipeline's version
+# check refuses a pull request that changes the framework without it.
+
+framework:
+  id: quill_test
+  name: "Medical and oncology skills"
+  publisher: "Quill Medical"
+  version: 5
+  description: "Skills for doctors working on medical and cancer wards."
+  specialties:
+    - oncology
+    - haematology
+
+competencies:
+  - id: quill_test_take_a_history
+    display_name: "Take a history"
+    assessable: true
+    levels:
+      - id: observed
+        name: "Level 1: Observed"
+      - id: supervised
+        name: "Level 2: Supervised"
+      - id: independent
+        name: "Level 3: Independent"
+    scopes:
+      - id: adult
+        name: "Adult"
+      - id: child
+        name: "Child"
+      - id: older_adult
+        name: "Older adult"
+      - id: other
+        name: "Other"
+
+  - id: quill_test_examine_the_chest
+    display_name: "Examine the chest"
+    assessable: true
+
+  - id: quill_test_explain_a_result
+    display_name: "Explain a result to a patient"
+    assessable: true
+
+  - id: quill_test_hand_over_a_patient
+    display_name: "Hand over a patient to the next team"
+    assessable: true
+
+  - id: quill_test_give_a_course
+    display_name: "Give a course of treatment"
+    assessable: true
+    levels:
+      - id: observe
+        name: "Level 1: Observe a course being given"
+      - id: review
+        name: "Level 2: Review a course before it is given"
+      - id: continue
+        name: "Level 3: Continue a course already started"
+      - id: start
+        name: "Level 4: Start a course"
+      - id: adapt
+        name: "Level 5: Adapt a course for a complex patient"
+    scopes:
+      - id: breast
+        name: "Breast"
+      - id: lung
+        name: "Lung"
+      - id: bowel
+        name: "Bowel"
+      - id: skin
+        name: "Skin"
+      - id: other
+        name: "Other"
+
+  - id: quill_test_refer_to_a_team
+    display_name: "Refer a patient to another team"
+    assessable: true
+    levels:
+      - id: with_direct_supervision
+        name: "With direct supervision"
+        retired_on: 2026-11-12
+        retired_in_version: 4
+      - id: with_indirect_supervision
+        name: "With indirect supervision"
+      - id: independently
+        name: "Independently"
+    scopes:
+      - id: kidney
+        name: "Kidney"
+      - id: liver
+        name: "Liver"
+        retired_on: 2026-11-12
+        retired_in_version: 4
+      - id: other
+        name: "Other"
+
+  - id: quill_test_use_the_old_system
+    display_name: "Use the old records system"
+    assessable: true
+    retired_on: 2026-11-12
+    retired_in_version: 4

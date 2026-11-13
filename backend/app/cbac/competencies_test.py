@@ -530,8 +530,8 @@ def test_the_fixture_frameworks_versions() -> None:
     versions = {f.id: f.version for f in files_catalogue().frameworks.values()}
 
     assert versions == {
-        "quill_2_test": 1,
-        "quill_test": 4,
+        "quill_2_test": 2,
+        "quill_test": 5,
     }
 
 

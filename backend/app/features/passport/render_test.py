@@ -658,7 +658,7 @@ class TestTheWordsOfToday:
 
         output = render.render(store, PASSPORT_ID, catalogue=files_catalogue())
 
-        assert "Framework version: 4" in output
+        assert "Framework version: 5" in output
 
     def test_matching_words_print_once(
         self, store: LocalPassportStore, holder: Actor, assessor: Actor

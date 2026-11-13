@@ -105,7 +105,7 @@ function detailWith(
       registrations: [],
       // The picker lists the competencies in these and no others.
       frameworks: [
-        { id: "quill_2_test", name: "Quill second test framework" },
+        { id: "quill_2_test", name: "Core clinical skills" },
         { id: "oncology", name: "Oncology (proof of concept)" },
       ],
       created_at: "2026-09-10",
@@ -336,9 +336,7 @@ describe("PassportSignOffsPage", () => {
       ...detail,
       passport: {
         ...detail.passport,
-        frameworks: [
-          { id: "quill_2_test", name: "Quill second test framework" },
-        ],
+        frameworks: [{ id: "quill_2_test", name: "Core clinical skills" }],
       },
     });
     renderWithRouter(<PassportSignOffsPage />);
@@ -351,7 +349,7 @@ describe("PassportSignOffsPage", () => {
     // The framework's own heading, and nothing from one not chosen.
     const listbox = await screen.findByRole("listbox");
     expect(
-      within(listbox).getByText("Quill second test framework"),
+      within(listbox).getByText("Core clinical skills"),
     ).toBeInTheDocument();
     expect(
       within(listbox).queryByText("Oncology (proof of concept)"),

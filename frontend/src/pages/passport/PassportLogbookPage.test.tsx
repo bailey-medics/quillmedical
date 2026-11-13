@@ -46,7 +46,7 @@ const detail = {
     holder_name: "Dr Mark Bailey",
     registrations: [],
     frameworks: [
-      { id: "quill_2_test", name: "Quill second test framework" },
+      { id: "quill_2_test", name: "Core clinical skills" },
       { id: "oncology", name: "Oncology (proof of concept)" },
     ],
     created_at: "2026-09-10",
