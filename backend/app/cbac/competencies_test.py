@@ -543,7 +543,7 @@ def test_the_catalogue_holds_permissions_only() -> None:
     """A framework's competencies are read from the tables, not here."""
     assert COMPETENCIES
     assert all(c.framework_id is None for c in COMPETENCIES)
-    assert "clinical_perform_cannulation" not in COMPETENCY_IDS
+    assert "quill_2_test_insert_a_cannula" not in COMPETENCY_IDS
     assert "prescribe_controlled_schedule_2" in COMPETENCY_IDS
     # A procedure is not a permission: Quill cannot stop anybody doing one.
     assert "perform_cannulation" not in COMPETENCY_IDS
@@ -556,14 +556,15 @@ def test_every_framework_competency_is_assessable() -> None:
         assert entry.framework_id is not None
 
 
-def test_general_clinical_skills_holds_its_own_ids() -> None:
-    """The framework and the permissions no longer share an id."""
-    items = {c.id for c in files_catalogue().competencies["clinical"]}
+def test_a_framework_holds_ids_of_its_own() -> None:
+    """A framework's competencies and the permissions never share an id."""
+    items = {c.id for c in files_catalogue().competencies["quill_2_test"]}
+    permissions = {c.id for c in COMPETENCIES if c.framework_id is None}
 
-    assert "clinical_perform_cannulation" in items
-    assert "perform_cannulation" not in items
-    assert all(i.startswith("clinical_") for i in items)
-    assert len(items) == 18
+    assert "quill_2_test_insert_a_cannula" in items
+    assert all(i.startswith("quill_2_test_") for i in items)
+    assert not items & permissions
+    assert len(items) == 8
 
 
 def test_a_permission_keeps_its_id_and_is_no_longer_assessable() -> None:
@@ -578,44 +579,31 @@ def test_a_permission_keeps_its_id_and_is_no_longer_assessable() -> None:
 def test_quills_own_frameworks_competency_is_refused_as_a_grant() -> None:
     """Refused by what it is: it is not a permission."""
     with pytest.raises(ValueError, match="Only a permission may be granted"):
-        validate_competency_ids(["clinical_perform_cannulation"])
+        validate_competency_ids(["quill_2_test_insert_a_cannula"])
 
 
-def test_the_gloucestershire_record_carries_every_signed_line() -> None:
-    """All fifteen lines the trainer signs, in the paper sheet's order.
-
-    Its twelve numbered rows, then its three acquaintances. The exams,
-    courses and RCR registration are entries too, because on paper the
-    trainer signs them, and a certificate is self-declared.
-    """
-    prefix = "ghnft_radiotherapy_record_"
+def test_a_framework_keeps_its_competencies_in_the_files_order() -> None:
+    """The order a framework's file gives, which is the order it is read."""
+    prefix = "quill_test_"
     expected = [
-        "induction_in_radiation_protection",
-        "registered_with_rcr",
-        "year_of_supervised_pre_treatment_planning",
-        "part_1_frcr_course",
-        "passed_part_1_frcr",
-        "refer_palliative",
-        "plan_and_prescribe_palliative",
-        "post_part_1_training_slide_deck",
-        "passed_final_frcr",
-        "refer_radical",
-        "plan_and_prescribe_radical",
-        "post_part_2_review",
-        "acquaintance_with_pinnacle",
-        "acquaintance_with_aria",
-        "acquaintance_with_referral_and_consent",
+        "take_a_history",
+        "examine_the_chest",
+        "explain_a_result",
+        "hand_over_a_patient",
+        "give_a_course",
+        "refer_to_a_team",
+        "use_the_old_system",
     ]
 
-    items = files_catalogue().competencies["ghnft_radiotherapy_record"]
+    items = files_catalogue().competencies["quill_test"]
 
     assert [c.id for c in items] == [prefix + e for e in expected]
     assert all(c.id not in COMPETENCY_IDS for c in items)
 
 
-def test_the_real_framework_ids_are_refused_as_grants() -> None:
+def test_framework_ids_are_refused_as_grants() -> None:
     with pytest.raises(ValueError, match="Only a permission may be granted"):
-        validate_competency_ids(["ruh_sact_passport_ctcae_grading"])
+        validate_competency_ids(["quill_test_take_a_history"])
 
 
 def test_a_permission_is_still_granted() -> None:

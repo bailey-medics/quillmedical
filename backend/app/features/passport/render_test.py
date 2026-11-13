@@ -45,11 +45,11 @@ from app.features.passport.store import LocalPassportStore
 from tests.frameworks import files_catalogue
 
 PASSPORT_ID = "3f2a8c1e4b7d49f0a6c2e8b1d5a7f309"
-COMPETENCY = "uk_sact_board_2023_prescribe_sact"
+COMPETENCY = "quill_test_give_a_course"
 # What a sign-off for it covers. It is signed off one tumour site at a
 # time, so every request names one.
 SCOPE = "lung"
-LEVEL = "review_and_authorise"
+LEVEL = "review"
 
 #: Words that would mean the document had formed a view on whether
 #: somebody has done enough. It counts and never compares.
@@ -176,7 +176,7 @@ class TestCompetencyTable:
 
         output = render.render(store, PASSPORT_ID)
 
-        assert "Level 2: Review and authorise administration" in output
+        assert "Level 2: Review a course before it is given" in output
         assert "signed off" in output
 
     def test_a_scoped_competency_is_named_with_its_scope(
@@ -190,7 +190,7 @@ class TestCompetencyTable:
 
         output = render.render(store, PASSPORT_ID)
 
-        named = "Review and prescribe systemic anti-cancer therapy: Lung"
+        named = "Give a course of treatment: Lung"
         assert f"| {named} |" in output
         assert f"### {named}" in output
 
@@ -214,8 +214,8 @@ class TestCompetencyTable:
 
         output = render.render(store, PASSPORT_ID)
 
-        assert "anti-cancer therapy: Lung |" in output
-        assert "anti-cancer therapy: Breast |" in output
+        assert "Give a course of treatment: Lung |" in output
+        assert "Give a course of treatment: Breast |" in output
 
     def test_a_requested_competency_reads_as_awaiting(
         self, store: LocalPassportStore, holder: Actor
@@ -628,9 +628,9 @@ class TestTheWordsOfToday:
             store,
             PASSPORT_ID,
             holder,
-            [FrameworkRef(id="uk_sact_board_2023", name="An older name")],
+            [FrameworkRef(id="quill_test", name="An older name")],
         )
-        today = files_catalogue().frameworks["uk_sact_board_2023"].name
+        today = files_catalogue().frameworks["quill_test"].name
 
         output = render.render(store, PASSPORT_ID, catalogue=files_catalogue())
 
@@ -658,7 +658,7 @@ class TestTheWordsOfToday:
 
         output = render.render(store, PASSPORT_ID, catalogue=files_catalogue())
 
-        assert "Framework version: 1" in output
+        assert "Framework version: 4" in output
 
     def test_matching_words_print_once(
         self, store: LocalPassportStore, holder: Actor, assessor: Actor

@@ -73,9 +73,9 @@ def test_the_real_frameworks_come_back_as_the_files_hold_them(
 def test_a_competency_is_found_by_its_id(stored_frameworks: Session) -> None:
     held = stored_catalogue(stored_frameworks)
 
-    entry = held.entries["ghnft_radiotherapy_record_refer_palliative"]
+    entry = held.entries["quill_test_refer_to_a_team"]
 
-    assert entry.framework_id == "ghnft_radiotherapy_record"
+    assert entry.framework_id == "quill_test"
     assert entry.assessable is True
 
 

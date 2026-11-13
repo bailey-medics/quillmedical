@@ -859,6 +859,27 @@ def _clone(repository: str, destination: Path) -> None:
     )
 
 
+def _refuse_what_main_may_not_hold(
+    repository: str, may_publish: set[str], clone: Path
+) -> None:
+    """Refuse a framework file on ``main`` this repository may not publish.
+
+    Raises:
+        FrameworkSyncError: Naming the first such file.
+    """
+    listing = _git("ls-tree", "-r", "main", "--", "frameworks/", git_dir=clone)
+
+    for line in listing.splitlines():
+        path = line.split("\t", 1)[1]
+        match = _FRAMEWORK_PATH.match(path)
+        if match is not None and match["framework"] not in may_publish:
+            raise FrameworkSyncError(
+                f"{repository} holds {path}, but may publish only "
+                + ", ".join(sorted(may_publish))
+                + "."
+            )
+
+
 def read_repository_versions(
     repository: str, may_publish: set[str], clone: Path
 ) -> dict[str, dict[int, str]]:
@@ -868,6 +889,10 @@ def read_repository_versions(
     first text at which each version appears: the merge that set it. A
     later commit that changed only comments or the description keeps its
     version, so its text is not read again.
+
+    A framework file on ``main`` that the repository may not publish is
+    refused. One that history holds but ``main`` no longer does is passed
+    over, since a repository's history cannot be rewritten.
 
     Args:
         repository: ``owner/name`` on GitHub.
@@ -895,6 +920,8 @@ def read_repository_versions(
         # An empty repository: its first commit is not on main yet.
         return {}
 
+    _refuse_what_main_may_not_hold(repository, may_publish, clone)
+
     found: dict[str, dict[int, str]] = {}
     seen_blobs: set[str] = set()
     commits = _git(
@@ -914,13 +941,12 @@ def read_repository_versions(
             if match is None or blob in seen_blobs:
                 continue
 
+            # Main no longer holds it, or the check above would have
+            # refused it. History cannot be rewritten, so a file deleted
+            # from main is passed over rather than refused for ever.
             framework_id = match["framework"]
             if framework_id not in may_publish:
-                raise FrameworkSyncError(
-                    f"{repository} holds {path}, but may publish only "
-                    + ", ".join(sorted(may_publish))
-                    + "."
-                )
+                continue
 
             size = int(_git("cat-file", "-s", blob, git_dir=clone))
             if size > MAX_FRAMEWORK_FILE_BYTES:
