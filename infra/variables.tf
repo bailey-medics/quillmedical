@@ -139,16 +139,16 @@ variable "cloud_run_services" {
   default     = []
 }
 
-variable "enable_sms_channel" {
-  description = "Create the SMS alert notification channel. Set per environment rather than inferred from whether the secret holds a value, which a count cannot test at plan time."
-  type        = bool
-  default     = false
+variable "sms_notification_channel" {
+  description = "The SMS alert notification channel, made by hand, as projects/<project>/notificationChannels/<id>. Empty for none, which also drops the escalation policy."
+  type        = string
+  default     = ""
 }
 
-variable "enable_pagerduty_channel" {
-  description = "Create the PagerDuty alert notification channel. Set per environment, for the same reason as enable_sms_channel."
-  type        = bool
-  default     = false
+variable "pagerduty_notification_channel" {
+  description = "The PagerDuty alert notification channel, made by hand, as projects/<project>/notificationChannels/<id>. Empty for none, which also drops the on-call policy."
+  type        = string
+  default     = ""
 }
 
 variable "deploy_service_account" {

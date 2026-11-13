@@ -56,41 +56,36 @@ data "google_monitoring_notification_channel" "slack" {
 # service_key is the Events API v1 integration key. Google's own
 # documentation calls for v1 specifically - the channel speaks the v1 event
 # format, so a v2 routing key is the wrong shape.
-# `count` is driven by static config, not by testing whether the key is
-# non-empty. The key is read from Secret Manager by a data source, so its value
-# is not knowable until apply - and any change to `module.secrets` makes
-# Terraform reject the whole plan with "Invalid count argument". Adding one
-# unrelated secret was enough to trigger that. The flag says whether this
-# environment *should* page; the key says how.
-resource "google_monitoring_notification_channel" "pagerduty" {
-  count = var.enable_pagerduty_channel ? 1 : 0
-
-  project      = var.project_id
-  display_name = "Quill on-call (${var.environment})"
-  type         = "pagerduty"
-
-  labels = {
-    service_key = var.pagerduty_service_key
-  }
-}
-
+#
 # ---------- Notification channel (SMS) ----------
 #
 # Tier two of the escalation. Google's own documentation warns that SMS
 # "isn't a fully reliable notification channel type" and may be unavailable
 # in some regions, so it escalates the first tier rather than replacing it.
-#
 # The number must be verified by code in the Cloud console before it will
-# deliver anything: Terraform can create the channel but cannot verify it.
-resource "google_monitoring_notification_channel" "sms" {
-  count = var.enable_sms_channel ? 1 : 0
+# deliver anything.
+#
+# ---------- Both made by hand ----------
+#
+# Each channel holds a value kept out of this repository: the integration
+# key and the phone number. Terraform would keep a copy of each in its
+# state, so the channels are made and edited by hand in the Cloud console,
+# and named here by id. The values are also kept in Secret Manager, as
+# `pagerduty-service-key` and `alert-sms-number`, for whoever makes the
+# channel again.
+removed {
+  from = google_monitoring_notification_channel.pagerduty
 
-  project      = var.project_id
-  display_name = "Quill SMS alerts (${var.environment})"
-  type         = "sms"
+  lifecycle {
+    destroy = false
+  }
+}
 
-  labels = {
-    number = var.alert_sms_number
+removed {
+  from = google_monitoring_notification_channel.sms
+
+  lifecycle {
+    destroy = false
   }
 }
 
@@ -111,10 +106,10 @@ locals {
   #
   # The trade is explicit: if SMS fails silently, tier two delivers nothing,
   # and the backstop is tier three fifteen minutes later on another provider.
-  escalation_channels = [for ch in google_monitoring_notification_channel.sms : ch.id]
+  escalation_channels = compact([var.sms_channel])
 
   # Tier three: the phone call, and nothing else routed through it.
-  critical_channels = [for ch in google_monitoring_notification_channel.pagerduty : ch.id]
+  critical_channels = compact([var.pagerduty_channel])
 }
 
 # ---------- Uptime checks (one per hostname) ----------
@@ -241,9 +236,8 @@ resource "google_monitoring_alert_policy" "uptime" {
 # deferred until there are clinical users to justify the subscription. See
 # docs/docs/plans/2026-08-31-analytics-plan.md.
 resource "google_monitoring_alert_policy" "uptime_escalation" {
-  # Same static flag as the channel it notifies: the policy exists only if the
-  # SMS channel does. See the note on the channel resource above.
-  count = var.enable_sms_channel ? 1 : 0
+  # The policy exists only if the SMS channel does.
+  count = var.sms_channel != "" ? 1 : 0
 
   project      = var.project_id
   display_name = "Uptime failure - sustained (${var.environment})"
@@ -1158,8 +1152,8 @@ resource "google_monitoring_alert_policy" "sql_disk" {
 # Only uptime feeds this. A 5xx spike or a filling disk is a problem, not a
 # system that is down, and neither warrants a call at 3am.
 resource "google_monitoring_alert_policy" "uptime_critical" {
-  # Same static flag as the channel it notifies.
-  count = var.enable_pagerduty_channel ? 1 : 0
+  # The policy exists only if the PagerDuty channel does.
+  count = var.pagerduty_channel != "" ? 1 : 0
 
   project      = var.project_id
   display_name = "Major outage - call the on-call (${var.environment})"
@@ -1228,16 +1222,14 @@ resource "google_monitoring_alert_policy" "uptime_critical" {
 # than created for each test, because a new policy is not live for several
 # minutes and a trigger written before then is lost.
 #
-# The keys depend only on input variables, never on channel ids, so they
-# are known at plan time. Keying on an id would reintroduce the "Invalid
-# count argument" failure the PagerDuty channel above was restructured to
-# avoid.
+# The keys depend only on input variables, never on ids Terraform learns
+# during the apply, so they are known at plan time.
 locals {
   alert_route_test_channels = merge(
     { "email" = google_monitoring_notification_channel.email.id },
     var.slack_channel_display_name != "" ? { "Slack" = data.google_monitoring_notification_channel.slack[0].id } : {},
-    var.enable_sms_channel ? { "SMS" = google_monitoring_notification_channel.sms[0].id } : {},
-    var.enable_pagerduty_channel ? { "PagerDuty" = google_monitoring_notification_channel.pagerduty[0].id } : {},
+    var.sms_channel != "" ? { "SMS" = var.sms_channel } : {},
+    var.pagerduty_channel != "" ? { "PagerDuty" = var.pagerduty_channel } : {},
   )
 }
 
