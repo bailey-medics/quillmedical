@@ -776,10 +776,13 @@ starts `claude` with `QUILL_OWL=true`, and nothing else sets it.
 When `QUILL_OWL=true`, and only while running the `/alert` skill:
 
 - **Run `just stack-fresh`, then `/crpd`** on a branch named
-  `feature/alert-*`, which commits the fix, pushes it and opens its pull
+  `feature/owl-*`, which commits the fix, pushes it and opens its pull
   request ready for review rather than as a draft. This is standing
   permission for that one act, and it overrides "NEVER auto-commit/push"
   for it alone.
+- **Say that Owl made it.** The title starts `Owl:`, and the description
+  opens with a bold line saying the Owl watcher created it, linking the
+  Slack alert it answers. The `/alert` skill gives the exact form.
 - **Never merge, never enable auto-merge, and never mark any other pull
   request ready.** The exception ends at a pull request; a person reviews
   and merges, or closes it.
