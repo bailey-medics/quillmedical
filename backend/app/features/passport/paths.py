@@ -26,7 +26,7 @@ is one directory.
   ``sign-offs/2026-04-02-lung/``. Its parent already names the
   competency.
 - **A sign-off is identified as** ``<competency>.<folder>``, such as
-  ``uk_sact_board_2023_prescribe_sact.2026-04-02-lung``: unique in the
+  ``quill_test_give_a_course.2026-04-02-lung``: unique in the
   passport, safe in a web address, and split back apart by
   :func:`split_sign_off_id`. Postgres and the API hold this, never a
   path, so the framework folder can be found by looking.

@@ -1,5 +1,6 @@
-# Where the fixtures beside this file were copied from. Written by
+# Where the fixtures beside this file were copied from: one line for
+# each testing repository, with the commit copied. Written by
 # just framework-fixtures-refresh, and read by
 # .github/scripts/ci/check-framework-fixtures.sh. Never edit it by hand.
-repository=https://github.com/bailey-medics/quill-medical-framework-testing.git
-commit=3ec56aaa14f7cc88b9d3dd39a42305177f1cbf92
+source=https://github.com/bailey-medics/quill-medical-framework-testing.git 89166f20e1da0ea56d6ed4dec1cd0b4ca7484d67
+source=https://github.com/bailey-medics/quill-medical-2-framework-testing.git 0fc17c47845a42a967bc099bf7d0e8fd4522540d

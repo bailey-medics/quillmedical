@@ -26,7 +26,8 @@ from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.orm import Session
 
 from app.config import settings
-from app.features.passport.sync import sync_frameworks
+from app.features.passport.sync import sync_framework_versions
+from app.paths import FRAMEWORK_FIXTURE_HISTORY_DIR
 
 pytestmark = [pytest.mark.integration, pytest.mark.migration]
 
@@ -52,7 +53,7 @@ def test_a_sync_succeeds_as_the_role(as_the_role: Connection) -> None:
     """Everything the sync does, the role may do."""
     db = Session(bind=as_the_role, join_transaction_mode="create_savepoint")
 
-    result = sync_frameworks(db)
+    result = sync_framework_versions(db, FRAMEWORK_FIXTURE_HISTORY_DIR)
     db.flush()
 
     assert result.succeeded, result.error

@@ -337,7 +337,7 @@ class TestPatientAndStaffAreTheSamePerson:
     def test_a_patient_administers_their_own_chemotherapy_at_home(
         self, db_session
     ):
-        """A competency can sit with a patient, so 'clinical' is not staff-only."""
+        """A competency can sit with a patient, so 'quill_2_test' is not staff-only."""
 
 
 class TestCeilingsThatLapse:

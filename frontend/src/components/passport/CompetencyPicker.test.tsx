@@ -44,66 +44,52 @@ describe("CompetencyPicker", () => {
     it("does not fall back to listing every competency", async () => {
       renderPicker();
 
-      expect(screen.queryByText("Insert Intravenous Cannula")).toBeNull();
+      expect(screen.queryByText("Insert a cannula")).toBeNull();
     });
   });
 
   describe("With frameworks chosen", () => {
     it("lists a framework's competencies under its name", async () => {
       const user = userEvent.setup();
-      renderPicker({ frameworks: ["clinical"] });
+      renderPicker({ frameworks: ["quill_2_test"] });
 
       await open(user);
 
       expect(
-        await screen.findByText("General clinical skills"),
+        await screen.findByText("Quill second test framework"),
       ).toBeInTheDocument();
-      expect(
-        screen.getByText("Insert Intravenous Cannula"),
-      ).toBeInTheDocument();
+      expect(screen.getByText("Insert a cannula")).toBeInTheDocument();
     });
 
     it("lists nothing from a framework the holder does not work to", async () => {
       const user = userEvent.setup();
-      renderPicker({ frameworks: ["clinical"] });
+      renderPicker({ frameworks: ["quill_2_test"] });
 
       await open(user);
-      await screen.findByText("General clinical skills");
+      await screen.findByText("Quill second test framework");
 
-      expect(
-        screen.queryByText(
-          "Level 2: Can review a prescription for SACT and accurately identify any errors or omissions",
-        ),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByText("Examine the chest")).not.toBeInTheDocument();
     });
 
     it("lists each chosen framework under its own heading", async () => {
       const user = userEvent.setup();
-      renderPicker({ frameworks: ["clinical", "uk_sact_board_2023"] });
+      renderPicker({ frameworks: ["quill_2_test", "quill_test"] });
 
       await open(user);
 
       expect(
-        await screen.findByText("General clinical skills"),
+        await screen.findByText("Quill second test framework"),
       ).toBeInTheDocument();
-      expect(
-        screen.getByText(
-          "Prescriber competencies for reviewing and prescribing SACT - The UK SACT Board",
-        ),
-      ).toBeInTheDocument();
-      expect(
-        screen.getByText(
-          "Level 2: Can review a prescription for SACT and accurately identify any errors or omissions",
-        ),
-      ).toBeInTheDocument();
+      expect(screen.getByText("Quill test framework")).toBeInTheDocument();
+      expect(screen.getByText("Examine the chest")).toBeInTheDocument();
     });
 
     it("never offers a permission, though its file holds some", async () => {
       const user = userEvent.setup();
-      renderPicker({ frameworks: ["clinical"] });
+      renderPicker({ frameworks: ["quill_2_test"] });
 
       await open(user);
-      await screen.findByText("General clinical skills");
+      await screen.findByText("Quill second test framework");
 
       expect(screen.queryByText(/Access Own Patient/i)).not.toBeInTheDocument();
     });
@@ -111,13 +97,13 @@ describe("CompetencyPicker", () => {
     it("reports the competency chosen", async () => {
       const user = userEvent.setup();
       const onChange = vi.fn();
-      renderPicker({ frameworks: ["clinical"], onChange });
+      renderPicker({ frameworks: ["quill_2_test"], onChange });
 
       await open(user);
-      await user.click(await screen.findByText("Insert Intravenous Cannula"));
+      await user.click(await screen.findByText("Insert a cannula"));
 
       // Mantine passes the chosen option as a second argument.
-      expect(onChange.mock.calls[0][0]).toBe("clinical_perform_cannulation");
+      expect(onChange.mock.calls[0][0]).toBe("quill_2_test_insert_a_cannula");
     });
 
     it("ignores a framework Quill no longer holds", () => {
@@ -129,7 +115,7 @@ describe("CompetencyPicker", () => {
 
   it("shows its own description once there is something to pick", () => {
     renderPicker({
-      frameworks: ["clinical"],
+      frameworks: ["quill_2_test"],
       description: "What this entry counts towards.",
     });
 

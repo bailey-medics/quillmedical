@@ -14,7 +14,7 @@ import {
   A_DAY_LAST_MONTH,
   FRAMEWORK_NAMES,
   HOLDER_FRAMEWORKS,
-  REFER_PALLIATIVE,
+  EXAMINE_THE_CHEST,
   addLogbookEntry,
   askForSignOff,
   fillDate,
@@ -69,11 +69,11 @@ test.describe("Holding a passport", () => {
     const create = page.getByRole("button", { name: "Create my passport" });
     await expect(create).toBeDisabled();
 
-    await toggleFrameworks(page, ["clinical"]);
+    await toggleFrameworks(page, ["quill_2_test"]);
     await create.click();
 
     await expect(
-      page.getByRole("heading", { name: FRAMEWORK_NAMES.clinical }),
+      page.getByRole("heading", { name: FRAMEWORK_NAMES.quill_2_test }),
     ).toBeVisible();
   });
 
@@ -120,7 +120,7 @@ test.describe("Holding a passport", () => {
     const holder = await makeHolder(browser, testInfo.project.name);
 
     await signIn(page, holder.username);
-    await openCompetency(page, REFER_PALLIATIVE.name);
+    await openCompetency(page, EXAMINE_THE_CHEST.name);
 
     // The form is opened with the competency already chosen, so it asks
     // only about the procedure.
@@ -133,7 +133,7 @@ test.describe("Holding a passport", () => {
     await expect(page.getByText("1 entry")).toBeVisible();
 
     await page.goto("/passport");
-    await expect(rowOf(page, REFER_PALLIATIVE.name)).toContainText("1 entry");
+    await expect(rowOf(page, EXAMINE_THE_CHEST.name)).toContainText("1 entry");
   });
 
   test("4. a holder asks for a sign-off from a competency's page", async ({
@@ -144,11 +144,13 @@ test.describe("Holding a passport", () => {
     const assessor = await makeAssessor(browser, testInfo.project.name);
 
     await signIn(page, holder.username);
-    await openCompetency(page, REFER_PALLIATIVE.name);
+    await openCompetency(page, EXAMINE_THE_CHEST.name);
     await askForSignOff(page, assessor.email);
 
     await page.goto("/passport");
-    await expect(rowOf(page, REFER_PALLIATIVE.name)).toContainText("Requested");
+    await expect(rowOf(page, EXAMINE_THE_CHEST.name)).toContainText(
+      "Requested",
+    );
 
     const email = await waitForEmail(assessor.email);
     expect(email.subject).toBe(
@@ -164,7 +166,7 @@ test.describe("Holding a passport", () => {
     const assessor = await makeAssessor(browser, testInfo.project.name);
 
     await signIn(page, holder.username);
-    await openCompetency(page, REFER_PALLIATIVE.name);
+    await openCompetency(page, EXAMINE_THE_CHEST.name);
     await askForSignOff(page, assessor.email);
 
     // The request, from the competency's own list of sign-offs.
@@ -177,7 +179,9 @@ test.describe("Holding a passport", () => {
     await expect(page).toHaveURL(/\/passport\/sign-offs$/);
 
     await page.goto("/passport");
-    await expect(rowOf(page, REFER_PALLIATIVE.name)).toContainText("Not asked");
+    await expect(rowOf(page, EXAMINE_THE_CHEST.name)).toContainText(
+      "Not asked",
+    );
   });
 
   test("6. a holder switches to By record in Settings, and back", async ({
@@ -203,7 +207,7 @@ test.describe("Holding a passport", () => {
     await page.getByRole("radio", { name: "By competency" }).check();
     await openUntil(page, "/passport", async () => {
       await expect(
-        page.getByRole("heading", { name: FRAMEWORK_NAMES.clinical }),
+        page.getByRole("heading", { name: FRAMEWORK_NAMES.quill_2_test }),
       ).toBeVisible({ timeout: 3_000 });
     });
   });
@@ -218,24 +222,25 @@ test.describe("Holding a passport", () => {
     await addLogbookEntry(page);
 
     // Dropped: its table goes, and nothing recorded under it is lost.
-    const radiotherapy = new RegExp(FRAMEWORK_NAMES.ghnft_radiotherapy_record);
+    const quillTest = new RegExp(FRAMEWORK_NAMES.quill_test);
     await page.goto("/settings");
-    await toggleFrameworks(page, ["ghnft_radiotherapy_record"]);
+    await toggleFrameworks(page, ["quill_test"]);
 
     await openUntil(page, "/passport", async () => {
       await expect(
-        page.getByRole("heading", { name: FRAMEWORK_NAMES.clinical }),
+        page.getByRole("heading", { name: FRAMEWORK_NAMES.quill_2_test }),
       ).toBeVisible({ timeout: 3_000 });
-      await expect(
-        page.getByRole("heading", { name: radiotherapy }),
-      ).toHaveCount(0, { timeout: 1_000 });
+      await expect(page.getByRole("heading", { name: quillTest })).toHaveCount(
+        0,
+        { timeout: 1_000 },
+      );
     });
 
     // Added back: the entry made under it is still counted.
     await page.goto("/settings");
-    await toggleFrameworks(page, ["ghnft_radiotherapy_record"]);
+    await toggleFrameworks(page, ["quill_test"]);
     await openUntil(page, "/passport", async () => {
-      await expect(rowOf(page, REFER_PALLIATIVE.name)).toContainText(
+      await expect(rowOf(page, EXAMINE_THE_CHEST.name)).toContainText(
         "1 entry",
         { timeout: 3_000 },
       );
@@ -570,7 +575,7 @@ test.describe("Holding a passport", () => {
     const supervisor = await makeAssessor(browser, testInfo.project.name);
 
     await signIn(page, holder.username);
-    await openCompetency(page, REFER_PALLIATIVE.name);
+    await openCompetency(page, EXAMINE_THE_CHEST.name);
     await page.getByRole("button", { name: "Add an entry" }).click();
     await fillDate(page, "Performed on", A_DAY_LAST_MONTH);
     await page
@@ -589,7 +594,7 @@ test.describe("Holding a passport", () => {
     await signIn(theirs, supervisor.username);
     expect(linkIn(email, "/inbox")).toMatch(/\/inbox$/);
     await theirs.goto("/inbox");
-    await theirs.getByText(REFER_PALLIATIVE.name).first().click();
+    await theirs.getByText(EXAMINE_THE_CHEST.name).first().click();
     await expect(theirs).toHaveURL(/\/passport\/logbook-confirmation\//);
     await theirs
       .getByRole("checkbox", { name: "This happened as recorded here" })
@@ -600,7 +605,7 @@ test.describe("Holding a passport", () => {
     ).toHaveCount(0);
     await context.close();
 
-    await openCompetency(page, REFER_PALLIATIVE.name);
+    await openCompetency(page, EXAMINE_THE_CHEST.name);
     await expect(page.getByText(`Person ${supervisor.username}`)).toBeVisible();
   });
 });

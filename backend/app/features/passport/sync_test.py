@@ -25,6 +25,7 @@ from app.features.passport.sync import (
     sync_from_repositories,
     sync_version_texts,
 )
+from app.paths import FRAMEWORK_FIXTURE_HISTORY_DIR
 
 _SHEET = """\
 framework:
@@ -62,32 +63,37 @@ def _count(db: Session, model: type) -> int:
     return db.scalar(select(func.count()).select_from(model)) or 0
 
 
-def test_the_framework_fixtures_are_stored_by_default(
+def test_the_framework_fixtures_are_stored_with_their_history(
     db_session: Session,
 ) -> None:
-    """The four in shared/framework-fixtures/, each at its version.
+    """Every version in shared/framework-fixtures/history/ is stored.
 
     The frameworks themselves live in their publishers' repositories, so
-    the folder form reads the fixtures when given no folder, as the dev
-    migrate recipe calls it.
+    the tests, the CI seed and the dev migrate recipe read the fixtures.
+    quill_test has had four versions, and its newest file alone could not
+    be stored: a framework's first stored version must be 1.
     """
-    result = sync_frameworks(db_session)
+    result = sync_framework_versions(db_session, FRAMEWORK_FIXTURE_HISTORY_DIR)
 
-    versions = dict(
+    newest = dict(
         db_session.execute(
             select(
                 PassportFrameworkVersion.framework_id,
-                PassportFrameworkVersion.version,
-            )
+                func.max(PassportFrameworkVersion.version),
+            ).group_by(PassportFrameworkVersion.framework_id)
         ).all()
     )
+    quill_test = db_session.scalars(
+        select(PassportFrameworkVersion.version)
+        .where(PassportFrameworkVersion.framework_id == "quill_test")
+        .order_by(PassportFrameworkVersion.version)
+    ).all()
 
-    assert result.succeeded
-    assert versions == {
-        "clinical": 1,
-        "ghnft_radiotherapy_record": 1,
-        "ruh_sact_passport": 1,
-        "uk_sact_board_2023": 1,
+    assert result.succeeded, result.error
+    assert quill_test == [1, 2, 3, 4]
+    assert newest == {
+        "quill_2_test": 1,
+        "quill_test": 4,
     }
 
 
@@ -546,6 +552,52 @@ def test_a_framework_the_repository_may_not_publish_is_refused(
     with pytest.raises(FrameworkSyncError, match="may publish only other"):
         read_repository_versions(
             "owner/other-framework", {"other"}, tmp_path / "clone"
+        )
+
+
+def test_a_framework_deleted_from_main_is_passed_over(
+    local_clones: Path, tmp_path: Path
+) -> None:
+    """History keeps a deleted file for good, so it cannot be refused."""
+    repo = _repository(local_clones / "owner", "sheet-framework")
+    _commit(
+        repo,
+        _SHEET.format(version=1, words="Refer a patient").replace(
+            "sheet", "chart"
+        ),
+        name="chart",
+    )
+    _commit(repo, _SHEET.format(version=1, words="Refer a patient"))
+    _git(repo, "rm", "frameworks/chart.yaml")
+    _git(repo, "commit", "-m", "Delete the chart")
+
+    versions = read_repository_versions(
+        "owner/sheet-framework", {"sheet"}, tmp_path / "clone"
+    )
+
+    assert sorted(versions) == ["sheet"]
+    assert sorted(versions["sheet"]) == [1]
+
+
+def test_a_framework_still_on_main_is_refused_whatever_came_before(
+    local_clones: Path, tmp_path: Path
+) -> None:
+    """The listed framework is read first, then the unlisted one refused."""
+    repo = _repository(local_clones / "owner", "sheet-framework")
+    _commit(repo, _SHEET.format(version=1, words="Refer a patient"))
+    _commit(
+        repo,
+        _SHEET.format(version=1, words="Refer a patient").replace(
+            "sheet", "chart"
+        ),
+        name="chart",
+    )
+
+    with pytest.raises(
+        FrameworkSyncError, match="holds frameworks/chart.yaml"
+    ):
+        read_repository_versions(
+            "owner/sheet-framework", {"sheet"}, tmp_path / "clone"
         )
 
 

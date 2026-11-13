@@ -52,7 +52,7 @@ from app.security import (
 
 ASSESS = "assess_clinician_passport"
 #: What an invitation says the assessor was asked to judge.
-COMPETENCY = "uk_sact_board_2023_prescribe_sact"
+COMPETENCY = "quill_test_give_a_course"
 #: An address with no account.
 OUTSIDE = "outside.assessor@example.test"
 #: An id no passport has.

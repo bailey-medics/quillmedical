@@ -120,9 +120,9 @@ export const ScopedCompetency: Story = {
     <Stack gap="sm">
       <CompetencyFrameworkTable {...args} />
       <StoryNote>
-        Review and prescribe systemic anti-cancer therapy is signed off for lung
-        and requested for breast. Colorectal has logbook entries and no
-        sign-off, so it has no row.
+        Give a course of treatment is signed off for lung and requested for
+        breast. Colorectal has logbook entries and no sign-off, so it has no
+        row.
       </StoryNote>
     </Stack>
   ),

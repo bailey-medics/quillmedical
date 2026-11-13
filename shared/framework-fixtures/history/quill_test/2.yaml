@@ -1,0 +1,59 @@
+# frameworks/quill_test.yaml
+#
+# A FRAMEWORK MADE ONLY FOR TESTING QUILL
+#
+# Nobody is assessed against this. Quill's integration test syncs this
+# repository and checks what it stores, so this framework exists to have
+# a history: version 1 in one pull request, version 2 in the next. It
+# holds one competency with levels and scopes, and two without, so a test
+# can reach each shape.
+#
+# Every id starts with the framework's id and an underscore, which the
+# loader checks for every framework.
+
+# VERSION
+#
+# `version` goes up by exactly one with every change to this file except
+# its comments, its spacing and `description`. The pipeline's version
+# check refuses a pull request that changes the framework without it.
+
+framework:
+  id: quill_test
+  name: "Quill test framework"
+  publisher: "Quill Medical"
+  version: 2
+  description: "A test framework, for Quill's own tests. Not for assessing anybody."
+  specialties: []
+
+competencies:
+  - id: quill_test_take_a_history
+    display_name: "Take a history"
+    assessable: true
+    levels:
+      - id: observed
+        name: "Level 1: Observed"
+      - id: supervised
+        name: "Level 2: Supervised"
+      - id: independent
+        name: "Level 3: Independent"
+    scopes:
+      - id: adult
+        name: "Adult"
+      - id: child
+        name: "Child"
+      - id: older_adult
+        name: "Older adult"
+      - id: other
+        name: "Other"
+
+  - id: quill_test_examine_the_chest
+    display_name: "Examine the chest"
+    assessable: true
+
+  - id: quill_test_explain_a_result
+    display_name: "Explain a result to a patient"
+    assessable: true
+
+  - id: quill_test_hand_over_a_patient
+    display_name: "Hand over a patient to the next team"
+    assessable: true

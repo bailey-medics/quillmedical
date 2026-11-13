@@ -172,7 +172,7 @@ class TestSignOffRequest:
                 PassportSignOffRequest(
                     passport_id=PASSPORT_ID,
                     signoff_id="2026-03-14-a-thing",
-                    competency_id="clinical_perform_cannulation",
+                    competency_id="quill_2_test_insert_a_cannula",
                     assessor_email=assessor.email,
                 )
             )
@@ -196,7 +196,7 @@ class TestSignOffRequest:
         request = PassportSignOffRequest(
             passport_id=PASSPORT_ID,
             signoff_id="2026-03-14-a-thing",
-            competency_id="clinical_perform_cannulation",
+            competency_id="quill_2_test_insert_a_cannula",
             assessor_email=assessor.email,
         )
         db_session.add(request)

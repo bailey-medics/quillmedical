@@ -69,57 +69,57 @@ class TestFrameworkFirstPaths:
 
     def test_logbook_sits_in_the_competency_folder(self) -> None:
         assert str(
-            paths.logbook_dir("clinical", "clinical_perform_cannulation")
-        ) == ("frameworks/clinical/clinical_perform_cannulation/logbook")
+            paths.logbook_dir("quill_2_test", "quill_2_test_insert_a_cannula")
+        ) == ("frameworks/quill_2_test/quill_2_test_insert_a_cannula/logbook")
 
     def test_logbook_entry_carries_the_write_time_stem(self) -> None:
         assert (
             str(
                 paths.logbook_entry(
-                    "clinical",
-                    "clinical_perform_cannulation",
+                    "quill_2_test",
+                    "quill_2_test_insert_a_cannula",
                     "2026-03-14-143207",
                 )
             )
-            == "frameworks/clinical/clinical_perform_cannulation/logbook/"
+            == "frameworks/quill_2_test/quill_2_test_insert_a_cannula/logbook/"
             "2026-03-14-143207.yaml"
         )
 
     def test_a_sign_off_sits_beside_its_logbook(self) -> None:
-        sign_off = "uk_sact_board_2023_prescribe_sact.2026-04-02-lung"
+        sign_off = "quill_test_give_a_course.2026-04-02-lung"
 
-        assert str(paths.sign_off_file("uk_sact_board_2023", sign_off)) == (
-            "frameworks/uk_sact_board_2023/uk_sact_board_2023_prescribe_sact/"
+        assert str(paths.sign_off_file("quill_test", sign_off)) == (
+            "frameworks/quill_test/quill_test_give_a_course/"
             "sign-offs/2026-04-02-lung/sign-off.yaml"
         )
 
     def test_narratives_sit_beside_the_record(self) -> None:
-        sign_off = "clinical_perform_cannulation.2026-03-14"
+        sign_off = "quill_2_test_insert_a_cannula.2026-03-14"
 
         assert (
-            paths.sign_off_reflection("clinical", sign_off).name
+            paths.sign_off_reflection("quill_2_test", sign_off).name
             == "reflection.md"
         )
         assert (
-            paths.sign_off_assessment("clinical", sign_off).name
+            paths.sign_off_assessment("quill_2_test", sign_off).name
             == "assessment.md"
         )
 
     def test_a_sign_off_id_splits_back_apart(self) -> None:
         sign_off = paths.sign_off_id(
-            "clinical_perform_cannulation", "2026-03-14-2"
+            "quill_2_test_insert_a_cannula", "2026-03-14-2"
         )
 
-        assert sign_off == "clinical_perform_cannulation.2026-03-14-2"
+        assert sign_off == "quill_2_test_insert_a_cannula.2026-03-14-2"
         assert paths.split_sign_off_id(sign_off) == (
-            "clinical_perform_cannulation",
+            "quill_2_test_insert_a_cannula",
             "2026-03-14-2",
         )
 
     def test_refuses_a_path_shaped_competency_id(self) -> None:
         """Hierarchy lives in the definition, never in the identifier."""
         with pytest.raises(PassportPathError):
-            paths.logbook_dir("clinical", "prescribing/chemotherapy")
+            paths.logbook_dir("quill_2_test", "prescribing/chemotherapy")
 
     @pytest.mark.parametrize(
         "bad",
@@ -127,7 +127,7 @@ class TestFrameworkFirstPaths:
     )
     def test_refuses_a_malformed_competency_id(self, bad: str) -> None:
         with pytest.raises(PassportPathError):
-            paths.logbook_dir("clinical", bad)
+            paths.logbook_dir("quill_2_test", bad)
 
     @pytest.mark.parametrize("bad", ["../x", "Clinical", ""])
     def test_refuses_a_malformed_framework_id(self, bad: str) -> None:
@@ -145,15 +145,15 @@ class TestFrameworkFirstPaths:
     )
     def test_refuses_a_malformed_entry_filename(self, bad: str) -> None:
         with pytest.raises(PassportPathError):
-            paths.logbook_entry("clinical", "clinical_x", bad)
+            paths.logbook_entry("quill_2_test", "quill_2_test_x", bad)
 
     @pytest.mark.parametrize(
         "bad",
         [
-            "clinical_x",  # no folder
-            "clinical_x.thing",  # no date
-            "clinical_x.2026-3-14",  # unpadded
-            "clinical_x.../escape",
+            "quill_2_test_x",  # no folder
+            "quill_2_test_x.thing",  # no date
+            "quill_2_test_x.2026-3-14",  # unpadded
+            "quill_2_test_x.../escape",
             "Clinical.2026-03-14",
             ".2026-03-14",
             "",
@@ -163,7 +163,7 @@ class TestFrameworkFirstPaths:
         self, bad: str
     ) -> None:
         with pytest.raises(PassportPathError):
-            paths.sign_off_dir("clinical", bad)
+            paths.sign_off_dir("quill_2_test", bad)
 
 
 class TestRecordsNotUnderAFramework:
@@ -231,10 +231,12 @@ def test_every_path_is_relative() -> None:
         paths.INDEX,
         paths.README,
         paths.GITIGNORE,
-        paths.sign_off_file("clinical", "clinical_thing.2026-03-14"),
+        paths.sign_off_file("quill_2_test", "quill_2_test_thing.2026-03-14"),
         paths.certificate_file("2026-03-14-a-thing"),
         paths.logbook_entry(
-            "clinical", "clinical_perform_cannulation", "2026-03-14-143207"
+            "quill_2_test",
+            "quill_2_test_insert_a_cannula",
+            "2026-03-14-143207",
         ),
         paths.reflection_file("2026-03-14-a-thing"),
         paths.cpd_entry(2026, "2026-03-14-143207"),
