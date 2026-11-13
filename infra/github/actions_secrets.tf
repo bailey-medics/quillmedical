@@ -11,7 +11,7 @@
 
 locals {
   # The two testing repositories are protected beside the other framework
-  # repositories in framework_rulesets.tf, but their callers pass no
+  # repositories in passport_framework_rulesets.tf, but their callers pass no
   # secrets, so they are left out here.
   repositories_without_secrets = [
     "quill-medical-framework-testing",
@@ -22,7 +22,7 @@ locals {
     [var.github_repository],
     local.teaching_repos,
     [
-      for repository in local.framework_repos : repository
+      for repository in local.passport_framework_repos : repository
       if !contains(local.repositories_without_secrets, repository)
     ],
   )

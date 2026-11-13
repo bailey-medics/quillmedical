@@ -151,9 +151,9 @@ for a deploy, are in the last section, "Merge order".
       `gh auth refresh -h github.com -s workflow`.
 
 - [ ] **Protect the second testing repository like the first.**
-      - Add it to `local.framework_repos` in
-        `infra/github/framework_rulesets.tf`, after its first commit is
-        on `main`. An empty repository has no `main` for the ruleset's
+      - Add it to `local.passport_framework_repos` in
+        `infra/github/passport_framework_rulesets.tf`, after its first
+        commit is on `main`. An empty repository has no `main` for the ruleset's
         pull request rule to target.
       - Add it to `repositories_without_secrets` in
         `infra/github/actions_secrets.tf`.
@@ -331,19 +331,36 @@ for a deploy, are in the last section, "Merge order".
       The two fixture version lists in `competencies_test.py` and
       `sync_test.py` now name `quill_test` and `quill_2_test` alone.
 
-- [ ] **Decide what the sync does with a framework deleted from a
+- [x] **Decide what the sync does with a framework deleted from a
       repository's history.** Found while rewriting the network test:
-      `read_repository_versions` refuses any framework file anywhere in
+      `read_repository_versions` refused any framework file anywhere in
       `main`'s history that the repository may not publish. Once the
       deletion above merges, `quill-medical-framework-testing` holds
       `clinical.yaml` and the other three in its history for good,
       because `main` is never rewritten. So a sync listing it as
-      publishing `quill_test` alone fails, and under Phase 5's one id
-      per repository it could never be synced again. Waiting on a
-      decision; the options are in the report of the run that found it.
-      The rewritten network test, and the check that keeps real ids out
-      of the tests, wait on it too, because the network test is the one
-      test still naming the real fixtures.
+      publishing `quill_test` alone would fail, and under Phase 5's one
+      id per repository it could never be synced again.
+
+      **Decided on 13 November 2026: refuse what `main` holds now, pass
+      over what it no longer holds.** `_refuse_what_main_may_not_hold`
+      in `backend/app/features/passport/sync.py` lists `frameworks/` at
+      the tip of `main` and refuses any file the repository may not
+      publish, as loudly as before. The history walk then skips an
+      unlisted framework instead of refusing it, since nothing still on
+      `main` can be one. Nothing unlisted is ever stored either way. The
+      rejected options were a fresh testing repository, which keeps the
+      rule but replays four pull requests, and listing the four real
+      ids for that repository, which contradicts Phase 5's single id.
+      `check-framework-fixtures.sh` already skips a deleted framework
+      the same way, so the fixtures and the sync agree.
+
+      The network test, `backend/tests/framework_repository_sync_test.py`,
+      now syncs both testing repositories as they stand once #4, #5 and
+      #6 there merge: `quill_test` at versions 1 to 4, `quill_2_test` at
+      1, what version 4 retired, and each repository refused the other's
+      framework. Checked against local copies with #6 as `main`. Its CI
+      job reads the live repositories, so it is red until those three
+      merge.
 
 ## Phase 5: One framework per repository, step one
 
@@ -375,8 +392,8 @@ writes. App production must run this step before Phase 6 merges.
       same framework stays.
 
 - [ ] **Say "one repository per framework" everywhere.** Update:
-      - the comment in `infra/github/framework_rulesets.tf`, which says
-        "one repository per publisher";
+      - the comment in `infra/github/passport_framework_rulesets.tf`,
+        which says "one repository per publisher";
       - the docstring of `validate_frameworks.py`;
       - the frameworks paragraph in `.github/copilot-instructions.md`,
         which says "its publisher's own repository", then
