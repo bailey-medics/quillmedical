@@ -139,10 +139,10 @@ describe("passport", () => {
   });
 
   it("changes the frameworks the holder works to", async () => {
-    await setPassportFrameworks(PASSPORT_ID, ["clinical"]);
+    await setPassportFrameworks(PASSPORT_ID, ["quill_2_test"]);
     expect(api.put).toHaveBeenCalledWith(
       `/passport/${PASSPORT_ID}/frameworks`,
-      { frameworks: ["clinical"] },
+      { frameworks: ["quill_2_test"] },
     );
   });
 

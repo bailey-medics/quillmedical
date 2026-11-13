@@ -23,7 +23,7 @@ export default meta;
 type Story = StoryObj<typeof PassportFrameworksCard>;
 
 export const Default: Story = {
-  args: { value: ["clinical"] },
+  args: { value: ["quill_2_test"] },
 };
 
 /** A passport made before frameworks existed, or one with none chosen. */
@@ -33,7 +33,7 @@ export const NoneChosen: Story = {
 
 /** A holder who prefers every record, newest first. */
 export const ByRecord: Story = {
-  args: { value: ["clinical"], landingView: "by_record" },
+  args: { value: ["quill_2_test"], landingView: "by_record" },
 };
 
 /**
@@ -41,19 +41,19 @@ export const ByRecord: Story = {
  * changeable, and the home page choice still is.
  */
 export const ReadOnly: Story = {
-  args: { value: ["clinical"], disabled: true },
+  args: { value: ["quill_2_test"], disabled: true },
 };
 
 export const SaveFailed: Story = {
   args: {
-    value: ["clinical"],
+    value: ["quill_2_test"],
     error: "Your frameworks could not be saved. Please try again.",
   },
 };
 
 export const LandingViewSaveFailed: Story = {
   args: {
-    value: ["clinical"],
+    value: ["quill_2_test"],
     landingViewError: "Your choice could not be saved. Please try again.",
   },
 };

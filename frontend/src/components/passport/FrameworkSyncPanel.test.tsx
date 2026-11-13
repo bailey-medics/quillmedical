@@ -86,7 +86,7 @@ describe("FrameworkSyncPanel", () => {
         status={ran({
           status: "failed",
           versions_written: 0,
-          error: "Framework 'clinical' skipped version 2.",
+          error: "Framework 'quill_2_test' skipped version 2.",
         })}
         onSync={vi.fn()}
       />,
@@ -96,7 +96,7 @@ describe("FrameworkSyncPanel", () => {
       screen.getByText("It failed, and nothing was stored."),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("Framework 'clinical' skipped version 2."),
+      screen.getByText("Framework 'quill_2_test' skipped version 2."),
     ).toBeInTheDocument();
   });
 

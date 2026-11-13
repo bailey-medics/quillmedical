@@ -240,18 +240,20 @@ describe("what a place carries", () => {
   });
 
   it("replaces the lead passport frameworks", async () => {
-    mocked.put.mockResolvedValue({ framework_ids: ["clinical", "oncology"] });
+    mocked.put.mockResolvedValue({
+      framework_ids: ["quill_2_test", "quill_test"],
+    });
 
     const saved = await orgUnits.setPassportFrameworks(6, [
-      "clinical",
-      "oncology",
+      "quill_2_test",
+      "quill_test",
     ]);
 
     expect(mocked.put).toHaveBeenCalledWith(
       "/org-units/6/passport-frameworks",
-      { framework_ids: ["clinical", "oncology"] },
+      { framework_ids: ["quill_2_test", "quill_test"] },
     );
-    expect(saved).toEqual(["clinical", "oncology"]);
+    expect(saved).toEqual(["quill_2_test", "quill_test"]);
   });
 
   it("reads the passport cover and how many it covers", async () => {

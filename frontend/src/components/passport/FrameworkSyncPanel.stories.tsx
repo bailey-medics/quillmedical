@@ -52,7 +52,7 @@ export const Failed: Story = {
         status: "failed",
         versions_written: 0,
         error:
-          "Framework 'clinical' skipped version 2, so no version was stored.",
+          "Framework 'quill_2_test' skipped version 2, so no version was stored.",
       },
     },
   },
