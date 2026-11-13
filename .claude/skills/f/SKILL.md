@@ -315,6 +315,16 @@ Stop and report - do not carry on to the next unit - when:
   be moved to `main` - see "Before building".
 - You reach the end of the plan.
 
+**A unit that must wait to merge is not a reason to stop.** When it can
+only merge after a lower pull request has merged, deployed to App
+production, or had Terraform applied, build it and land it anyway, on
+top of the one it waits for. `/crpd` writes the wait at the top of its
+description as a numbered "Merge only after" list, so the human merges
+the lower one, does what is needed, then merges this one. A plan step
+such as "check X is running in App production before this merges" is
+one of these waits, never a stopping point. The human does the merging
+and the deploying; the run's job is to have every unit ready for them.
+
 If you discover something important while building, add it to the plan
 document. A plan is a living record.
 

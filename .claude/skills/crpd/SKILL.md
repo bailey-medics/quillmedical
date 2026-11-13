@@ -757,6 +757,35 @@ to start a stack anywhere but the tip of `origin/main`, and says to run
    There is no review-time line: the Size line carries what the reader
    triages on.
 
+   ### When this pull request must wait to merge
+
+   **Some units can only merge after something else has happened**: a
+   lower pull request has merged, its deploy to App production has
+   finished, or Terraform has applied it. Build and land those units
+   anyway. The wait is written into the description, so it is the first
+   thing the reader meets, before the triage block:
+
+   ```markdown
+   **Merge only after:**
+
+   1. Merge #2482.
+   2. Wait for its deploy to App production to finish.
+   3. Run `just terraform-github`, and check it applied.
+   4. Then merge this.
+   ```
+
+   - **A numbered list, in the order the human does it.** Each step is
+     one action they can take or check, naming the pull request, the
+     workflow or the recipe.
+   - **Say what goes wrong if the order is broken**, in one sentence
+     under `## Risks`: which job fails, or which setting a backend cannot
+     read.
+   - **Leave it out when there is no wait.** An ordinary stacked pull
+     request that only needs the one below merged first says nothing
+     here: merging from the bottom is how every stack lands.
+   - **Repeat the wait in the report**, so it is seen in the terminal as
+     well as on GitHub.
+
    ### Sentences
 
    Language models over-produce four things that make prose slow for a

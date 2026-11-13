@@ -52,14 +52,14 @@ locals {
     local.teaching_product_environments, var.environment
   )
 
-  # Each framework repository, with the framework ids it may publish. Read
+  # Each framework repository, with the one framework id it publishes. Read
   # by the framework sync job and by the admin job's run-migrations, which
   # catches the tables up on every deploy.
   framework_repositories = {
-    "bailey-medics/gloucestershire-radiotherapy-record-framework"       = ["ghnft_radiotherapy_record"]
-    "bailey-medics/royal-united-hospitals-bath-sact-passport-framework" = ["ruh_sact_passport"]
-    "bailey-medics/uk-sact-board-prescribing-framework"                 = ["uk_sact_board_2023"]
-    "bailey-medics/general-clinical-skills-quill-medical-framework"     = ["clinical"]
+    "bailey-medics/gloucestershire-radiotherapy-record-framework"       = "ghnft_radiotherapy_record"
+    "bailey-medics/royal-united-hospitals-bath-sact-passport-framework" = "ruh_sact_passport"
+    "bailey-medics/uk-sact-board-prescribing-framework"                 = "uk_sact_board_2023"
+    "bailey-medics/general-clinical-skills-quill-medical-framework"     = "clinical"
   }
 }
 
@@ -648,8 +648,8 @@ module "cloud_run_teaching_sync_job" {
 # signs in as `var.content_ci_service_account`, which needs only
 # `roles/run.invoker` on a job whose action is fixed, never the override
 # role that allows any action. So the pipeline cannot change which
-# repositories are read, either. Each repository is paired with the
-# framework ids it may publish, so one cannot add a version to another
+# repositories are read, either. Each repository is paired with the one
+# framework it publishes, so one cannot add a version to another
 # publisher's framework. The timeout stops a huge or hostile repository at
 # one run. The image is set by deploy.yml. See Phase 6 of
 # docs/docs/plans/2026-11-01-passport-record-and-catalogue-plan.md.

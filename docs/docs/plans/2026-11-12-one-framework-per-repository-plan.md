@@ -452,26 +452,51 @@ writes. App production must run this step before Phase 6 merges.
         because Terraform still writes a list. Phase 6 changes them with
         the form.
 
-## Phase 6: One framework per repository, step two
+## Phase 6: Terraform writes one id
 
-- [ ] **Check that step one is running in App production** before this
-      merges. The framework sync job and the admin job's
-      `run-migrations` must both be on an image that reads the single-id
-      form.
+Built straight after Phase 5, without waiting for it to deploy. The pull
+request says plainly that it merges only once Phase 5 is running in App
+production. `terraform.yml` and `deploy.yml` both start on a push to
+`main` and neither waits for the other, so merge order is the only thing
+that keeps a backend from meeting a form it cannot read.
 
-- [ ] **Terraform writes one id.** In `infra/main.tf`,
+- [x] **Gate this pull request on Phase 5 in App production.** Its
+      description opens with a numbered list: merge Phase 5, wait for its
+      deploy to finish, check that the framework sync job and the admin
+      job's `run-migrations` are on that image, then merge this. Phase 5
+      already reads both forms, so after that the order no longer matters.
+
+- [x] **Terraform writes one id.** In `infra/main.tf`,
       `local.framework_repositories` maps each repository to a string,
-      `"…-framework" = "clinical"`, not `["clinical"]`.
-      `infra/github-sign-in.tf` reads only its keys, so it needs no
-      change, but check that it still plans clean.
+      `"…-framework" = "clinical"`, not `["clinical"]`. Its comments say
+      "the framework id", not "the framework ids". `infra/github-sign-in.tf`
+      reads only its keys, so it needs no change, but check that it still
+      plans clean.
 
-- [ ] **Drop the list form.** `FRAMEWORK_REPOSITORIES` becomes
-      `dict[str, str]`, and the validator from Phase 5 goes. First check
-      the order the merge runs things: `terraform.yml` must apply the
-      string form before `deploy.yml` deploys a backend that no longer
-      reads lists. If both run at once on a merge to `main`, put this
-      bullet in a pull request of its own, after the Terraform one has
-      applied.
+      **Built on 13 November 2026.** `terraform validate` passes over
+      `infra/`. A plan needs App production's credentials, so CI's
+      Terraform job is the first to plan it. The comment on the framework
+      sync job changed too, since it also said "framework ids". The same
+      unit taught `/f` and `/crpd` that a unit waiting to merge is built
+      anyway, with a "Merge only after" list at the top of its pull
+      request.
+
+## Phase 7: Drop the list form
+
+A pull request of its own, because `terraform.yml` must have applied
+Phase 6's string form before a backend that no longer reads lists
+deploys. Built in the same run as Phase 6.
+
+- [ ] **Gate this pull request on Phase 6 being applied.** Its
+      description opens with a numbered list: merge Phase 6, wait for
+      `terraform.yml` to apply it to App production, check that the sync
+      job's `FRAMEWORK_REPOSITORIES` holds strings, then merge this.
+
+- [ ] **Drop the list form.** The validator
+      `_one_framework_per_repository` in `backend/app/config.py` goes, and
+      `FRAMEWORK_REPOSITORIES` stays `dict[str, str]`, so a list is
+      refused by pydantic itself. The tests of the list form in
+      `config_test.py` become one test that a list is refused.
 
 ## Decisions
 
