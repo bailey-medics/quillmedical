@@ -88,11 +88,30 @@ plan settles what `/f` would otherwise discover mid-run.
   that unit, and a named step means the question can be answered
   before the run starts.
 
-- **End with `## Open questions`** while anything is undecided, one
-  bullet per question, and say so in the reply that writes the plan.
-  `/f` will not start on a plan with an open question, so settle each
-  one and delete the section before running it. A plan with nothing
-  open has no such section.
+- **Keep an `## Open questions` section** whenever anything was
+  undecided, one checkbox per question. An unticked box is open; a
+  ticked one carries its answer beside it, and when, so the section
+  stays as the record of what was decided and why. Never delete it or
+  an answered question: it is what an audit reads afterwards. Where an
+  answer changes a step, update the step too.
+
+  ```markdown
+  ## Open questions
+
+  - [x] **Should the export include archived records?** - No: the
+    export is for current care. Answered in `/g`, 13 November 2026.
+  - [ ] **Which bucket do the files go in?**
+  ```
+
+- **Keep a `## Before running /f` section** for anything only a human
+  can do before the run: an account to create, a secret to add, a
+  permission to grant. One checkbox each, ticked when done, and kept
+  afterwards like the open questions.
+
+- **`/f` will not start while a box in either section is unticked.**
+  `/g` is the interview that settles them: it asks about each open
+  question and anything else that could stop the run, and writes the
+  answers and the human jobs into these two sections.
 
 ## Explain each step inside its own checkbox
 

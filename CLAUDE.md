@@ -572,7 +572,8 @@ leave the conversation a discussion.
   is what each exists to do.
 - **Plan documents are the exception.** A plan under `docs/docs/plans/`
   may be written or edited during a discussion, since that is where the
-  discussion's decisions are recorded.
+  discussion's decisions are recorded. `/p` writes one and `/g` writes
+  the interview's answers into one, both without the instruction.
 - **Code means any file that is not a plan document**: source, tests,
   config, CI workflows, the Justfile, scripts, other docs, `CLAUDE.md`
   itself, and git history - commits, branches and pushes.
