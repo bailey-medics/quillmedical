@@ -166,6 +166,19 @@ variable "deploy_service_account" {
   default     = ""
 }
 
+variable "plan_service_account" {
+  description = <<-EOT
+    The service account `terraform plan` signs in as, granted
+    roles/secretmanager.secretAccessor on each secret the plan reads, and
+    on no other. Empty grants nothing.
+
+    Passed in rather than created here: the account was made by hand, and
+    holds read-only project roles this Terraform does not manage.
+  EOT
+  type        = string
+  default     = ""
+}
+
 variable "content_ci_service_account" {
   description = <<-EOT
     The service account the teaching content pipeline uploads as, granted
