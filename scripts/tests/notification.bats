@@ -85,20 +85,6 @@ group_of() {
     [[ "$output" == *"spoken=Quill Medicine Owl"* ]]
 }
 
-@test "on Linux, a banner is forwarded to the Mac named in QUILL_NOTIFY_SSH_HOST" {
-    [ "$(uname -s)" = "Linux" ] || skip "forwarding is from the Linux dev box"
-
-    QUILL_NOTIFY_SSH_HOST=mac run shown_for "$OTHER"
-    [ "$status" -eq 0 ]
-    [[ "$output" == *"forward=mac"* ]]
-}
-
-@test "without QUILL_NOTIFY_SSH_HOST nothing is forwarded" {
-    QUILL_NOTIFY_SSH_HOST="" run shown_for "$OTHER"
-    [ "$status" -eq 0 ]
-    [[ "$output" != *"forward="* ]]
-}
-
 # A stand-in for the Quill notifier that records its arguments, one a line,
 # so notification-show.sh can be run on any machine without posting a banner.
 stub_notifier() {
@@ -129,41 +115,167 @@ STUB
     [[ "$args" == *"-execute"* ]]
 }
 
-@test "streamed over stdin, as the Mac receives it, the show script still posts" {
-    stub_notifier
-    SHOW="${BATS_TEST_DIRNAME}/../notification-show.sh"
+@test "on Linux, a banner is offered as one line in the queue, and nothing connects out" {
+    [ "$(uname -s)" = "Linux" ] || skip "the queue is written on the Linux dev box"
+    stub_ssh
+    export QUILL_NOTIFY_QUEUE="${BATS_TEST_TMPDIR}/queue/banners.jsonl"
 
-    cd "$BATS_TEST_TMPDIR"
-    run bash -s -- "quillmedical-4" "Did the thing" "grp" "Quill Medicine 4" \
-        <"$SHOW"
-    [ "$status" -eq 0 ]
+    printf '{"cwd": "%s"}' "$OTHER" | "$SCRIPT"
 
-    args="$(cat "${BATS_TEST_TMPDIR}/notifier-args")"
-    [[ "$args" == *$'-message\nDid the thing'* ]]
-    [[ "$args" != *"-execute"* ]]
+    [ "$(wc -l <"$QUILL_NOTIFY_QUEUE")" -eq 1 ]
+    line="$(cat "$QUILL_NOTIFY_QUEUE")"
+    [[ "$line" == *'"title": "quillmedical-4"'* ]]
+    [[ "$line" == *'"group": "quill-claude-quillmedical-4"'* ]]
+    [[ "$line" == *"\"cwd\": \"${OTHER}\""* ]]
+    [ ! -e "${BATS_TEST_TMPDIR}/ssh-called" ]
 }
 
-@test "on Linux, the forward names the box as VS Code knows it, devbox unless set" {
-    [ "$(uname -s)" = "Linux" ] || skip "forwarding is from the Linux dev box"
+@test "the queue is cut back once it grows long, keeping the latest banners" {
+    QUEUE="${BATS_TEST_DIRNAME}/../notification-queue.py"
+    queue="${BATS_TEST_TMPDIR}/banners.jsonl"
 
-    QUILL_NOTIFY_SSH_HOST=mac run shown_for "$OTHER"
-    [[ "$output" == *"remote=devbox"* ]]
+    for i in $(seq 1 201); do
+        python3 "$QUEUE" write --queue "$queue" -- "t" "banner $i" "g" "s" "/x"
+    done
 
-    QUILL_NOTIFY_SSH_HOST=mac QUILL_NOTIFY_REMOTE_NAME=box2 run shown_for "$OTHER"
-    [[ "$output" == *"remote=box2"* ]]
+    [ "$(wc -l <"$queue")" -eq 50 ]
+    [[ "$(tail -n 1 "$queue")" == *'"banner 201"'* ]]
 }
 
-# Stand-ins for ssh and setsid, first on PATH. The ssh runs the remote
-# command here, with the stream as its stdin, which is what the Mac does;
-# setsid runs it in the foreground so the test can wait for it.
+@test "a body starting with a dash is still written as the body" {
+    QUEUE="${BATS_TEST_DIRNAME}/../notification-queue.py"
+    queue="${BATS_TEST_TMPDIR}/banners.jsonl"
+
+    python3 "$QUEUE" write --queue "$queue" -- "t" "-- not an option" "g" "s" "/x"
+
+    [[ "$(cat "$queue")" == *'"body": "-- not an option"'* ]]
+}
+
+# The listener's stream, as the box's tail would send it: one JSON line per
+# banner, given here with the time to stamp each with.
+banner_line() {
+    printf '{"time": %s, "title": "%s", "body": "%s", "group": "%s", "spoken": "s", "cwd": "%s"}\n' \
+        "$1" "$2" "$3" "${4:-quill-claude-quillmedical-4}" "${5:-/home/mark/github/quillmedical-4}"
+}
+
+# A stand-in for the show script that records each call's arguments, one a
+# line, and a blank line between calls.
+stub_show() {
+    SHOWN="${BATS_TEST_TMPDIR}/shown"
+    SHOW_STUB="${BATS_TEST_TMPDIR}/show-stub"
+
+    cat >"$SHOW_STUB" <<STUB
+#!/bin/bash
+printf '%s\n' "\$@" >>"$SHOWN"
+printf '\n' >>"$SHOWN"
+STUB
+    chmod +x "$SHOW_STUB"
+}
+
+listen() {
+    python3 "${BATS_TEST_DIRNAME}/../notification-queue.py" show \
+        --show-script "$SHOW_STUB" --box devbox \
+        --state "${BATS_TEST_TMPDIR}/last-shown"
+}
+
+@test "the Mac shows a fresh banner, naming the box so a click finds its window" {
+    stub_show
+    now="$(date +%s)"
+
+    banner_line "$now" "quillmedical-4" "Did the thing" | listen
+
+    [ "$(cat "$SHOWN")" = $'quillmedical-4\nDid the thing\nquill-claude-quillmedical-4\ns\n/home/mark/github/quillmedical-4\ndevbox' ]
+}
+
+@test "the Mac skips a banner older than five minutes" {
+    stub_show
+    old="$(( $(date +%s) - 600 ))"
+
+    banner_line "$old" "quillmedical-4" "Long ago" | listen
+
+    [ ! -e "$SHOWN" ]
+}
+
+@test "after a reconnect, the Mac does not show a banner twice" {
+    stub_show
+    now="$(date +%s)"
+
+    banner_line "$now" "quillmedical-4" "Once" | listen
+    banner_line "$now" "quillmedical-4" "Once" | listen
+
+    [ "$(grep -c '^Once$' "$SHOWN")" -eq 1 ]
+}
+
+@test "the Mac ignores a line that is not a banner, and shows the next" {
+    stub_show
+    now="$(date +%s)"
+
+    {
+        printf 'not json at all\n'
+        printf '{"time": %s, "title": ["a list"]}\n' "$now"
+        banner_line "$now" "quillmedical-4" "Bad group" 'quill; rm -rf ~'
+        banner_line "$now" "quillmedical-4" "Good one"
+    } | listen
+
+    [ "$(grep -c '^devbox$' "$SHOWN")" -eq 1 ]
+    grep -q '^Good one$' "$SHOWN"
+}
+
+@test "the Mac drops a worktree path that does not look like one, but still shows the banner" {
+    stub_show
+    now="$(date +%s)"
+
+    banner_line "$now" "quillmedical-4" "Odd path" \
+        quill-claude-quillmedical-4 '/home/../etc$(touch x)' | listen
+
+    grep -q '^Odd path$' "$SHOWN"
+    [ "$(grep -c 'etc' "$SHOWN")" -eq 0 ]
+}
+
+@test "the Mac turns control characters in a banner into spaces" {
+    stub_show
+    now="$(date +%s)"
+
+    printf '{"time": %s, "title": "a\\nb", "body": "c\\u001bd", "group": "g", "spoken": "s", "cwd": "/x"}\n' \
+        "$now" | listen
+
+    grep -q '^a b$' "$SHOWN"
+    grep -q '^c d$' "$SHOWN"
+}
+
+# say, terminal-notifier and the like read an argument starting with a dash
+# as an option, so `say -v Karen "-o ~/file"` would write over a file on the
+# Mac. Text from the box must never reach them starting with one.
+@test "the Mac never passes a text field that starts with a dash" {
+    stub_show
+    now="$(date +%s)"
+
+    printf '{"time": %s, "title": "-title", "body": "--help", "group": "g", "spoken": "-o /tmp/x", "cwd": "/x"}\n' \
+        "$now" | listen
+
+    [ "$(grep -c '^-' "$SHOWN")" -eq 0 ]
+    grep -q '^ -o /tmp/x$' "$SHOWN"
+}
+
+@test "the Mac ignores a banner whose group starts with a dash" {
+    stub_show
+    now="$(date +%s)"
+
+    banner_line "$now" "quillmedical-4" "Dash group" "-execute" | listen
+
+    [ ! -e "$SHOWN" ]
+}
+
+# Stand-ins for ssh and setsid, first on PATH, which record that ssh was
+# called, for the box's side, or replay a queue, for the Mac's.
 stub_ssh() {
     local bin="${BATS_TEST_TMPDIR}/bin"
 
     mkdir -p "$bin"
-    cat >"${bin}/ssh" <<'STUB'
+    cat >"${bin}/ssh" <<STUB
 #!/bin/bash
-for last; do :; done
-eval "$last"
+printf '%s\n' "\$@" >"${BATS_TEST_TMPDIR}/ssh-called"
+cat "${BATS_TEST_TMPDIR}/remote-queue" 2>/dev/null
 STUB
     cat >"${bin}/setsid" <<'STUB'
 #!/bin/bash
@@ -175,20 +287,26 @@ STUB
     export PATH="${bin}:${PATH}"
 }
 
-@test "a banner forwarded from the box opens the box's window when clicked" {
-    [ "$(uname -s)" = "Linux" ] || skip "forwarding is from the Linux dev box"
-    stub_notifier
+@test "the listener connects to the box, follows its queue, and shows what arrives" {
     stub_ssh
+    stub_notifier
+    banner_line "$(date +%s)" "quillmedical-4" "From the box" \
+        >"${BATS_TEST_TMPDIR}/remote-queue"
     export HOME="${BATS_TEST_TMPDIR}/home"
-    focus="${HOME}/Library/Caches/quill-notifier/notification-focus.sh"
 
-    printf '{"cwd": "%s"}' "$OTHER" | QUILL_NOTIFY_SSH_HOST=mac "$SCRIPT"
+    QUILL_NOTIFY_ONCE=1 run "${BATS_TEST_DIRNAME}/../notification-listen.sh"
+    [ "$status" -eq 0 ]
+
+    ssh_args="$(cat "${BATS_TEST_TMPDIR}/ssh-called")"
+    [[ "$ssh_args" == *$'BatchMode=yes'* ]]
+    [[ "$ssh_args" == *$'\ndevbox\n'* ]]
+    [[ "$ssh_args" == *'tail -n 20 -F "$HOME/.local/state/quill-notify/banners.jsonl"'* ]]
 
     args="$(cat "${BATS_TEST_TMPDIR}/notifier-args")"
-    [[ "$args" == *$'-execute\n'"'${focus}' '${OTHER}' 'devbox'"* ]]
-    cmp "$focus" "${BATS_TEST_DIRNAME}/../notification-focus.sh"
-    [ -x "$focus" ]
+    [[ "$args" == *$'-message\nFrom the box'* ]]
+    [[ "$args" == *"'/home/mark/github/quillmedical-4' 'devbox'"* ]]
 }
+
 
 # A stand-in for osascript that records the window title it was asked to
 # find, and finds it only if told to.

@@ -1264,6 +1264,16 @@ notifier-app:
     ./scripts/build-notifier-app.sh
 
 
+alias nli := notify-listen-install
+# Install the launchd agent that fetches the dev box's banners and shows them (macOS only; run again after the scripts change)
+notify-listen-install:
+    #!/usr/bin/env bash
+    {{initialise}} "notify-listen-install"
+    set -euo pipefail
+
+    ./scripts/notification-listen-install.sh
+
+
 alias owi := owl-install
 # Install Owl as a systemd user service, moving the box across from the alert watcher's old names (the dev box's quillmedical-owl only)
 owl-install:
