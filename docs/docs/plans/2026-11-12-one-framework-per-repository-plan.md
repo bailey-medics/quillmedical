@@ -487,16 +487,19 @@ A pull request of its own, because `terraform.yml` must have applied
 Phase 6's string form before a backend that no longer reads lists
 deploys. Built in the same run as Phase 6.
 
-- [ ] **Gate this pull request on Phase 6 being applied.** Its
+- [x] **Gate this pull request on Phase 6 being applied.** Its
       description opens with a numbered list: merge Phase 6, wait for
       `terraform.yml` to apply it to App production, check that the sync
       job's `FRAMEWORK_REPOSITORIES` holds strings, then merge this.
 
-- [ ] **Drop the list form.** The validator
+- [x] **Drop the list form.** The validator
       `_one_framework_per_repository` in `backend/app/config.py` goes, and
       `FRAMEWORK_REPOSITORIES` stays `dict[str, str]`, so a list is
       refused by pydantic itself. The tests of the list form in
       `config_test.py` become one test that a list is refused.
+
+      **Built on 13 November 2026**, and the plan is finished once it
+      merges.
 
 ## Decisions
 

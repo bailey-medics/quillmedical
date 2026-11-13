@@ -468,7 +468,7 @@ class TestTeachingJobCallbackTestKey:
 
 
 class TestFrameworkRepositories:
-    """Each repository publishes one framework, in either written form."""
+    """Each repository publishes one framework, written as its id."""
 
     @staticmethod
     def _settings(**overrides: object) -> Settings:
@@ -479,31 +479,13 @@ class TestFrameworkRepositories:
             **overrides,
         )
 
-    def test_one_id_is_read_as_it_is(self) -> None:
-        settings = self._settings(
-            FRAMEWORK_REPOSITORIES={"owner/sheet-framework": "sheet"}
-        )
-
-        assert settings.FRAMEWORK_REPOSITORIES == {
-            "owner/sheet-framework": "sheet"
-        }
-
-    def test_a_list_of_one_id_is_read_as_the_id(self) -> None:
-        settings = self._settings(
-            FRAMEWORK_REPOSITORIES={"owner/sheet-framework": ["sheet"]}
-        )
-
-        assert settings.FRAMEWORK_REPOSITORIES == {
-            "owner/sheet-framework": "sheet"
-        }
-
-    def test_both_forms_are_read_from_the_environment(
+    def test_one_id_is_read_from_the_environment(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """As Terraform writes it, JSON in one variable."""
         monkeypatch.setenv(
             "FRAMEWORK_REPOSITORIES",
-            '{"owner/a-framework": ["sheet"], "owner/b-framework": "chart"}',
+            '{"owner/a-framework": "sheet", "owner/b-framework": "chart"}',
         )
 
         assert self._settings().FRAMEWORK_REPOSITORIES == {
@@ -511,20 +493,11 @@ class TestFrameworkRepositories:
             "owner/b-framework": "chart",
         }
 
-    def test_two_ids_are_refused_naming_the_repository(self) -> None:
+    def test_a_list_is_refused(self) -> None:
+        """The form Terraform wrote before each repository had one id."""
         with pytest.raises(ValidationError) as caught:
             self._settings(
-                FRAMEWORK_REPOSITORIES={
-                    "owner/sheet-framework": ["sheet", "chart"]
-                }
+                FRAMEWORK_REPOSITORIES={"owner/sheet-framework": ["sheet"]}
             )
 
-        assert "owner/sheet-framework 2 frameworks" in str(caught.value)
-
-    def test_an_empty_list_is_refused(self) -> None:
-        with pytest.raises(ValidationError) as caught:
-            self._settings(
-                FRAMEWORK_REPOSITORIES={"owner/sheet-framework": []}
-            )
-
-        assert "owner/sheet-framework 0 frameworks" in str(caught.value)
+        assert "FRAMEWORK_REPOSITORIES" in str(caught.value)
