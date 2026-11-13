@@ -6,7 +6,7 @@ HTTPS, with no credential, as App production's sync does, so it is the
 one test that a change to how GitHub serves a clone would turn red.
 
 The testing repository holds the four fixtures at version 1 and
-``quill_test`` at versions 1 and 2, each merged by a reviewed pull
+``quill_test`` at versions 1 to 4, each merged by a reviewed pull
 request. It is on no ``FRAMEWORK_REPOSITORIES`` list, so App production
 never stores it: the test names it itself.
 
@@ -100,7 +100,7 @@ def test_the_testing_repository_syncs_every_version_it_holds(
     )
 
     assert result.succeeded, result.error
-    assert _versions(db_session, "quill_test") == [1, 2]
+    assert _versions(db_session, "quill_test") == [1, 2, 3, 4]
     for framework_id in FIXTURES:
         assert _versions(db_session, framework_id) == [1]
 
