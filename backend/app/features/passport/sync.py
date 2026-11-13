@@ -860,9 +860,9 @@ def _clone(repository: str, destination: Path) -> None:
 
 
 def _refuse_what_main_may_not_hold(
-    repository: str, may_publish: set[str], clone: Path
+    repository: str, framework_id: str, clone: Path
 ) -> None:
-    """Refuse a framework file on ``main`` this repository may not publish.
+    """Refuse a framework file on ``main`` other than this repository's own.
 
     Raises:
         FrameworkSyncError: Naming the first such file.
@@ -872,40 +872,39 @@ def _refuse_what_main_may_not_hold(
     for line in listing.splitlines():
         path = line.split("\t", 1)[1]
         match = _FRAMEWORK_PATH.match(path)
-        if match is not None and match["framework"] not in may_publish:
+        if match is not None and match["framework"] != framework_id:
             raise FrameworkSyncError(
-                f"{repository} holds {path}, but may publish only "
-                + ", ".join(sorted(may_publish))
-                + "."
+                f"{repository} holds {path}, but this repository publishes "
+                f"{framework_id}."
             )
 
 
 def read_repository_versions(
-    repository: str, may_publish: set[str], clone: Path
+    repository: str, framework_id: str, clone: Path
 ) -> dict[str, dict[int, str]]:
-    """Every version of every framework in one repository's history.
+    """Every version of a repository's one framework, from its history.
 
     Walks ``main``'s first-parent history, oldest first, and keeps the
     first text at which each version appears: the merge that set it. A
     later commit that changed only comments or the description keeps its
     version, so its text is not read again.
 
-    A framework file on ``main`` that the repository may not publish is
-    refused. One that history holds but ``main`` no longer does is passed
-    over, since a repository's history cannot be rewritten.
+    A file on ``main`` for any other framework is refused. One that
+    history holds but ``main`` no longer does is passed over, since a
+    repository's history cannot be rewritten.
 
     Args:
         repository: ``owner/name`` on GitHub.
-        may_publish: The framework ids this repository may publish.
+        framework_id: The one framework this repository publishes.
         clone: An empty folder to clone into.
 
     Returns:
-        Each framework's version files, by framework id, then by version.
+        The framework's version files, by framework id, then by version.
         Empty for a repository with no ``main`` yet.
 
     Raises:
-        FrameworkSyncError: For a framework this repository may not
-            publish, a file too large, or a git failure.
+        FrameworkSyncError: For a file of another framework on ``main``,
+            a file too large, or a git failure.
         ValueError: For a file the loader refuses.
     """
     if not _REPOSITORY_NAME.match(repository):
@@ -920,7 +919,7 @@ def read_repository_versions(
         # An empty repository: its first commit is not on main yet.
         return {}
 
-    _refuse_what_main_may_not_hold(repository, may_publish, clone)
+    _refuse_what_main_may_not_hold(repository, framework_id, clone)
 
     found: dict[str, dict[int, str]] = {}
     seen_blobs: set[str] = set()
@@ -944,8 +943,7 @@ def read_repository_versions(
             # Main no longer holds it, or the check above would have
             # refused it. History cannot be rewritten, so a file deleted
             # from main is passed over rather than refused for ever.
-            framework_id = match["framework"]
-            if framework_id not in may_publish:
+            if match["framework"] != framework_id:
                 continue
 
             size = int(_git("cat-file", "-s", blob, git_dir=clone))
@@ -966,13 +964,13 @@ def read_repository_versions(
 
 
 def read_repositories(
-    repositories: Mapping[str, Sequence[str]], scratch: Path
+    repositories: Mapping[str, str], scratch: Path
 ) -> dict[str, dict[int, str]]:
     """Every framework version in every repository, for the catch-up.
 
     Args:
-        repositories: Each ``owner/name``, with the framework ids it may
-            publish.
+        repositories: Each ``owner/name``, with the one framework it
+            publishes.
         scratch: An empty folder for the clones.
 
     Raises:
@@ -982,14 +980,13 @@ def read_repositories(
     """
     owners: dict[str, str] = {}
 
-    for repository, ids in repositories.items():
-        for framework_id in ids:
-            if framework_id in owners:
-                raise FrameworkSyncError(
-                    f"Framework {framework_id!r} is paired with both "
-                    f"{owners[framework_id]} and {repository}."
-                )
-            owners[framework_id] = repository
+    for repository, framework_id in repositories.items():
+        if framework_id in owners:
+            raise FrameworkSyncError(
+                f"Framework {framework_id!r} is paired with both "
+                f"{owners[framework_id]} and {repository}."
+            )
+        owners[framework_id] = repository
 
     versions: dict[str, dict[int, str]] = {}
 
@@ -997,7 +994,7 @@ def read_repositories(
         versions.update(
             read_repository_versions(
                 repository,
-                set(repositories[repository]),
+                repositories[repository],
                 scratch / str(position),
             )
         )
@@ -1006,7 +1003,7 @@ def read_repositories(
 
 
 def sync_from_repositories(
-    db: Session, repositories: Mapping[str, Sequence[str]]
+    db: Session, repositories: Mapping[str, str]
 ) -> FrameworkSyncResult:
     """Read every framework repository, then catch up on what it holds.
 
@@ -1016,8 +1013,8 @@ def sync_from_repositories(
 
     Args:
         db: The core database session.
-        repositories: Each ``owner/name``, with the framework ids it may
-            publish.
+        repositories: Each ``owner/name``, with the one framework it
+            publishes.
 
     Returns:
         How the run ended.
@@ -1048,7 +1045,7 @@ NOTHING_IN_THE_REPOSITORIES = (
 
 
 def _versions_in(
-    repositories: Mapping[str, Sequence[str]], scratch: Path
+    repositories: Mapping[str, str], scratch: Path
 ) -> dict[str, dict[int, str]]:
     """What :func:`read_repositories` finds, or refuse as having nothing.
 

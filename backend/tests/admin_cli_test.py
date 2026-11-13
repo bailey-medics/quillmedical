@@ -1141,8 +1141,8 @@ class TestGrantFrameworkSyncRole:
         db.commit.assert_called_once()
 
 
-#: One repository and the framework it may publish, for the sync job.
-_REPOSITORIES = {"bailey-medics/a-framework": ["sheet"]}
+#: One repository and the framework it publishes, for the sync job.
+_REPOSITORIES = {"bailey-medics/a-framework": "sheet"}
 
 
 class TestSyncFrameworks:
