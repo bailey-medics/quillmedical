@@ -62,13 +62,6 @@ syntax_image_arg() {
   sed -n -E '1s/^#[[:space:]]*syntax=([^[:space:]]+).*$/BUILDKIT_SYNTAX \1/p' "$dockerfile"
 }
 
-# Says whether the registry holds an image.
-is_in_registry() {
-  local ref="$1"
-
-  docker manifest inspect "$ref" >/dev/null 2>&1
-}
-
 main() {
   local owner="${1:-}"
 
@@ -114,7 +107,7 @@ main() {
   while read -r name public; do
     mirrored="$(mirror_pull_ref "$owner" "$public")"
 
-    if is_in_registry "$mirrored"; then
+    if mirror_holds "$mirrored"; then
       build_args="${build_args:+${build_args}$'\n'}${name}=${mirrored}"
       log "${name}: using the mirror, ${mirrored}"
     else

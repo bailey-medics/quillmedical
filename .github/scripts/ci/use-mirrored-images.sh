@@ -44,13 +44,6 @@ default_image() {
   sed -n -E "s/.*\\\$\\{${variable}:-([^}]+)\\}.*/\\1/p" "$compose_file" | head -n 1
 }
 
-# Says whether the registry holds an image.
-is_in_registry() {
-  local ref="$1"
-
-  docker manifest inspect "$ref" >/dev/null 2>&1
-}
-
 main() {
   local owner="${1:-}"
   local compose_file="${2:-}"
@@ -82,7 +75,7 @@ main() {
 
     mirrored="$(mirror_pull_ref "$owner" "$public")"
 
-    if is_in_registry "$mirrored"; then
+    if mirror_holds "$mirrored"; then
       echo "${variable}=${mirrored}" >> "$GITHUB_ENV"
       log "${variable}: using the mirror, ${mirrored}"
     else
