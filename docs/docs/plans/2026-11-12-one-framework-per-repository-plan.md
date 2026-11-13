@@ -309,16 +309,41 @@ for a deploy, are in the last section, "Merge order".
 
 ## Phase 4: Remove the real frameworks from the testing repository
 
-- [ ] **Delete the four real fixtures from
+- [x] **Delete the four real fixtures from
       `quill-medical-framework-testing`**, by a pull request there. It
       then holds `quill_test` alone. Merge it before the Quill change
       below. The copy check compares against the commit in `SOURCE`, so
       Quill's pull requests keep passing until that commit changes.
 
-- [ ] **Run `just framework-fixtures-refresh` in Quill** and open a pull
+      **Opened on 12 November 2026** as the testing repository's #6,
+      branched from #5, with its README saying it holds `quill_test`
+      alone.
+
+- [x] **Run `just framework-fixtures-refresh` in Quill** and open a pull
       request with the result. `shared/framework-fixtures/` then holds
       `quill_test.yaml` and `quill_2_test.yaml` and nothing else, and the
       check from Phase 3 passes.
+
+      **Done on 12 November 2026**, copying from the deletion branch.
+      `history/` keeps only frameworks the repository still holds at the
+      copied commit: the four real ones are in that repository's history
+      for good, and would otherwise have come back under `history/`.
+      The two fixture version lists in `competencies_test.py` and
+      `sync_test.py` now name `quill_test` and `quill_2_test` alone.
+
+- [ ] **Decide what the sync does with a framework deleted from a
+      repository's history.** Found while rewriting the network test:
+      `read_repository_versions` refuses any framework file anywhere in
+      `main`'s history that the repository may not publish. Once the
+      deletion above merges, `quill-medical-framework-testing` holds
+      `clinical.yaml` and the other three in its history for good,
+      because `main` is never rewritten. So a sync listing it as
+      publishing `quill_test` alone fails, and under Phase 5's one id
+      per repository it could never be synced again. Waiting on a
+      decision; the options are in the report of the run that found it.
+      The rewritten network test, and the check that keeps real ids out
+      of the tests, wait on it too, because the network test is the one
+      test still naming the real fixtures.
 
 ## Phase 5: One framework per repository, step one
 

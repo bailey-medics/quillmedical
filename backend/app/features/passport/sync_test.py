@@ -92,12 +92,8 @@ def test_the_framework_fixtures_are_stored_with_their_history(
     assert result.succeeded, result.error
     assert quill_test == [1, 2, 3, 4]
     assert newest == {
-        "clinical": 1,
-        "ghnft_radiotherapy_record": 1,
         "quill_2_test": 1,
         "quill_test": 4,
-        "ruh_sact_passport": 1,
-        "uk_sact_board_2023": 1,
     }
 
 
