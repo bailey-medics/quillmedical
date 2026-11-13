@@ -53,10 +53,8 @@ describe("frameworkRows", () => {
   it("lists every item in the framework, in the file's order", () => {
     const rows = frameworkRows(TEST_FRAMEWORK_CATALOGUE, radiotherapy.id, []);
 
-    expect(rows).toHaveLength(15);
-    expect(rows[0].name).toBe(
-      "Completed induction training re radiation protection issues related to pre-treatment, CT planning and radiotherapy treatment",
-    );
+    expect(rows).toHaveLength(8);
+    expect(rows[0].name).toBe("Insert a cannula");
     expect(rows.every((row) => row.standing === "not_asked")).toBe(true);
   });
 

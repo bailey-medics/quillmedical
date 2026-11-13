@@ -31,32 +31,28 @@ import { PEOPLE, PLACES, freshUsername, signIn } from "./signIn";
 
 /**
  * The frameworks a holder is given unless a test says otherwise: the
- * general one and the Gloucestershire radiotherapy record, so the By
+ * two made-up frameworks, `quill_2_test` and `quill_test`, so the By
  * competency view draws two tables.
  */
-export const HOLDER_FRAMEWORKS = [
-  "clinical",
-  "ghnft_radiotherapy_record",
-] as const;
+export const HOLDER_FRAMEWORKS = ["quill_2_test", "quill_test"] as const;
 
 /** A framework a holder may be given here. */
 export type FrameworkId = (typeof HOLDER_FRAMEWORKS)[number];
 
 /** Their display names, as the tables are headed. */
 export const FRAMEWORK_NAMES: Record<FrameworkId, string> = {
-  clinical: "General clinical skills",
-  ghnft_radiotherapy_record:
-    "Clinical oncology registrar record of radiotherapy training and competence - Gloucestershire Hospitals NHS Foundation Trust",
+  quill_2_test: "Quill second test framework",
+  quill_test: "Quill test framework",
 };
 
 /**
- * A competency in the Gloucestershire radiotherapy record with no levels
+ * A competency in `quill_test` with no levels
  * and no scopes, so a sign-off of it asks for nothing beyond the
  * assessor and the date.
  */
-export const REFER_PALLIATIVE = {
-  id: "ghnft_radiotherapy_record_refer_palliative",
-  name: "Refer patients for palliative radiotherapy unsupervised",
+export const EXAMINE_THE_CHEST = {
+  id: "quill_test_examine_the_chest",
+  name: "Examine the chest",
 };
 
 /** How the catalogue names `passport_write` in a picker. */
@@ -293,7 +289,7 @@ export async function fillDate(
 /** Open *competency*'s page from its row on the landing page. */
 export async function openCompetency(
   page: Page,
-  competency: string = REFER_PALLIATIVE.name,
+  competency: string = EXAMINE_THE_CHEST.name,
 ): Promise<void> {
   await page.goto("/passport");
   await rowOf(page, competency).click();
@@ -306,7 +302,7 @@ export async function openCompetency(
 /** From the landing page, add a logbook entry to *competency*. */
 export async function addLogbookEntry(
   page: Page,
-  competency: string = REFER_PALLIATIVE.name,
+  competency: string = EXAMINE_THE_CHEST.name,
 ): Promise<void> {
   await openCompetency(page, competency);
   await page.getByRole("button", { name: "Add an entry" }).click();
@@ -359,7 +355,7 @@ export async function askAsHolder(
  */
 export async function signFromTheInbox(page: Page): Promise<void> {
   await page.goto("/inbox");
-  await page.getByText(REFER_PALLIATIVE.name).first().click();
+  await page.getByText(EXAMINE_THE_CHEST.name).first().click();
   await expect(page).toHaveURL(/\/passport\/sign-off\//);
   await page.getByRole("combobox", { name: "What did you do?" }).click();
   await page.getByRole("option", { name: "Directly observed" }).click();

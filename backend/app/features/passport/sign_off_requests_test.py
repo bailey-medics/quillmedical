@@ -28,7 +28,7 @@ from app.organisations import add_org_unit_member
 from app.security import hash_password
 
 ASSESS = "assess_clinician_passport"
-COMPETENCY = "uk_sact_board_2023_prescribe_sact"
+COMPETENCY = "quill_test_give_a_course"
 #: An address with no account.
 OUTSIDE = "outside.assessor@example.test"
 #: High enough that no test here meets it by accident.

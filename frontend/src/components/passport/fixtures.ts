@@ -65,7 +65,7 @@ export const requestedCompetency: CompetencyState = {
 };
 
 export const declinedCompetency: CompetencyState = {
-  id: "uk_sact_board_2023_prescribe_sact",
+  id: "quill_test_give_a_course",
   name: "Prescribe systemic anti-cancer therapy",
   status: "declined",
   level: null,
@@ -84,12 +84,12 @@ export const declinedCompetency: CompetencyState = {
  * own level.
  */
 export const lungCompetency: CompetencyState = {
-  id: "uk_sact_board_2023_prescribe_sact",
-  name: "Review and prescribe systemic anti-cancer therapy",
+  id: "quill_test_give_a_course",
+  name: "Give a course of treatment",
   scope: { id: "lung", name: "Lung" },
   status: "signed_off",
   level: {
-    id: "prescribe_subsequent_cycles",
+    id: "continue",
     name: "Prescribe second cycle onwards",
   },
   signed_on: "2026-03-14",
@@ -105,7 +105,7 @@ export const breastCompetency: CompetencyState = {
   ...lungCompetency,
   scope: { id: "breast", name: "Breast" },
   level: {
-    id: "review_and_authorise",
+    id: "review",
     name: "Review and authorise administration",
   },
   signed_on: "2026-06-02",
@@ -201,16 +201,16 @@ export const requestedForLung: SignOff = {
   name: "2026-03-12-prescribe-sact",
   id: "20260312T091044.000Z-2a7c4e19",
   competency: {
-    id: "uk_sact_board_2023_prescribe_sact",
-    name: "Review and prescribe systemic anti-cancer therapy",
+    id: "quill_test_give_a_course",
+    name: "Give a course of treatment",
   },
   scope: { id: "lung", name: "Lung" },
   level: {
-    id: "review_and_authorise",
+    id: "review",
     name: "Review and authorise administration",
   },
   requested_level: {
-    id: "review_and_authorise",
+    id: "review",
     name: "Review and authorise administration",
   },
   observed_on: "2026-03-12",
@@ -296,12 +296,12 @@ export const singleEntryLogbook: Logbook = {
  * say which scope they count towards, and one says nothing.
  */
 export const scopedLogbook: Logbook = {
-  competency: "uk_sact_board_2023_prescribe_sact",
+  competency: "quill_test_give_a_course",
   count: 3,
   entries: [
     {
       filename: "2026-03-10-091500",
-      competency: "uk_sact_board_2023_prescribe_sact",
+      competency: "quill_test_give_a_course",
       performed_on: "2026-03-10",
       scope: { id: "lung", name: "Lung" },
       setting: "Oncology day unit",
@@ -315,7 +315,7 @@ export const scopedLogbook: Logbook = {
     },
     {
       filename: "2026-03-11-101500",
-      competency: "uk_sact_board_2023_prescribe_sact",
+      competency: "quill_test_give_a_course",
       performed_on: "2026-03-11",
       scope: { id: "breast", name: "Breast" },
       setting: "Oncology day unit",
@@ -329,7 +329,7 @@ export const scopedLogbook: Logbook = {
     },
     {
       filename: "2026-03-12-111500",
-      competency: "uk_sact_board_2023_prescribe_sact",
+      competency: "quill_test_give_a_course",
       performed_on: "2026-03-12",
       scope: null,
       setting: "Oncology day unit",
@@ -350,8 +350,8 @@ export const logbookConfirmation: LogbookConfirmation = {
   passport_id: "3f2a8c1e",
   holder_name: "Dr Priya Shah",
   competency: {
-    id: "uk_sact_board_2023_prescribe_sact",
-    name: "Review and prescribe systemic anti-cancer therapy",
+    id: "quill_test_give_a_course",
+    name: "Give a course of treatment",
   },
   entry: scopedLogbook.entries[0],
 };
@@ -380,7 +380,7 @@ export const confirmedLogbook: Logbook = {
 };
 
 export const emptyLogbook: Logbook = {
-  competency: "uk_sact_board_2023_prescribe_sact",
+  competency: "quill_test_give_a_course",
   count: 0,
   entries: [],
 };
@@ -541,19 +541,19 @@ export const passportRecords: PassportRecord[] = collectRecords({
  */
 export const oncologyFrameworks: FrameworkRef[] = [
   {
-    id: "ghnft_radiotherapy_record",
-    name: "Clinical oncology registrar record of radiotherapy training and competence - Gloucestershire Hospitals NHS Foundation Trust",
+    id: "quill_2_test",
+    name: "Quill second test framework",
   },
   {
-    id: "uk_sact_board_2023",
-    name: "Prescriber competencies for reviewing and prescribing SACT - The UK SACT Board",
+    id: "quill_test",
+    name: "Quill test framework",
   },
 ];
 
 /** Signed off, with a logbook behind it. */
 export const referPalliativeCompetency: CompetencyState = {
-  id: "ghnft_radiotherapy_record_refer_palliative",
-  name: "Refer patients for palliative radiotherapy unsupervised",
+  id: "quill_2_test_insert_a_chest_drain",
+  name: "Insert a chest drain",
   status: "signed_off",
   level: null,
   signed_on: "2026-07-02",
@@ -568,8 +568,8 @@ export const referPalliativeCompetency: CompetencyState = {
 /** Waiting on an assessor, with a logbook behind it. */
 export const prescribePalliativeCompetency: CompetencyState = {
   ...referPalliativeCompetency,
-  id: "ghnft_radiotherapy_record_plan_and_prescribe_palliative",
-  name: "Plan and prescribe palliative radiotherapy unsupervised",
+  id: "quill_2_test_read_an_ecg",
+  name: "Read an electrocardiogram",
   status: "requested",
   signed_on: null,
   signed_off_by: null,
@@ -584,8 +584,8 @@ export const prescribePalliativeCompetency: CompetencyState = {
  */
 export const referRadicalCompetency: CompetencyState = {
   ...referPalliativeCompetency,
-  id: "ghnft_radiotherapy_record_refer_radical",
-  name: "Refer patients for radical radiotherapy unsupervised",
+  id: "quill_2_test_manage_an_airway",
+  name: "Manage an airway",
   status: "requested",
   signed_on: null,
   signed_off_by: null,
@@ -596,8 +596,8 @@ export const referRadicalCompetency: CompetencyState = {
 /** Signed off with no logbook: an acquaintance item, signed on sight. */
 export const pinnacleCompetency: CompetencyState = {
   ...referPalliativeCompetency,
-  id: "ghnft_radiotherapy_record_acquaintance_with_pinnacle",
-  name: "Acquaintance with Pinnacle treatment planning software",
+  id: "quill_2_test_confirm_a_death",
+  name: "Confirm a death",
   signed_on: "2026-06-11",
   sign_off: "2026-06-11-acquaintance-with-pinnacle",
   logbook_entries: 0,
@@ -605,16 +605,16 @@ export const pinnacleCompetency: CompetencyState = {
 
 export const ariaCompetency: CompetencyState = {
   ...pinnacleCompetency,
-  id: "ghnft_radiotherapy_record_acquaintance_with_aria",
-  name: "Acquaintance with Aria",
+  id: "quill_2_test_take_consent",
+  name: "Take consent for a procedure",
   sign_off: "2026-06-11-acquaintance-with-aria",
 };
 
 /** The latest sign-off was declined: the assessor said "not yet". */
 export const antiemeticsCompetency: CompetencyState = {
   ...referPalliativeCompetency,
-  id: "uk_sact_board_2023_determine_antiemetic_requirements",
-  name: "Level 2: Ability to determine the antiemetic requirements of patients receiving SACT",
+  id: "quill_test_examine_the_chest",
+  name: "Examine the chest",
   status: "declined",
   signed_on: null,
   signed_off_by: null,

@@ -70,8 +70,8 @@ vi.mock("@lib/passport", () => ({
 
 const FRAMEWORKS: FrameworkOption[] = [
   {
-    id: "clinical",
-    name: "General clinical skills",
+    id: "quill_2_test",
+    name: "Quill second test framework",
     publisher: "Quill Medical",
     specialties: [],
   },
@@ -86,7 +86,7 @@ const FRAMEWORKS: FrameworkOption[] = [
 const ONCOLOGY_FIRST: FrameworkOption[] = [FRAMEWORKS[1], FRAMEWORKS[0]];
 
 const ONCOLOGY_LABEL = "Oncology (proof of concept) (Quill Medical)";
-const GENERAL_LABEL = "General clinical skills (Quill Medical)";
+const GENERAL_LABEL = "Quill second test framework (Quill Medical)";
 
 /** The field on the passport card that the frameworks are chosen in. */
 function frameworksField(): HTMLElement {
@@ -399,7 +399,7 @@ describe("the clinician passport card", () => {
 
     expect(setPassportFrameworks).toHaveBeenCalledWith("3f2a8c1e", [
       "oncology",
-      "clinical",
+      "quill_2_test",
     ]);
   });
 

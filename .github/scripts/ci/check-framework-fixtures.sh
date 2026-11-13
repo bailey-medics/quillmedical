@@ -76,6 +76,8 @@ declared_version() {
 # Writes every version of every framework at <ref> into <into>/<id>/, one
 # file a version. Walks <ref>'s first-parent history oldest first and keeps
 # the first text at which each version appears, as the framework sync does.
+# Only a framework the checkout in <clone> still holds is kept: one deleted
+# from the repository is no longer a fixture, whatever its history.
 gather_history() {
   local clone="$1"
   local ref="$2"
@@ -94,6 +96,10 @@ gather_history() {
       name="$(basename "${path}" .yaml)"
 
       if [ "${path}" != "frameworks/${name}.yaml" ] || [ -n "${seen[${blob}]:-}" ]; then
+        continue
+      fi
+
+      if [ ! -e "${clone}/frameworks/${name}.yaml" ]; then
         continue
       fi
 

@@ -416,7 +416,7 @@ def seed_passport(db: Session, org_unit_id: int, operator: User) -> None:
         # A passport offers the competencies in its holder's frameworks
         # and no others, so the guides' holder works to the general one,
         # which holds everything seeded below.
-        frameworks=frameworks.framework_refs(held, ["clinical"]),
+        frameworks=frameworks.framework_refs(held, ["quill_2_test"]),
         now=made,
     )
     row = Passport(id=passport_id, user_id=holder.id, head_commit=commit)
@@ -427,7 +427,7 @@ def seed_passport(db: Session, org_unit_id: int, operator: User) -> None:
         store,
         passport_id,
         _actor(holder),
-        "clinical_perform_lumbar_puncture",
+        "quill_2_test_perform_a_lumbar_puncture",
         LogbookEntry(
             performed_on=date(2026, 9, 18),
             setting="Acute medical unit",
@@ -510,12 +510,12 @@ def seed_passport(db: Session, org_unit_id: int, operator: User) -> None:
     # One left waiting, so the assessor has something in their inbox, and
     # one signed, so the holder has a finished sign-off to show.
     ask(
-        "clinical_perform_lumbar_puncture",
+        "quill_2_test_perform_a_lumbar_puncture",
         date(2026, 9, 18),
         made + timedelta(days=18),
     )
     to_sign = ask(
-        "clinical_perform_chest_drain",
+        "quill_2_test_insert_a_chest_drain",
         date(2026, 9, 12),
         made + timedelta(days=12),
     )

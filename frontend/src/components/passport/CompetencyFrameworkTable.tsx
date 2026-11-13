@@ -21,7 +21,7 @@
  * @example
  * ```tsx
  * <CompetencyFrameworkTable
- *   framework={{ id: "ghnft_radiotherapy_record", name: "…" }}
+ *   framework={{ id: "quill_2_test", name: "…" }}
  *   competencies={detail.competencies}
  *   onSelect={(id) => navigate(`/passport/competencies/${id}`)}
  * />

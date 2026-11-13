@@ -428,20 +428,20 @@ describe("OrgFeaturesPage", () => {
     });
 
     it("shows the saved leads while the passport is on", async () => {
-      const get = getWithLeads(["passport"], ["uk_sact_board_2023"]);
+      const get = getWithLeads(["passport"], ["quill_test"]);
       const { container } = renderPage();
 
       await screen.findByText("Passport frameworks");
       await waitFor(() =>
         expect(pills(container)).toEqual([
-          "Prescriber competencies for reviewing and prescribing SACT - The UK SACT Board (UK SACT Board)",
+          "Quill test framework (Quill Medical)",
         ]),
       );
       expect(get).toHaveBeenCalledWith("/org-units/3/passport-frameworks");
     });
 
     it("sits above the save and cancel buttons", async () => {
-      getWithLeads(["passport"], ["uk_sact_board_2023"]);
+      getWithLeads(["passport"], ["quill_test"]);
       renderPage();
 
       const card = await screen.findByText("Passport frameworks");
@@ -456,12 +456,12 @@ describe("OrgFeaturesPage", () => {
       // It sits inside the features form now, so a stray Enter must not
       // open the confirmation or save anything
       const user = userEvent.setup();
-      getWithLeads(["passport"], ["uk_sact_board_2023"]);
+      getWithLeads(["passport"], ["quill_test"]);
       const put = vi.spyOn(apiLib.api, "put");
       const { container } = renderPage();
       await waitFor(() =>
         expect(pills(container)).toEqual([
-          "Prescriber competencies for reviewing and prescribing SACT - The UK SACT Board (UK SACT Board)",
+          "Quill test framework (Quill Medical)",
         ]),
       );
       // An unsaved switch change, so the form could submit if asked
@@ -484,44 +484,44 @@ describe("OrgFeaturesPage", () => {
 
     it("saves a picked framework straight away, at the end", async () => {
       const user = userEvent.setup();
-      getWithLeads(["passport"], ["uk_sact_board_2023"]);
+      getWithLeads(["passport"], ["quill_test"]);
       const put = vi.spyOn(apiLib.api, "put").mockResolvedValue({
-        framework_ids: ["uk_sact_board_2023", "clinical"],
+        framework_ids: ["quill_test", "quill_2_test"],
       });
       const { container } = renderPage();
       await waitFor(() =>
         expect(pills(container)).toEqual([
-          "Prescriber competencies for reviewing and prescribing SACT - The UK SACT Board (UK SACT Board)",
+          "Quill test framework (Quill Medical)",
         ]),
       );
 
       await user.click(screen.getByRole("combobox"));
       await user.click(
         await screen.findByRole("option", {
-          name: "General clinical skills (Quill Medical)",
+          name: "Quill second test framework (Quill Medical)",
         }),
       );
 
       expect(put).toHaveBeenCalledWith("/org-units/3/passport-frameworks", {
-        framework_ids: ["uk_sact_board_2023", "clinical"],
+        framework_ids: ["quill_test", "quill_2_test"],
       });
     });
 
     it("puts the leads back, and says so, when a save fails", async () => {
       const user = userEvent.setup();
-      getWithLeads(["passport"], ["uk_sact_board_2023"]);
+      getWithLeads(["passport"], ["quill_test"]);
       vi.spyOn(apiLib.api, "put").mockRejectedValue(new Error("network"));
       const { container } = renderPage();
       await waitFor(() =>
         expect(pills(container)).toEqual([
-          "Prescriber competencies for reviewing and prescribing SACT - The UK SACT Board (UK SACT Board)",
+          "Quill test framework (Quill Medical)",
         ]),
       );
 
       await user.click(screen.getByRole("combobox"));
       await user.click(
         await screen.findByRole("option", {
-          name: "General clinical skills (Quill Medical)",
+          name: "Quill second test framework (Quill Medical)",
         }),
       );
 
@@ -531,7 +531,7 @@ describe("OrgFeaturesPage", () => {
         ),
       ).toBeInTheDocument();
       expect(pills(container)).toEqual([
-        "Prescriber competencies for reviewing and prescribing SACT - The UK SACT Board (UK SACT Board)",
+        "Quill test framework (Quill Medical)",
       ]);
     });
   });

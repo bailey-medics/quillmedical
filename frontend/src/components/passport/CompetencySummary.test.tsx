@@ -149,24 +149,22 @@ describe("CompetencySummary", () => {
           competencies={[
             {
               ...row,
-              id: "clinical_perform_cannulation",
+              id: "quill_2_test_insert_a_cannula",
               name: "Insert a cannula",
             },
             {
               ...row,
-              id: "uk_sact_board_2023_prescribe_sact",
-              name: "Review and prescribe systemic anti-cancer therapy",
+              id: "quill_test_give_a_course",
+              name: "Give a course of treatment",
             },
           ]}
         />,
       );
 
-      expect(screen.getByText("General clinical skills")).toBeInTheDocument();
       expect(
-        screen.getByText(
-          "Prescriber competencies for reviewing and prescribing SACT - The UK SACT Board",
-        ),
+        screen.getByText("Quill second test framework"),
       ).toBeInTheDocument();
+      expect(screen.getByText("Quill test framework")).toBeInTheDocument();
     });
 
     it("keeps a competency in no framework, under its own heading", () => {

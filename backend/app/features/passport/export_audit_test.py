@@ -35,11 +35,11 @@ from app.features.passport.store import LocalPassportStore
 from tests.frameworks import files_catalogue
 
 PASSPORT_ID = "3f2a8c1e4b7d49f0a6c2e8b1d5a7f309"
-COMPETENCY = "uk_sact_board_2023_prescribe_sact"
+COMPETENCY = "quill_test_give_a_course"
 # What a sign-off for it covers. It is signed off one tumour site at a
 # time, so every request names one.
 SCOPE = "lung"
-LEVEL = "review_and_authorise"
+LEVEL = "review"
 
 #: Everything a log line must not carry. Names and prose from the
 #: fixtures below, plus the words a competency or an assessment would
@@ -49,7 +49,7 @@ CONTENT_MARKERS = (
     "Kapoor",
     "Amara",
     "Okonkwo",
-    "uk_sact_board_2023_prescribe_sact",
+    "quill_test_give_a_course",
     "SACT course",
     "UKONS",
     "Bristol",
@@ -291,12 +291,12 @@ This is a record of assessed clinical competence: what this person has been sign
 
 | Competency | Level | Status | Signed off by | Date | Expires |
 | --- | --- | --- | --- | --- | --- |
-| Review and prescribe systemic anti-cancer therapy | - | no sign-off | - | - | - |
-| Review and prescribe systemic anti-cancer therapy: Lung | Level 2: Review and authorise administration of systemic anti-cancer therapy | signed off | Dr Amara Okonkwo | 2026-03-20 | - |
+| Give a course of treatment | - | no sign-off | - | - | - |
+| Give a course of treatment: Lung | Level 2: Review a course before it is given | signed off | Dr Amara Okonkwo | 2026-03-20 | - |
 
 ## Logbook
 
-### Review and prescribe systemic anti-cancer therapy
+### Give a course of treatment
 
 1 recorded.
 
@@ -320,11 +320,11 @@ No CPD date ranges have been set, so these run June to June by convention rather
 
 ## Sign-offs in full
 
-### Review and prescribe systemic anti-cancer therapy: Lung
+### Give a course of treatment: Lung
 
-**Level:** Level 2: Review and authorise administration of systemic anti-cancer therapy
+**Level:** Level 2: Review a course before it is given
 
-- Framework version: 1
+- Framework version: 4
 - Status: signed_off
 - Kind: initial
 - Observed: 2026-03-14
@@ -334,5 +334,5 @@ No CPD date ranges have been set, so these run June to June by convention rather
 - Evidence in view when signed: 0 logbook entries, 0 certificates
 
 Fingerprint: `sha256:<hash>`
-Record: `uk_sact_board_2023_prescribe_sact.2026-03-14-lung`
+Record: `quill_test_give_a_course.2026-03-14-lung`
 """

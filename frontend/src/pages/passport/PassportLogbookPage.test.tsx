@@ -46,7 +46,7 @@ const detail = {
     holder_name: "Dr Mark Bailey",
     registrations: [],
     frameworks: [
-      { id: "clinical", name: "General clinical skills" },
+      { id: "quill_2_test", name: "Quill second test framework" },
       { id: "oncology", name: "Oncology (proof of concept)" },
     ],
     created_at: "2026-09-10",
@@ -92,21 +92,23 @@ describe("PassportLogbookPage", () => {
       count: 2,
       competencies: [
         {
-          competency: "clinical_perform_venepuncture",
+          competency: "quill_2_test_take_blood",
           count: 1,
-          entries: [entry("a", "clinical_perform_venepuncture", "2026-03-01")],
+          entries: [entry("a", "quill_2_test_take_blood", "2026-03-01")],
         },
         {
-          competency: "clinical_certify_death",
+          competency: "quill_2_test_confirm_a_death",
           count: 1,
-          entries: [entry("b", "clinical_certify_death", "2026-03-02")],
+          entries: [entry("b", "quill_2_test_confirm_a_death", "2026-03-02")],
         },
       ],
     });
     renderWithRouter(<PassportLogbookPage />);
 
-    expect(await screen.findByText(/venepuncture/i)).toBeInTheDocument();
-    expect(screen.getByText(/certify death/i)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/take blood from a vein/i),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/confirm a death/i)).toBeInTheDocument();
   });
 
   it("says so when nothing has been logged", async () => {
@@ -121,10 +123,14 @@ describe("PassportLogbookPage", () => {
       count: 1,
       competencies: [
         {
-          competency: "clinical_certify_death",
+          competency: "quill_2_test_confirm_a_death",
           count: 1,
           entries: [
-            entry("20260302T0900", "clinical_certify_death", "2026-03-02"),
+            entry(
+              "20260302T0900",
+              "quill_2_test_confirm_a_death",
+              "2026-03-02",
+            ),
           ],
         },
       ],
@@ -134,7 +140,7 @@ describe("PassportLogbookPage", () => {
     await user.click(await screen.findByText(/2 Mar 2026/));
 
     expect(navigate).toHaveBeenCalledWith(
-      "/passport/logbook/clinical_certify_death/20260302T0900",
+      "/passport/logbook/quill_2_test_confirm_a_death/20260302T0900",
     );
   });
 
@@ -232,14 +238,14 @@ describe("PassportLogbookPage", () => {
       count: 2,
       competencies: [
         {
-          competency: "clinical_perform_venepuncture",
+          competency: "quill_2_test_take_blood",
           count: 1,
-          entries: [entry("a", "clinical_perform_venepuncture", "2026-03-01")],
+          entries: [entry("a", "quill_2_test_take_blood", "2026-03-01")],
         },
         {
-          competency: "clinical_certify_death",
+          competency: "quill_2_test_confirm_a_death",
           count: 1,
-          entries: [entry("b", "clinical_certify_death", "2026-03-02")],
+          entries: [entry("b", "quill_2_test_confirm_a_death", "2026-03-02")],
         },
       ],
     });
@@ -249,8 +255,10 @@ describe("PassportLogbookPage", () => {
     // `FilterSelect` takes no `disabled` prop, so the thing worth
     // asserting is that the page still offers it and still renders
     // what it would narrow.
-    expect(await screen.findByText("Perform Venepuncture")).toBeInTheDocument();
-    expect(screen.getByText("Certify Death")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Take blood from a vein"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Confirm a death")).toBeInTheDocument();
     expect(
       screen.getByRole("button", {
         name: "Filter the logbook by competency",

@@ -329,16 +329,16 @@ describe("SignOffForm", () => {
     const scaled = {
       ...requested,
       competency: {
-        id: "ruh_sact_passport_prescribe_sact",
-        name: "Prescribe SACT",
+        id: "quill_test_refer_to_a_team",
+        name: "Refer a patient to another team",
       },
       level: {
-        id: "independent",
-        name: "Considered competent to prescribe SACT independently (consultant level)",
+        id: "independently",
+        name: "Independently",
       },
       requested_level: {
-        id: "independent",
-        name: "Considered competent to prescribe SACT independently (consultant level)",
+        id: "independently",
+        name: "Independently",
       },
     };
 
@@ -370,13 +370,9 @@ describe("SignOffForm", () => {
       );
 
       expect(screen.getByRole("combobox", { name: /^Level/ })).toHaveValue(
-        "Considered competent to prescribe SACT independently (consultant level)",
+        "Independently",
       );
-      expect(
-        screen.getByText(
-          /Asked for: Considered competent to prescribe SACT independently/,
-        ),
-      ).toBeInTheDocument();
+      expect(screen.getByText(/Asked for: Independently/)).toBeInTheDocument();
     });
 
     it("signs the level asked for without asking why", async () => {
@@ -396,7 +392,7 @@ describe("SignOffForm", () => {
       );
 
       expect(onSubmit).toHaveBeenCalledWith(
-        expect.objectContaining({ level_id: "independent" }),
+        expect.objectContaining({ level_id: "independently" }),
       );
     });
 
@@ -411,10 +407,7 @@ describe("SignOffForm", () => {
       );
 
       await chooseBasisAndConfirm(user);
-      await chooseLevel(
-        user,
-        "Considered competent to prescribe SACT with direct supervision",
-      );
+      await chooseLevel(user, "With indirect supervision");
 
       expect(
         screen.getByRole("textbox", { name: /Why a different level/ }),
@@ -436,10 +429,7 @@ describe("SignOffForm", () => {
       );
 
       await chooseBasisAndConfirm(user);
-      await chooseLevel(
-        user,
-        "Considered competent to prescribe SACT with direct supervision",
-      );
+      await chooseLevel(user, "With indirect supervision");
       await user.type(
         screen.getByRole("textbox", { name: /Why a different level/ }),
         "Not yet contouring alone.",
@@ -450,7 +440,7 @@ describe("SignOffForm", () => {
 
       expect(onSubmit).toHaveBeenCalledWith(
         expect.objectContaining({
-          level_id: "direct_supervision",
+          level_id: "with_indirect_supervision",
           comments: "Not yet contouring alone.",
         }),
       );

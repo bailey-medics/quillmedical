@@ -321,10 +321,10 @@ class TestListDir:
             PASSPORT_ID,
             {
                 paths.sign_off_file(
-                    "clinical", "clinical_thing.2026-03-14"
+                    "quill_2_test", "quill_2_test_thing.2026-03-14"
                 ): "id: 1\n",
                 paths.sign_off_file(
-                    "clinical", "clinical_thing.2026-03-15"
+                    "quill_2_test", "quill_2_test_thing.2026-03-15"
                 ): "id: 2\n",
             },
             _message("two sign-offs"),
@@ -333,7 +333,8 @@ class TestListDir:
         )
 
         entries = passport_store.list_dir(
-            PASSPORT_ID, paths.sign_offs_dir("clinical", "clinical_thing")
+            PASSPORT_ID,
+            paths.sign_offs_dir("quill_2_test", "quill_2_test_thing"),
         )
 
         assert [entry.name for entry in entries] == [
@@ -368,7 +369,7 @@ class TestWrite:
             PASSPORT_ID,
             {
                 paths.sign_off_file(
-                    "clinical", "clinical_thing.2026-03-14"
+                    "quill_2_test", "quill_2_test_thing.2026-03-14"
                 ): "id: 1\n"
             },
             _message("a sign-off"),
@@ -389,10 +390,10 @@ class TestWrite:
             PASSPORT_ID,
             {
                 paths.sign_off_file(
-                    "clinical", "clinical_thing.2026-03-14"
+                    "quill_2_test", "quill_2_test_thing.2026-03-14"
                 ): "id: 1\n",
                 paths.sign_off_reflection(
-                    "clinical", "clinical_thing.2026-03-14"
+                    "quill_2_test", "quill_2_test_thing.2026-03-14"
                 ): "words\n",
                 paths.INDEX: "updated: true\n",
             },
@@ -454,8 +455,8 @@ class TestWrite:
             PASSPORT_ID,
             {
                 paths.logbook_entry(
-                    "clinical",
-                    "clinical_perform_cannulation",
+                    "quill_2_test",
+                    "quill_2_test_insert_a_cannula",
                     "2026-03-14-143207",
                 ): "a: 1\n"
             },
@@ -472,8 +473,8 @@ class TestWrite:
             PassportHead(commit=second),
             delete=(
                 paths.logbook_entry(
-                    "clinical",
-                    "clinical_perform_cannulation",
+                    "quill_2_test",
+                    "quill_2_test_insert_a_cannula",
                     "2026-03-14-143207",
                 ),
             ),
@@ -483,8 +484,8 @@ class TestWrite:
             passport_store.read(
                 PASSPORT_ID,
                 paths.logbook_entry(
-                    "clinical",
-                    "clinical_perform_cannulation",
+                    "quill_2_test",
+                    "quill_2_test_insert_a_cannula",
                     "2026-03-14-143207",
                 ),
             )
@@ -651,7 +652,7 @@ class TestRollback:
                 {
                     paths.INDEX: "half: written\n",
                     paths.sign_off_file(
-                        "clinical", "clinical_thing.2026-03-14"
+                        "quill_2_test", "quill_2_test_thing.2026-03-14"
                     ): "id: 1\n",
                 },
                 _message("a doomed write"),
@@ -724,7 +725,7 @@ class TestRollback:
                 PASSPORT_ID,
                 {
                     paths.sign_off_file(
-                        "clinical", "clinical_thing.2026-03-14"
+                        "quill_2_test", "quill_2_test_thing.2026-03-14"
                     ): "id: 1\n"
                 },
                 _message("a doomed write"),

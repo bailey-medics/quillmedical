@@ -24,7 +24,7 @@ export const Default: Story = {
 
 /** An oncology department putting the framework its trainees work to first. */
 export const WithLeads: Story = {
-  args: { value: ["uk_sact_board_2023"] },
+  args: { value: ["quill_test"] },
 };
 
 /** A saved lead whose file has since been withdrawn. */

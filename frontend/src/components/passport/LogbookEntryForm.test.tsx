@@ -104,7 +104,7 @@ describe("LogbookEntryForm", () => {
       renderForm({
         initial: {
           filename: "20260314T1432",
-          competency: "uk_sact_board_2023_prescribe_sact",
+          competency: "quill_test_give_a_course",
           performed_on: "2026-03-14",
           setting: null,
           supervision: null,
@@ -276,7 +276,7 @@ describe("LogbookEntryForm", () => {
         scopes,
         initial: {
           filename: "20260314T1432",
-          competency: "uk_sact_board_2023_prescribe_sact",
+          competency: "quill_test_give_a_course",
           performed_on: "2026-03-14",
           setting: null,
           supervision: null,
@@ -319,7 +319,7 @@ describe("LogbookEntryForm", () => {
         scopes,
         initial: {
           filename: "20260314T1432",
-          competency: "uk_sact_board_2023_prescribe_sact",
+          competency: "quill_test_give_a_course",
           performed_on: "2026-03-14",
           scope: { id: "breast", name: "Breast" },
           setting: null,
