@@ -25,6 +25,7 @@ from app.features.passport.sync import (
     sync_from_repositories,
     sync_version_texts,
 )
+from app.paths import FRAMEWORK_FIXTURE_HISTORY_DIR
 
 _SHEET = """\
 framework:
@@ -62,30 +63,39 @@ def _count(db: Session, model: type) -> int:
     return db.scalar(select(func.count()).select_from(model)) or 0
 
 
-def test_the_framework_fixtures_are_stored_by_default(
+def test_the_framework_fixtures_are_stored_with_their_history(
     db_session: Session,
 ) -> None:
-    """The four in shared/framework-fixtures/, each at its version.
+    """Every version in shared/framework-fixtures/history/ is stored.
 
     The frameworks themselves live in their publishers' repositories, so
-    the folder form reads the fixtures when given no folder, as the dev
-    migrate recipe calls it.
+    the tests, the CI seed and the dev migrate recipe read the fixtures.
+    quill_test has had four versions, and its newest file alone could not
+    be stored: a framework's first stored version must be 1.
     """
-    result = sync_frameworks(db_session)
+    result = sync_framework_versions(db_session, FRAMEWORK_FIXTURE_HISTORY_DIR)
 
-    versions = dict(
+    newest = dict(
         db_session.execute(
             select(
                 PassportFrameworkVersion.framework_id,
-                PassportFrameworkVersion.version,
-            )
+                func.max(PassportFrameworkVersion.version),
+            ).group_by(PassportFrameworkVersion.framework_id)
         ).all()
     )
+    quill_test = db_session.scalars(
+        select(PassportFrameworkVersion.version)
+        .where(PassportFrameworkVersion.framework_id == "quill_test")
+        .order_by(PassportFrameworkVersion.version)
+    ).all()
 
-    assert result.succeeded
-    assert versions == {
+    assert result.succeeded, result.error
+    assert quill_test == [1, 2, 3, 4]
+    assert newest == {
         "clinical": 1,
         "ghnft_radiotherapy_record": 1,
+        "quill_2_test": 1,
+        "quill_test": 4,
         "ruh_sact_passport": 1,
         "uk_sact_board_2023": 1,
     }
