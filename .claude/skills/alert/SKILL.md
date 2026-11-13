@@ -63,7 +63,7 @@ there is nowhere to report.
    is ready to commit when they say so.
 2. **Start from current `main`.** `git fetch origin main`, then
    `just stack-fresh`. The previous alert may have left the checkout on its
-   `feature/alert-*` branch; the daemon only starts a run on a clean tree,
+   `feature/owl-*` branch; the daemon only starts a run on a clean tree,
    so there is nothing to carry across.
 3. **Say you have started**, in the thread:
 
@@ -212,11 +212,24 @@ could not reproduce, not a fault) is one message in place of the last two.
    `just uf <file>`. Never the full suite.
 6. **Open the pull request** with `/crpd`, only when
    `QUILL_OWL=true` (see "Before anything else"). The stack key is
-   always `alert`, so the branch is `feature/alert-<what-it-fixes>` and the
-   title `Alert: <what it fixes>`; use it even when another alert's pull
-   request is still open, since each alert is a stack of its own. The pull
-   request opens ready for review, not as a draft, because a production fix
-   may need merging at once. It is never merged here.
+   always `owl`, so the branch is `feature/owl-<what-it-fixes>` and the
+   title `Owl: <what it fixes>`; use it even when another of Owl's pull
+   requests is still open, since each alert is a stack of its own. The
+   key says who opened it: a reader of the pull request list sees at once
+   that Owl wrote it, not a person. The pull request opens ready for
+   review, not as a draft, because a production fix may need merging at
+   once. It is never merged here.
+
+   **The description opens with one bold line, above everything `/crpd`
+   writes**, saying Owl made it and linking the Slack alert it answers,
+   from the alert file's `thread_url`, with the alert's headline in a few
+   words:
+
+   ```markdown
+   **Created by the Owl watcher, for the Slack alert [Merge queue: #2465 was removed by a failed check](<thread_url>).**
+   ```
+
+   Then a blank line, and the body as `/crpd` sets it out.
 7. **Post the pull request to the thread** once it is open and ready for
    review:
 

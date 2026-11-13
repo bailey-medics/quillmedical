@@ -132,7 +132,7 @@ describe("checkWorktree", () => {
   });
 
   it("is free on any branch, since moving the checkout leaves the branch as it is", async () => {
-    for (const branch of ["feature/alert-fix-x", "feature/watcher-x"]) {
+    for (const branch of ["feature/owl-fix-x", "feature/watcher-x"]) {
       const git = fakeGit({ "status --porcelain": "", "rev-parse --abbrev-ref HEAD": branch });
 
       assert.deepEqual(await checkWorktree("/w", git), { free: true });
