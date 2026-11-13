@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Shared helpers for naming an image's copy in this repository's own mirror.
+# Shared helpers for naming an image's copy in this repository's own mirror,
+# and asking whether the mirror holds it.
 # For use in GitHub Actions workflows only.
 #
 # CI's public images are copied into GitHub's registry, under the owner of
@@ -74,6 +75,28 @@ mirror_pull_ref() {
   else
     mirror_push_ref "$owner" "$ref"
   fi
+}
+
+# Says whether the registry holds an image, asking up to three times. One
+# failed lookup is not proof the image is missing: a slow registry fails
+# them too, and calling a held copy missing sends a person to fill a mirror
+# that is already full. An image that really is missing costs two more
+# quick refusals.
+mirror_holds() {
+  local ref="$1"
+  local attempt=""
+
+  for attempt in 1 2 3; do
+    if docker manifest inspect "$ref" >/dev/null 2>&1; then
+      return 0
+    fi
+
+    if [ "$attempt" -lt 3 ]; then
+      sleep 5
+    fi
+  done
+
+  return 1
 }
 
 # Prints the reference to copy an image from. One pinned to a digest is

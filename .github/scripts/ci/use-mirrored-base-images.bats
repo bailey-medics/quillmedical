@@ -4,6 +4,8 @@
 # With a stand-in for docker on PATH that says which images the registry
 # holds, so nothing is asked of a real one.
 
+bats_require_minimum_version 1.5.0
+
 setup() {
   SCRIPT="${BATS_TEST_DIRNAME}/use-mirrored-base-images.sh"
   ROOT="${BATS_TEST_DIRNAME}/../../.."
@@ -35,7 +37,30 @@ grep -qxF "\$3" "${HELD}"
 STUB
   chmod +x "${BIN}/docker"
 
+  # The script waits between lookups; the tests need not.
+  printf '#!/usr/bin/env bash\n' > "${BIN}/sleep"
+  chmod +x "${BIN}/sleep"
+
   PATH="${BIN}:${PATH}"
+}
+
+# Replaces the docker stand-in with one whose first lookup of every image
+# fails, as a slow registry's does, and which answers from $HELD after
+# that. Each call is recorded in $CALLS.
+registry_fails_once() {
+  CALLS="${BATS_TEST_TMPDIR}/calls"
+  : > "$CALLS"
+
+  cat > "${BIN}/docker" <<STUB
+#!/usr/bin/env bash
+if ! grep -qxF "\$3" "${CALLS}"; then
+  echo "\$3" >> "${CALLS}"
+  exit 1
+fi
+echo "\$3" >> "${CALLS}"
+grep -qxF "\$3" "${HELD}"
+STUB
+  chmod +x "${BIN}/docker"
 }
 
 # Prints the lines of the `build_args` output.
@@ -79,6 +104,29 @@ build_args() {
   [ -z "$(build_args)" ]
   [[ "$output" == *"the mirror does not hold"* ]]
   [[ "$output" == *"staying on public.ecr.aws/docker/library/python:3.14-slim@sha256:abc123"* ]]
+}
+
+@test "asks again when the registry fails to answer, rather than calling the image missing" {
+  # One slow lookup of a copy the mirror held reported it missing, and
+  # raised an alert telling a person to fill a mirror that was full.
+  registry_fails_once
+  echo "ghcr.io/bailey-medics/mirror/python@sha256:abc123" > "$HELD"
+
+  run bash "$SCRIPT" bailey-medics "$BACKEND"
+
+  [ "$status" -eq 0 ]
+  [ "$(build_args)" = "PYTHON_IMAGE=ghcr.io/bailey-medics/mirror/python@sha256:abc123" ]
+  run ! grep -q "^fell_back=" "$GITHUB_OUTPUT"
+}
+
+@test "an image the mirror lacks is asked about three times, then left on the public registry" {
+  registry_fails_once
+
+  run bash "$SCRIPT" bailey-medics "$BACKEND"
+
+  [ "$status" -eq 0 ]
+  [ "$(wc -l < "$CALLS" | tr -d ' ')" -eq 3 ]
+  grep -qx "fell_back=public.ecr.aws/docker/library/python:3.14-slim@sha256:abc123" "$GITHUB_OUTPUT"
 }
 
 @test "each image is decided on its own" {

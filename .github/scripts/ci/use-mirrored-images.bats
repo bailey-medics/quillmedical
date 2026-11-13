@@ -33,7 +33,51 @@ grep -qxF "\$3" "${HELD}"
 STUB
   chmod +x "${BIN}/docker"
 
+  # The script waits between lookups; the tests need not.
+  printf '#!/usr/bin/env bash\n' > "${BIN}/sleep"
+  chmod +x "${BIN}/sleep"
+
   PATH="${BIN}:${PATH}"
+}
+
+# Replaces the docker stand-in with one whose first lookup of every image
+# fails, and which answers from $HELD after that. Each call is recorded in
+# $CALLS.
+registry_fails_once() {
+  CALLS="${BATS_TEST_TMPDIR}/calls"
+  : > "$CALLS"
+
+  cat > "${BIN}/docker" <<STUB
+#!/usr/bin/env bash
+if ! grep -qxF "\$3" "${CALLS}"; then
+  echo "\$3" >> "${CALLS}"
+  exit 1
+fi
+echo "\$3" >> "${CALLS}"
+grep -qxF "\$3" "${HELD}"
+STUB
+  chmod +x "${BIN}/docker"
+}
+
+@test "asks again when the registry fails to answer, rather than calling the image missing" {
+  registry_fails_once
+  echo "ghcr.io/bailey-medics/mirror/caddy@sha256:abc123" > "$HELD"
+
+  run bash "$SCRIPT" bailey-medics "$COMPOSE" CI_CADDY_IMAGE
+
+  [ "$status" -eq 0 ]
+  [ "$(cat "$GITHUB_ENV")" = "CI_CADDY_IMAGE=ghcr.io/bailey-medics/mirror/caddy@sha256:abc123" ]
+  [ ! -s "$GITHUB_OUTPUT" ]
+}
+
+@test "an image the mirror lacks is asked about three times, then left on the public registry" {
+  registry_fails_once
+
+  run bash "$SCRIPT" bailey-medics "$COMPOSE" CI_CADDY_IMAGE
+
+  [ "$status" -eq 0 ]
+  [ "$(wc -l < "$CALLS" | tr -d ' ')" -eq 3 ]
+  grep -qx "fell_back=public.ecr.aws/docker/library/caddy:2-alpine@sha256:abc123" "$GITHUB_OUTPUT"
 }
 
 @test "points a variable at the mirror when the mirror holds the image" {
