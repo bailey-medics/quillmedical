@@ -17,6 +17,7 @@
 # repository has no main for a pull request to target, so its first commit
 # is pushed straight to main, and these rules refuse that push.
 
+# Add any new passport framework repositories here when onboarding one.
 locals {
   passport_framework_repos = [
     "gloucestershire-radiotherapy-record-framework",
