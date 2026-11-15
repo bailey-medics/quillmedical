@@ -161,27 +161,3 @@ resource "time_sleep" "wait_for_backend_bucket" {
 locals {
   signing_key_name = "teaching-video-key"
 }
-
-removed {
-  from = random_bytes.signing_key
-
-  lifecycle {
-    destroy = false
-  }
-}
-
-removed {
-  from = google_compute_backend_bucket_signed_url_key.videos
-
-  lifecycle {
-    destroy = false
-  }
-}
-
-removed {
-  from = google_secret_manager_secret_version.signing_key
-
-  lifecycle {
-    destroy = false
-  }
-}
