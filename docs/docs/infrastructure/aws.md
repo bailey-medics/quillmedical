@@ -60,9 +60,7 @@ and validation; a merge posts a reminder to Slack. Then, from a checkout
 up to date with `main`:
 
 ```bash
-just al               # sign in to the emails account
-just al management    # and the management one, which reaches development
-just terraform-aws    # plan, ask, apply
+just terraform-aws    # sign in where needed, plan, ask, apply
 ```
 
 CI holds nothing for AWS. Applying needs a role able to write IAM
@@ -83,7 +81,7 @@ email accounts:
 1. Put the new account numbers in `backend/.env`
    (`AWS_EMAILS_ACCOUNT_ID`, `AWS_EMAILS_DEV_ACCOUNT_ID`).
    `just terraform-aws` reads them from there.
-2. Run `just al`, `just al management`, then `just terraform-aws`. This
+2. Run `just terraform-aws`. It signs in to both AWS accounts first. This
    makes the domain identity, the MAIL FROM name, the suppression list
    settings and the user with its policy.
 3. Copy the new `dkim_tokens` outputs into the CNAME records in
