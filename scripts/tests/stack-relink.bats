@@ -394,3 +394,16 @@ missing_from_the_top() {
     [ "$(cat "${STUB}/unstacked")" = "1414" ]
     [ "$(cat "${STUB}/linked")" = "1386 1364" ]
 }
+
+@test "the shared record is found from a linked worktree" {
+    # gh-stack keeps one record, in the shared .git, for every worktree.
+    write_record '{"id": "5", "number": 1300}'
+    echo '{"pull_requests": [{"merged_at": "2026-10-02T10:00:00Z"}, {"merged_at": null}]}' \
+        > "${STUB}/stack-1300"
+    git worktree add --quiet "${BATS_TEST_TMPDIR}/other" feature/c
+
+    cd "${BATS_TEST_TMPDIR}/other"
+    run python3 "${SCRIPT}" --needed
+
+    [ "$status" -eq 0 ]
+}

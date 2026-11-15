@@ -360,10 +360,10 @@ _stack-branch-name name:
 
 # Refuse a stack operation when a stack branch lives in another worktree.
 #
-# gh-stack keeps its state in $(git rev-parse --git-dir)/gh-stack, which for
-# a worktree is .git/worktrees/<name>/gh-stack: worktree-local, invisible to
-# the other checkouts, and removed with the worktree. So a stack belongs to
-# the worktree that created it.
+# gh-stack keeps one record for every worktree, in the shared .git/gh-stack.
+# But a branch can be checked out in only one worktree at a time, so a stack
+# is worked on from one worktree, and its branches must not be checked out
+# in any other.
 #
 # The guard matters because `gh stack rebase` does not enforce that itself.
 # Given a branch checked out elsewhere it prints the git error, skips the
@@ -1593,10 +1593,10 @@ stack-checkout target="":
     {{stack_repo}}
     set -euo pipefail
 
-    # The recovery path when a stack's local state is gone - a removed
-    # worktree takes .git/worktrees/<name>/gh-stack with it. This fetches
-    # the stack back from GitHub, which works once two or more pull
-    # requests exist. With no argument it opens a picker of every stack.
+    # The recovery path when a stack is missing from the local record in
+    # .git/gh-stack. This fetches the stack back from GitHub, which works
+    # once two or more pull requests exist. With no argument it opens a
+    # picker of every stack.
     gh stack checkout {{target}}
     python3 "{{stack_scripts}}"/stack-status.py
 
@@ -2049,18 +2049,25 @@ stack-refresh:
         exit 1
     fi
 
-    # unstack deletes the record, so keep a copy: if init then fails the
-    # stack would otherwise be gone with nothing to put back.
-    record="$(git rev-parse --git-dir)/gh-stack"
+    # unstack drops this stack from the record, so keep a copy: if init
+    # then fails the stack would otherwise be gone with nothing to put
+    # back. The record is shared by every worktree and holds their stacks
+    # too, so it is never empty afterwards; the copy goes back whenever
+    # the rebuild did not finish.
+    record="$(git rev-parse --path-format=absolute --git-common-dir)/gh-stack"
     backup="$(mktemp)"
+    rebuilt=0
     cp "${record}" "${backup}"
+
     restore() {
-        if [ ! -s "${record}" ] && [ -s "${backup}" ]; then
+        if [ "${rebuilt}" -ne 1 ] && [ -s "${backup}" ]; then
             cp "${backup}" "${record}"
             echo "✗ Refresh failed - the stack record was restored." >&2
         fi
+
         rm -f "${backup}"
     }
+
     trap restore EXIT
 
     git fetch origin main --quiet
@@ -2093,6 +2100,7 @@ stack-refresh:
         gh stack init ${branches}
     fi
 
+    rebuilt=1
     python3 "{{stack_scripts}}"/stack-status.py
 
 
@@ -2314,10 +2322,8 @@ stack-sync scope="":
         # tidied here, where the branches were just deleted, rather than left
         # to surprise the next rebase.
         #
-        # The record is per worktree - stack-forget-merged.py resolves it with
-        # `git rev-parse --git-path gh-stack` - so this tidies the checkout it
-        # is run from and no other. That is exactly why a sweep has to visit
-        # each one rather than tidying up centrally.
+        # The record is shared by every worktree, so this tidies every
+        # stack in it, leaving alone any branch checked out in a worktree.
         python3 "{{stack_scripts}}"/stack-forget-merged.py || return 1
 
         # A merge is when GitHub's stack drifts from this one: the merged
