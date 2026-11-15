@@ -68,3 +68,33 @@ just terraform-aws    # plan, ask, apply
 CI holds nothing for AWS. Applying needs a role able to write IAM
 policy, which could widen what the mail key may do, so that stays with
 somebody signed in.
+
+## Building it again
+
+The SES set-up in each email account was first made by hand in the
+console, then adopted into Terraform with `import` blocks. Those blocks
+were deleted once applied, because an import of something that does
+not exist fails. `git log -- infra/aws/imports.tf` shows what they
+adopted.
+
+So `infra/aws/` creates every SES resource itself. To build it in empty
+email accounts:
+
+1. Put the new account numbers in `backend/.env`
+   (`AWS_EMAILS_ACCOUNT_ID`, `AWS_EMAILS_DEV_ACCOUNT_ID`).
+   `just terraform-aws` reads them from there.
+2. Run `just al`, `just al management`, then `just terraform-aws`. This
+   makes the domain identity, the MAIL FROM name, the suppression list
+   settings and the user with its policy.
+3. Copy the new `dkim_tokens` outputs into the CNAME records in
+   `infra/dns.tf`, and apply that. SES verifies the domain once the
+   records resolve.
+4. Make an access key for each user in the console, and put it in GCP
+   Secret Manager (`ses-access-key-id`, `ses-secret-access-key`) or, for
+   development, `backend/.env`.
+5. Ask AWS, through a support case in the console, to move the App
+   production account out of the SES sandbox. Terraform cannot do this.
+
+Lesson for next time: write the Terraform first and let it create a
+resource. Only what Terraform cannot do, such as the sandbox request or
+the access keys, is done by hand.

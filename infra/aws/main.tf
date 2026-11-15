@@ -1,10 +1,10 @@
 # main.tf - Amazon SES in London, in the two AWS accounts that send email
 #
 # What Quill has in AWS is small: one verified domain, a few SES settings
-# and one user whose key sends mail, in each of two accounts. It was made
-# by hand on 6 and 7 October 2026 and is adopted here, in imports.tf, so
-# that a change to it is a reviewed pull request and not a console click.
-# See docs/docs/plans/2026-10-06-amazon-ses-email-plan.md, Phase 7.
+# and one user whose key sends mail, in each of two accounts. It is all
+# here so that a change to it is a reviewed pull request and not a
+# console click. To build it again in empty accounts, see "Building it
+# again" in docs/docs/infrastructure/aws.md.
 #
 # Usage: `just terraform-aws` (alias tf-aws), from any checkout, after
 # `just al` and `just al management`. It plans, asks, then applies. A
