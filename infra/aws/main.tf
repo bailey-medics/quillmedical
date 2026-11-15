@@ -6,10 +6,11 @@
 # console click. To build it again in empty accounts, see "Building it
 # again" in docs/docs/infrastructure/aws.md.
 #
-# Usage: `just terraform-aws` (alias tf-aws), from any checkout, after
-# `just al` and `just al management`. It plans, asks, then applies. A
-# person applies this and CI never does; see
-# .github/workflows/aws-terraform.yml for why.
+# Usage: `just terraform-aws` (alias tf-aws), from any checkout. It signs
+# in to Google and both AWS accounts when needed, then plans, asks and
+# applies. A
+# person applies this and CI never does; "Changing it" in
+# docs/docs/infrastructure/aws.md says why.
 #
 # Not here, on purpose:
 #   - The access keys. A key Terraform makes is written into its state in
