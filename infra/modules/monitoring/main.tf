@@ -73,22 +73,6 @@ data "google_monitoring_notification_channel" "slack" {
 # and named here by id. The values are also kept in Secret Manager, as
 # `pagerduty-service-key` and `alert-sms-number`, for whoever makes the
 # channel again.
-removed {
-  from = google_monitoring_notification_channel.pagerduty
-
-  lifecycle {
-    destroy = false
-  }
-}
-
-removed {
-  from = google_monitoring_notification_channel.sms
-
-  lifecycle {
-    destroy = false
-  }
-}
-
 locals {
   # Tier one: cheap, ignorable, often self-resolving.
   notification_channels = concat(
