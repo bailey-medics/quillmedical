@@ -2,20 +2,14 @@
 # Organisation-level rulesets for the teaching content repositories
 # ---------------------------------------------------------------------------
 #
-# Moved here from teaching-tooling/infra/main.tf when the teaching pipeline
-# was consolidated into Quill. The repositories they protect now call Quill's
-# workflow, so the rules that gate them belong in the same state as the
-# workflow rather than in a repository that no longer runs anything.
-#
-# They already existed in GitHub and were adopted into this state with
-# `import` blocks, since creating them again would have made duplicates. The
-# import blocks have been removed now that the adoption is applied; a stale
-# one reads as work still outstanding.
+# Each teaching repository runs its checks using a workflow from this
+# Quill Medical repository. These rules make those checks pass before
+# anything merges.
 #
 # GitHub's fnmatch wildcards (e.g. ~*-teaching) are unreliable in org-level
-# repository_name conditions, so the repositories are listed explicitly. Add
-# a new content repository here when onboarding one.
+# repository_name conditions, so the repositories are listed explicitly.
 
+# Add any new teaching content repositories here when onboarding one.
 locals {
   teaching_repos = [
     "eoeeta-teaching",
@@ -25,9 +19,10 @@ locals {
 }
 
 # The required check names are composed from the caller's job name plus the
-# job names in Quill's teaching-pipeline.yml. Both were deliberately
-# preserved through the consolidation so these contexts stay valid; renaming
-# either leaves a pull request waiting on a check that never reports.
+# job names in Quill's teaching-pipeline.yml. For example, the caller's job
+# `pipeline` running the job `validate` reports as "pipeline / validate".
+# Renaming either leaves a pull request waiting on a check that never
+# reports.
 resource "github_organization_ruleset" "teaching_protected_branches" {
   name        = "teaching-content-protected-branches"
   target      = "branch"
