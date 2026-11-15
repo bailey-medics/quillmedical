@@ -84,7 +84,12 @@ SKIPPED_SUFFIXES = (
     ".snap",
     ".pem",
 )
-SKIPPED_NAMES = ("yarn.lock", "poetry.lock", "package-lock.json")
+SKIPPED_NAMES = (
+    "yarn.lock",
+    "poetry.lock",
+    "package-lock.json",
+    ".terraform.lock.hcl",
+)
 # Prose that is audited all the same: the guides are shown to the people
 # who use Quill, as much a part of the app as its code is.
 AUDITED_PROSE_FOLDERS = ("frontend/src/guides/content/",)

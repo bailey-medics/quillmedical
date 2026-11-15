@@ -335,6 +335,24 @@ ledger() {
     [[ "$output" == *"Nothing to stamp"* ]]
 }
 
+@test "terraform's lock file is left off the card" {
+    mkdir -p "${MAIN}/infra/github"
+    printf 'provider "registry.terraform.io/integrations/github" {}\n' \
+        > "${MAIN}/infra/github/.terraform.lock.hcl"
+    printf 'locals {}\n' > "${MAIN}/infra/github/main.tf"
+    git -C "$MAIN" add -A
+    git -C "$MAIN" -c user.name=t -c user.email=t@example.com \
+        commit -q -m "terraform"
+
+    run ledger "$MAIN" status f
+    [[ "$output" != *".terraform.lock.hcl"* ]]
+
+    ledger "$MAIN" mark infra/github/main.tf
+    run ledger "$MAIN" states
+    [[ "$output" != *".terraform.lock.hcl"* ]]
+    [[ "$output" == *"audited"*"infra/github/main.tf"* ]]
+}
+
 @test "the api-compatibility decision files are left off the card" {
     mkdir "${MAIN}/api-compatibility"
     echo 'decision: additive' > "${MAIN}/api-compatibility/0001.yaml"
