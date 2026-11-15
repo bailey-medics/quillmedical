@@ -501,3 +501,16 @@ class TestFrameworkRepositories:
             )
 
         assert "FRAMEWORK_REPOSITORIES" in str(caught.value)
+
+
+class TestEmailFrom:
+    """The sender, unless set, is the address App production sends from."""
+
+    def test_the_default_is_on_the_domain_ses_verifies(self) -> None:
+        settings = Settings(
+            JWT_SECRET="test_secret_long_enough_32_chars_min",
+            VAPID_PRIVATE="vapid_key",
+            CORE_DB_PASSWORD="auth_pass",
+        )
+
+        assert settings.EMAIL_FROM == "info@quill-medical.com"

@@ -454,7 +454,7 @@ class Settings(BaseSettings):
         ),
     )
     EMAIL_FROM: str = Field(
-        "noreply@quillmedical.com",
+        "info@quill-medical.com",
         description="Sender address for outgoing emails",
     )
     EMAIL_FROM_LDD: str = Field(
