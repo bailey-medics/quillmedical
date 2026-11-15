@@ -23,7 +23,7 @@ provider "aws" {
 
 # Read as well as managed below. Reading is how each account's email
 # address is found without writing it down: see `accounts`.
-data "aws_organizations_organization" "this" {
+data "aws_organizations_organization" "existing" {
   provider = aws.management
 }
 
@@ -45,11 +45,6 @@ resource "aws_organizations_organization" "this" {
     prevent_destroy = true
     ignore_changes  = [aws_service_access_principals]
   }
-}
-
-import {
-  to = aws_organizations_organization.this
-  id = data.aws_organizations_organization.this.id
 }
 
 # ---------- The accounts ----------
@@ -84,7 +79,7 @@ locals {
   # written here: this repository is public, and the address is where
   # an account's root sign-in and its password resets go.
   account_emails = {
-    for account in data.aws_organizations_organization.this.accounts :
+    for account in data.aws_organizations_organization.existing.accounts :
     account.id => account.email
   }
 }
@@ -95,7 +90,7 @@ resource "aws_organizations_account" "this" {
 
   name      = each.value.name
   email     = local.account_emails[each.value.id]
-  parent_id = data.aws_organizations_organization.this.roots[0].id
+  parent_id = data.aws_organizations_organization.existing.roots[0].id
 
   # Removing an account from here must never remove it from AWS.
   # Terraform refuses to plan it. The three ignored settings are read
@@ -127,7 +122,7 @@ import {
 check "every_account_is_listed" {
   assert {
     condition = (
-      toset(data.aws_organizations_organization.this.accounts[*].id)
+      toset(data.aws_organizations_organization.existing.accounts[*].id)
       == toset([for account in local.accounts : account.id])
     )
     error_message = "The organisation holds an account that organisation.tf does not list, or lists one it does not hold."
@@ -135,27 +130,20 @@ check "every_account_is_listed" {
 }
 
 # ---------- London only ----------
-# AWS made this policy, with its name, when the organisation's advanced
-# features were switched on, and fixed it at Stockholm. It was edited by
-# hand on 6 October 2026 to allow London and nowhere else. The name and
-# description are AWS's and are kept, so this stays the same policy.
+# Nothing of Quill's can be made anywhere but London.
+#
+# AWS made this policy when the organisation's advanced features were
+# switched on. Its name and description are AWS's and are kept, so this
+# stays the same policy.
 #
 # Three statements, in policies/london-only.json:
 #   - RegionFloor refuses everything outside eu-west-2, us-east-1 and
-#     us-west-2. AWS's version let Bedrock through in every region;
-#     Quill uses no Bedrock, so that exception was taken out on
-#     9 November 2026.
+#     us-west-2.
 #   - UsEast1Partitional and UsWest2Partitional then refuse everything
-#     in those two American regions except the global services AWS
-#     itself runs from them: IAM, billing, the organisation, support.
-#     Quill uses AWS for email alone, so on 9 November 2026 the
-#     us-east-1 list was written again as signing in, billing, support
-#     and a few read-only console calls. AWS's version also let through
-#     services that store data or serve traffic there, such as logs,
-#     keys, certificates, CloudFront, Route 53 and Lightsail. The
-#     us-west-2 list lost CloudShell, Network Manager and Route 53
-#     recovery the same day, keeping sign-in and read-only key lookups.
-# So nothing of Quill's can be made anywhere but London.
+#     in those two American regions except the global services AWS runs
+#     from them. us-east-1 allows signing in, billing, support and a few
+#     read-only console calls. us-west-2 allows signing in and read-only
+#     key lookups.
 resource "aws_organizations_policy" "london_only" {
   provider = aws.management
 
@@ -174,7 +162,7 @@ resource "aws_organizations_policy_attachment" "london_only" {
   provider = aws.management
 
   policy_id = aws_organizations_policy.london_only.id
-  target_id = data.aws_organizations_organization.this.roots[0].id
+  target_id = data.aws_organizations_organization.existing.roots[0].id
 
   lifecycle {
     prevent_destroy = true
@@ -188,7 +176,7 @@ import {
 
 import {
   to = aws_organizations_policy_attachment.london_only
-  id = "${data.aws_organizations_organization.this.roots[0].id}:${var.london_only_policy_id}"
+  id = "${data.aws_organizations_organization.existing.roots[0].id}:${var.london_only_policy_id}"
 }
 
 # ---------- Email only ----------
