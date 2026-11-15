@@ -235,3 +235,33 @@ for entry in json.load(open(".git/gh-stack"))["stacks"][0]["branches"]:
     [ "$status" -eq 0 ]
     [ -z "$output" ]
 }
+
+@test "the shared record is tidied when run from a linked worktree" {
+    # gh-stack keeps one record, in the shared .git, for every worktree.
+    branch_with_commit feature/a
+    merge_to_main feature/a
+    write_record 'feature/a|'"${TRUNK}"'|{"number": 1, "merged": true}'
+    git branch --quiet -D feature/a
+    git worktree add --quiet --detach "${BATS_TEST_TMPDIR}/other"
+
+    cd "${BATS_TEST_TMPDIR}/other"
+    run python3 "${SCRIPT}"
+    cd "${REPO}"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Forgot 1 finished branch"* ]]
+    [ -z "$(recorded)" ]
+}
+
+@test "a branch checked out in another worktree is kept even when it is in the trunk" {
+    branch_with_commit feature/a
+    write_record 'feature/a|'"${TRUNK}"'|{"number": 1363}'
+    merge_to_main feature/a
+    echo "CLOSED" > "${STUB}/pr-1363"
+    git worktree add --quiet "${BATS_TEST_TMPDIR}/other" feature/a
+
+    run python3 "${SCRIPT}"
+
+    [ "$status" -eq 0 ]
+    [ "$(recorded)" = "feature/a" ]
+}

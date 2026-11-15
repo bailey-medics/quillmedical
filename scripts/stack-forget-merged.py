@@ -39,7 +39,9 @@ trunk is the evidence the recorded number cannot give.
 
 Three entries are always left alone, whatever the trunk holds:
 
-- the branch checked out here, which is somebody's working copy;
+- a branch checked out in any worktree, which is somebody's working
+  copy. The record is shared by every worktree, so this is not only the
+  one it is run from;
 - a branch with no commits of its own, whose tip is its own base: it is
   in the trunk only because nothing has been put on it yet;
 - one whose recorded pull request GitHub cannot be asked about. Not
@@ -58,15 +60,21 @@ from pathlib import Path
 
 
 def stack_file() -> Path | None:
-    """Where gh-stack keeps this worktree's record, or None if absent.
+    """Where gh-stack keeps its record, or None if absent.
 
-    `--git-path` resolves per worktree, which matters here: each worktree
-    has its own gh-stack file, and the one for the checkout this is run
-    from is the only one it may touch.
+    One record serves every worktree: gh-stack keeps it in the shared
+    git directory, not in each worktree's own. `--git-path` would name a
+    per-worktree file that gh-stack never writes, so from any worktree
+    but the main checkout this would find nothing and tidy nothing.
     """
     try:
         out = subprocess.run(
-            ["git", "rev-parse", "--git-path", "gh-stack"],
+            [
+                "git",
+                "rev-parse",
+                "--path-format=absolute",
+                "--git-common-dir",
+            ],
             capture_output=True,
             text=True,
             check=True,
@@ -74,7 +82,7 @@ def stack_file() -> Path | None:
     except OSError, subprocess.CalledProcessError:
         return None
 
-    path = Path(out)
+    path = Path(out) / "gh-stack"
 
     return path if path.is_file() else None
 
@@ -100,14 +108,28 @@ def rev_parse(name: str) -> str | None:
     return result.stdout.strip() if result.returncode == 0 else None
 
 
-def current_branch() -> str:
+def checked_out_branches() -> set[str]:
+    """The branch checked out in each worktree of this repository.
+
+    The record is shared, so a branch at work in another worktree is
+    somebody's working copy just as much as the one checked out here.
+    """
     result = subprocess.run(
-        ["git", "branch", "--show-current"],
+        ["git", "worktree", "list", "--porcelain"],
         capture_output=True,
         text=True,
     )
 
-    return result.stdout.strip() if result.returncode == 0 else ""
+    if result.returncode != 0:
+        return set()
+
+    prefix = "branch refs/heads/"
+
+    return {
+        line[len(prefix) :]
+        for line in result.stdout.splitlines()
+        if line.startswith(prefix)
+    }
 
 
 def tip_in_trunk(name: str, trunk: str) -> bool:
@@ -162,7 +184,9 @@ def pull_request_state(number: object) -> str | None:
     return state if result.returncode == 0 and state else None
 
 
-def is_finished(entry: dict[str, object], trunk: str, current: str) -> bool:
+def is_finished(
+    entry: dict[str, object], trunk: str, checked_out: set[str]
+) -> bool:
     """Whether an entry has nothing left to land. See the module docstring."""
     name = str(entry.get("branch", ""))
 
@@ -170,7 +194,7 @@ def is_finished(entry: dict[str, object], trunk: str, current: str) -> bool:
         return False
     if not branch_exists(name):
         return True
-    if name == current:
+    if name in checked_out:
         return False
 
     tip = rev_parse(name)
@@ -194,7 +218,7 @@ def main() -> int:
     path = stack_file()
 
     if path is None:
-        # Not an error: a worktree with no stack has nothing to tidy, and
+        # Not an error: a repository with no stack has nothing to tidy, and
         # this runs unconditionally after a sync.
         return 0
 
@@ -209,7 +233,7 @@ def main() -> int:
     if not isinstance(stacks, list):
         return 0
 
-    current = current_branch()
+    checked_out = checked_out_branches()
     dropped: list[str] = []
 
     for stack in stacks:
@@ -221,7 +245,7 @@ def main() -> int:
         kept = []
         for entry in branches:
             if isinstance(entry, dict) and is_finished(
-                entry, trunk_name, current
+                entry, trunk_name, checked_out
             ):
                 dropped.append(str(entry.get("branch", "")))
                 continue

@@ -64,10 +64,20 @@ from pathlib import Path
 
 
 def record_path() -> Path | None:
-    """Where gh-stack keeps this worktree's record, or None if absent."""
+    """Where gh-stack keeps its record, or None if absent.
+
+    One record serves every worktree, in the shared git directory.
+    `--git-path` would name a per-worktree file that gh-stack never
+    writes.
+    """
     try:
         out = subprocess.run(
-            ["git", "rev-parse", "--git-path", "gh-stack"],
+            [
+                "git",
+                "rev-parse",
+                "--path-format=absolute",
+                "--git-common-dir",
+            ],
             capture_output=True,
             text=True,
             check=True,
@@ -75,7 +85,7 @@ def record_path() -> Path | None:
     except OSError, subprocess.CalledProcessError:
         return None
 
-    path = Path(out)
+    path = Path(out) / "gh-stack"
 
     return path if path.is_file() else None
 
@@ -95,7 +105,7 @@ def stack_holding(
 ) -> dict[str, object] | None:
     """The stack in the record that this branch belongs to.
 
-    The record keeps every stack this worktree has had, most of them
+    The record keeps every stack any worktree has had, most of them
     empty by now. The last match wins: a branch name can be reused once
     its stack has finished, and the newest stack is the live one.
     """
