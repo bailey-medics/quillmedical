@@ -2,16 +2,16 @@
 # Organisation-level rulesets for the passport framework repositories
 # ---------------------------------------------------------------------------
 #
-# One repository per framework, each ending -framework, each calling Quill's
-# framework-pipeline.yml. The same rules as the teaching repositories in
-# teaching_rulesets.tf: main changes only by pull request, after the
-# pipeline's two checks pass on a branch up to date with main. There are no
-# stacks in these repositories, so each change is one branch off main and
-# one pull request.
+# One repository per framework, each ending -framework (or
+# -framework-testing for Quill's two testing repositories), each calling
+# Quill's framework-pipeline.yml. Main changes only by pull request, after
+# the pipeline's two checks pass on a branch up to date with main. There
+# are no stacks in these repositories, so each change is one branch off
+# main and one pull request.
 #
-# Listed by name, not by a wildcard such as ~*-framework, for the reason
-# teaching_rulesets.tf gives: GitHub's fnmatch wildcards are unreliable in
-# organisation-level repository_name conditions.
+# Listed by name, not by a wildcard such as ~*-framework, because GitHub's
+# fnmatch wildcards are unreliable in organisation-level repository_name
+# conditions.
 #
 # Apply only after each repository's first commit is on main. An empty
 # repository has no main for a pull request to target, so its first commit
@@ -23,6 +23,7 @@ locals {
     "royal-united-hospitals-bath-sact-passport-framework",
     "uk-sact-board-prescribing-framework",
     "general-clinical-skills-quill-medical-framework",
+
     # Quill's own, for tests: not read by App production.
     "quill-medical-framework-testing",
     "quill-medical-2-framework-testing",
