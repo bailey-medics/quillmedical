@@ -523,12 +523,12 @@ aws-login which="emails":
     # On 7 October 2026 two sign-ins in a row landed in the sign-in
     # directory account without a word.
     #
-    #   emails      Quill Medical Emails: SES, production. The usual one.
-    #   management  Quill-Medical Management Account: policies, new accounts.
+    #   emails      Quill Medical Emails App: SES, production. The usual one.
+    #   management  Quill Medical Superadmin: policies, new accounts.
     #
     # The development account, Quill Medical Emails Dev, needs no sign-in of
-    # its own: the `quill-emails-dev` profile reaches it through the
-    # management one.
+    # its own: Terraform reaches it through the management sign-in and the
+    # role every organisation account is given (see infra/aws/main.tf).
     case "{{which}}" in
         emails)     profile="quill-emails";     setting="AWS_EMAILS_ACCOUNT_ID" ;;
         management) profile="quill-management"; setting="AWS_MANAGEMENT_ACCOUNT_ID" ;;

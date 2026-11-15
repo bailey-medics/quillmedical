@@ -62,12 +62,6 @@ variable "management_account_id" {
   }
 }
 
-variable "london_only_policy_id" {
-  description = "Id of the service control policy that allows London only, as AWS issued it. Needed to adopt the policy; an id, not a secret."
-  type        = string
-  default     = "p-fmj00ti8"
-}
-
 variable "identity_account_id" {
   description = "Number of the account that holds the sign-in directory"
   type        = string

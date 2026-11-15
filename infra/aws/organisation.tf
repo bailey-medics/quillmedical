@@ -169,16 +169,6 @@ resource "aws_organizations_policy_attachment" "london_only" {
   }
 }
 
-import {
-  to = aws_organizations_policy.london_only
-  id = var.london_only_policy_id
-}
-
-import {
-  to = aws_organizations_policy_attachment.london_only
-  id = "${data.aws_organizations_organization.existing.roots[0].id}:${var.london_only_policy_id}"
-}
-
 # ---------- Email only ----------
 # The London-only policy above says where an account may work. This one
 # says what the two email accounts may do there: send email through SES,
