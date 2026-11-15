@@ -80,8 +80,9 @@ variable "block_merges_into_feature_branches" {
     into that base: a feature branch no ruleset protects, so the work never
     reaches main.
 
-    True requires linear history on every branch but main, and switches off
-    squash and rebase merging, so a merge has nowhere to land but main. It
+    True requires linear history on every branch but main. Squash and
+    rebase merging are always off (security.tf), so a merge would have
+    nowhere to land but main. It
     does not work: a branch cut from main carries main's own merge commits,
     and linear history then refuses its push. So this must stay false.
 
@@ -299,7 +300,7 @@ resource "github_repository_ruleset" "branch_naming" {
     }
 
     # Refuses a merge commit on any branch but main, which with squash and
-    # rebase merging off (security.tf) leaves no way to merge a pull
+    # rebase merging always off (security.tf) leaves no way to merge a pull
     # request into a feature branch. See the variable above.
     required_linear_history = var.block_merges_into_feature_branches
   }

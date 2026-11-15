@@ -31,12 +31,12 @@ resource "github_repository" "quillmedical" {
 
   delete_branch_on_merge = true
 
-  # Merge commits only, when merges into feature branches are blocked: see
-  # var.block_merges_into_feature_branches in branch_rules.tf. With the
-  # variable false all three stay on, as they have always been.
+  # Merge commits only, the method the merge queue uses (merge_method in
+  # branch_rules.tf), so a pull request merged by hand lands the same way
+  # as one merged by the queue.
   allow_merge_commit = true
-  allow_squash_merge = !var.block_merges_into_feature_branches
-  allow_rebase_merge = !var.block_merges_into_feature_branches
+  allow_squash_merge = false
+  allow_rebase_merge = false
 
   security_and_analysis {
     secret_scanning {
