@@ -1031,3 +1031,28 @@ grant a competency, through what, and for how long.
 
 Mark, 8 October 2026: "the word sold implies we are selling. The code should
 not care about that."
+
+### Infrastructure changes go through Terraform
+
+**Any change to infrastructure is made in Terraform, and Terraform creates
+it.** Google Cloud, AWS, GitHub settings, DNS: if `infra/` can describe it,
+write the Terraform and apply it. Push hard for this whenever a console
+click or a one-off command is suggested, including when Mark suggests it,
+and say why.
+
+- **The code is the record.** A setting made in Terraform is reviewed in a
+  pull request and can be built again. One made by hand drifts from the
+  code without anyone noticing.
+- **Making it by hand and importing it later is the fallback, not the
+  plan.** It costs an extra step, leaves `import` blocks that must be
+  deleted once applied, and they then break a rebuild in empty accounts.
+  If something must be done by hand in a hurry, import it soon after and
+  delete the import blocks once applied.
+- **By hand only where Terraform cannot reach**: a support request to the
+  provider (such as lifting the SES sandbox), a secret whose value would
+  land in Terraform's state (such as an access key), the bucket that holds
+  Terraform's own state, and signing up a root account. Name the reason
+  when one of these applies.
+
+Recorded on 15 November 2026, after the SES set-up in `infra/aws/` had to
+be imported because it was first made in the console.
