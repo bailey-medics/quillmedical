@@ -11,8 +11,6 @@
 #      cannot be disabled, so the landing site is already logged.
 #   3. How many people visit each page of the app - a log-based metric over
 #      the page-view pings, added when that endpoint exists.
-#
-# See docs/docs/plans/2026-08-31-analytics-plan.md.
 
 locals {
   # Escape dots for the log filter regex without backslash-in-HCL escaping:
@@ -35,7 +33,8 @@ resource "google_logging_metric" "public_site_visits" {
 
   # Successful responses only. Besides being the right definition of a visit,
   # this keeps scanner traffic out of the page label below: probes for
-  # /wp-admin and friends return 404, so they never become a time series.
+  # /wp-admin and similar paths return 404, so they never become a time
+  # series.
   filter = <<-EOT
     resource.type="http_load_balancer"
     httpRequest.requestUrl =~ "//(www[.])?${local.landing_domain_pattern}/"

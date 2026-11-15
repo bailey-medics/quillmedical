@@ -192,4 +192,5 @@ infra/github/passport_framework_rulesets.tf	042149b855552edf175e445388216ea4aace
 infra/github/security.tf	1a4ade59bfbb0fb414f09f1d746480a8e4f0f2bc	2026-11-15	Cotswoldsmaker	mark.allan.bailey@gmail.com
 infra/github/teaching_rulesets.tf	85649fee3d96ff170d8475b287c4f77fdabcf534	2026-11-15	Cotswoldsmaker	mark.allan.bailey@gmail.com
 infra/github/terraform.tfvars	af9faf7a740655df7066deb8a62089fba882be20	2026-11-15	Cotswoldsmaker	mark.allan.bailey@gmail.com
+infra/modules/cloud-run/main.tf	3aaa02e292b9ba5cd95033b8738047f27a9558ef	2026-11-15	Cotswoldsmaker	mark.allan.bailey@gmail.com
 scripts/check-python-version.sh	e9ba5acc38524cdd3b8c10fdd371c2e9771ce114	2026-10-11	Cotswoldsmaker	mark.allan.bailey@gmail.com
