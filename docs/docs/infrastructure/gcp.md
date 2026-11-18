@@ -487,6 +487,15 @@ Gone, named so that nobody goes looking for them:
 
 Not in Secret Manager at all: the VAPID public key, the callback identity tokens, and the `.env` files on a developer's machine, which hold development values only.
 
+### Who can read a secret's value
+
+**The plan account cannot read any secret's value.** That is the account in the `app-plan` environment, which the Terraform plan job and the teaching content sweep sign in as. It may read every resource and every IAM policy in the project, and no secret's value, and it writes nothing.
+
+- **Why:** a pull request from any branch runs as that account. Whatever it can read, anybody who can push a branch can print in a workflow log. So it must be able to read nothing worth having.
+- **Terraform's state holds no secret values either.** Every value Terraform makes goes in write-only, so a plan has nothing to show.
+- **Checked from a branch, not assumed.** A throwaway pull request signed in as the plan account asked for a secret's value and was refused with `PERMISSION_DENIED`. The ordinary plan job on the same pull request passed.
+- **The workloads read only what they mount.** The backend and the admin job each read exactly the secrets listed above for them. New values come from the apply account, which runs on `main` only, or from a person by hand.
+
 ### Rotating a secret
 
 Every procedure ends with the same step, and it is the one that gets forgotten: **re-run `deploy.yml`**. A new secret version, or a Terraform apply, makes a Cloud Run revision that serves no traffic until a deploy routes traffic to it, so a rotation that stops at Secret Manager has changed nothing the app can see. `gcloud run services update` is not the answer either: it makes a revision by hand that Terraform then refuses with a 409. After the deploy, check the serving revision changed (`gcloud run services describe quill-backend-app --region europe-west2 --format 'value(status.latestReadyRevisionName)'`).
