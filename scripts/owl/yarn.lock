@@ -14,9 +14,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@slack/socket-mode@npm:3.1.1":
-  version: 3.1.1
-  resolution: "@slack/socket-mode@npm:3.1.1"
+"@slack/socket-mode@npm:3.2.0":
+  version: 3.2.0
+  resolution: "@slack/socket-mode@npm:3.2.0"
   dependencies:
     "@slack/logger": "npm:^5.0.0"
     "@slack/web-api": "npm:^8.3.0"
@@ -24,7 +24,7 @@ __metadata:
     eventemitter3: "npm:^5"
   peerDependencies:
     undici: ^7.0.0 || ^8.0.0
-  checksum: 10c0/8c273c2132f226c75ae5f27f6d1e91d0a254c2869acc940feff6c611e61641913b72ccea09ef2edcf4ffb24363b43cc3566353926e931c3b08665f47f52ad67a
+  checksum: 10c0/db099ecae87381a46ade7acdb9d512369302e0ccf58f30eabcd1cac0066c54a6ab997f80f00c795bf4ba4e71f97c91d7524e2422d436b8c71c196304ddff93f2
   languageName: node
   linkType: hard
 
@@ -35,7 +35,23 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@slack/web-api@npm:8.3.0, @slack/web-api@npm:^8.3.0":
+"@slack/web-api@npm:8.4.0":
+  version: 8.4.0
+  resolution: "@slack/web-api@npm:8.4.0"
+  dependencies:
+    "@slack/logger": "npm:^5.0.0"
+    "@slack/types": "npm:^3.3.0"
+    "@types/node": "npm:>=20"
+    "@types/retry": "npm:0.12.5"
+    eventemitter3: "npm:^5.0.1"
+    p-queue: "npm:^6.6.2"
+    p-retry: "npm:^4.6.2"
+    retry: "npm:^0.13.1"
+  checksum: 10c0/c35b63b8ba9eb3378f155219ca4459c19470c0261099baf56f190b5de033529840a1073e810c95ff3af385f6deef8083345fc098fba7f514881179c4e9bd3df0
+  languageName: node
+  linkType: hard
+
+"@slack/web-api@npm:^8.3.0":
   version: 8.3.0
   resolution: "@slack/web-api@npm:8.3.0"
   dependencies:
@@ -137,8 +153,8 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "quill-owl@workspace:."
   dependencies:
-    "@slack/socket-mode": "npm:3.1.1"
-    "@slack/web-api": "npm:8.3.0"
+    "@slack/socket-mode": "npm:3.2.0"
+    "@slack/web-api": "npm:8.4.0"
     "@types/node": "npm:26.6.5"
     typescript: "npm:6.0.3"
     undici: "npm:8.12.4"
