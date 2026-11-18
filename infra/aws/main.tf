@@ -84,6 +84,35 @@ module "app" {
   may_read_suppression_list = true
 }
 
+# The role the management account steps in through, as it does into the
+# development account. AWS makes it in every account the organisation
+# creates, but this account was invited, so it has none. With it,
+# Terraform needs one sign-in, the management one, for both email
+# accounts. Only the management account may step in, and it needs
+# administrator rights because Terraform manages IAM here.
+resource "aws_iam_role" "app_organisation_access" {
+  provider = aws.app
+
+  name        = "OrganizationAccountAccessRole"
+  description = "Lets the management account manage this account, as in accounts the organisation creates"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { AWS = "arn:aws:iam::${var.management_account_id}:root" }
+      Action    = "sts:AssumeRole"
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "app_organisation_access" {
+  provider = aws.app
+
+  role       = aws_iam_role.app_organisation_access.name
+  policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
+}
+
 # ---------- Development ----------
 # Still in the SES sandbox, which is right for it: it can write only to
 # addresses verified in the account. Sandbox or production is not a
