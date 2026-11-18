@@ -40,14 +40,24 @@ terraform {
   }
 }
 
-# Each provider names its account, and refuses any other. The profiles
-# are the ones `just al` signs in; a sign-in that landed in the wrong
-# account, which has happened, fails here before anything is read.
+# Each provider names its account, and refuses any other, so a sign-in
+# that landed in the wrong account, which has happened, fails here
+# before anything is read.
+#
+# Both email accounts are reached from the one management sign-in
+# (`just al management`), through OrganizationAccountAccessRole. The App
+# production account was invited into the organisation, so its role is
+# made by Terraform below, not by AWS.
 provider "aws" {
   alias               = "app"
-  profile             = var.app_profile
+  profile             = var.management_profile
   region              = var.region
   allowed_account_ids = [var.app_account_id]
+
+  assume_role {
+    role_arn     = "arn:aws:iam::${var.app_account_id}:role/OrganizationAccountAccessRole"
+    session_name = "terraform-aws"
+  }
 }
 
 # The development account has no sign-in of its own. It is reached from
