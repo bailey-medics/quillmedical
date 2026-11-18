@@ -24,6 +24,44 @@ initialise:= 'set -euxo pipefail
     _set_title'
 
 
+# Signing out of Google Cloud, for a recipe that signs in. Mark's login
+# can do anything he can, secrets included, so a recipe that uses it
+# signs it out when it ends, however it ends:
+#
+#     {{gcp_sign_out}}
+#     trap _sign_out_of_gcp_on_exit EXIT
+#
+# Pinned to the default gcloud settings, so Owl's own, in a folder of
+# its own, are never touched. Revoking also cancels the hour's sign-out
+# gcp-login scheduled, which then has nothing to do.
+gcp_sign_out := '_sign_out_of_gcp() {
+        local config="$HOME/.config/gcloud"
+        local pid_file="$HOME/.config/gcloud/quill-sign-out.pid"
+
+        CLOUDSDK_CONFIG="$config" gcloud auth revoke --all --quiet >/dev/null 2>&1 || true
+        CLOUDSDK_CONFIG="$config" gcloud auth application-default revoke --quiet >/dev/null 2>&1 || true
+        systemctl --user stop quill-gcp-sign-out.timer >/dev/null 2>&1 || true
+
+        if [ -f "$pid_file" ]; then
+            kill "$(cat "$pid_file")" >/dev/null 2>&1 || true
+            rm -f "$pid_file"
+        fi
+
+        if [ -n "$(CLOUDSDK_CONFIG="$config" gcloud auth list --format="value(account)" 2>/dev/null)" ] \
+            || [ -f "$config/application_default_credentials.json" ]; then
+            echo "✗ Still signed in to Google Cloud. Run: just gcp-logout"
+            return 1
+        fi
+
+        echo "Signed out of Google Cloud."
+    }
+
+    _sign_out_of_gcp_on_exit() {
+        _sign_out_of_gcp || true
+        _clear_title
+    }'
+
+
 # Which repository the stack recipes act on. Unset, it is this one.
 #
 # The teaching content lives in repositories of its own, cloned under
@@ -202,17 +240,15 @@ _ensure-aws-login which:
     fi
 
 
-# Signs in to Google Cloud unless both of its sign-ins work: gcloud's own,
-# which gcloud commands use, and application default, which Terraform uses
-# for its state bucket. An expired one otherwise fails as invalid_rapt
-# partway through. Never call it inside $( ), which would hide the prompt.
+# Signs in to Google Cloud unless gcloud's sign-in works. An expired one
+# otherwise fails as invalid_rapt partway through. Never call it inside
+# $( ), which would hide the prompt.
 _ensure-gcp-login:
     #!/usr/bin/env bash
     set -euo pipefail
 
     signed_in() {
-        gcloud auth print-access-token >/dev/null 2>&1 \
-            && gcloud auth application-default print-access-token >/dev/null 2>&1
+        gcloud auth print-access-token >/dev/null 2>&1
     }
 
     if signed_in; then
@@ -486,6 +522,9 @@ add-role-remote env:
     {{initialise}} "add-role ({{env}})"
     set -euo pipefail
 
+    {{gcp_sign_out}}
+    trap _sign_out_of_gcp_on_exit EXIT
+
     just _ensure-gcp-login
 
     PROJECT=$(just _gcp_env_project "{{env}}")
@@ -680,6 +719,9 @@ build-admin env:
     {{initialise}} "build-admin ({{env}})"
     set -euo pipefail
 
+    {{gcp_sign_out}}
+    trap _sign_out_of_gcp_on_exit EXIT
+
     just _ensure-gcp-login
 
     PROJECT=$(just _gcp_env_project "{{env}}")
@@ -723,6 +765,9 @@ check-competency-seeding env:
     {{initialise}} "check-competency-seeding ({{env}})"
     set -euo pipefail
 
+    {{gcp_sign_out}}
+    trap _sign_out_of_gcp_on_exit EXIT
+
     just _ensure-gcp-login
 
     PROJECT=$(just _gcp_env_project "{{env}}")
@@ -763,6 +808,9 @@ create-superadmin env:
     #!/usr/bin/env bash
     {{initialise}} "create-superadmin ({{env}})"
     set -euo pipefail
+
+    {{gcp_sign_out}}
+    trap _sign_out_of_gcp_on_exit EXIT
 
     just _ensure-gcp-login
 
@@ -941,16 +989,15 @@ frontend-update +packages:
 
 
 alias gl := gcp-login
-# Refresh both GCP credentials: the gcloud one and application default
+# Sign in to Google Cloud for an hour (gcloud's sign-in; Terraform takes a token from it)
 gcp-login:
     #!/usr/bin/env bash
     {{initialise}} "gcp-login"
 
-    # Two separate credentials that expire independently. `gcloud auth login`
-    # covers gcloud commands and direct API calls; application-default covers
-    # tools that read Application Default Credentials, Terraform among them.
-    # Having one valid and the other expired is the confusing case - terraform
-    # fails while gcloud works - so refresh both together.
+    # One sign-in, gcloud's own. Terraform does not get the second,
+    # application default, sign-in: the Terraform recipes hand it an
+    # hour's access token from this one instead, so there is one
+    # credential to keep and to sign out.
     #
     # On a Linux machine with no screen, such as the dev box over SSH,
     # there is no browser to open: `--no-launch-browser` prints a link to
@@ -961,7 +1008,46 @@ gcp-login:
     fi
 
     gcloud auth login "${no_browser[@]}"
-    gcloud auth application-default login "${no_browser[@]}"
+
+    # The login can do anything Mark can, secrets included, and a forgotten
+    # one lasts until Google asks again. So it ends itself in an hour;
+    # signing in again starts the hour afresh. A user timer where systemd
+    # runs one, as on the dev box, and a background sleep elsewhere, whose
+    # process id is kept so the next sign-in can cancel it. Pinned to the
+    # default gcloud settings, so Owl's own are never touched.
+    set +x
+    gcloud_bin="$(command -v gcloud)"
+    sign_out="export CLOUDSDK_CONFIG='$HOME/.config/gcloud'; '${gcloud_bin}' auth revoke --all --quiet >/dev/null 2>&1; '${gcloud_bin}' auth application-default revoke --quiet >/dev/null 2>&1"
+    pid_file="$HOME/.config/gcloud/quill-sign-out.pid"
+
+    if command -v systemd-run >/dev/null 2>&1 && systemctl --user show-environment >/dev/null 2>&1; then
+        systemctl --user stop quill-gcp-sign-out.timer >/dev/null 2>&1 || true
+        systemd-run --user --quiet --collect --unit quill-gcp-sign-out \
+            --on-active=1h /bin/bash -c "$sign_out"
+    else
+        if [ -f "$pid_file" ]; then
+            kill "$(cat "$pid_file")" >/dev/null 2>&1 || true
+        fi
+
+        nohup /bin/bash -c "sleep 3600; ${sign_out}; rm -f '${pid_file}'" >/dev/null 2>&1 &
+        echo $! > "$pid_file"
+    fi
+
+    echo "Signs out of Google Cloud by itself in an hour, or now with: just gcp-logout"
+
+
+alias glo := gcp-logout
+# Sign out of Google Cloud now, rather than waiting for the hour gcp-login allows
+gcp-logout:
+    #!/usr/bin/env bash
+    {{initialise}} "gcp-logout"
+    set +x
+
+    {{gcp_sign_out}}
+
+    # A token already handed to a running tool lives on until it expires,
+    # up to an hour; revoking stops it being renewed.
+    _sign_out_of_gcp
 
 
 alias gsh := guide-screenshots
@@ -1130,6 +1216,9 @@ migrate-current env:
     {{initialise}} "migrate-current ({{env}})"
     set -euo pipefail
 
+    {{gcp_sign_out}}
+    trap _sign_out_of_gcp_on_exit EXIT
+
     just _ensure-gcp-login
 
     PROJECT=$(just _gcp_env_project "{{env}}")
@@ -1209,6 +1298,9 @@ migrate-remote env:
     {{initialise}} "migrate-remote ({{env}})"
     set -euo pipefail
 
+    {{gcp_sign_out}}
+    trap _sign_out_of_gcp_on_exit EXIT
+
     just _ensure-gcp-login
 
     PROJECT=$(just _gcp_env_project "{{env}}")
@@ -1230,6 +1322,9 @@ newsletter-send env campaign confirm="" only_to="" limit="":
     #!/usr/bin/env bash
     {{initialise}} "newsletter-send ({{env}})"
     set -euo pipefail
+
+    {{gcp_sign_out}}
+    trap _sign_out_of_gcp_on_exit EXIT
 
     just _ensure-gcp-login
 
@@ -1368,6 +1463,9 @@ passport-delete env username confirm="":
     #!/usr/bin/env bash
     {{initialise}} "passport-delete ({{env}})"
     set -euo pipefail
+
+    {{gcp_sign_out}}
+    trap _sign_out_of_gcp_on_exit EXIT
 
     just _ensure-gcp-login
 
@@ -3042,11 +3140,13 @@ terraform-aws:
     #                              is read.
     just _ensure-gcp-login
 
-    # Sign out of AWS however this ends, an error included, so the two
-    # sign-ins last only as long as the job. `aws logout` directly, not
-    # `just aws-logout`, which another checkout's Justfile may not have,
-    # and loudly if a login is left. The tab title is still cleared, as
-    # the trap set by initialise would have done.
+    # Sign out of AWS and Google Cloud however this ends, an error
+    # included, so the sign-ins last only as long as the job. `aws logout`
+    # directly, not `just aws-logout`, which another checkout's Justfile
+    # may not have, and loudly if a login is left. The tab title is still
+    # cleared, as the trap set by initialise would have done.
+    {{gcp_sign_out}}
+
     _sign_out_of_aws() {
         for profile in quill-emails quill-management; do
             aws logout --profile "$profile" >/dev/null 2>&1 || true
@@ -3061,6 +3161,7 @@ terraform-aws:
             echo "Signed out of AWS."
         fi
 
+        _sign_out_of_gcp || true
         _clear_title
     }
 
@@ -3072,6 +3173,11 @@ terraform-aws:
     just _ensure-aws-login management
 
     cd infra/aws
+
+    # The state bucket is read with an hour's token from gcloud's sign-in,
+    # not a second sign-in. Trace off, so the token is not printed.
+    set +x
+    export GOOGLE_OAUTH_ACCESS_TOKEN="$(gcloud auth print-access-token)"
 
     # No -upgrade: the providers are the ones in the committed lock file.
     terraform init -input=false
@@ -3110,13 +3216,18 @@ terraform-github:
     bash scripts/check-terraform-version.sh host
 
     # The state is in the Cloud Storage bucket.
+    {{gcp_sign_out}}
+    trap _sign_out_of_gcp_on_exit EXIT
+
     just _ensure-gcp-login
 
     cd infra/github
 
-    # Trace off, so the token is not printed.
+    # Trace off, so the tokens are not printed. The state bucket is read
+    # with an hour's token from gcloud's sign-in, not a second sign-in.
     set +x
     export GITHUB_TOKEN=$(gh auth token)
+    export GOOGLE_OAUTH_ACCESS_TOKEN="$(gcloud auth print-access-token)"
     set -x
 
     # The organisation rulesets in teaching_rulesets.tf are read with this

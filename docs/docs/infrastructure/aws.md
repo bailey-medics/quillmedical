@@ -64,8 +64,8 @@ just terraform-aws    # sign in where needed, plan, ask, apply, sign out
 ```
 
 The sign-ins can do anything in their accounts, so a machine keeps them
-only while a job needs them. `just terraform-aws` signs out of both
-when it ends, however it ends. A sign-in made with `just aws-login` for
+only while a job needs them. `just terraform-aws` signs out of both,
+and of Google Cloud, when it ends, however it ends. A sign-in made with `just aws-login` for
 other work signs itself out after an hour, and `just aws-logout` signs
 out at once.
 
