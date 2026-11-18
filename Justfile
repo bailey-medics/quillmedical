@@ -1125,14 +1125,14 @@ initialise-repo:
     #!/usr/bin/env bash
     {{initialise}} "initialise"
 
-    # Git runs the tracked .husky/pre-commit directly, which hands over to
-    # .githooks/pre-commit, which itself runs `pre-commit run`. The path is deliberately relative: git resolves it
+    # Git runs the tracked .githooks/pre-commit directly, which itself runs
+    # `pre-commit run`. The path is deliberately relative: git resolves it
     # against the root of whichever worktree is committing, so every
     # worktree runs its own branch's hook. An absolute path here would
     # point every worktree at one checkout's copy, and vanish silently if
     # that checkout moved. Not `pre-commit install`: it refuses to run while
     # core.hooksPath is set, and would be redundant anyway.
-    git config core.hooksPath .husky
+    git config core.hooksPath .githooks
 
     # The only package.json is the frontend's; the repository root has none.
     (cd frontend && yarn install)
@@ -3704,7 +3704,7 @@ worktree-create branch="":
     (cd "$DEST/frontend" && yarn install --immutable)
 
     # No hook setup is needed. core.hooksPath lives in the shared git config
-    # and is the relative `.husky`, which git resolves against the root of
+    # and is the relative `.githooks`, which git resolves against the root of
     # the worktree that is committing - so this worktree runs its own
     # branch's tracked hook from the moment it exists.
     echo ""

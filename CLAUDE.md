@@ -903,7 +903,7 @@ SQLite and the frontend suite is vitest under jsdom, so no service is needed.
   which must stay root for its `node_modules` volumes, hands what it wrote
   back through `scripts/hand-back-ownership.sh`. On a Mac both are empty and
   nothing changes.
-- **Never run `pre-commit install`.** Git runs the tracked `.husky/pre-commit`
+- **Never run `pre-commit install`.** Git runs the tracked `.githooks/pre-commit`
   through the relative `core.hooksPath` set by `just initialise-repo`, which
   resolves per worktree. pre-commit refuses to install alongside it anyway.
   The one exception is `.claude/hooks/session-start.sh`, in a web session:
