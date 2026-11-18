@@ -530,14 +530,24 @@ aws-login which="emails":
     # its own: Terraform reaches it through the management sign-in and the
     # role every organisation account is given (see infra/aws/main.tf).
     case "{{which}}" in
-        emails)     profile="quill-emails";     setting="AWS_EMAILS_ACCOUNT_ID" ;;
-        management) profile="quill-management"; setting="AWS_MANAGEMENT_ACCOUNT_ID" ;;
+        emails)
+            profile="quill-emails"
+            setting="AWS_EMAILS_ACCOUNT_ID"
+            account="Quill Medical Emails App"
+            ;;
+        management)
+            profile="quill-management"
+            setting="AWS_MANAGEMENT_ACCOUNT_ID"
+            account="Quill Medical Superadmin"
+            ;;
         *) echo "✗ Unknown account '{{which}}': emails or management."; exit 1 ;;
     esac
 
     # The account numbers live in backend/.env, which is gitignored, and not
-    # here: this repository is public.
-    want="$(grep "^${setting}=" backend/.env 2>/dev/null | cut -d= -f2-)"
+    # here: this repository is public. `|| true` because a missing file or
+    # line would otherwise end the recipe without a word, under pipefail,
+    # before the check below could say what is wrong.
+    want="$(grep "^${setting}=" backend/.env 2>/dev/null | cut -d= -f2- || true)"
 
     if [ -z "$want" ] || [ "$want" = "CHANGE_ME" ]; then
         echo "✗ ${setting} is not set in backend/.env, so the sign-in"
@@ -551,15 +561,16 @@ aws-login which="emails":
     aws configure set region eu-west-2 --profile "$profile"
 
     # The sign-in link names no account, so say which one before showing it,
-    # in red on a terminal so it stands out from the link.
-    name="$(printf '%s' "{{which}}" | tr '[:lower:]' '[:upper:]')"
+    # by the name the console shows, in red on a terminal so it stands out
+    # from the link.
+    name="$account"
 
     if [ -t 1 ]; then
         name="$(printf '\033[31m%s\033[0m' "$name")"
     fi
 
     echo
-    echo "==> Sign in to the ${name} account (${want})."
+    echo "==> Sign in to ${name} (${want})."
     echo "    Open that account's console in the browser, signing out of any"
     echo "    other AWS account there."
 
@@ -578,15 +589,72 @@ aws-login which="emails":
         --query Account --output text)"
 
     if [ "$got" != "$want" ]; then
-        echo "✗ Signed in to account $got, not $want ({{which}})."
-        echo "  Open the {{which}} account's console in the browser, close"
+        echo "✗ Signed in to account $got, not ${account} ($want)."
+        echo "  Open the ${account} console in the browser, close"
         echo "  any other AWS console session, and run this again."
         echo "  Do not use the $profile profile until it passes."
         exit 1
     fi
 
-    echo "Signed in to the {{which}} account ($got)."
+    echo "Signed in to ${account} ($got)."
     echo "Use it with: AWS_PROFILE=$profile aws ..."
+
+    # A signed-in profile can do anything in its account, and a forgotten
+    # one would last until AWS's own session limit. So the sign-in ends
+    # itself in an hour; signing in again starts the hour afresh. A user
+    # timer where systemd runs one, as on the dev box, and a background
+    # sleep elsewhere, whose process id is kept so the next sign-in can
+    # cancel it.
+    aws_bin="$(command -v aws)"
+    sign_out="for p in quill-emails quill-management; do '${aws_bin}' logout --profile \"\$p\" >/dev/null 2>&1; done"
+    pid_file="$HOME/.aws/quill-sign-out.pid"
+
+    if command -v systemd-run >/dev/null 2>&1 && systemctl --user show-environment >/dev/null 2>&1; then
+        systemctl --user stop quill-aws-sign-out.timer >/dev/null 2>&1 || true
+        systemd-run --user --quiet --collect --unit quill-aws-sign-out \
+            --on-active=1h /bin/bash -c "$sign_out"
+    else
+        if [ -f "$pid_file" ]; then
+            kill "$(cat "$pid_file")" >/dev/null 2>&1 || true
+        fi
+
+        nohup /bin/bash -c "sleep 3600; ${sign_out}; rm -f '${pid_file}'" >/dev/null 2>&1 &
+        echo $! > "$pid_file"
+    fi
+
+    echo "Signs out by itself in an hour, or now with: just aws-logout"
+
+
+alias alo := aws-logout
+# Sign out of both AWS accounts now, rather than waiting for the hour aws-login allows
+aws-logout:
+    #!/usr/bin/env bash
+    {{initialise}} "aws-logout"
+    set +x
+
+    # `aws logout` deletes the profile's cached login; an access token
+    # already handed to a running tool lives on for up to 15 minutes.
+    for profile in quill-emails quill-management; do
+        aws logout --profile "$profile" >/dev/null 2>&1 || true
+    done
+
+    # Nothing is left to sign out, so the hour's timer has no job.
+    systemctl --user stop quill-aws-sign-out.timer >/dev/null 2>&1 || true
+    pid_file="$HOME/.aws/quill-sign-out.pid"
+
+    if [ -f "$pid_file" ]; then
+        kill "$(cat "$pid_file")" >/dev/null 2>&1 || true
+        rm -f "$pid_file"
+    fi
+
+    left="$(find "$HOME/.aws/login/cache" -type f 2>/dev/null | wc -l)"
+
+    if [ "$left" -ne 0 ]; then
+        echo "✗ ${left} cached AWS login file(s) are still in ~/.aws/login/cache."
+        exit 1
+    fi
+
+    echo "Signed out of AWS. Sign in again with: just aws-login"
 
 
 alias bu := backend-update
@@ -2947,8 +3015,11 @@ terraform-aws:
     # read, so they are not printed.
     set +x
 
+    # `|| true`: without it a missing file ends the recipe silently, under
+    # pipefail, before the message below. backend/.env is in the main
+    # checkout only, since it is gitignored.
     for setting in AWS_EMAILS_ACCOUNT_ID AWS_EMAILS_DEV_ACCOUNT_ID AWS_MANAGEMENT_ACCOUNT_ID AWS_ID_ACCOUNT_ID; do
-        value="$(grep "^${setting}=" backend/.env 2>/dev/null | cut -d= -f2-)"
+        value="$(grep "^${setting}=" backend/.env 2>/dev/null | cut -d= -f2- || true)"
         if [ -z "$value" ] || [ "$value" = "CHANGE_ME" ]; then
             echo "✗ ${setting} is not set in backend/.env."
             exit 1
@@ -2961,10 +3032,42 @@ terraform-aws:
     export TF_VAR_identity_account_id="$(grep '^AWS_ID_ACCOUNT_ID=' backend/.env | cut -d= -f2-)"
 
     # The state is in the Cloud Storage bucket, so Google is needed too.
-    # Both AWS sign-ins are needed: the emails account for App production,
-    # and the management account, which holds the organisation's policy and
-    # is where the development account is reached from.
+    # Of the four AWS accounts, two need a sign-in:
+    #
+    #   Quill Medical Emails App   SES for App production (emails).
+    #   Quill Medical Superadmin   the organisation and its policy
+    #                              (management).
+    #   Quill Medical Emails Dev   reached through the Superadmin sign-in.
+    #   Quill Medical ID           the sign-in directory; only its number
+    #                              is read.
     just _ensure-gcp-login
+
+    # Sign out of AWS however this ends, an error included, so the two
+    # sign-ins last only as long as the job. `aws logout` directly, not
+    # `just aws-logout`, which another checkout's Justfile may not have,
+    # and loudly if a login is left. The tab title is still cleared, as
+    # the trap set by initialise would have done.
+    _sign_out_of_aws() {
+        for profile in quill-emails quill-management; do
+            aws logout --profile "$profile" >/dev/null 2>&1 || true
+        done
+
+        # The one-hour sign-out aws-login scheduled has nothing left to do.
+        systemctl --user stop quill-aws-sign-out.timer >/dev/null 2>&1 || true
+
+        if [ -n "$(find "$HOME/.aws/login/cache" -type f 2>/dev/null)" ]; then
+            echo "✗ Still signed in to AWS. Run: aws logout --profile quill-emails; aws logout --profile quill-management"
+        else
+            echo "Signed out of AWS."
+        fi
+
+        _clear_title
+    }
+
+    trap _sign_out_of_aws EXIT
+
+    echo "Needs sign-ins to Quill Medical Emails App, then Quill Medical Superadmin."
+
     just _ensure-aws-login emails
     just _ensure-aws-login management
 
