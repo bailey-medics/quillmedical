@@ -3130,11 +3130,11 @@ terraform-aws:
     export TF_VAR_identity_account_id="$(grep '^AWS_ID_ACCOUNT_ID=' backend/.env | cut -d= -f2-)"
 
     # The state is in the Cloud Storage bucket, so Google is needed too.
-    # Of the four AWS accounts, two need a sign-in:
+    # Of the four AWS accounts, one needs a sign-in:
     #
-    #   Quill Medical Emails App   SES for App production (emails).
     #   Quill Medical Superadmin   the organisation and its policy
     #                              (management).
+    #   Quill Medical Emails App   reached through the Superadmin sign-in.
     #   Quill Medical Emails Dev   reached through the Superadmin sign-in.
     #   Quill Medical ID           the sign-in directory; only its number
     #                              is read.
@@ -3167,9 +3167,8 @@ terraform-aws:
 
     trap _sign_out_of_aws EXIT
 
-    echo "Needs sign-ins to Quill Medical Emails App, then Quill Medical Superadmin."
+    echo "Needs one AWS sign-in: Quill Medical Superadmin."
 
-    just _ensure-aws-login emails
     just _ensure-aws-login management
 
     cd infra/aws

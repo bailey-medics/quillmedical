@@ -23,14 +23,8 @@ variable "dev_account_id" {
   }
 }
 
-variable "app_profile" {
-  description = "AWS CLI profile signed in to the App production email account"
-  type        = string
-  default     = "quill-emails"
-}
-
 variable "management_profile" {
-  description = "AWS CLI profile signed in to the management account, from which the development account is reached"
+  description = "AWS CLI profile signed in to the management account, from which both email accounts are reached"
   type        = string
   default     = "quill-management"
 }
