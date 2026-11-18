@@ -626,6 +626,7 @@
     "noexec",
     "nofeature",
     "nofeatureuser",
+    "nohup",
     "NOLOGIN",
     "noncommercially",
     "noncurrent",

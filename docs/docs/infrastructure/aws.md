@@ -60,8 +60,14 @@ and validation; a merge posts a reminder to Slack. Then, from a checkout
 up to date with `main`:
 
 ```bash
-just terraform-aws    # sign in where needed, plan, ask, apply
+just terraform-aws    # sign in where needed, plan, ask, apply, sign out
 ```
+
+The sign-ins can do anything in their accounts, so a machine keeps them
+only while a job needs them. `just terraform-aws` signs out of both
+when it ends, however it ends. A sign-in made with `just aws-login` for
+other work signs itself out after an hour, and `just aws-logout` signs
+out at once.
 
 CI holds nothing for AWS. Applying needs a role able to write IAM
 policy, which could widen what the mail key may do, so that stays with
