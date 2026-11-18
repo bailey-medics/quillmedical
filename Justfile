@@ -1125,8 +1125,8 @@ initialise-repo:
     #!/usr/bin/env bash
     {{initialise}} "initialise"
 
-    # Git runs the tracked .husky/pre-commit directly, which itself runs
-    # `pre-commit run`. The path is deliberately relative: git resolves it
+    # Git runs the tracked .husky/pre-commit directly, which hands over to
+    # .githooks/pre-commit, which itself runs `pre-commit run`. The path is deliberately relative: git resolves it
     # against the root of whichever worktree is committing, so every
     # worktree runs its own branch's hook. An absolute path here would
     # point every worktree at one checkout's copy, and vanish silently if

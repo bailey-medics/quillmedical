@@ -142,7 +142,7 @@ To run the checks locally:
 python -m pip install --upgrade pip
 pip install pre-commit
 
-# set up the git hooks (runs `.husky/pre-commit` on every commit)
+# set up the git hooks (runs `.githooks/pre-commit` on every commit)
 just initialise-repo
 
 # run all checks across the repository

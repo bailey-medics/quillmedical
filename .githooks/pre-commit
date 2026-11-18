@@ -1,0 +1,31 @@
+#!/usr/bin/env sh
+
+# Python / repo hooks
+if command -v pre-commit >/dev/null 2>&1; then
+	echo "Running repo pre-commit hooks"
+	# Run hooks on staged files for speed; abort the commit if any hook fails
+	pre-commit run || exit $?
+else
+	echo "pre-commit not found in PATH; please install pre-commit" >&2
+	exit 1
+fi
+
+# Move to package.json folder
+if [ -d "frontend" ]; then
+	cd frontend || exit 1
+fi
+
+# TS/JS / repo hooks
+if [ -f "../.yarnrc.yml" ] || [ -f "./.yarnrc.yml" ] || [ -d "../.yarn" ] || [ -d "./.yarn" ]; then
+	if command -v yarn >/dev/null 2>&1; then
+		# Run the project's pinned lint-staged. Avoid `yarn dlx`, which downloads a
+		# fresh unpinned copy from the registry on every commit.
+		yarn lint-staged || exit $?
+	else
+		echo "Error: Yarn is not available in PATH, but is required to run lint-staged" >&2
+		exit 1
+	fi
+else
+	echo "Error: Yarn not detected (no .yarnrc.yml or .yarn). The pre-commit hook requires Yarn." >&2
+	exit 1
+fi

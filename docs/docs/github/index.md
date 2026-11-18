@@ -148,7 +148,7 @@ Local pre-commit hooks run on every commit (configured in `.pre-commit-config.ya
 | **mypy**                | Python static type checking (strict mode)                    |
 | **bandit**              | Python security linting                                      |
 
-Frontend lint-staged hooks also run via Husky but only when frontend files are staged.
+Frontend lint-staged hooks also run from the same git hook, `.githooks/pre-commit`, but only when frontend files are staged.
 
 ## Secrets
 
