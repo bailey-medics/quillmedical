@@ -118,7 +118,6 @@
 .github/workflows/terraform.yml	9516d4e10d938eb7690cff9f0005124638ee890c	2026-10-09	Cotswoldsmaker	mark.allan.bailey@gmail.com
 .github/workflows/typescript-hold-check.yml	7877d4b34f8afd26d16a6f5bff3a6405a7639be7	2026-10-09	Cotswoldsmaker	mark.allan.bailey@gmail.com
 .github/workflows/zap-scan.yml	b0b1cd50362a853c4e09d34314aa5de873b19ad6	2026-10-09	Cotswoldsmaker	mark.allan.bailey@gmail.com
-.husky/pre-commit	6488e6c35b03de1f0a9629bd1d80093016a0dddf	2026-10-09	Cotswoldsmaker	mark.allan.bailey@gmail.com
 .pre-commit-config.yaml	36567ef8dd78ecc7eb5645413dc3a137d909ef15	2026-10-13	Cotswoldsmaker	mark.allan.bailey@gmail.com
 .zap/rules.tsv	0eda966020905b57d3d630384620c1c23b58898c	2026-10-09	Cotswoldsmaker	mark.allan.bailey@gmail.com
 Justfile	13a6c255f5a867be59a7e51977dfbfbd35ae3083	2026-10-13	Cotswoldsmaker	mark.allan.bailey@gmail.com
