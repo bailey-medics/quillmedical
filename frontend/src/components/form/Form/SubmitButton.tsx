@@ -34,13 +34,23 @@ export default function SubmitButton({
   cancelLabel,
   disabled = false,
 }: SubmitButtonProps) {
-  const { formState, submitLabel, submittingLabel, disableWhenClean, methods } =
-    useFormContext();
+  const {
+    formState,
+    submitLabel,
+    submittingLabel,
+    disableWhenClean,
+    methods,
+    requestPending,
+  } = useFormContext();
 
+  // Held until the request settles, even after a timeout has shown: the
+  // save may still land, so a second press could write twice, and Cancel
+  // could close or discard a form whose save is still running.
   const { isDirty, isValid } = useFormState({ control: methods.control });
   const isDisabled =
     disabled ||
     !isValid ||
+    requestPending ||
     formState === "validating" ||
     formState === "submitting" ||
     (disableWhenClean && !isDirty);
@@ -58,6 +68,7 @@ export default function SubmitButton({
       acceptDisabled={isDisabled}
       acceptTestId="submit-button"
       onCancel={onCancel}
+      cancelDisabled={requestPending}
       cancelLabel={effectiveCancelLabel}
       acceptChildren={
         <span style={{ display: "grid", placeItems: "center" }}>

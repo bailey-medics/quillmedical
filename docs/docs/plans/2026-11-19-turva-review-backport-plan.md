@@ -60,12 +60,14 @@ This plan writes Quill's own fixes for the bugs that apply, using the Turva comm
 
 ## Phase 5: A timed-out save stops
 
-- [ ] **Hand `onSubmit` an abort signal**, at `Form.tsx:195-202` and `:81`. The timeout aborts a controller, but `onSubmit(data)` never sees it, so the request carries on and a late success can still navigate. Change the signature to `onSubmit(data, { signal })` and pass the signal to `api.ts`. Callers that ignore it keep working, since the argument is extra.
-- [ ] **Keep the submit button disabled until the request settles**, even after the timeout message shows. Today the button re-enables in the `timeout` state, so a retry can write twice while the first request still runs.
-- [ ] **Hold Cancel in `SubmitButton` while a request is unsettled**, at `components/form/Form/SubmitButton.tsx:56-61`, using Phase 1's `cancelDisabled`.
-- [ ] **Clear a stale error from an earlier opening of `PasswordConfirmModal`**, at `components/confirm-modal/PasswordConfirmModal.tsx:70-76, 89-90`. Close it mid-request and reopen, and the old request's error lands in the new dialog. Count openings, as Phase 1 does for `ConfirmModal`, and clear the fields on close as well as open.
-- [ ] **Respect reduced motion in `FormStatus`**: scroll to the message instantly when the person has asked for less motion.
-- [ ] **Add tests**: a timed-out save keeps the button disabled until the promise settles, the signal is aborted, Cancel is held, and a reopened password dialog shows no old error.
+- [x] **Hand `onSubmit` an abort signal**, at `Form.tsx:195-202` and `:81`. The timeout aborts a controller, but `onSubmit(data)` never sees it, so the request carries on and a late success can still navigate. Change the signature to `onSubmit(data, { signal })` and pass the signal to `api.ts`. Callers that ignore it keep working, since the argument is extra.
+
+  **Built with the signal offered, not yet taken up by callers.** No existing `onSubmit` passes it on: most save through helpers such as `orgUnits.update` that take no signal, so threading it through is a change to every API helper, and a phase of its own if wanted. Meanwhile the form ignores a late result, so a late success neither navigates nor marks the form saved, and the next step holds the button until the request settles, so nothing writes twice.
+- [x] **Keep the submit button disabled until the request settles**, even after the timeout message shows. Today the button re-enables in the `timeout` state, so a retry can write twice while the first request still runs.
+- [x] **Hold Cancel in `SubmitButton` while a request is unsettled**, at `components/form/Form/SubmitButton.tsx:56-61`, using Phase 1's `cancelDisabled`.
+- [x] **Clear a stale error from an earlier opening of `PasswordConfirmModal`**, at `components/confirm-modal/PasswordConfirmModal.tsx:70-76, 89-90`. Close it mid-request and reopen, and the old request's error lands in the new dialog. Count openings, as Phase 1 does for `ConfirmModal`, and clear the fields on close as well as open.
+- [x] **Respect reduced motion in `FormStatus`**: scroll to the message instantly when the person has asked for less motion.
+- [x] **Add tests**: a timed-out save keeps the button disabled until the promise settles, the signal is aborted, Cancel is held, and a reopened password dialog shows no old error.
 
 ## Phase 6: Tables and search
 

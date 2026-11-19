@@ -54,6 +54,12 @@ export interface FormContextValue<T extends FieldValues = FieldValues> {
   submittingLabel: string;
   /** When true, submit button is disabled until the form is dirty */
   disableWhenClean: boolean;
+  /**
+   * True from a submit until `onSubmit` settles, even after the form has
+   * shown its timeout. The request may still land, so neither a second
+   * save nor Cancel is offered until it does.
+   */
+  requestPending: boolean;
 }
 
 const FormContext = createContext<FormContextValue | null>(null);

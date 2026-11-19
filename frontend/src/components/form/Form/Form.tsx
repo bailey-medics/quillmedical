@@ -90,8 +90,15 @@ export interface FormConfirmConfig {
 export interface FormProps<T extends FieldValues> {
   /** Default form values */
   defaultValues?: DefaultValues<T>;
-  /** Submit handler, sync or async: receives validated data, returns result */
-  onSubmit: (data: T) => FormSubmitResult | Promise<FormSubmitResult>;
+  /**
+   * Submit handler, sync or async: receives validated data, returns result.
+   * Pass `signal` on to `api.ts`, so a save that times out is stopped
+   * rather than left to land later.
+   */
+  onSubmit: (
+    data: T,
+    context: { signal: AbortSignal },
+  ) => FormSubmitResult | Promise<FormSubmitResult>;
   /** Label for the submit button (defaults to "Save") */
   submitLabel?: string;
   /** Label shown during submission (defaults to "Saving…") */
@@ -216,6 +223,7 @@ export default function Form<T extends FieldValues>({
   // two submits in one tick would otherwise both get through.
   const busyRef = useRef(false);
   const allowLeavingRef = useRef(false);
+  const [requestPending, setRequestPending] = useState(false);
 
   const dismissStatus = useCallback(() => {
     setStatusMessage(null);
@@ -287,9 +295,23 @@ export default function Form<T extends FieldValues>({
         controller.abort();
       }, timeoutMs);
 
+      // The form stays held until the request itself settles, not just
+      // until the timeout shows: a save that has timed out may still
+      // land, and a second press would then write twice.
+      setRequestPending(true);
+      const request = Promise.resolve().then(() =>
+        onSubmit(data, { signal: controller.signal }),
+      );
+      void request
+        .catch(() => undefined)
+        .finally(() => {
+          busyRef.current = false;
+          setRequestPending(false);
+        });
+
       try {
         const result = await Promise.race([
-          onSubmit(data),
+          request,
           new Promise<never>((_, reject) => {
             controller.signal.addEventListener("abort", () => {
               reject(new DOMException("Aborted", "AbortError"));
@@ -328,7 +350,6 @@ export default function Form<T extends FieldValues>({
         }
       } finally {
         abortRef.current = null;
-        busyRef.current = false;
       }
     },
     [onSubmit, timeoutMs, markSaved, runAfterSave],
@@ -391,6 +412,7 @@ export default function Form<T extends FieldValues>({
     submitLabel,
     submittingLabel,
     disableWhenClean,
+    requestPending,
   };
 
   return (
