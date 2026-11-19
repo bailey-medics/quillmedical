@@ -194,6 +194,51 @@ describe("Form", () => {
       });
       expect(screen.getByText("Request timed out")).toBeInTheDocument();
     });
+
+    it("keeps the button and Cancel held until a timed-out request settles", async () => {
+      const user = userEvent.setup();
+      let settle: (result: FormSubmitResult) => void = () => {};
+      const onSubmit = vi.fn(
+        () =>
+          new Promise<FormSubmitResult>((resolve) => {
+            settle = resolve;
+          }),
+      );
+      const onCancel = vi.fn();
+
+      renderWithMantine(
+        <Form<TestFormValues>
+          defaultValues={{ name: "" }}
+          onSubmit={onSubmit}
+          timeoutMs={50}
+        >
+          <Stack gap="md">
+            <FormStatus />
+            <SubmitButton onCancel={onCancel} />
+          </Stack>
+        </Form>,
+      );
+      await user.click(screen.getByTestId("submit-button"));
+      await screen.findByText("Request timed out");
+
+      const submit = screen.getByTestId("submit-button");
+      const cancel = screen.getByRole("button", { name: "Cancel" });
+      expect(submit).toHaveAttribute("aria-disabled", "true");
+      expect(cancel).toHaveAttribute("aria-disabled", "true");
+      await user.click(submit);
+      await user.click(cancel);
+      expect(onSubmit).toHaveBeenCalledOnce();
+      expect(onCancel).not.toHaveBeenCalled();
+
+      settle({ state: "success", message: { title: "Landed late" } });
+      await waitFor(() =>
+        expect(screen.getByTestId("submit-button")).not.toHaveAttribute(
+          "aria-disabled",
+          "true",
+        ),
+      );
+      expect(screen.queryByText("Landed late")).toBeNull();
+    });
   });
 
   describe("Validation error", () => {
