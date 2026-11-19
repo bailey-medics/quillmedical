@@ -143,7 +143,9 @@ function PermissionsPage() {
 
 ## Navigate away on success (§3)
 
-For forms that navigate to a different page on success, pass a flash payload via React Router state. The centralised `PageMessageProvider` (in `MainLayout`) picks it up automatically and displays the message on the destination page - no per-page component needed.
+For forms that navigate to a different page on success, return the navigation as `afterSave` and pass a flash payload via React Router state. The centralised `PageMessageProvider` (in `MainLayout`) picks it up automatically and displays the message on the destination page - no per-page component needed.
+
+**Navigate in `afterSave`, never inside `onSubmit` itself.** The form warns before somebody leaves while a save is still running, and `onSubmit` is that save. `afterSave` runs once the save has landed and the form is clean, with the warning stood down. If somebody typed more while the save ran, `afterSave` does not run: the form stays, and its warning covers the newer edits.
 
 ```tsx
 import { useNavigate } from "react-router";
@@ -153,15 +155,19 @@ function SendLetterPage() {
 
   const handleSubmit = async (data) => {
     const result = await api.post("/api/letters", data);
-    navigate("/patients/123/letters", {
-      state: {
-        flash: {
-          title: "Letter sent",
-          description: `ID #${result.id}`,
-        },
-      },
-    });
-    return { state: "success", message: { title: "" } };
+    return {
+      state: "success",
+      message: { title: "Letter sent" },
+      afterSave: () =>
+        navigate("/patients/123/letters", {
+          state: {
+            flash: {
+              title: "Letter sent",
+              description: `ID #${result.id}`,
+            },
+          },
+        }),
+    };
   };
 
   return (

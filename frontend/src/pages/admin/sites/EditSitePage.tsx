@@ -277,18 +277,19 @@ export default function EditSitePage() {
       const description =
         changes.length > 0 ? changes.join(". ") : "No changes made";
 
-      navigate(`/admin/sites/${id}`, {
-        state: {
-          flash: {
-            variant: "success",
-            title: "Site updated",
-            description,
-          },
-        },
-      });
       return {
         state: "success",
         message: { title: "Site updated" },
+        afterSave: () =>
+          void navigate(`/admin/sites/${id}`, {
+            state: {
+              flash: {
+                variant: "success",
+                title: "Site updated",
+                description,
+              },
+            },
+          }),
       };
     } catch (err) {
       return {

@@ -23,10 +23,13 @@
  */
 
 import {
+  type FormEvent,
   type ReactElement,
   type ReactNode,
+  type RefObject,
   useCallback,
   useContext,
+  useEffect,
   useRef,
   useState,
 } from "react";
@@ -38,6 +41,8 @@ import {
   type FieldValues,
   type FieldErrors,
   type Control,
+  type Path,
+  type PathValue,
 } from "react-hook-form";
 import {
   useBlocker,
@@ -57,6 +62,14 @@ export interface FormSubmitResult {
   state: "success" | "partial_success" | "error" | "validation_error";
   /** Status message to display */
   message: FormStatusMessage;
+  /**
+   * What to do once a successful save has landed, such as navigating to
+   * the saved record. Runs after the form is marked clean, so the form's
+   * own leave warning does not stop it. Never call `navigate` inside
+   * `onSubmit` itself: the save is still running there, and the warning
+   * holds while it runs.
+   */
+  afterSave?: () => void;
 }
 
 export interface FormConfirmConfig {
@@ -95,36 +108,70 @@ export interface FormProps<T extends FieldValues> {
   children: ReactNode;
 }
 
+interface NavigationGuardProps<T extends FieldValues> {
+  control: Control<T>;
+  onProceed: () => void;
+  formState: FormState;
+  /** True while a saved form's `afterSave` runs, so it may leave. */
+  allowLeavingRef: RefObject<boolean>;
+}
+
 /**
- * Internal component that blocks navigation when the form is dirty.
- * Must be rendered inside FormProvider to access form state.
- * Only activates when rendered inside a React Router context.
- * Does NOT block during submission or after success (the onSubmit
- * handler may navigate before Form calls reset).
+ * Internal component that blocks navigation while the form has unsaved
+ * edits or a save is still running. Must be rendered inside FormProvider
+ * to access form state. Only activates inside a data router.
+ *
+ * Edits typed after a save are unsaved too, so the warning comes back
+ * with them. A change of path or of query string counts as leaving; a
+ * change of `#hash` alone does not.
  */
 function FormNavigationBlocker<T extends FieldValues>({
   control,
   onProceed,
   formState,
-}: {
-  control: Control<T>;
-  onProceed: () => void;
-  formState: FormState;
-}) {
+  allowLeavingRef,
+}: NavigationGuardProps<T>) {
   const { isDirty } = useFormState({ control });
-
-  const shouldBlock =
-    isDirty &&
-    formState !== "submitting" &&
-    formState !== "success" &&
-    formState !== "partial_success";
+  const shouldBlock = isDirty || formState === "submitting";
 
   const blocker = useBlocker(
     ({ currentLocation, nextLocation }) =>
-      shouldBlock && currentLocation.pathname !== nextLocation.pathname,
+      !allowLeavingRef.current &&
+      shouldBlock &&
+      (currentLocation.pathname !== nextLocation.pathname ||
+        currentLocation.search !== nextLocation.search),
   );
 
   return <DirtyFormNavigation blocker={blocker} onProceed={onProceed} />;
+}
+
+/**
+ * Asks the browser to warn before a refresh or a closed tab drops
+ * unsaved edits or a save still running. The browser shows its own
+ * wording; no page can change it.
+ */
+function UnloadGuard<T extends FieldValues>({
+  control,
+  formState,
+}: {
+  control: Control<T>;
+  formState: FormState;
+}) {
+  const { isDirty } = useFormState({ control });
+  const shouldWarn = isDirty || formState === "submitting";
+
+  useEffect(() => {
+    if (!shouldWarn) return undefined;
+
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+    };
+    window.addEventListener("beforeunload", warn);
+
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [shouldWarn]);
+
+  return null;
 }
 
 /**
@@ -132,11 +179,9 @@ function FormNavigationBlocker<T extends FieldValues>({
  * useBlocker requires a data router (createBrowserRouter/createMemoryRouter),
  * not just any router context (e.g. MemoryRouter).
  */
-function MaybeFormNavigationBlocker<T extends FieldValues>(props: {
-  control: Control<T>;
-  onProceed: () => void;
-  formState: FormState;
-}) {
+function MaybeFormNavigationBlocker<T extends FieldValues>(
+  props: NavigationGuardProps<T>,
+) {
   const hasRouter = useInRouterContext();
   const dataRouterContext = useContext(UNSAFE_DataRouterContext);
   if (!hasRouter || !dataRouterContext) return null;
@@ -166,6 +211,12 @@ export default function Form<T extends FieldValues>({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const pendingDataRef = useRef<T | null>(null);
 
+  // Held from a submit until it is refused, cancelled or settles. The
+  // button's own disabled state only takes effect on the next render, so
+  // two submits in one tick would otherwise both get through.
+  const busyRef = useRef(false);
+  const allowLeavingRef = useRef(false);
+
   const dismissStatus = useCallback(() => {
     setStatusMessage(null);
     if (
@@ -178,6 +229,51 @@ export default function Form<T extends FieldValues>({
       setFormState("idle");
     }
   }, [formState]);
+
+  /**
+   * Make what was saved the form's new starting point, keeping anything
+   * typed while the save ran. Returns whether such edits exist; they stay
+   * dirty, so the leave warning still covers them.
+   */
+  const markSaved = useCallback(
+    (saved: T): boolean => {
+      const current = methods.getValues();
+      const newer = Object.keys(current).filter(
+        (key) => JSON.stringify(current[key]) !== JSON.stringify(saved[key]),
+      );
+
+      methods.reset(saved, { keepValues: true });
+      for (const key of newer) {
+        methods.setValue(
+          key as Path<T>,
+          current[key] as PathValue<T, Path<T>>,
+          { shouldDirty: true },
+        );
+      }
+
+      return newer.length > 0;
+    },
+    [methods],
+  );
+
+  /**
+   * Run a saved form's next step with its own leave warning stood down.
+   * A router checks the warning as the navigation starts, so standing it
+   * down for the synchronous part is enough.
+   */
+  const runAfterSave = useCallback((afterSave: () => void) => {
+    allowLeavingRef.current = true;
+
+    try {
+      afterSave();
+    } catch {
+      // The save itself succeeded and is reported as such. A failed next
+      // step must not read as a failed save, or the person saves again
+      // and writes twice.
+    } finally {
+      allowLeavingRef.current = false;
+    }
+  }, []);
 
   const handleSubmit = useCallback(
     async (data: T) => {
@@ -204,8 +300,15 @@ export default function Form<T extends FieldValues>({
         clearTimeout(timeoutId);
         setFormState(result.state);
         setStatusMessage(result.message);
+
         if (result.state === "success" || result.state === "partial_success") {
-          methods.reset(data);
+          const hasNewerEdits = markSaved(data);
+
+          // Edits typed during the save keep their warning: the form
+          // does not leave over them.
+          if (result.afterSave && !hasNewerEdits) {
+            runAfterSave(result.afterSave);
+          }
         }
       } catch (err) {
         clearTimeout(timeoutId);
@@ -225,12 +328,14 @@ export default function Form<T extends FieldValues>({
         }
       } finally {
         abortRef.current = null;
+        busyRef.current = false;
       }
     },
-    [onSubmit, timeoutMs, methods],
+    [onSubmit, timeoutMs, markSaved, runAfterSave],
   );
 
   const handleInvalid = useCallback((errors: FieldErrors<T>) => {
+    busyRef.current = false;
     const count = Object.keys(errors).length;
     setFormState("validation_error");
     setStatusMessage({
@@ -265,7 +370,18 @@ export default function Form<T extends FieldValues>({
   const handleConfirmClose = useCallback(() => {
     setConfirmOpen(false);
     pendingDataRef.current = null;
+    busyRef.current = false;
   }, []);
+
+  function handleFormSubmit(event: FormEvent<HTMLFormElement>) {
+    if (busyRef.current) {
+      event.preventDefault();
+      return;
+    }
+
+    busyRef.current = true;
+    void methods.handleSubmit(handleValidated, handleInvalid)(event);
+  }
 
   const contextValue: FormContextValue = {
     formState,
@@ -280,25 +396,19 @@ export default function Form<T extends FieldValues>({
   return (
     <FormContext.Provider value={contextValue}>
       <FormProvider {...methods}>
-        <form
-          /*
-            eslint-disable-next-line react-hooks/refs -- `handleSubmit`
-            registers the callback rather than calling it: `handleValidated`
-            runs on submit, and the ref it writes is never touched during
-            render. The rule analyses one function at a time and cannot see
-            the deferral.
-          */
-          onSubmit={methods.handleSubmit(handleValidated, handleInvalid)}
-          noValidate
-        >
+        <form onSubmit={handleFormSubmit} noValidate>
           {children}
         </form>
         {blockNavigation && (
-          <MaybeFormNavigationBlocker
-            control={methods.control}
-            onProceed={() => methods.reset()}
-            formState={formState}
-          />
+          <>
+            <MaybeFormNavigationBlocker
+              control={methods.control}
+              onProceed={() => methods.reset()}
+              formState={formState}
+              allowLeavingRef={allowLeavingRef}
+            />
+            <UnloadGuard control={methods.control} formState={formState} />
+          </>
         )}
         {confirm && (
           <ConfirmModal

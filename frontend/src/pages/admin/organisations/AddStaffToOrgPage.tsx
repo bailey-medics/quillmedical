@@ -47,19 +47,19 @@ export default function AddStaffToOrgPage() {
       });
       await reload();
 
-      navigate(`/admin/organisations/${id}`, {
-        state: {
-          flash: {
-            variant: "success",
-            title: "Staff member added",
-            description: `${values.user.username} has been added to this organisation`,
-          },
-        },
-      });
-
       return {
         state: "success",
         message: { title: "Staff member added" },
+        afterSave: () =>
+          void navigate(`/admin/organisations/${id}`, {
+            state: {
+              flash: {
+                variant: "success",
+                title: "Staff member added",
+                description: `${values.user.username} has been added to this organisation`,
+              },
+            },
+          }),
       };
     } catch (err) {
       return {
