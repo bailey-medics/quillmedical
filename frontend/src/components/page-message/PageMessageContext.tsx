@@ -164,13 +164,28 @@ export function PageMessageProvider({ children }: PageMessageProviderProps) {
       setMessages((prev) => [...prev, msg]);
       /* eslint-enable react-hooks/set-state-in-effect */
 
-      // Clear flash from history state to prevent ghost on back-nav
-      navigate(location.pathname + location.search, {
-        replace: true,
-        state: {},
-      });
+      // Clear flash from history state to prevent ghost on back-nav. The
+      // hash and the rest of the state stay, so a link to `#section` or
+      // a `returnTo` survives the message.
+      const rest: Record<string, unknown> = { ...state };
+      delete rest.flash;
+      navigate(
+        {
+          pathname: location.pathname,
+          search: location.search,
+          hash: location.hash,
+        },
+        { replace: true, state: rest },
+      );
     }
-  }, [location.state, navigate, location.pathname, location.search, nextId]);
+  }, [
+    location.state,
+    navigate,
+    location.pathname,
+    location.search,
+    location.hash,
+    nextId,
+  ]);
 
   const showMessage = useCallback(
     (msg: Omit<PageMessage, "id">) => {

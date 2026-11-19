@@ -81,15 +81,20 @@ const BaseCard = forwardRef(function BaseCard(
       // default: a pale background needs dark text, and forcing white
       // regardless left the card unreadable. An explicit `c` wins.
       c={c ?? (hasBg ? "white" : undefined)}
-      style={{
-        overflow: "visible",
-        ...(!hasBg && {
-          backgroundColor: "var(--card-bg, var(--mantine-color-body))",
-          borderColor: "var(--card-border-color, var(--mantine-color-gray-2))",
-        }),
-        ...(hasBg && { boxShadow: COLOURED_CARD_SHADOW }),
-        ...((typeof style === "object" && style) || {}),
-      }}
+      // An array is Mantine's own way of merging styles, so a caller's
+      // style may be an object, a function of the theme, or an array.
+      style={[
+        {
+          overflow: "visible",
+          ...(!hasBg && {
+            backgroundColor: "var(--card-bg, var(--mantine-color-body))",
+            borderColor:
+              "var(--card-border-color, var(--mantine-color-gray-2))",
+          }),
+          ...(hasBg && { boxShadow: COLOURED_CARD_SHADOW }),
+        },
+        style,
+      ]}
       {...rest}
     >
       {children}

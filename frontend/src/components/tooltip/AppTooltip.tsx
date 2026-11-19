@@ -72,12 +72,15 @@ export default function AppTooltip({
     );
   }
 
+  // Mantine opens a tooltip on hover alone by default, which leaves a
+  // keyboard user without the hint.
   return (
     <Tooltip
       label={tooltipLabel}
       openDelay={openDelay}
       color={tooltipColour}
       position={position}
+      events={{ hover: true, focus: true, touch: false }}
     >
       {children}
     </Tooltip>

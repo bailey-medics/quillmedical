@@ -15,7 +15,7 @@ import {
   useMantineTheme,
   type SwitchProps,
 } from "@mantine/core";
-import { useMediaQuery } from "@mantine/hooks";
+import { useId, useMediaQuery } from "@mantine/hooks";
 import { useState } from "react";
 import type { ReactNode } from "react";
 import { FieldDescription, ErrorMessage } from "@components/typography";
@@ -39,15 +39,29 @@ export default function SolidSwitch({
   description,
   error,
   checked: controlledChecked,
+  defaultChecked = false,
   onChange,
   classNames,
   size: sizeProp,
   onLabel = "Yes",
   offLabel = "No",
+  id: idProp,
   ...rest
 }: SolidSwitchProps) {
   const isControlled = controlledChecked !== undefined;
-  const [internalChecked, setInternalChecked] = useState(false);
+  const [internalChecked, setInternalChecked] = useState(defaultChecked);
+
+  // The top label names the switch, and its description and error are
+  // read out with it. The Yes and No text beside the track only shows
+  // the state, which the switch already announces.
+  const id = useId(idProp);
+  const labelId = `${id}-label`;
+  const descriptionId = `${id}-description`;
+  const errorId = `${id}-error`;
+  const describedBy =
+    [description && descriptionId, error && errorId]
+      .filter(Boolean)
+      .join(" ") || undefined;
   const checked = isControlled ? controlledChecked : internalChecked;
   const isDark = useComputedColorScheme("light") === "dark";
   const theme = useMantineTheme();
@@ -78,10 +92,22 @@ export default function SolidSwitch({
 
   return (
     <div>
-      {label && <Input.Label className={classes.topLabel}>{label}</Input.Label>}
-      {description && <FieldDescription>{description}</FieldDescription>}
+      {label && (
+        <Input.Label id={labelId} className={classes.topLabel}>
+          {label}
+        </Input.Label>
+      )}
+      {description && (
+        <div id={descriptionId}>
+          <FieldDescription>{description}</FieldDescription>
+        </div>
+      )}
       <Switch
         {...rest}
+        id={id}
+        aria-labelledby={label ? labelId : undefined}
+        aria-describedby={describedBy}
+        aria-invalid={error ? true : undefined}
         checked={checked}
         onChange={handleChange}
         size={size}
@@ -111,7 +137,11 @@ export default function SolidSwitch({
             : undefined,
         }}
       />
-      {error && <ErrorMessage>{error}</ErrorMessage>}
+      {error && (
+        <div id={errorId}>
+          <ErrorMessage>{error}</ErrorMessage>
+        </div>
+      )}
     </div>
   );
 }

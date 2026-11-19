@@ -7,7 +7,9 @@
  * this switches the `colorScheme` global to dark, waits for the story to
  * re-render (which re-runs the addon's axe check), and reports what that
  * second check found under the story's own `parameters.a11y.test`: fail
- * the test on "error", print a warning on "todo", skip on "off".
+ * the test on "error", print a warning on "todo", skip on "off". A render
+ * that sent no report, or where axe failed, counts as a failure too: it
+ * was never checked.
  *
  * Why this is a Jest setup file and not `.storybook/test-runner.ts`:
  * Storybook 10 loads that file through a TypeScript loader it installs
@@ -21,32 +23,30 @@
 // Types only: a runtime import of the package goes through the same
 // module.register() call.
 import type { TestRunnerConfig } from "@storybook/test-runner";
+import {
+  readA11yReport,
+  type A11yReading,
+  type DarkViolation,
+} from "./a11y-report";
 
 type Page = Parameters<NonNullable<TestRunnerConfig["postVisit"]>>[0];
 
 /** How long to wait for a story to re-render after a global changes. */
 const RERENDER_TIMEOUT_MS = 15000;
 
-/** One axe violation, trimmed to what the report needs. */
-export interface DarkViolation {
-  id: string;
-  help: string;
-  targets: string[];
-}
-
 /**
  * Change the `colorScheme` global inside the preview iframe, wait for the
- * story to finish re-rendering, and return the a11y addon's violations
- * from that render. Resolves to null if the story does not re-render in
- * time, so a stuck story is reported rather than hanging the run.
+ * story to finish re-rendering, and read the a11y addon's report from
+ * that render. Resolves to null if the story does not re-render in time,
+ * so a stuck story is reported rather than hanging the run.
  */
 async function renderInScheme(
   page: Page,
   colorScheme: "light" | "dark",
-): Promise<DarkViolation[] | null> {
-  return page.evaluate(
+): Promise<A11yReading | null> {
+  const reporters = await page.evaluate(
     ({ scheme, timeout }) =>
-      new Promise<DarkViolation[] | null>((resolve) => {
+      new Promise<unknown>((resolve) => {
         const g = globalThis as unknown as {
           __STORYBOOK_ADDONS_CHANNEL__: {
             on: (event: string, fn: (data: unknown) => void) => void;
@@ -64,29 +64,46 @@ async function renderInScheme(
           resolve(null);
         }, timeout);
 
+        // Only what the report needs crosses back out of the browser:
+        // whether axe failed, and each violation's id, help and targets.
         function onFinished(data: unknown): void {
           clearTimeout(timer);
           channel.off(finished, onFinished);
-          const reporters =
-            (data as { reporters?: { type: string; result?: unknown }[] })
-              ?.reporters ?? [];
-          const a11y = reporters.find((r) => r.type === "a11y");
-          const violations =
-            (
-              a11y?.result as {
-                violations?: {
-                  id: string;
-                  help: string;
-                  nodes: { target: unknown[] }[];
-                }[];
-              }
-            )?.violations ?? [];
+
+          const all = (data as { reporters?: unknown } | null)?.reporters;
+          if (!Array.isArray(all)) {
+            resolve(undefined);
+            return;
+          }
+
           resolve(
-            violations.map((v) => ({
-              id: v.id,
-              help: v.help,
-              targets: v.nodes.map((n) => n.target.join(" ")),
-            })),
+            all.map((r: { type?: unknown; result?: unknown }) => {
+              const result = r?.result as
+                { error?: unknown; violations?: unknown } | undefined;
+              const violations = Array.isArray(result?.violations)
+                ? result.violations.map(
+                    (v: {
+                      id?: unknown;
+                      help?: unknown;
+                      nodes?: { target?: unknown[] }[];
+                    }) => ({
+                      id: v?.id,
+                      help: v?.help,
+                      nodes: (v?.nodes ?? []).map((n) => ({
+                        target: n?.target ?? [],
+                      })),
+                    }),
+                  )
+                : undefined;
+
+              return {
+                type: r?.type,
+                result:
+                  result === undefined
+                    ? undefined
+                    : { error: Boolean(result.error), violations },
+              };
+            }),
           );
         }
 
@@ -97,6 +114,10 @@ async function renderInScheme(
       }),
     { scheme: colorScheme, timeout: RERENDER_TIMEOUT_MS },
   );
+
+  if (reporters === null) return null;
+
+  return readA11yReport(reporters);
 }
 
 /** Format violations the way a reviewer reads them in a CI log. */
@@ -154,17 +175,26 @@ export const postVisit: NonNullable<TestRunnerConfig["postVisit"]> =
     // it, and changing the global would not re-render it anyway.
     if (pinnedScheme !== undefined) return;
 
-    const violations = await renderInScheme(page, "dark");
+    const reading = await renderInScheme(page, "dark");
     // Put the preview back, so the next story starts in light.
     await renderInScheme(page, "light");
 
     const title = `${context.title} > ${context.name}`;
-    if (violations === null) {
+    if (reading === null) {
       throw new Error(`${title} did not re-render in dark mode`);
     }
-    if (violations.length === 0) return;
 
-    const message = formatDarkViolations(title, violations);
+    let message: string;
+    if (reading.kind === "no-report") {
+      message = `${title} (dark mode) sent no accessibility report, so it was not checked`;
+    } else if (reading.kind === "axe-error") {
+      message = `${title} (dark mode): axe failed to run, so it was not checked`;
+    } else if (reading.violations.length === 0) {
+      return;
+    } else {
+      message = formatDarkViolations(title, reading.violations);
+    }
+
     if (a11y.test === "error") throw new Error(message);
     console.warn(message);
   };

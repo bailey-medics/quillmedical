@@ -150,6 +150,50 @@ describe("SolidSwitch", () => {
     });
   });
 
+  describe("Names and descriptions", () => {
+    it("is named by its top label, not its Yes or No text", () => {
+      renderWithMantine(<SolidSwitch label="Send reminders" />);
+
+      expect(
+        screen.getByRole("switch", { name: "Send reminders" }),
+      ).toBeInTheDocument();
+    });
+
+    it("has one label element pointing at it", () => {
+      // The top label names the switch through aria-labelledby. A second
+      // <label for> beside Mantine's own on the track leaves anything
+      // that clicks "the label" unsure which one is meant.
+      const { container } = renderWithMantine(
+        <SolidSwitch label="Send reminders" />,
+      );
+      const id = screen.getByRole("switch").getAttribute("id");
+
+      expect(container.querySelectorAll(`label[for="${id}"]`)).toHaveLength(1);
+    });
+
+    it("is described by its description and its error", () => {
+      renderWithMantine(
+        <SolidSwitch
+          label="Send reminders"
+          description="By email, the day before"
+          error="Choose one"
+        />,
+      );
+
+      const control = screen.getByRole("switch");
+      expect(control).toHaveAccessibleDescription(
+        "By email, the day before Choose one",
+      );
+      expect(control).toHaveAttribute("aria-invalid", "true");
+    });
+
+    it("starts on when given defaultChecked", () => {
+      renderWithMantine(<SolidSwitch label="Send reminders" defaultChecked />);
+
+      expect(screen.getByRole("switch")).toBeChecked();
+    });
+  });
+
   describe("Size variants", () => {
     it.each(["xs", "sm", "md", "lg", "xl"] as const)(
       "renders with %s size",

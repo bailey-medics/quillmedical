@@ -15,9 +15,17 @@ export interface FieldDescriptionProps {
   children: ReactNode;
 }
 
+// A block-level span rather than a paragraph: Mantine puts a field's
+// description inside its own <p>, and a <p> cannot hold another.
 export default function FieldDescription({ children }: FieldDescriptionProps) {
   return (
-    <Text size="md" fw={typographyTokens.fontWeights.body} c="dimmed">
+    <Text
+      component="span"
+      display="block"
+      size="md"
+      fw={typographyTokens.fontWeights.body}
+      c="dimmed"
+    >
       {children}
     </Text>
   );

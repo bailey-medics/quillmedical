@@ -1,20 +1,27 @@
+/*
+ * PublicButton disables with aria-disabled so it stays focusable, which
+ * :disabled does not match. Each state checks both, so a disabled button
+ * shows no hover or pressed colour.
+ */
+
 .filled.filled {
   background-color: var(--mantine-color-secondary-5);
   color: var(--button-text-dark);
   border: none;
 }
 
-.filled.filled:disabled {
+.filled.filled:disabled,
+.filled.filled[aria-disabled="true"] {
   background-color: var(--mantine-color-secondary-5);
   opacity: 0.5;
 }
 
-.filled.filled:hover:not(:disabled) {
+.filled.filled:hover:not(:disabled, [aria-disabled="true"]) {
   background-color: var(--mantine-color-secondary-6);
   color: var(--button-text-dark);
 }
 
-.filled.filled:active:not(:disabled) {
+.filled.filled:active:not(:disabled, [aria-disabled="true"]) {
   background-color: var(--button-active-bg);
   color: var(--button-text-dark);
 }
@@ -25,15 +32,16 @@
   border: 1px solid var(--mantine-color-secondary-5);
 }
 
-.outline.outline:disabled {
+.outline.outline:disabled,
+.outline.outline[aria-disabled="true"] {
   opacity: 0.5;
 }
 
-.outline.outline:hover:not(:disabled) {
+.outline.outline:hover:not(:disabled, [aria-disabled="true"]) {
   background-color: rgb(200 150 62 / 10%);
   color: var(--button-outline-hover-text);
 }
 
-.outline.outline:active:not(:disabled) {
+.outline.outline:active:not(:disabled, [aria-disabled="true"]) {
   background-color: rgb(200 150 62 / 20%);
 }
