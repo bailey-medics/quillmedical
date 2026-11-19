@@ -29,7 +29,6 @@ fi
 
 for env_file in "${env_files[@]}"; do
     sample_file="${env_file}-sample"
-    dir="$(dirname "$env_file")"
     rel_path="${env_file#"$REPO_ROOT"/}"
 
     echo "Processing: $rel_path → ${rel_path}-sample"
