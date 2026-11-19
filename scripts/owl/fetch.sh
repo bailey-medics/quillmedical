@@ -41,8 +41,8 @@ readonly CURL_OPTIONS=(
     --show-error
     --location
     --max-redirs 5
-    --proto =https
-    --proto-redir =https
+    --proto "=https"
+    --proto-redir "=https"
     --max-time 30
 )
 

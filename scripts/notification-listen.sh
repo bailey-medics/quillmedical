@@ -29,6 +29,7 @@ RETRY="${QUILL_NOTIFY_RETRY:-10}"
 SSH="${QUILL_NOTIFY_SSH:-ssh}"
 
 # Single-quoted so the box's shell, not this one, expands $HOME.
+# shellcheck disable=SC2016
 REMOTE='tail -n 20 -F "$HOME/.local/state/quill-notify/banners.jsonl" 2>/dev/null'
 
 # ServerAlive notices a dead connection, such as one left over from before

@@ -209,6 +209,19 @@ repos:
           - --min-severity=low
           - --config=.github/zizmor.yml
 
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.11.0.1
+    hooks:
+      - id: shellcheck
+        name: shellcheck (shell scripts)
+        # Brings its own shellcheck binary, so no machine needs one
+        # installed. SCRIPTDIR, as CI uses, lets a script's `source` lines
+        # be followed from its own folder. The bats tests are left out:
+        # shellcheck reads them as a dialect of their own.
+        args:
+          - --source-path=SCRIPTDIR
+        exclude: \.bats$
+
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
     hooks:
