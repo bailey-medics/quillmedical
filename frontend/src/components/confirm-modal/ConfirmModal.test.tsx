@@ -12,7 +12,7 @@
  */
 
 import { useState } from "react";
-import { screen, waitFor } from "@testing-library/react";
+import { act, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { vi, describe, it, expect } from "vitest";
 import { renderWithMantine } from "@test/test-utils";
@@ -239,6 +239,126 @@ describe("ConfirmModal", () => {
     resolve!();
     await waitFor(() => {
       expect(onClose).toHaveBeenCalledOnce();
+    });
+  });
+
+  it("names a title-free dialog with its hidden accessible title", () => {
+    renderWithMantine(
+      <ConfirmModal {...defaultProps} accessibleTitle="Delete note?" />,
+    );
+
+    expect(
+      screen.getByRole("dialog", { name: "Delete note?" }),
+    ).toBeInTheDocument();
+  });
+
+  it("names a title-free dialog by default", () => {
+    renderWithMantine(<ConfirmModal {...defaultProps} />);
+
+    expect(
+      screen.getByRole("dialog", { name: "Confirm action" }),
+    ).toBeInTheDocument();
+  });
+
+  describe("while the action is running", () => {
+    function deferred(): {
+      promise: Promise<void>;
+      resolve: () => void;
+    } {
+      let resolve: () => void = () => {};
+      const promise = new Promise<void>((r) => {
+        resolve = r;
+      });
+
+      return { promise, resolve };
+    }
+
+    it("calls onAccept once for two clicks in the same tick", async () => {
+      const pending = deferred();
+      const onAccept = vi.fn(() => pending.promise);
+      renderWithMantine(<ConfirmModal {...defaultProps} onAccept={onAccept} />);
+
+      const accept = screen.getByRole("button", { name: "Confirm" });
+      act(() => {
+        accept.click();
+        accept.click();
+      });
+
+      expect(onAccept).toHaveBeenCalledOnce();
+      await act(async () => {
+        pending.resolve();
+        await pending.promise;
+      });
+    });
+
+    it("blocks Cancel until the action settles", async () => {
+      const user = userEvent.setup();
+      const pending = deferred();
+      const onClose = vi.fn();
+      renderWithMantine(
+        <ConfirmModal
+          {...defaultProps}
+          onAccept={() => pending.promise}
+          onClose={onClose}
+        />,
+      );
+
+      await user.click(screen.getByRole("button", { name: "Confirm" }));
+      const cancel = screen.getByRole("button", { name: "Cancel" });
+      await waitFor(() =>
+        expect(cancel).toHaveAttribute("aria-disabled", "true"),
+      );
+      await user.click(cancel);
+
+      expect(onClose).not.toHaveBeenCalled();
+      pending.resolve();
+      await waitFor(() => expect(onClose).toHaveBeenCalledOnce());
+    });
+
+    it("keeps a reopened modal blocked, and does not close it, when the first request settles", async () => {
+      const user = userEvent.setup();
+      const pending = deferred();
+      const onAccept = vi.fn(() => pending.promise);
+      const onClose = vi.fn();
+      const { rerender } = renderWithMantine(
+        <ConfirmModal
+          {...defaultProps}
+          onAccept={onAccept}
+          onClose={onClose}
+        />,
+      );
+
+      await user.click(screen.getByRole("button", { name: "Confirm" }));
+      rerender(
+        <ConfirmModal
+          {...defaultProps}
+          opened={false}
+          onAccept={onAccept}
+          onClose={onClose}
+        />,
+      );
+      rerender(
+        <ConfirmModal
+          {...defaultProps}
+          onAccept={onAccept}
+          onClose={onClose}
+        />,
+      );
+
+      const accept = await screen.findByRole("button", {
+        name: "Confirming…",
+      });
+      expect(accept).toHaveAttribute("aria-disabled", "true");
+      await user.click(accept);
+      expect(onAccept).toHaveBeenCalledOnce();
+
+      pending.resolve();
+      await waitFor(() =>
+        expect(
+          screen.getByRole("button", { name: "Confirm" }),
+        ).not.toHaveAttribute("aria-disabled"),
+      );
+      expect(onClose).not.toHaveBeenCalled();
     });
   });
 });

@@ -174,4 +174,70 @@ describe("DirtyFormNavigation", () => {
     // Should not throw error and still proceed
     expect(blocker.proceed).toHaveBeenCalledTimes(1);
   });
+
+  it("names its dialog, though it has no visible title", () => {
+    const blocker: Blocker = {
+      state: "blocked",
+      reset: vi.fn(),
+      proceed: vi.fn(),
+      location: mockLocation,
+    };
+
+    renderWithMantine(<DirtyFormNavigation blocker={blocker} />);
+
+    expect(
+      screen.getByRole("dialog", { name: "Leave this page?" }),
+    ).toBeInTheDocument();
+  });
+
+  it("still lets Stay reset the blocker after onProceed throws", async () => {
+    const user = userEvent.setup();
+    const onProceed = vi.fn(() => {
+      throw new Error("could not clear the draft");
+    });
+    const blocker: Blocker = {
+      state: "blocked",
+      reset: vi.fn(),
+      proceed: vi.fn(),
+      location: mockLocation,
+    };
+
+    renderWithMantine(
+      <DirtyFormNavigation blocker={blocker} onProceed={onProceed} />,
+    );
+
+    await user.click(screen.getByRole("button", { name: /leave page/i }));
+    await user.click(screen.getByRole("button", { name: /stay/i }));
+
+    expect(blocker.proceed).not.toHaveBeenCalled();
+    expect(blocker.reset).toHaveBeenCalledTimes(1);
+  });
+
+  it("lets Stay reset the blocker on a second blocked attempt", async () => {
+    const user = userEvent.setup();
+    const blocked: Blocker = {
+      state: "blocked",
+      reset: vi.fn(),
+      proceed: vi.fn(),
+      location: mockLocation,
+    };
+    const unblocked: Blocker = {
+      state: "unblocked",
+      reset: undefined,
+      proceed: undefined,
+      location: undefined,
+    };
+
+    const { rerender } = renderWithMantine(
+      <DirtyFormNavigation blocker={blocked} />,
+    );
+    await user.click(screen.getByRole("button", { name: /leave page/i }));
+
+    rerender(<DirtyFormNavigation blocker={unblocked} />);
+    const again: Blocker = { ...blocked, reset: vi.fn() };
+    rerender(<DirtyFormNavigation blocker={again} />);
+    await user.click(await screen.findByRole("button", { name: /stay/i }));
+
+    expect(again.reset).toHaveBeenCalledTimes(1);
+  });
 });

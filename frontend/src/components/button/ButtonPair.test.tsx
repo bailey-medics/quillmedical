@@ -87,4 +87,20 @@ describe("ButtonPair", () => {
       );
     });
   });
+
+  describe("Cancel", () => {
+    it("marks cancel as aria-disabled and ignores a click when cancelDisabled", async () => {
+      const user = userEvent.setup();
+      const onCancel = vi.fn();
+      renderWithMantine(
+        <ButtonPair {...defaultProps} onCancel={onCancel} cancelDisabled />,
+      );
+
+      const cancel = screen.getByRole("button", { name: "Cancel" });
+      await user.click(cancel);
+
+      expect(cancel).toHaveAttribute("aria-disabled", "true");
+      expect(onCancel).not.toHaveBeenCalled();
+    });
+  });
 });

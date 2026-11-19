@@ -1,0 +1,108 @@
+# Turva review backport plan
+
+Quill's Storybook components were ported into Turva in PRs 83 to 94. Marcus reviewed each one there with an AI agent, which found small edge-case bugs, and he fixed them in follow-up commits on each pull request. The components came from Quill, so most of those bugs are in Quill too. None is a security hole, but three matter in a clinical app: a successful save wipes anything typed during it, a timed-out save carries on and can write twice, and a typed date can be read in US order. The rest are double-click guards, accessibility gaps and layout overflow.
+
+This plan writes Quill's own fixes for the bugs that apply, using the Turva commits as the description of each bug, not as code to copy: Turva's code stays out of Quill. Each step names the Quill file and line where the bug sits, and says where Turva's fix does not fit Quill's rules. Fixes that are Turva-only (the Tiptap editor, the safety API, the legacy theme, the dev stack launcher, the password length, the legacy router) are left out, and the reason is recorded under Decisions.
+
+## Open questions
+
+- [x] **Should Quill's hand-written Markdown parser be replaced with Marked?** It is the only clean fix for the four parser bugs in Phase 8. It is a new dependency, and it changes two list rules Quill chose on purpose (`MarkdownView.tsx:110-119`), so guide, teaching and letter content may render differently. - Yes, swap to Marked. Answered in `/g`, 19 November 2026.
+- [x] **How should a keyboard user open a table row?** Rows open only on a mouse click (`DataTable.tsx:459`, `DataTableWithResults.tsx:195`, `DataCard.tsx:132`). Turva adds an "Open" button column to every clickable table. The lighter option is a link in the first cell. - A link in the first cell, so no table changes layout. Answered in `/g`, 19 November 2026.
+- [x] **Should sorting be offered once a table turns into cards on mobile?** `SortHeader` is only in the table branch, so the sort vanishes on a phone. Turva adds a sort dropdown above the cards, which is new UI. - Yes, add a sort dropdown above the cards. Answered in `/g`, 19 November 2026.
+- [x] **Is Phase 6 one pull request?** Not raised in the chat. With the keyboard link and the mobile sort added, it ran to twelve steps across tables, cards and menus. - No: split into Phase 6, table behaviour, and Phase 7, cards and menus, so each stays a 20 to 30 minute review. Markdown moves to Phase 8. Settled in `/g` from the plan's size rule, 19 November 2026.
+- [x] **Should a badge wrap its label in a narrow space?** Quill chose no shrinking and no wrapping on purpose (`theme.ts:701-711`). Turva reversed it. - No: badges stay on one line, and Phase 2 leaves the theme alone. Answered in `/g`, 19 November 2026.
+- [x] **How are teaching slides and letters checked after the Marked swap?** They come from outside the repository, so the build cannot compare them as it does the guides. - Mark looks over a few teaching slides and letters before merging Phase 8, guided by the pull request's list of what changed. Answered in `/g`, 19 November 2026.
+- [x] **What if the tightened accessibility check exposes many broken stories?** - Phase 2 fixes up to five. Beyond that, the rest are set to `a11y: { test: "todo" }` with a comment saying why, and listed in the pull request for a later fix. Answered in `/g`, 19 November 2026.
+- [x] **What does the date field do with a two-digit year?** - It refuses it with "Enter the year in full, for example 1980", rather than guessing the century, which matters most for dates of birth. Answered in `/g`, 19 November 2026.
+- [x] **Should Cancel in a confirm modal stay usable while the action runs?** Turva blocks it until the request settles, so a dialog cannot close over a delete still in flight. The other view is that Cancel should always dismiss. - Block Cancel while the action runs, matching Escape. Answered in `/g`, 19 November 2026.
+- [x] **Does `api.ts` need changing to take an abort signal in Phase 5?** - No: its `Options` type extends `RequestInit` (`frontend/src/lib/api.ts:84`), so `signal` already passes through to `fetch`. Settled from the code in `/g`, 19 November 2026.
+
+## Phase 1: Guard the confirm modal and the red button pair
+
+- [x] **Make `acceptLoading` alone block acceptance**, in `components/button/ButtonPairRed.tsx:59-66`. Today the spinner shows but a click or Enter still calls `onAccept`, so a direct caller can delete twice. Set `aria-busy` while loading. `ButtonPair` does not need this: Mantine's `loading` already disables its button.
+- [x] **Add a `cancelDisabled` prop to `ButtonPair` and `ButtonPairRed`**, so a caller can hold Cancel while an action runs. Phase 4's `SubmitButton` uses it too.
+- [x] **Make `ConfirmModal` single-flight**, in `components/confirm-modal/ConfirmModal.tsx:74-82`. Hold a ref that is set before `onAccept` is awaited, so two clicks before React commits `loading` call it once. Block Cancel while pending (`:140`, `:151`), as Escape already is through `closeOnEscape={!loading}`. Count each opening, so a request from an earlier opening cannot close a later one, and a reopen while a request is pending keeps accept blocked (`:107-111`).
+- [x] **Give a title-free `ConfirmModal` an accessible name**, at `ConfirmModal.tsx:130`. Render a visually hidden `Modal.Title` with a fallback label when `title` is absent. `DirtyFormNavigation` passes no title, so every unsaved-changes warning is an unnamed dialog today.
+- [x] **Reset `DirtyFormNavigation` when `onProceed` throws**, in `components/warnings/DirtyFormNavigation.tsx:69-73`. `proceededRef` is set before `onProceed` runs, so a throw leaves Stay unable to reset the blocker. Set it only once `onProceed` returns, and check that Stay works on a second blocked attempt now that a late `onClose` no longer resets the ref.
+- [x] **Add tests and stories** for each: a double click, Cancel while pending, a reopen while pending, the unnamed dialog and a throwing `onProceed`, in the components' existing `.test.tsx` and `.stories.tsx` files.
+
+## Phase 2: Small display and accessibility fixes
+
+- [ ] **Let `BaseCard` take a `style` function or array**, at `components/base-card/BaseCard.tsx:91`. Today `typeof style === "object"` spreads an array's keys and drops a function. Pass `style={[defaults, style]}`, which is Mantine's own way of merging.
+- [ ] **Open `AppTooltip` on keyboard focus on desktop**, at `components/tooltip/AppTooltip.tsx:76-83`. Events are set only in the mobile branch, and Mantine defaults `focus` to false. Leave its colours alone: Turva's `dark.6` would break Quill's rule against built-in colour scales.
+- [ ] **Stop a disabled `PublicButton` showing hover and active colours**, in `components/button/PublicButton.module.css:12,17,29,34`. It uses `aria-disabled`, so `:not(:disabled)` still matches. Select on `[aria-disabled="true"]` too. Clicks are already blocked at `PublicButton.tsx:66`.
+- [ ] **Keep the hash and navigation state when a flash message is cleared**, in `components/page-message/PageMessageContext.tsx:168-171`. The replace drops `#fragment` and any other state, such as `returnTo`.
+- [ ] **Render `FieldDescription` and `ErrorMessage` as inline elements**, at `components/typography/FieldDescription.tsx:20` and `ErrorMessage.tsx:28-31`. Both sit inside Mantine's `<p>`, and a `<p>` or `<div>` there is invalid HTML. Check every other caller still lays out once they become `<span>`.
+- [ ] **Link `SolidSwitch` to its label, description and error**, at `components/form/SolidSwitch.tsx:49-51, 81-82, 114`, and honour `defaultChecked`.
+- [ ] **Link `RadioField`'s description and error to the group**, at `components/form/RadioField.tsx:81, 103`, through Mantine's own `description` and `error` props rather than children.
+- [ ] **Stop the filter panel overflowing a narrow screen**, at `components/form/filter/FilterModal.module.css:3-4` (`width: max-content; min-width: 280px`). Cap it at the viewport width.
+- [ ] **Draw icons once `MarkdownView` stops loading, and keep `children` in HTML mode**, in `components/typography/MarkdownView.tsx`. The icon and image-error effects (`:400-438`) depend only on `[sanitizedHtml, icons]`, so add `isLoading` and `asPlainText`. `children` renders only in plain-text mode (`:481-513`).
+- [ ] **Make the dark-mode accessibility check fail closed**, in `frontend/.storybook/a11y-dark-mode.ts:70-91`. If axe crashes, or no a11y report arrives, `?.violations ?? []` turns that into an empty list, which passes. Treat a missing a11y report, or a result carrying `error`, as a failure. Turva fixed this by moving to the Storybook Vitest addon; Quill only needs the check tightened. If it turns up stories that never really passed, fix up to five in this phase. Set any beyond five to `a11y: { test: "todo" }`, with a comment saying the check exposed it, and list them in the pull request.
+- [ ] **Add tests and stories** for each: a story showing the disabled `PublicButton`, a focus test for `AppTooltip`, a style-function test for `BaseCard`, a hash test for the page message and accessible-name tests for the switch and radio group.
+
+## Phase 3: Dates read and shown the British way
+
+- [ ] **Parse typed dates strictly as day, month, year**, in `components/form/DateField.tsx:58-75`. It passes no `dateParser`, so Mantine's loose `dayjs` fallback can read 03/04/2026 as 4 March and roll 31/02 into March. Add `components/form/parseDateInput.ts`, which accepts `D/M/YYYY` and `D MMMM YYYY` and refuses any date that does not exist. A two-digit year is refused with "Enter the year in full, for example 1980", never guessed. `dayjs` is already a dependency. This is the most clinically important fix in the plan: a date of birth or a due date read the wrong way round is wrong data.
+- [ ] **Show a plain date on the day it names**, in `components/data/Date.tsx:45, 78`. `new Date("2026-05-06")` is midnight UTC, so it shows 5 May west of UTC, and `2026-02-30` rolls into March in some browsers. Callers pass two kinds of value: plain dates such as `due_on` and `starts_on`, and timestamps such as `closed_at` and `noted_at` (`RetentionReviewCard.tsx:123`, `RetentionExceptionCard.tsx:41-49`). So a `YYYY-MM-DD` value is checked to be a real date and formatted with `timeZone: "UTC"`, and anything longer is formatted as a timestamp, as now. Turva's version refuses timestamps, which would break those callers.
+- [ ] **Name the calendar's arrows, keep it within 320 pixels, and keep faded days readable**, in `DateField.tsx` and `DateField.module.css`. Mantine fades days from the next and last month to 50% and colours weekends red, both below contrast.
+- [ ] **Add tests**: `parseDateInput` across valid, US-ordered and impossible dates, `FormattedDate` with a plain date under a west-of-UTC zone and with a timestamp, and a `DateField` story with the calendar open.
+
+## Phase 4: The form keeps newer edits and stays guarded
+
+- [ ] **Keep edits typed during a save**, at `components/form/Form/Form.tsx:207-209`. On success, `methods.reset(data)` puts every field back to what was sent. Reset the saved baseline to `data` while keeping current values (`reset(data, { keepValues: true })` with the dirty state worked out against the new baseline), so a field typed during the save stays and stays dirty.
+- [ ] **Guard submission with a ref**, at `Form.tsx:291`. Today only the button's `aria-disabled` stops a second submit, so a fast double click or a programmatic `requestSubmit` before the next render both get through.
+- [ ] **Guard leaving while saving and after fresh edits**, at `Form.tsx:116-125`. `shouldBlock` turns off in `submitting`, `success` and `partial_success`, so a person can leave mid-save, or edit again after a save and leave unwarned. Block whenever the form is dirty or a save is in flight, and block a change of query string as well as path.
+- [ ] **Add a `beforeunload` warning** while the form is dirty or saving, so refreshing or closing the tab warns too.
+- [ ] **Add an `onSuccess` prop for navigation after a save.** With the guard on after success, the 12 forms that call `navigate(...)` inside `onSubmit` would be blocked by their own guard. `onSuccess` runs once the baseline is reset, so it navigates clean. Move those 12 callers to it in this phase; `grep -rln "<Form\b" src | xargs grep -ln "navigate("` lists them. Update `Form.mdx` to match.
+- [ ] **Add tests** in `components/form/Form/Form.test.tsx`: an edit during a slow save survives success, two submits in one tick call `onSubmit` once, leaving mid-save is blocked, and a form navigating through `onSuccess` is not blocked by its own guard.
+
+## Phase 5: A timed-out save stops
+
+- [ ] **Hand `onSubmit` an abort signal**, at `Form.tsx:195-202` and `:81`. The timeout aborts a controller, but `onSubmit(data)` never sees it, so the request carries on and a late success can still navigate. Change the signature to `onSubmit(data, { signal })` and pass the signal to `api.ts`. Callers that ignore it keep working, since the argument is extra.
+- [ ] **Keep the submit button disabled until the request settles**, even after the timeout message shows. Today the button re-enables in the `timeout` state, so a retry can write twice while the first request still runs.
+- [ ] **Hold Cancel in `SubmitButton` while a request is unsettled**, at `components/form/Form/SubmitButton.tsx:56-61`, using Phase 1's `cancelDisabled`.
+- [ ] **Clear a stale error from an earlier opening of `PasswordConfirmModal`**, at `components/confirm-modal/PasswordConfirmModal.tsx:70-76, 89-90`. Close it mid-request and reopen, and the old request's error lands in the new dialog. Count openings, as Phase 1 does for `ConfirmModal`, and clear the fields on close as well as open.
+- [ ] **Respect reduced motion in `FormStatus`**: scroll to the message instantly when the person has asked for less motion.
+- [ ] **Add tests**: a timed-out save keeps the button disabled until the promise settles, the signal is aborted, Cancel is held, and a reopened password dialog shows no old error.
+
+## Phase 6: Tables and search
+
+- [ ] **Let typing work in an uncontrolled `SearchField`**, at `components/search/SearchFields.tsx:48`. With `onChange` and no `value`, the internal state never updates, so typing does nothing.
+- [ ] **Announce an error, not the result count**, at `components/tables/DataTable.tsx:173-176`. `LiveStatus` reads out "1 result" while the error panel shows.
+- [ ] **Add `aria-sort` to sort headers**, at `components/tables/SortHeader.tsx:37`.
+- [ ] **Stop a `0` rendering as a stray cell**, at `DataTableWithResults.tsx:192, 201, 207` and `DataCard.tsx:122`. `subRowContent && ...` and `footer && ...` render `0`. Compare against `null` and `undefined` instead.
+- [ ] **Make read-only rows look read-only.** `DataCard`'s `onClick` is required (`DataCard.tsx:46, 132`), so tables pass `() => {}` (`DataTable.tsx:396`, `DataTableWithResults.tsx:163`) and the card shows a pointer with no action. Make it optional and drop the pointer without it.
+- [ ] **Stop a click on a control inside a row also opening the row.** A button, checkbox or label in a cell bubbles to the row's handler. Ignore events whose target is inside an interactive element. `EllipsisMenu` already stops propagation.
+- [ ] **Let a keyboard user open a row through its first cell.** Where a table has `onRowClick`, render the first cell's content as a `TextLink`-styled button that calls the same handler, so it takes focus and opens on Enter. The row keeps its mouse click, and no column is added, so no table changes layout. In the card layout, the card's title takes the same button.
+- [ ] **Show the pagination whenever rows exceed `pageSize`**, at `DataTable.tsx:303`, not only above 10. No Quill page uses a smaller size today, so this is latent. Clamp a `pageSize` below 1 or not a whole number to 10, and warn in development; Turva throws, which is heavy for a prop typo.
+- [ ] **Name the page-size picker and focus its first item**, at `components/tables/TablePagination.tsx:76-87`.
+- [ ] **Add tests and stories** for each, including an error-state announcement test, a keyboard test that tabs to the first-cell link and opens the row with Enter, and a test that a click on a control inside a cell does not open the row.
+
+## Phase 7: Cards and menus
+
+- [ ] **Offer sorting in the card layout.** On a phone the table becomes cards and `SortHeader` disappears, as it is only in the table branch (around `DataTable.tsx:443`). Above the cards, show a sort control built from the existing `SelectField`, listing the sortable columns and their direction, and only when the table has sortable columns. It drives the same sort state as the headers.
+- [ ] **Let a long label wrap in `DataCard`**, at `DataCard.tsx:109` (`wrap="nowrap"`).
+- [ ] **Fix the ellipsis menu's colours.** Callers pass `var(--alert-color)`, a fill colour, as text (`Messages.tsx:128`, `SiteAdminPage.tsx:182` and others): move them to the text colour token. Replace the hard-coded hex in `components/ellipsis-menu/EllipsisMenu.module.css:3-12` with tokens, and render nothing when `items` is empty. Turva maps the colour at runtime with an inline style, which Quill's no-inline-styles rule forbids.
+- [ ] **Add tests and stories**: a mobile story with the sort control, a test that choosing a sort reorders the cards, a card story with a long label, and an ellipsis menu story in both colour schemes.
+
+## Phase 8: Markdown parsing
+
+- [ ] **Replace the hand-written parser** in `components/typography/MarkdownView.tsx` with Marked, keeping DOMPurify as the last step and Quill's existing safety rules: `isSafeUrl`, raw HTML escaped, and `IMAGE_PATH` refusing `..`, `//` and `%`. Swap icons after parsing, on text nodes only, so icon notation inside code and link addresses is left alone. Configure Marked per call, never through the global `marked.use`, so one view's options cannot leak into another. This fixes four bugs in one go:
+  - **Underscores in a link address become italics** (`:215-227`), because the italic pass runs over finished link markup.
+  - **A `)` in a link address ends the link early** (`:215`), because the pattern is `[^)]+`.
+  - **Inline code gets bold and italics** (`:224-230`), because those passes run before code.
+  - **A numbered list loses its numbering** (`:304-319`, and `start` is missing from `ALLOWED_ATTR` at `:83`). A list with a bullet nested inside it splits into three lists, and the numbering restarts at 1.
+- [ ] **Check every guide renders the same**, apart from the four fixes. Marked follows CommonMark for lazy continuation lines and indented headings, which Quill chose against (`MarkdownView.tsx:110-119`). Before removing the old parser, render every file in `frontend/src/guides/content/` through both and compare the HTML. Fix any guide that moved, or set Marked's options to match, and name each difference in the pull request.
+- [ ] **Say in the pull request what Mark must check before merging.** Teaching slides and letters come from outside the repository, so the build cannot compare them. List the list rules that changed, with a short Markdown example of each, so Mark can look over a few slides and letters before he merges.
+- [ ] **Add tests** for each of the four bugs, plus tests that the safety rules still hold.
+
+## Decisions
+
+- **Quill writes its own fixes; Turva's code is not copied.** The Turva commits describe the bugs well, but they are built round Turva's rules (its colour scales, inline styles, a router check that throws). Each step names where Turva's fix does not fit.
+- **The first-cell link, not Turva's Open column.** It gives keyboard users the same action without adding a column, so no table's layout changes.
+- **The form changes come before the timeout change.** Phase 4 moves navigation into `onSuccess`, which Phase 5's abort needs: a navigation inside `onSubmit` cannot be stopped once it has run. Splitting them keeps each pull request reviewable.
+- **Turva-only fixes are left out.** Quill has no Tiptap editor, no safety API client of that shape, no legacy theme and no worktree dev stack launcher. Quill's 128-character password cap matches its backend (`backend/app/schemas/limits.py:26`), so Turva's longer limit does not apply. Quill already uses `createBrowserRouter`, so the legacy router check is moot.
+- **The dropdown scroll area does not take focus.** Turva makes the option list a tab stop. Mantine's combobox already moves through options with the arrow keys, so it would add a tab stop for no gain.
+- **The flash shown twice under StrictMode is not fixed.** Quill's `main.tsx` has no StrictMode, so it never happens for a live user.
+- **Badges keep one line.** Quill's no-wrap choice in `theme.ts` stands; Turva's wrapping is not taken.
+- **Long multi-select labels are left as they are.** Quill keeps Mantine's single line with an ellipsis, so a long value is cut short, not squashed into one character. Turva's wrapping is an improvement, not a fix.

@@ -115,5 +115,38 @@ describe("ButtonPairRed", () => {
       );
       expect(screen.getByText("Remove")).toBeInTheDocument();
     });
+
+    it("blocks accepting while loading, even without acceptDisabled", async () => {
+      const user = userEvent.setup();
+      const onAccept = vi.fn();
+      renderWithMantine(
+        <ButtonPairRed {...defaultProps} onAccept={onAccept} acceptLoading />,
+      );
+
+      const accept = screen.getByRole("button", { name: "OK" });
+      await user.click(accept);
+      accept.focus();
+      await user.keyboard("{Enter}");
+
+      expect(onAccept).not.toHaveBeenCalled();
+      expect(accept).toHaveAttribute("aria-disabled", "true");
+      expect(accept).toHaveAttribute("aria-busy", "true");
+    });
+  });
+
+  describe("Cancel", () => {
+    it("marks cancel as aria-disabled and ignores a click when cancelDisabled", async () => {
+      const user = userEvent.setup();
+      const onCancel = vi.fn();
+      renderWithMantine(
+        <ButtonPairRed {...defaultProps} onCancel={onCancel} cancelDisabled />,
+      );
+
+      const cancel = screen.getByRole("button", { name: "Cancel" });
+      await user.click(cancel);
+
+      expect(cancel).toHaveAttribute("aria-disabled", "true");
+      expect(onCancel).not.toHaveBeenCalled();
+    });
   });
 });
