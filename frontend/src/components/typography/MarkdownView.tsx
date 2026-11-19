@@ -14,6 +14,7 @@ import DOMPurify from "dompurify";
 import { ActionIcon, Skeleton, Stack } from "@mantine/core";
 import Icon from "@/components/icons/Icon";
 import classes from "./MarkdownView.module.css";
+import { renderMarkdown } from "./markdownRenderer";
 
 /**
  * MarkdownView Props
@@ -80,7 +81,8 @@ const ALLOWED_TAGS = [
   "h5",
   "h6",
 ];
-const ALLOWED_ATTR = ["href", "rel", "target"];
+// `start` keeps a numbered list's first number, such as a list that resumes at 3.
+const ALLOWED_ATTR = ["href", "rel", "target", "start"];
 // Added to the lists above only when the caller gives an `imageBase`.
 const IMAGE_TAGS = ["img"];
 const IMAGE_ATTR = ["src", "alt", "loading"];
@@ -89,247 +91,19 @@ const IMAGE_ATTR = ["src", "alt", "loading"];
 const ICON_TAGS = ["span"];
 const ICON_ATTR = ["data-icon", "data-button", "aria-hidden"];
 
-/**
- * An icon named in the text: `:icon-user-plus:` on its own, or
- * `:button-user-plus:` drawn as the button it sits on.
- */
-const ICON_NAME = /:(icon|button)-([a-z0-9]+(?:-[a-z0-9]+)*):/g;
-
-/** An image address a guide may use: beneath the base, and nowhere else. */
-const IMAGE_PATH = /^[a-z0-9-]+(\/[a-z0-9-]+)*\.(png|jpe?g|webp)$/;
-
-/** An image on a line of its own, indented under the list item it shows. */
-const IMAGE_UNDER_ITEM = /^\s{2,}!\[[^\]]*\]\([^)]+\)\s*$/;
-
-/** An image on a line of its own, indented or not. */
-const IMAGE_ONLY = /^\s*!\[[^\]]*\]\([^)]+\)\s*$/;
-
-/** The start of a list item, bulleted or numbered, at any indent. */
-const LIST_ITEM = /^\s*([-*]|\d+\.)\s+/;
-
-/**
- * A line that carries on the list item above it: indented, and not a new
- * item, a heading, a code fence or an image.
- *
- * A long item is wrapped in the source with its next line indented, as
- * Markdown allows. Read as a line of its own it ended the list, and every
- * item after it ran together into one paragraph. Only indented lines
- * count, so text straight after a list, with no blank line between,
- * still starts a paragraph as it always has.
- */
-function continuesItem(line: string | undefined): line is string {
-  return (
-    line !== undefined &&
-    /^\s+\S/.test(line) &&
-    !LIST_ITEM.test(line) &&
-    !/^\s*#{1,6}\s/.test(line) &&
-    !/^\s*```/.test(line) &&
-    !IMAGE_ONLY.test(line)
-  );
-}
-
 // SSR/Node safety checks
 const CAN_USE_DOM =
   typeof window !== "undefined" && typeof document !== "undefined";
-
-function escapeHtml(str: string) {
-  return str
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
-
-// Ensure hrefs are safe (allow http/https/mailto/tel/relative/#)
-function isSafeUrl(raw: string): boolean {
-  try {
-    // Allow fragments (#foo) and protocol-relative/relative
-    if (
-      raw.startsWith("#") ||
-      raw.startsWith("/") ||
-      raw.startsWith("./") ||
-      raw.startsWith("../")
-    ) {
-      return true;
-    }
-    const u = new URL(raw);
-    return ["http:", "https:", "mailto:", "tel:"].includes(u.protocol);
-  } catch {
-    // Try treating as relative
-    try {
-      // Base needed for relative URL parsing
-
-      new URL(raw, "https://example.com/");
-      return true;
-    } catch {
-      return false;
-    }
-  }
-}
-
-// Escape attribute values (we already escape HTML content)
-function escapeAttr(str: string) {
-  return str
-    .replace(/"/g, "&quot;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-}
-
-function inlineFormat(
-  raw: string,
-  imageBase?: string,
-  icons?: Readonly<Record<string, ReactElement>>,
-) {
-  // operate on escaped input
-  let s = escapeHtml(raw);
-
-  // icons: `:icon-user-plus:` becomes an empty slot, which the component
-  // draws the icon into. One the caller did not give is left out.
-  if (icons) {
-    s = s.replace(ICON_NAME, (_m, look: string, name: string) => {
-      if (!Object.hasOwn(icons, name)) return "";
-
-      const button = look === "button" ? ' data-button="true"' : "";
-
-      return `<span data-icon="${name}"${button} aria-hidden="true"></span>`;
-    });
-  }
-
-  // images: ![alt](path). Taken out first, since an image is a link with
-  // a mark in front of it, and put back last, so the bold and italic
-  // passes below never see the address or the alt text.
-  const images: string[] = [];
-  s = s.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_m, alt, path) => {
-    const trimmedPath = String(path).trim();
-    const trimmedAlt = String(alt).trim();
-    if (!imageBase || !trimmedAlt || !IMAGE_PATH.test(trimmedPath)) return "";
-    const src = escapeAttr(`${imageBase.replace(/\/+$/, "")}/${trimmedPath}`);
-    images.push(
-      `<img src="${src}" alt="${escapeAttr(trimmedAlt)}" loading="lazy">`,
-    );
-    return `\u0000${images.length - 1}\u0000`;
-  });
-
-  // links: [text](url)
-  s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_m, text: string, url: string) => {
-    const trimmedUrl = url.trim();
-    const safe = isSafeUrl(trimmedUrl) ? trimmedUrl : "#";
-    // text is already escaped by the initial escapeHtml
-    const href = escapeAttr(safe);
-    return `<a href="${href}" rel="noopener noreferrer nofollow">${text}</a>`;
-  });
-
-  // bold **text** or __text__
-  s = s.replace(/(\*\*|__)(.*?)\1/g, "<strong>$2</strong>");
-
-  // italic *text* or _text_
-  s = s.replace(/(\*|_)(.*?)\1/g, "<em>$2</em>");
-
-  // inline code `code`
-  s = s.replace(/`([^`]+)`/g, "<code>$1</code>");
-
-  // eslint-disable-next-line no-control-regex -- the marker put in above
-  s = s.replace(/\u0000(\d+)\u0000/g, (_m, index) => images[Number(index)]);
-
-  return s;
-}
 
 function mdToHtml(
   src: string,
   imageBase?: string,
   icons?: Readonly<Record<string, ReactElement>>,
 ) {
-  // The lines of one list, each item with any image indented beneath it.
-  const isImageUnderItem = (line: string | undefined) =>
-    imageBase !== undefined &&
-    line !== undefined &&
-    IMAGE_UNDER_ITEM.test(line);
-
-  const lines = src.replace(/\r\n/g, "\n").split("\n");
-  const out: string[] = [];
-  let i = 0;
-  while (i < lines.length) {
-    const line = lines[i];
-    if (/^\s*$/.test(line)) {
-      out.push("");
-      i++;
-      continue;
-    }
-
-    // code fence
-    if (/^```/.test(line)) {
-      let code = "";
-      i++;
-      while (i < lines.length && !/^```/.test(lines[i])) {
-        code += lines[i] + "\n";
-        i++;
-      }
-      out.push(`<pre><code>${escapeHtml(code)}</code></pre>`);
-      if (i < lines.length) i++;
-      continue;
-    }
-
-    // headers (safe: avoid adjacent quantified regex parts)
-    const hashes = line.match(/^(#{1,6})/);
-    if (hashes) {
-      const level = hashes[1].length;
-      // slice off the hashes, then trim the remaining header text
-      const text = line.slice(hashes[0].length).trim();
-      out.push(`<h${level}>${inlineFormat(text)}</h${level}>`);
-      i++;
-      continue;
-    }
-
-    // unordered list
-    if (/^\s*[-*]\s+/.test(line)) {
-      const items: string[] = [];
-      while (i < lines.length && /^\s*[-*]\s+/.test(lines[i])) {
-        let item = lines[i].replace(/^\s*[-*]\s+/, "");
-        i++;
-        while (isImageUnderItem(lines[i]) || continuesItem(lines[i])) {
-          item += ` ${lines[i].trim()}`;
-          i++;
-        }
-        items.push(item);
-      }
-      const lis = items
-        .map((it) => `<li>${inlineFormat(it, imageBase, icons)}</li>`)
-        .join("");
-      out.push(`<ul>${lis}</ul>`);
-      continue;
-    }
-
-    // ordered list
-    if (/^\s*\d+\.\s+/.test(line)) {
-      const items: string[] = [];
-      while (i < lines.length && /^\s*\d+\.\s+/.test(lines[i])) {
-        let item = lines[i].replace(/^\s*\d+\.\s+/, "");
-        i++;
-        while (isImageUnderItem(lines[i]) || continuesItem(lines[i])) {
-          item += ` ${lines[i].trim()}`;
-          i++;
-        }
-        items.push(item);
-      }
-      const lis = items
-        .map((it) => `<li>${inlineFormat(it, imageBase, icons)}</li>`)
-        .join("");
-      out.push(`<ol>${lis}</ol>`);
-      continue;
-    }
-
-    // paragraph (gobble until blank)
-    let para = line;
-    i++;
-    while (i < lines.length && !/^\s*$/.test(lines[i])) {
-      para += " " + lines[i].trim();
-      i++;
-    }
-    out.push(`<p>${inlineFormat(para, imageBase, icons)}</p>`);
-  }
-
-  return out.join("\n");
+  return renderMarkdown(src, {
+    imageBase,
+    iconNames: icons ? new Set(Object.keys(icons)) : undefined,
+  });
 }
 
 function toPlainText(src: string) {
@@ -343,10 +117,13 @@ function toPlainText(src: string) {
     });
     const parser = new DOMParser();
     const doc = parser.parseFromString(sanitized, "text/html");
-    return doc.body.textContent || "";
+    return (doc.body.textContent || "").trim();
   }
   // fallback: very simple tag strip + minimal entity decode
-  return html.replace(/<[^>]+>/g, "").replace(/&amp;/g, "&");
+  return html
+    .replace(/<[^>]+>/g, "")
+    .replace(/&amp;/g, "&")
+    .trim();
 }
 
 export default function MarkdownView({

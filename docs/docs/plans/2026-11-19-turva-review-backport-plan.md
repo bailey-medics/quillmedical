@@ -91,14 +91,16 @@ This plan writes Quill's own fixes for the bugs that apply, using the Turva comm
 
 ## Phase 8: Markdown parsing
 
-- [ ] **Replace the hand-written parser** in `components/typography/MarkdownView.tsx` with Marked, keeping DOMPurify as the last step and Quill's existing safety rules: `isSafeUrl`, raw HTML escaped, and `IMAGE_PATH` refusing `..`, `//` and `%`. Swap icons after parsing, on text nodes only, so icon notation inside code and link addresses is left alone. Configure Marked per call, never through the global `marked.use`, so one view's options cannot leak into another. This fixes four bugs in one go:
+- [x] **Replace the hand-written parser** in `components/typography/MarkdownView.tsx` with Marked, keeping DOMPurify as the last step and Quill's existing safety rules: `isSafeUrl`, raw HTML escaped, and `IMAGE_PATH` refusing `..`, `//` and `%`. Swap icons after parsing, on text nodes only, so icon notation inside code and link addresses is left alone. Configure Marked per call, never through the global `marked.use`, so one view's options cannot leak into another. This fixes four bugs in one go:
   - **Underscores in a link address become italics** (`:215-227`), because the italic pass runs over finished link markup.
   - **A `)` in a link address ends the link early** (`:215`), because the pattern is `[^)]+`.
   - **Inline code gets bold and italics** (`:224-230`), because those passes run before code.
   - **A numbered list loses its numbering** (`:304-319`, and `start` is missing from `ALLOWED_ATTR` at `:83`). A list with a bullet nested inside it splits into three lists, and the numbering restarts at 1.
-- [ ] **Check every guide renders the same**, apart from the four fixes. Marked follows CommonMark for lazy continuation lines and indented headings, which Quill chose against (`MarkdownView.tsx:110-119`). Before removing the old parser, render every file in `frontend/src/guides/content/` through both and compare the HTML. Fix any guide that moved, or set Marked's options to match, and name each difference in the pull request.
-- [ ] **Say in the pull request what Mark must check before merging.** Teaching slides and letters come from outside the repository, so the build cannot compare them. List the list rules that changed, with a short Markdown example of each, so Mark can look over a few slides and letters before he merges.
-- [ ] **Add tests** for each of the four bugs, plus tests that the safety rules still hold.
+- [x] **Check every guide renders the same**, apart from the four fixes. Marked follows CommonMark for lazy continuation lines and indented headings, which Quill chose against (`MarkdownView.tsx:110-119`). Before removing the old parser, render every file in `frontend/src/guides/content/` through both and compare the HTML. Fix any guide that moved, or set Marked's options to match, and name each difference in the pull request.
+
+  **Result: 24 of the 27 guides render exactly as before.** The other three, `add-a-site`, `ask-for-a-sign-off` and `keep-your-logbook`, each had a step with a nested list or a second paragraph, which the old parser split into separate lists numbered from 1 again. They now render as written, with one unbroken numbered list. No guide changed. One difference was found and fixed along the way: `.markdown p` keeps white space as written, and Marked keeps the line breaks of a wrapped paragraph, so the renderer joins them with spaces, as the old parser did. Marked 18.1.3 is used, the newest release more than two weeks old.
+- [x] **Say in the pull request what Mark must check before merging.** Teaching slides and letters come from outside the repository, so the build cannot compare them. List the list rules that changed, with a short Markdown example of each, so Mark can look over a few slides and letters before he merges.
+- [x] **Add tests** for each of the four bugs, plus tests that the safety rules still hold.
 
 ## Decisions
 
