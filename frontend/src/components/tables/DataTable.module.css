@@ -13,3 +13,8 @@
 .header {
   overflow-wrap: normal;
 }
+
+/* Only a row that opens shows the pointer. */
+.clickableRow {
+  cursor: pointer;
+}
