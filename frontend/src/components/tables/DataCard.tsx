@@ -28,11 +28,12 @@
  * ```
  */
 
-import type { ReactNode } from "react";
+import type { MouseEvent, ReactNode } from "react";
+import OpenableCell from "./OpenableCell";
+import { shouldOpenRow } from "./rowInteraction";
 import { Group, Skeleton, Stack } from "@mantine/core";
 import Divider from "@/components/divider/Divider";
 import { BodyTextBold } from "@/components/typography";
-import CellContent from "./CellContent";
 import type { Column } from "./DataTable";
 import BaseCard from "@/components/base-card/BaseCard";
 import classes from "./DataCard.module.css";
@@ -42,8 +43,11 @@ export interface DataCardProps<T> {
   row: T;
   /** Column definitions (header labels + render functions) */
   columns: Column<T>[];
-  /** Click handler - receives the row data */
-  onClick: (row: T) => void;
+  /**
+   * Opens the row. Without it the card is read-only: no pointer, and
+   * nothing to press.
+   */
+  onClick?: (row: T) => void;
   /** Loading state - shows skeleton placeholders */
   loading?: boolean;
   /**
@@ -113,13 +117,19 @@ export default function DataCard<T>({
               <span className={classes.header}>
                 <BodyTextBold>{column.header}:</BodyTextBold>
               </span>
-              <CellContent>{content}</CellContent>
+              {/* The first field is the keyboard way into the card. */}
+              <OpenableCell
+                content={content}
+                onOpen={onClick && index === 0 ? () => onClick(row) : undefined}
+              />
             </Group>
             {index < fields.length - 1 && <Divider mt="sm" />}
           </div>
         );
       })}
-      {footer && (
+      {/* Compared with null, not tested for truth: a footer of 0 is
+          content, and `0 && ...` would draw a stray "0" instead. */}
+      {footer !== null && footer !== undefined && footer !== false && (
         <>
           <Divider />
           {footer}
@@ -129,7 +139,16 @@ export default function DataCard<T>({
   );
 
   return (
-    <BaseCard onClick={() => onClick(row)} style={{ cursor: "pointer" }}>
+    <BaseCard
+      onClick={
+        onClick
+          ? (event: MouseEvent<HTMLDivElement>) => {
+              if (shouldOpenRow(event)) onClick(row);
+            }
+          : undefined
+      }
+      className={onClick ? classes.clickable : undefined}
+    >
       {action ? (
         <div className={classes.withAction}>
           {body}

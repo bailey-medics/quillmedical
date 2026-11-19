@@ -22,7 +22,7 @@
  * ```
  */
 
-import { Fragment, type ReactNode } from "react";
+import { Fragment, type MouseEvent, type ReactNode } from "react";
 import LiveStatus from "@/components/live-status";
 import {
   Center,
@@ -34,7 +34,8 @@ import {
 } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 import DataCard, { DataCardSkeleton } from "./DataCard";
-import CellContent from "./CellContent";
+import OpenableCell from "./OpenableCell";
+import { shouldOpenRow } from "./rowInteraction";
 import { BodyText, BodyTextBold } from "@/components/typography";
 
 // ------------------------------------------------------------------
@@ -160,7 +161,7 @@ function DataTableWithResultsView<T>({
             key={getRowKey(row)}
             row={row}
             columns={columns}
-            onClick={onRowClick ?? (() => {})}
+            onClick={onRowClick}
             footer={getSubRow?.(row) ?? null}
           />
         ))}
@@ -182,6 +183,9 @@ function DataTableWithResultsView<T>({
       <Table.Tbody>
         {data.map((row, rowIndex) => {
           const subRowContent = getSubRow?.(row) ?? null;
+          // Compared with null, not tested for truth: a sub-row of 0 is
+          // content, and `0 && ...` would draw a stray "0" outside a cell.
+          const hasSubRow = subRowContent !== null && subRowContent !== false;
           const isStriped = rowIndex % 2 === 1;
           const rowBg = isStriped ? stripeBg : undefined;
           return (
@@ -189,22 +193,36 @@ function DataTableWithResultsView<T>({
               <Table.Tr
                 bg={rowBg}
                 style={{
-                  ...(subRowContent ? { borderBottom: "none" } : {}),
+                  ...(hasSubRow ? { borderBottom: "none" } : {}),
                   ...(onRowClick ? { cursor: "pointer" } : {}),
                 }}
-                onClick={onRowClick ? () => onRowClick(row) : undefined}
+                onClick={
+                  onRowClick
+                    ? (event: MouseEvent<HTMLTableRowElement>) => {
+                        if (shouldOpenRow(event)) onRowClick(row);
+                      }
+                    : undefined
+                }
               >
                 {columns.map((column, index) => (
                   <Table.Td
                     key={index}
                     style={{ verticalAlign: "middle" }}
-                    pb={subRowContent ? 0 : undefined}
+                    pb={hasSubRow ? 0 : undefined}
                   >
-                    <CellContent>{column.render(row)}</CellContent>
+                    {/* The first cell is the keyboard way into the row. */}
+                    <OpenableCell
+                      content={column.render(row)}
+                      onOpen={
+                        onRowClick && index === 0
+                          ? () => onRowClick(row)
+                          : undefined
+                      }
+                    />
                   </Table.Td>
                 ))}
               </Table.Tr>
-              {subRowContent && (
+              {hasSubRow && (
                 <Table.Tr bg={rowBg} style={{ borderTop: "none" }}>
                   <Table.Td colSpan={columns.length} pt={0} pb="sm" px="md">
                     {subRowContent}

@@ -22,8 +22,10 @@
  * ```
  */
 
-import type { ReactNode } from "react";
+import type { MouseEvent, ReactNode } from "react";
 import LiveStatus from "@/components/live-status";
+import OpenableCell from "./OpenableCell";
+import { shouldOpenRow } from "./rowInteraction";
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   Group,
@@ -41,7 +43,6 @@ import { IconAlertCircle } from "@/components/icons/appIcons";
 import SortHeader, { type SortDirection } from "./SortHeader";
 import TablePagination from "./TablePagination";
 import DataCard, { DataCardSkeleton } from "./DataCard";
-import CellContent from "./CellContent";
 import classes from "./DataTable.module.css";
 
 /**
@@ -132,6 +133,37 @@ export interface DataTableProps<T> {
  */
 const CARDS_TO_TABLE_MARGIN_REM = 2;
 
+/** What a page size falls back to when the one given cannot be used. */
+const DEFAULT_PAGE_SIZE = 10;
+
+/**
+ * A page size of 0 would switch paging off, and one that is not a whole
+ * number would give a fractional count of pages. Either is a mistake in
+ * the caller, so it is replaced with the default and named in development.
+ */
+function usablePageSize(size: number | undefined): number | undefined {
+  if (size === undefined) return undefined;
+  if (Number.isInteger(size) && size >= 1) return size;
+
+  if (import.meta.env.DEV) {
+    console.warn(
+      `DataTable: pageSize ${size} is not a whole number of at least 1; using ${DEFAULT_PAGE_SIZE}.`,
+    );
+  }
+
+  return DEFAULT_PAGE_SIZE;
+}
+
+/** What `aria-sort` says about a sortable column. */
+function ariaSort(
+  isSorted: boolean,
+  direction: SortDirection,
+): "ascending" | "descending" | "none" {
+  if (!isSorted) return "none";
+
+  return direction === "asc" ? "ascending" : "descending";
+}
+
 /** The document's root font size, which is what 1rem is. */
 function rootFontSizePx(): number {
   if (typeof document === "undefined") return 16;
@@ -170,10 +202,18 @@ function rootFontSizePx(): number {
  * empty and loaded states, which is what makes a change announced.
  */
 export default function DataTable<T>(props: DataTableProps<T>) {
-  const { loading = false, statusMessage = "" } = props;
+  const { loading = false, error = null, statusMessage = "" } = props;
+
+  // An error replaces the rows, so a result count would be untrue.
+  const announcement = loading
+    ? "Loading"
+    : error
+      ? `Error loading data: ${error}`
+      : statusMessage;
+
   return (
     <>
-      <LiveStatus message={loading ? "Loading" : statusMessage} />
+      <LiveStatus message={announcement} />
       <DataTableView {...props} />
     </>
   );
@@ -236,7 +276,9 @@ function DataTableView<T>({
   const stripedColor = isDark ? "var(--mantine-color-primary-6)" : undefined;
 
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(initialPageSize);
+  const [pageSize, setPageSize] = useState(() =>
+    usablePageSize(initialPageSize),
+  );
   const [sortColumnIndex, setSortColumnIndex] = useState<number | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
@@ -299,8 +341,12 @@ function DataTableView<T>({
     ? sortedData.slice((activePage - 1) * pageSize, activePage * pageSize)
     : sortedData;
 
-  // Show pagination footer when data exceeds the default threshold (10 items)
-  const showPagination = pageSize && sortedData.length > 10;
+  // Show the pagination footer once there is more than one page, or more
+  // rows than the smallest page size the picker offers, so every row can
+  // always be reached.
+  const showPagination =
+    pageSize !== undefined &&
+    sortedData.length > Math.min(pageSize, DEFAULT_PAGE_SIZE);
   // Only show nav buttons when there are multiple pages
   const showNav = totalPages > 1;
 
@@ -393,7 +439,7 @@ function DataTableView<T>({
             key={getRowKey(row)}
             row={row}
             columns={columns}
-            onClick={onRowClick ?? (() => {})}
+            onClick={onRowClick}
           />
         ))}
         {showPagination && (
@@ -438,6 +484,11 @@ function DataTableView<T>({
                 key={index}
                 className={classes.header}
                 style={{ width: column.width }}
+                aria-sort={
+                  column.accessor
+                    ? ariaSort(sortColumnIndex === index, sortDirection)
+                    : undefined
+                }
               >
                 {column.accessor ? (
                   <SortHeader
@@ -456,8 +507,14 @@ function DataTableView<T>({
           {visibleData.map((row) => (
             <Table.Tr
               key={getRowKey(row)}
-              onClick={onRowClick ? () => onRowClick(row) : undefined}
-              style={onRowClick ? { cursor: "pointer" } : undefined}
+              onClick={
+                onRowClick
+                  ? (event: MouseEvent<HTMLTableRowElement>) => {
+                      if (shouldOpenRow(event)) onRowClick(row);
+                    }
+                  : undefined
+              }
+              className={onRowClick ? classes.clickableRow : undefined}
             >
               {columns.map((column, index) => (
                 <Table.Td
@@ -465,7 +522,14 @@ function DataTableView<T>({
                   className={classes.cell}
                   style={{ verticalAlign: "middle" }}
                 >
-                  <CellContent>{column.render(row)}</CellContent>
+                  <OpenableCell
+                    content={column.render(row)}
+                    onOpen={
+                      onRowClick && index === 0
+                        ? () => onRowClick(row)
+                        : undefined
+                    }
+                  />
                 </Table.Td>
               ))}
             </Table.Tr>
