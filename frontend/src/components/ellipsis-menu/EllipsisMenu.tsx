@@ -20,7 +20,12 @@ export interface EllipsisMenuItem {
   label: string;
   /** Icon element to show before the label */
   icon?: ReactElement;
-  /** CSS variable for destructive actions (e.g. "var(--alert-color)") */
+  /**
+   * A status text colour for a destructive action, such as
+   * "var(--alert-text-color)". The item's label is drawn in it, so it
+   * must be a text colour: a fill colour such as `--alert-color` is too
+   * dark to read on the navy menu in dark mode.
+   */
   color?: string;
   /** Click handler */
   onClick: () => void;
@@ -44,8 +49,13 @@ export default function EllipsisMenu({
     { getInitialValueInEffect: false },
   );
 
+  // A trigger that opens an empty menu offers an action that is not there.
+  if (items.length === 0) return null;
+
+  // No hidden focus placeholder: a menu may hold only menu items, and
+  // focus lands on the first item when it opens.
   return (
-    <Menu position="bottom-end" shadow="md">
+    <Menu position="bottom-end" shadow="md" withInitialFocusPlaceholder={false}>
       <Menu.Target>
         <ActionIcon
           variant="transparent"
