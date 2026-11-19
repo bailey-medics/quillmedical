@@ -25,6 +25,7 @@
 import type { MouseEvent, ReactNode } from "react";
 import LiveStatus from "@/components/live-status";
 import OpenableCell from "./OpenableCell";
+import SelectField from "@/components/form/SelectField";
 import { shouldOpenRow } from "./rowInteraction";
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
@@ -152,6 +153,21 @@ function usablePageSize(size: number | undefined): number | undefined {
   }
 
   return DEFAULT_PAGE_SIZE;
+}
+
+/** The sort picker's choice for the data's own order. */
+const UNSORTED = "none";
+
+/** Read a sort picker choice, `<column index>:<asc|desc>`, or null. */
+function parseSortChoice(
+  choice: string | null,
+): { index: number; direction: SortDirection } | null {
+  const match = /^(\d+):(asc|desc)$/.exec(choice ?? "");
+  if (!match) return null;
+
+  const direction: SortDirection = match[2] === "desc" ? "desc" : "asc";
+
+  return { index: Number(match[1]), direction };
 }
 
 /** What `aria-sort` says about a sortable column. */
@@ -425,14 +441,45 @@ function DataTableView<T>({
   }
 
   // Cards: on a phone, or wherever the columns do not fit. Every column
-  // is shown, so nothing is lost by the switch.
+  // is shown, so nothing is lost by the switch. The column headers are
+  // gone, so sorting moves to a picker above the cards.
   if (useCards) {
+    const sortable = columns
+      .map((column, index) => ({ column, index }))
+      .filter(({ column }) => column.accessor !== undefined);
+
     return (
       <Stack gap="md" ref={measureRef}>
         {controls && (
           <Group justify="flex-end" mih={42} align="center">
             {controls}
           </Group>
+        )}
+        {sortable.length > 0 && (
+          <SelectField
+            label="Sort by"
+            allowDeselect={false}
+            value={
+              sortColumnIndex === null
+                ? UNSORTED
+                : `${sortColumnIndex}:${sortDirection}`
+            }
+            data={[
+              { value: UNSORTED, label: "Default order" },
+              ...sortable.flatMap(({ column, index }) => [
+                { value: `${index}:asc`, label: `${column.header}, ascending` },
+                {
+                  value: `${index}:desc`,
+                  label: `${column.header}, descending`,
+                },
+              ]),
+            ]}
+            onChange={(choice) => {
+              const parsed = parseSortChoice(choice);
+              setSortColumnIndex(parsed?.index ?? null);
+              setSortDirection(parsed?.direction ?? "asc");
+            }}
+          />
         )}
         {visibleData.map((row) => (
           <DataCard

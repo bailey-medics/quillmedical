@@ -107,10 +107,12 @@ export default function DataCard<T>({
         return (
           <div key={index} className={classes.field}>
             {/* The room is kept on the text, not the row, so the divider
-                beneath still runs the card's full width. */}
+                beneath still runs the card's full width. A label too long
+                to share its line puts the value on the line below, rather
+                than running out of a narrow card. */}
             <Group
               gap="xs"
-              wrap="nowrap"
+              wrap="wrap"
               align="center"
               className={besideAction ? classes.besideAction : undefined}
             >

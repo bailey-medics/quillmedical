@@ -159,4 +159,25 @@ describe("EllipsisMenu", () => {
 
     expect(handleRemove).toHaveBeenCalledOnce();
   });
+
+  // A menu may hold only menu items. Mantine's hidden focus placeholder
+  // broke that rule, and axe failed the open menu for it.
+  it("holds nothing but its items once open", async () => {
+    const user = userEvent.setup();
+    renderWithMantine(
+      <EllipsisMenu
+        aria-label="Actions"
+        items={[
+          { label: "Edit", onClick: vi.fn() },
+          { label: "Delete", onClick: vi.fn() },
+        ]}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Actions" }));
+    const menu = await screen.findByRole("menu");
+
+    expect(menu.querySelector("[tabindex]:not([role='menuitem'])")).toBeNull();
+    expect(screen.getAllByRole("menuitem")).toHaveLength(2);
+  });
 });

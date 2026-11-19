@@ -12,6 +12,7 @@ import { ActiveStatusBadge } from "@/components/badge";
 import DataCard, { DataCardSkeleton } from "./DataCard";
 import EllipsisMenu from "@/components/ellipsis-menu/EllipsisMenu";
 import type { Column } from "./DataTable";
+import { StoryNote } from "@/stories/variants";
 
 interface User {
   id: number;
@@ -123,6 +124,30 @@ export const LongText: Story = {
     ],
     onClick: fn(),
   },
+};
+
+/**
+ * A label too long to share its line with the value, in a narrow card.
+ * The value moves to the line below rather than running out of the card.
+ */
+export const LongLabel: Story = {
+  args: {
+    row: { id: 1, username: "alice.smith", email: "alice@example.com" },
+    columns: [
+      {
+        header: "Username used to sign in to every Quill service",
+        render: (user) => user.username,
+      },
+      { header: "Email", render: (user) => user.email },
+    ],
+    onClick: fn(),
+  },
+  render: (args) => (
+    <Container size={20 * 16} px={0}>
+      <DataCard {...args} />
+      <StoryNote mt="xs">Constrained to 20rem</StoryNote>
+    </Container>
+  ),
 };
 
 /**

@@ -7,8 +7,12 @@
   cursor: pointer;
 }
 
+/* Never squeezed by its value, but a single label longer than the card
+   breaks between words, or inside one if it must. */
 .header {
   flex-shrink: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
 }
 
 /* A row action sits in the card's top right corner. It is placed there

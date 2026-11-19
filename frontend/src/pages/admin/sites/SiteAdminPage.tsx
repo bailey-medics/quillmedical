@@ -179,7 +179,7 @@ export default function SiteAdminPage() {
           {
             label: "Remove from site",
             icon: <IconUserMinus />,
-            color: "var(--alert-color)",
+            color: "var(--alert-text-color)",
             onClick: () => setRemovingStaff(member),
           },
         ]}
