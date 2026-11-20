@@ -5,8 +5,25 @@
  * Accepts ISO 8601 date strings (YYYY-MM-DD) from the backend (FHIR format).
  */
 
+const PLAIN_DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+/** Midnight UTC on a plain date's day, or null for a day that does not exist. */
+function plainDateToUtc(parts: RegExpExecArray): globalThis.Date | null {
+  const year = Number(parts[1]);
+  const month = Number(parts[2]);
+  const day = Number(parts[3]);
+  const result = new globalThis.Date(globalThis.Date.UTC(year, month - 1, day));
+
+  const exists =
+    result.getUTCFullYear() === year &&
+    result.getUTCMonth() === month - 1 &&
+    result.getUTCDate() === day;
+
+  return exists ? result : null;
+}
+
 type FormattedDateProps = {
-  /** ISO 8601 date string (YYYY-MM-DD) from backend */
+  /** ISO 8601 date (YYYY-MM-DD) or timestamp from the backend */
   date: string;
   /** Locale for date formatting. Defaults to 'en-GB' (British English) */
   locale?: "en-GB" | "en-US";
@@ -42,10 +59,16 @@ export default function FormattedDate({
 
   /* eslint-disable react-hooks/error-boundaries -- try/catch guards date parsing, not React rendering */
   try {
-    const dateObj = new globalThis.Date(date);
+    // A plain date names a day, not a moment. The browser reads
+    // "2026-05-06" as midnight UTC, which is 5 May anywhere west of UTC,
+    // and rolls "2026-02-30" into March. So a plain date is checked to
+    // exist and shown in UTC; a timestamp is shown where the reader is.
+    const plainDate = PLAIN_DATE.exec(date);
+    const dateObj = plainDate
+      ? plainDateToUtc(plainDate)
+      : new globalThis.Date(date);
 
-    // Check if date is valid
-    if (Number.isNaN(dateObj.getTime())) {
+    if (dateObj === null || Number.isNaN(dateObj.getTime())) {
       return <>Invalid date</>;
     }
 
@@ -75,9 +98,10 @@ export default function FormattedDate({
                 weekday: "long",
               };
 
-    const formattedDate = new Intl.DateTimeFormat(locale, formatOptions).format(
-      dateObj,
-    );
+    const formattedDate = new Intl.DateTimeFormat(locale, {
+      ...formatOptions,
+      ...(plainDate && { timeZone: "UTC" }),
+    }).format(dateObj);
 
     return <>{formattedDate}</>;
   } catch (error) {

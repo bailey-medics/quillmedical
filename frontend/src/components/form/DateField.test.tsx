@@ -129,4 +129,77 @@ describe("DateField", () => {
       screen.getByRole("button", { name: "Clear observed date" }),
     ).toBeInTheDocument();
   });
+
+  describe("Typed dates", () => {
+    it("reads a typed 03/04/2026 as 3 April", async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+      renderWithMantine(
+        <DateField label="Date of birth" onChange={onChange} />,
+      );
+
+      await user.type(screen.getByRole("textbox"), "03/04/2026");
+
+      expect(onChange).toHaveBeenLastCalledWith("2026-04-03");
+    });
+
+    it("asks for the year in full when a two-digit year is typed", async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+      renderWithMantine(
+        <DateField label="Date of birth" onChange={onChange} />,
+      );
+
+      await user.type(screen.getByRole("textbox"), "1/2/80");
+      await user.tab();
+
+      expect(
+        await screen.findByText("Enter the year in full, for example 1980"),
+      ).toBeInTheDocument();
+      expect(onChange).not.toHaveBeenCalledWith("1980-02-01");
+    });
+
+    it("refuses a day that does not exist", async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+      renderWithMantine(<DateField label="Due on" onChange={onChange} />);
+
+      await user.type(screen.getByRole("textbox"), "31/02/2026");
+      await user.tab();
+
+      expect(await screen.findByText(/Enter a real date/)).toBeInTheDocument();
+      expect(onChange).not.toHaveBeenCalledWith("2026-03-03");
+    });
+
+    it("shows the caller's error before its own", async () => {
+      const user = userEvent.setup();
+      renderWithMantine(
+        <DateField label="Due on" error="The due date is needed" />,
+      );
+
+      await user.type(screen.getByRole("textbox"), "1/2/80");
+      await user.tab();
+
+      expect(screen.getByText("The due date is needed")).toBeInTheDocument();
+      expect(
+        screen.queryByText("Enter the year in full, for example 1980"),
+      ).toBeNull();
+    });
+  });
+
+  it("names the calendar's arrows", async () => {
+    const user = userEvent.setup();
+    renderWithMantine(
+      <DateField label="Observed on" defaultValue="2026-03-14" />,
+    );
+
+    await user.click(screen.getByRole("textbox"));
+
+    expect(
+      await screen.findByRole("button", { name: "Next month" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Previous month" }),
+    ).toBeInTheDocument();
+  });
 });

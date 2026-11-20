@@ -38,3 +38,35 @@
 .root :global(.mantine-DateInput-input[data-error]:focus) {
   border-color: var(--error-focus-color) !important;
 }
+
+/*
+ * The calendar sits in a portal, outside .root, so it is styled through
+ * its own class names. Mantine fades days from the next and last month to
+ * half opacity and colours weekends red, both below text contrast.
+ */
+.day[data-outside] {
+  opacity: 1;
+  color: var(--mantine-color-dimmed);
+}
+
+.day[data-weekend]:not([data-selected], [data-outside]) {
+  color: var(--mantine-color-text);
+}
+
+/* Keeps the calendar on the screen, scrolling rather than spilling. */
+.dropdown {
+  max-width: calc(100vw - 1rem);
+  overflow-x: auto;
+}
+
+/*
+ * Below 20.9375em (335 pixels) the calendar at md is wider than the
+ * dropdown, and Sunday is cut off. The days drop to the sm size there,
+ * and only there. Mantine sets each day's size inline as
+ * var(--day-size-md), so that is the variable redefined.
+ */
+@media (width < 20.9375em) {
+  .dropdown .day {
+    --day-size-md: var(--day-size-sm);
+  }
+}

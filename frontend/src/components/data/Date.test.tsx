@@ -2,7 +2,7 @@
  * FormattedDate Component Tests
  */
 
-import { describe, it, expect } from "vitest";
+import { afterEach, beforeEach, describe, it, expect } from "vitest";
 import { screen } from "@testing-library/react";
 import { renderWithMantine } from "@test/test-utils";
 import FormattedDate from "./Date";
@@ -95,6 +95,35 @@ describe("FormattedDate Component", () => {
     it("handles year 2000 date", () => {
       renderWithMantine(<FormattedDate date="2000-01-01" />);
       expect(screen.getByText("01/01/2000")).toBeInTheDocument();
+    });
+
+    it("refuses a plain date that does not exist, rather than rolling it on", () => {
+      renderWithMantine(<FormattedDate date="2026-02-30" />);
+      expect(screen.getByText("Invalid date")).toBeInTheDocument();
+    });
+  });
+
+  describe("West of UTC", () => {
+    const original = process.env.TZ;
+
+    beforeEach(() => {
+      process.env.TZ = "America/New_York";
+    });
+
+    afterEach(() => {
+      process.env.TZ = original;
+    });
+
+    it("shows a plain date on the day it names", () => {
+      renderWithMantine(<FormattedDate date="2026-05-06" format="long" />);
+      expect(screen.getByText("6 May 2026")).toBeInTheDocument();
+    });
+
+    it("shows a timestamp on the reader's own day", () => {
+      renderWithMantine(
+        <FormattedDate date="2026-05-06T02:00:00Z" format="long" />,
+      );
+      expect(screen.getByText("5 May 2026")).toBeInTheDocument();
     });
   });
 });
