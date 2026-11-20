@@ -25,7 +25,7 @@
  */
 
 import type { ReactElement, ReactNode } from "react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import ConfirmModal from "./ConfirmModal";
 import PasswordField from "@/components/form/PasswordField";
 
@@ -64,17 +64,22 @@ export default function PasswordConfirmModal({
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | undefined>();
 
-  // Cleared each time it opens, so a password never waits in a closed
-  // modal for the next person to use it. Adjusted during render, as
+  // Cleared each time it opens or closes, so a password never waits in a
+  // closed modal for the next person to use it. Adjusted during render, as
   // ConfirmModal does, so it never paints open with the old one.
   const [wasOpened, setWasOpened] = useState(opened);
   if (opened !== wasOpened) {
     setWasOpened(opened);
-    if (opened) {
-      setPassword("");
-      setError(undefined);
-    }
+    setPassword("");
+    setError(undefined);
   }
+
+  // Each opening has its own number, so the error from a request started
+  // in an earlier opening never lands in a later one.
+  const openingRef = useRef(0);
+  useEffect(() => {
+    if (opened) openingRef.current += 1;
+  }, [opened]);
 
   async function handleAccept(): Promise<void> {
     if (password === "") {
@@ -83,11 +88,14 @@ export default function PasswordConfirmModal({
     }
 
     setError(undefined);
+    const opening = openingRef.current;
 
     try {
       await onConfirm(password);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "That did not work");
+      if (opening === openingRef.current) {
+        setError(err instanceof Error ? err.message : "That did not work");
+      }
       throw err;
     }
   }

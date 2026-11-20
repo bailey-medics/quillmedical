@@ -86,4 +86,37 @@ describe("PasswordConfirmModal", () => {
     expect(onClose).toHaveBeenCalled();
     expect(onConfirm).not.toHaveBeenCalled();
   });
+
+  it("does not show an earlier opening's error in a later one", async () => {
+    const user = userEvent.setup();
+    let fail: (reason: Error) => void = () => {};
+    const onConfirm = vi.fn<PasswordConfirmModalProps["onConfirm"]>(
+      () =>
+        new Promise<void>((_, reject) => {
+          fail = reject;
+        }),
+    );
+    const props = {
+      onClose: vi.fn<PasswordConfirmModalProps["onClose"]>(),
+      onConfirm,
+      title: "Turn off two-factor authentication",
+      acceptLabel: "Turn off",
+      children: "Signing in will ask for your password only.",
+    };
+
+    const { rerender } = renderWithMantine(
+      <PasswordConfirmModal opened {...props} />,
+    );
+    await user.type(screen.getByLabelText("Password"), "secret");
+    await user.click(screen.getByRole("button", { name: "Turn off" }));
+
+    rerender(<PasswordConfirmModal opened={false} {...props} />);
+    rerender(<PasswordConfirmModal opened {...props} />);
+    fail(new Error("Incorrect password"));
+
+    await waitFor(() => expect(onConfirm).toHaveBeenCalledOnce());
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(screen.queryByText("Incorrect password")).toBeNull();
+    expect(screen.getByLabelText("Password")).toHaveValue("");
+  });
 });
