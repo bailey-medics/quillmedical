@@ -128,6 +128,22 @@ ensure_node_deps() {
   cd ..
 }
 
+# Install the Chromium this checkout's Playwright needs. Run from frontend/.
+#
+# Each Playwright release wants its own Chromium build, so checking that
+# ~/.cache/ms-playwright exists passed after a Playwright bump with only
+# the old build there. `playwright install` compares versions itself and
+# does nothing when the right build is present. A machine with no browsers
+# at all gets the system packages too, which needs sudo.
+ensure_playwright_browser() {
+  if [ ! -d "$HOME/.cache/ms-playwright" ]; then
+    echo "Installing Playwright browsers and their system packages..."
+    npx playwright install --with-deps chromium
+  else
+    npx playwright install chromium
+  fi
+}
+
 run_eslint() {
   print_header "ESLint"
   ensure_node_deps
@@ -185,12 +201,7 @@ run_storybook_tests() {
   print_header "Storybook Tests"
   ensure_node_deps
   cd frontend
-
-  # Install Playwright if needed
-  if [ ! -d "$HOME/.cache/ms-playwright" ]; then
-    echo "Installing Playwright browsers..."
-    npx playwright install --with-deps chromium
-  fi
+  ensure_playwright_browser
 
   run_check "storybook-tests" yarn storybook:test:ci
   cd ..
@@ -272,15 +283,8 @@ run_e2e() {
 
   ensure_node_deps
 
-  # Install Playwright if needed
-  if [ ! -d "$HOME/.cache/ms-playwright" ]; then
-    echo "Installing Playwright browsers..."
-    cd frontend
-    npx playwright install --with-deps chromium
-    cd ..
-  fi
-
   cd frontend
+  ensure_playwright_browser
   run_check "e2e" npx playwright test
   cd ..
 }
@@ -407,4 +411,7 @@ main() {
   print_summary
 }
 
-main "$@"
+# Sourced by its bats test to reach one function, without running the checks.
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  main "$@"
+fi

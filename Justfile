@@ -143,6 +143,7 @@ _e2e-run *ARGS:
     gcs_url=$(just _e2e-gcs-url)
     echo "End-to-end stack is up at ${base_url}, public site at ${public_url}" >&2
     just _e2e-served-files
+    just _playwright-browser >&2
     cd frontend && E2E_BASE_URL="${base_url}" E2E_PUBLIC_URL="${public_url}" \
         E2E_GCS_URL="${gcs_url}" npx playwright test {{ARGS}}
 
@@ -367,6 +368,22 @@ _migrate-running-stack:
     # repositories, which each deploy reads. Safe to run every time: an
     # unchanged framework writes nothing.
     docker exec quill_backend sh -lc 'python -m app.features.passport.sync'
+
+
+# Install the Chromium that this checkout's Playwright needs, if it is missing.
+#
+# Each Playwright release wants its own Chromium build. A bump to Playwright,
+# from Renovate or by hand, leaves the old build in ~/.cache/ms-playwright
+# and the new one missing, so a check that the folder exists passes and the
+# tests then stop with "Executable doesn't exist". `playwright install`
+# compares versions itself: it does nothing when the right build is there,
+# and downloads it when it is not. No `--with-deps`: that installs system
+# packages with sudo, which a machine that has run Playwright before has.
+_playwright-browser:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd frontend
+    npx playwright install chromium
 
 
 # Refuse to run when the backend's Python on this machine is not CI's.
@@ -1074,6 +1091,7 @@ guide-screenshots *ARGS:
     docker compose -p "$(just _e2e-project)" -f compose.ci.yml \
         exec -T backend python scripts/seed_guides.py >&2
     echo "Guide stack is up at ${base_url}" >&2
+    just _playwright-browser >&2
     cd frontend && E2E_BASE_URL="${base_url}" \
         npx playwright test --config playwright.guides.config.ts {{ARGS}}
 
@@ -3076,6 +3094,7 @@ storybook-test:
     #!/usr/bin/env bash
     {{initialise}} "storybook-test"
     just _frontend-packages-current || exit 1
+    just _playwright-browser || exit 1
     cd frontend
 
     # A Storybook already up is used as it is and left running. Otherwise
