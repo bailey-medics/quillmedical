@@ -119,8 +119,12 @@ for (const { who, kind, profession } of LEARNERS) {
       // player. Playing means the button turns to Pause and the clock
       // moves off zero.
       const player = page.getByRole("group", { name: "Media player" });
-      await player.getByRole("button", { name: "Play" }).click();
-      await expect(player.getByRole("button", { name: "Pause" })).toBeVisible({
+      // Video.js 10.4's skin draws a centre play button as well as the
+      // control bar's, both with the same label, so take the first.
+      await player.getByRole("button", { name: "Play" }).first().click();
+      await expect(
+        player.getByRole("button", { name: "Pause" }).first(),
+      ).toBeVisible({
         timeout: 15_000,
       });
 
