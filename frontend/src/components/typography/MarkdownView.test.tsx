@@ -171,30 +171,41 @@ describe("MarkdownView", () => {
       expect(container.querySelector("p")?.textContent).toBe("After the list.");
     });
 
-    it("still starts a paragraph on an unindented line after a list", () => {
-      // Only indented lines carry an item on, so text written straight
-      // after a list reads as it always has.
+    // CommonMark, which Marked follows: a line straight after an item,
+    // with no blank line between, carries that item on. The old parser
+    // started a paragraph there instead. A blank line still ends the list.
+    it("carries an item on to an unindented line straight after it", () => {
       const source = ["- One", "Straight after."].join("\n");
 
       const { container } = renderWithMantine(<MarkdownView source={source} />);
 
-      expect(container.querySelector("li")?.textContent).toBe("One");
-      expect(container.querySelector("p")?.textContent).toBe("Straight after.");
+      expect(container.querySelector("li")?.textContent).toBe(
+        "One Straight after.",
+      );
     });
 
-    it("does not carry an item into a heading", () => {
-      const source = ["- One", "  ## Next part"].join("\n");
+    it("starts a paragraph after a blank line that ends the list", () => {
+      const source = ["- One", "", "After a gap."].join("\n");
 
       const { container } = renderWithMantine(<MarkdownView source={source} />);
 
       expect(container.querySelector("li")?.textContent).toBe("One");
+      expect(container.querySelector("p")?.textContent).toBe("After a gap.");
+    });
+
+    it("keeps a heading indented under an item inside that item", () => {
+      const source = ["- One", "  ## Next part"].join("\n");
+
+      const { container } = renderWithMantine(<MarkdownView source={source} />);
+
+      expect(container.querySelector("li h2")?.textContent).toBe("Next part");
     });
   });
 
   describe("Code blocks", () => {
     it("renders code blocks with triple backticks", () => {
       const { container } = renderWithMantine(
-        <MarkdownView source="```\nconst x = 42;\nconsole.log(x);\n```" />,
+        <MarkdownView source={"```\nconst x = 42;\nconsole.log(x);\n```"} />,
       );
       const pre = container.querySelector("pre");
       expect(pre).toBeInTheDocument();
@@ -206,7 +217,7 @@ describe("MarkdownView", () => {
 
     it("escapes HTML in code blocks", () => {
       const { container } = renderWithMantine(
-        <MarkdownView source="```\n<script>alert('xss')</script>\n```" />,
+        <MarkdownView source={"```\n<script>alert('xss')</script>\n```"} />,
       );
       // Main security check: no actual script element
       expect(container.querySelector("script")).not.toBeInTheDocument();
