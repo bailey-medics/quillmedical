@@ -115,10 +115,19 @@ export interface FormProps<T extends FieldValues> {
   children: ReactNode;
 }
 
+/**
+ * The leave warning while a request is still running. The changes are
+ * not simply unsaved: the save carries on, and may still land.
+ */
+const SAVE_RUNNING_MESSAGE =
+  "Your changes are still being saved. If you leave now, the save carries on, but you will not see whether it worked.";
+
 interface NavigationGuardProps<T extends FieldValues> {
   control: Control<T>;
   onProceed: () => void;
   formState: FormState;
+  /** True from a request starting until it settles, past any timeout. */
+  requestPending: boolean;
   /** True while a saved form's `afterSave` runs, so it may leave. */
   allowLeavingRef: RefObject<boolean>;
 }
@@ -136,10 +145,13 @@ function FormNavigationBlocker<T extends FieldValues>({
   control,
   onProceed,
   formState,
+  requestPending,
   allowLeavingRef,
 }: NavigationGuardProps<T>) {
   const { isDirty } = useFormState({ control });
-  const shouldBlock = isDirty || formState === "submitting";
+  // A request that has timed out may still be running, so the warning
+  // stays until it settles, not only while the form says "submitting".
+  const shouldBlock = isDirty || formState === "submitting" || requestPending;
 
   const blocker = useBlocker(
     ({ currentLocation, nextLocation }) =>
@@ -149,7 +161,13 @@ function FormNavigationBlocker<T extends FieldValues>({
         currentLocation.search !== nextLocation.search),
   );
 
-  return <DirtyFormNavigation blocker={blocker} onProceed={onProceed} />;
+  return (
+    <DirtyFormNavigation
+      blocker={blocker}
+      onProceed={onProceed}
+      message={requestPending ? SAVE_RUNNING_MESSAGE : undefined}
+    />
+  );
 }
 
 /**
@@ -160,12 +178,14 @@ function FormNavigationBlocker<T extends FieldValues>({
 function UnloadGuard<T extends FieldValues>({
   control,
   formState,
+  requestPending,
 }: {
   control: Control<T>;
   formState: FormState;
+  requestPending: boolean;
 }) {
   const { isDirty } = useFormState({ control });
-  const shouldWarn = isDirty || formState === "submitting";
+  const shouldWarn = isDirty || formState === "submitting" || requestPending;
 
   useEffect(() => {
     if (!shouldWarn) return undefined;
@@ -224,6 +244,22 @@ export default function Form<T extends FieldValues>({
   const busyRef = useRef(false);
   const allowLeavingRef = useRef(false);
   const [requestPending, setRequestPending] = useState(false);
+  // The same, for callbacks that run after an await and would otherwise
+  // read the value from before the request started.
+  const requestPendingRef = useRef(false);
+  const unmountedRef = useRef(false);
+
+  // A save still running when the form goes is aborted, and whatever it
+  // returns later is ignored: its `afterSave` must not navigate from a
+  // page the person has already left.
+  useEffect(() => {
+    unmountedRef.current = false;
+
+    return () => {
+      unmountedRef.current = true;
+      abortRef.current?.abort();
+    };
+  }, []);
 
   const dismissStatus = useCallback(() => {
     setStatusMessage(null);
@@ -298,6 +334,7 @@ export default function Form<T extends FieldValues>({
       // The form stays held until the request itself settles, not just
       // until the timeout shows: a save that has timed out may still
       // land, and a second press would then write twice.
+      requestPendingRef.current = true;
       setRequestPending(true);
       const request = Promise.resolve().then(() =>
         onSubmit(data, { signal: controller.signal }),
@@ -306,6 +343,7 @@ export default function Form<T extends FieldValues>({
         .catch(() => undefined)
         .finally(() => {
           busyRef.current = false;
+          requestPendingRef.current = false;
           setRequestPending(false);
         });
 
@@ -320,6 +358,8 @@ export default function Form<T extends FieldValues>({
         ]);
 
         clearTimeout(timeoutId);
+        if (unmountedRef.current) return;
+
         setFormState(result.state);
         setStatusMessage(result.message);
 
@@ -334,6 +374,8 @@ export default function Form<T extends FieldValues>({
         }
       } catch (err) {
         clearTimeout(timeoutId);
+        if (unmountedRef.current) return;
+
         if (err instanceof DOMException && err.name === "AbortError") {
           setFormState("timeout");
           setStatusMessage({
@@ -391,7 +433,13 @@ export default function Form<T extends FieldValues>({
   const handleConfirmClose = useCallback(() => {
     setConfirmOpen(false);
     pendingDataRef.current = null;
-    busyRef.current = false;
+
+    // The dialog also closes once a confirmed save times out, while its
+    // request may still be running. The request's own `finally` lets go
+    // of the guard then, so a second submit cannot write twice.
+    if (!requestPendingRef.current) {
+      busyRef.current = false;
+    }
   }, []);
 
   function handleFormSubmit(event: FormEvent<HTMLFormElement>) {
@@ -401,7 +449,21 @@ export default function Form<T extends FieldValues>({
     }
 
     busyRef.current = true;
-    void methods.handleSubmit(handleValidated, handleInvalid)(event);
+    // A field's own check that throws would otherwise leave the guard
+    // held, and the form refusing every submit until a reload.
+    methods
+      .handleSubmit(
+        handleValidated,
+        handleInvalid,
+      )(event)
+      .catch(() => {
+        busyRef.current = false;
+        setFormState("error");
+        setStatusMessage({
+          title: "Could not validate the form",
+          description: "Your entries are still here. Please try again.",
+        });
+      });
   }
 
   const contextValue: FormContextValue = {
@@ -427,9 +489,14 @@ export default function Form<T extends FieldValues>({
               control={methods.control}
               onProceed={() => methods.reset()}
               formState={formState}
+              requestPending={requestPending}
               allowLeavingRef={allowLeavingRef}
             />
-            <UnloadGuard control={methods.control} formState={formState} />
+            <UnloadGuard
+              control={methods.control}
+              formState={formState}
+              requestPending={requestPending}
+            />
           </>
         )}
         {confirm && (
