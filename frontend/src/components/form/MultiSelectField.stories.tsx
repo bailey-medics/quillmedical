@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { expect, userEvent, within } from "storybook/test";
 import { Stack } from "@mantine/core";
 import BaseCard from "@components/base-card/BaseCard";
 import MultiSelectField from "./MultiSelectField";
@@ -125,6 +126,35 @@ export const Disabled: Story = {
     ],
     value: ["1", "2", "3"],
     disabled: true,
+  },
+};
+
+/**
+ * Read-only shows the chosen values and offers no options. A click
+ * leaves the list announced as closed, so a screen reader hears no
+ * empty list.
+ */
+export const ReadOnly: Story = {
+  args: {
+    label: "Participants",
+    data: [
+      { value: "1", label: "Dr Fenwick" },
+      { value: "2", label: "Nurse Adams" },
+    ],
+    value: ["1", "2"],
+    readOnly: true,
+  },
+  play: async ({ canvasElement }) => {
+    const field = within(canvasElement).getByRole("combobox", {
+      name: "Participants",
+    });
+    // Read-only, Mantine turns off pointer events on the input itself, so
+    // a click there lands on the box around it, as a person's would.
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+
+    await user.click(field);
+
+    await expect(field).toHaveAttribute("aria-expanded", "false");
   },
 };
 

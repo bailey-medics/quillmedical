@@ -8,7 +8,10 @@
  * - Safe HTML rendering (XSS protection via DOMPurify)
  */
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { expect, within } from "storybook/test";
+import { Box } from "@mantine/core";
 import { IconPencil, IconUserPlus } from "@/components/icons/appIcons";
+import { StoryNote } from "@/stories/variants";
 import MarkdownView from "./MarkdownView";
 
 const meta: Meta<typeof MarkdownView> = {
@@ -152,6 +155,36 @@ export const WithButtonIcons: Story = {
       "1. Open the site from **Sites**.",
       "2. Press the **Edit site** button :button-pencil:, beside its name.",
     ].join("\n"),
+  },
+};
+
+/**
+ * Long words on a phone
+ *
+ * An email address or a link has no spaces to break at. Constrained to
+ * 320 pixels, as on a phone, each wraps rather than pushing the page
+ * sideways.
+ */
+export const LongWordsOnAPhone: Story = {
+  args: {
+    source: [
+      "Write to quill.medical.support.for.northfield.general.hospital@example.com with any questions.",
+      "",
+      "The full guidance is at [https://quill-medical.com/guides/teaching/northfield-general-hospital-outpatients](https://quill-medical.com/guides/teaching/northfield-general-hospital-outpatients).",
+    ].join("\n"),
+  },
+  render: (args) => (
+    <>
+      <Box maw={320} data-testid="phone-width">
+        <MarkdownView {...args} />
+      </Box>
+      <StoryNote>Constrained to 320px, as on a phone.</StoryNote>
+    </>
+  ),
+  play: async ({ canvasElement }) => {
+    const box = within(canvasElement).getByTestId("phone-width");
+
+    await expect(box.scrollWidth).toBeLessThanOrEqual(box.clientWidth);
   },
 };
 

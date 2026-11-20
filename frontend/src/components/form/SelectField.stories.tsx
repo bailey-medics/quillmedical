@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { expect, userEvent, within } from "storybook/test";
 import { Stack } from "@mantine/core";
 import BaseCard from "@components/base-card/BaseCard";
 import SelectField from "./SelectField";
@@ -79,6 +80,28 @@ export const Disabled: Story = {
     value: "Active",
     data: ["Active", "Inactive"],
     disabled: true,
+  },
+};
+
+/**
+ * Read-only shows the value and offers no options. A click leaves the
+ * list announced as closed, so a screen reader hears no empty list.
+ */
+export const ReadOnly: Story = {
+  args: {
+    label: "Status",
+    value: "Active",
+    data: ["Active", "Inactive"],
+    readOnly: true,
+  },
+  play: async ({ canvasElement }) => {
+    const field = within(canvasElement).getByRole("combobox", {
+      name: "Status",
+    });
+
+    await userEvent.click(field);
+
+    await expect(field).toHaveAttribute("aria-expanded", "false");
   },
 };
 
