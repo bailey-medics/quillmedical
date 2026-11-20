@@ -60,8 +60,20 @@ and validation; a merge posts a reminder to Slack. Then, from a checkout
 up to date with `main`:
 
 ```bash
-just terraform-aws    # sign in where needed, plan, ask, apply
+just terraform-aws    # sign in where needed, plan, ask, apply, sign out
 ```
+
+It needs one AWS sign-in, to Quill Medical Superadmin. Terraform steps
+from there into both email accounts through
+`OrganizationAccountAccessRole`. AWS made that role in Emails Dev, which
+the organisation created. Emails App was invited, so Terraform makes
+its role, in `infra/aws/main.tf`, trusting only the management account.
+
+The sign-ins can do anything in their accounts, so a machine keeps them
+only while a job needs them. `just terraform-aws` signs out of AWS,
+and of Google Cloud, when it ends, however it ends. A sign-in made
+with `just aws-login` for other work signs itself out after an hour,
+and `just aws-logout` signs out at once.
 
 CI holds nothing for AWS. Applying needs a role able to write IAM
 policy, which could widen what the mail key may do, so that stays with
@@ -81,9 +93,13 @@ email accounts:
 1. Put the new account numbers in `backend/.env`
    (`AWS_EMAILS_ACCOUNT_ID`, `AWS_EMAILS_DEV_ACCOUNT_ID`).
    `just terraform-aws` reads them from there.
-2. Run `just terraform-aws`. It signs in to both AWS accounts first. This
+2. Run `just terraform-aws`. It signs in to Superadmin first. This
    makes the domain identity, the MAIL FROM name, the suppression list
-   settings and the user with its policy.
+   settings and the user with its policy. An App account the
+   organisation created already has `OrganizationAccountAccessRole`, so
+   import it into `aws_iam_role.app_organisation_access` first. An
+   invited one has none, so make the role by hand once, from that
+   account's console, then import it.
 3. Copy the new `dkim_tokens` outputs into the CNAME records in
    `infra/dns.tf`, and apply that. SES verifies the domain once the
    records resolve.

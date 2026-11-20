@@ -69,9 +69,9 @@ worktree.
 
 Git finds the hook through `core.hooksPath`, which lives in the repository's
 shared config and so applies to every worktree. Its value is the relative
-`.husky`, and that is deliberate: git resolves a relative hooks path
+`.githooks`, and that is deliberate: git resolves a relative hooks path
 against the root of the worktree that is committing, so each worktree runs
-the `.husky/pre-commit` tracked on its own branch.
+the `.githooks/pre-commit` tracked on its own branch.
 
 It used to be an absolute path into the main checkout. That made every
 worktree run one checkout's copy of the hook, whatever its own branch said,

@@ -34,7 +34,7 @@ See the `Justfile` if you want to know more.
   - Both run in a throwaway container from `compose.unit-tests.yml` that mounts the current worktree, so they work from any worktree and do not need the dev stack running
 - **Test tiers - test what you touched locally; CI tests everything.** Each tier is wider and slower than the one before, and each only adds what the previous one cannot see:
   - **Local, while developing**: only the tests for the code being changed (`just ub -k "..."`, `just uf src/path/to/file.test.tsx`). Seconds, run as often as useful.
-  - **Pre-commit, automatic**: lint, format, typecheck and spelling on the staged files, via the husky and pre-commit hooks.
+  - **Pre-commit, automatic**: lint, format, typecheck and spelling on the staged files, via the git pre-commit hook in `.githooks/`.
   - **CI fast tier**: the full backend and frontend unit suites plus Storybook build, on every push. The merge queue re-runs them against current `main` before anything lands.
   - **CI heavy tier**: Storybook interaction tests, Semgrep and E2E, once the PR leaves draft.
 - **Do not run the full unit suite locally before committing or pushing** (`just ub` or `just uf` with no filter). It duplicates the fast tier and costs minutes per push. The only times it is justified:
@@ -903,7 +903,7 @@ SQLite and the frontend suite is vitest under jsdom, so no service is needed.
   which must stay root for its `node_modules` volumes, hands what it wrote
   back through `scripts/hand-back-ownership.sh`. On a Mac both are empty and
   nothing changes.
-- **Never run `pre-commit install`.** Git runs the tracked `.husky/pre-commit`
+- **Never run `pre-commit install`.** Git runs the tracked `.githooks/pre-commit`
   through the relative `core.hooksPath` set by `just initialise-repo`, which
   resolves per worktree. pre-commit refuses to install alongside it anyway.
   The one exception is `.claude/hooks/session-start.sh`, in a web session:

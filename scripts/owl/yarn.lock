@@ -35,7 +35,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@slack/web-api@npm:8.4.0":
+"@slack/web-api@npm:8.4.0, @slack/web-api@npm:^8.3.0":
   version: 8.4.0
   resolution: "@slack/web-api@npm:8.4.0"
   dependencies:
@@ -48,22 +48,6 @@ __metadata:
     p-retry: "npm:^4.6.2"
     retry: "npm:^0.13.1"
   checksum: 10c0/c35b63b8ba9eb3378f155219ca4459c19470c0261099baf56f190b5de033529840a1073e810c95ff3af385f6deef8083345fc098fba7f514881179c4e9bd3df0
-  languageName: node
-  linkType: hard
-
-"@slack/web-api@npm:^8.3.0":
-  version: 8.3.0
-  resolution: "@slack/web-api@npm:8.3.0"
-  dependencies:
-    "@slack/logger": "npm:^5.0.0"
-    "@slack/types": "npm:^3.3.0"
-    "@types/node": "npm:>=20"
-    "@types/retry": "npm:0.12.5"
-    eventemitter3: "npm:^5.0.1"
-    p-queue: "npm:^6.6.2"
-    p-retry: "npm:^4.6.2"
-    retry: "npm:^0.13.1"
-  checksum: 10c0/bb2973f48301c490ca70b29b378b6c2812a90cd2f0859cf931e66b97149be7d591f360f42fa56f168cacb6ad37328e054ceb1a53870810562a34a84b1d5da7fb
   languageName: node
   linkType: hard
 

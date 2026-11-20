@@ -121,7 +121,7 @@ report_host_python
 #
 # `pre-commit install` below is the one place it is right. CLAUDE.md says
 # never to run it, and on a developer's machine that holds: `just
-# initialise-repo` has pointed core.hooksPath at .husky, and pre-commit
+# initialise-repo` has pointed core.hooksPath at .githooks, and pre-commit
 # refuses to install beside it. A web session is a fresh clone where nobody
 # has run that recipe, so there is no hook at all until this installs one.
 # Where core.hooksPath is set it fails and only warns.

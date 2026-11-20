@@ -696,7 +696,7 @@ before any feature.
 - [x] Everything else under [`.github`](../../../.github). Stamped on 10 October 2026. The
       LLM prompts and instructions were last audited in July 2026 and
       are due again.
-- [x] [`.husky/pre-commit`](../../../.husky/pre-commit). Stamped on 10 October 2026.
+- [x] `.husky/pre-commit`, since moved to [`.githooks/pre-commit`](../../../.githooks/pre-commit). Stamped on 10 October 2026.
 - [x] The [`Justfile`](../../../Justfile). Stamped on 11 October 2026.
 - [x] [`.pre-commit-config.yaml`](../../../.pre-commit-config.yaml).
 - [x] [`compose.ci.yml`](../../../compose.ci.yml).

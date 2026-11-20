@@ -24,6 +24,44 @@ initialise:= 'set -euxo pipefail
     _set_title'
 
 
+# Signing out of Google Cloud, for a recipe that signs in. Mark's login
+# can do anything he can, secrets included, so a recipe that uses it
+# signs it out when it ends, however it ends:
+#
+#     {{gcp_sign_out}}
+#     trap _sign_out_of_gcp_on_exit EXIT
+#
+# Pinned to the default gcloud settings, so Owl's own, in a folder of
+# its own, are never touched. Revoking also cancels the hour's sign-out
+# gcp-login scheduled, which then has nothing to do.
+gcp_sign_out := '_sign_out_of_gcp() {
+        local config="$HOME/.config/gcloud"
+        local pid_file="$HOME/.config/gcloud/quill-sign-out.pid"
+
+        CLOUDSDK_CONFIG="$config" gcloud auth revoke --all --quiet >/dev/null 2>&1 || true
+        CLOUDSDK_CONFIG="$config" gcloud auth application-default revoke --quiet >/dev/null 2>&1 || true
+        systemctl --user stop quill-gcp-sign-out.timer >/dev/null 2>&1 || true
+
+        if [ -f "$pid_file" ]; then
+            kill "$(cat "$pid_file")" >/dev/null 2>&1 || true
+            rm -f "$pid_file"
+        fi
+
+        if [ -n "$(CLOUDSDK_CONFIG="$config" gcloud auth list --format="value(account)" 2>/dev/null)" ] \
+            || [ -f "$config/application_default_credentials.json" ]; then
+            echo "✗ Still signed in to Google Cloud. Run: just gcp-logout"
+            return 1
+        fi
+
+        echo "Signed out of Google Cloud."
+    }
+
+    _sign_out_of_gcp_on_exit() {
+        _sign_out_of_gcp || true
+        _clear_title
+    }'
+
+
 # Which repository the stack recipes act on. Unset, it is this one.
 #
 # The teaching content lives in repositories of its own, cloned under
@@ -105,6 +143,7 @@ _e2e-run *ARGS:
     gcs_url=$(just _e2e-gcs-url)
     echo "End-to-end stack is up at ${base_url}, public site at ${public_url}" >&2
     just _e2e-served-files
+    just _playwright-browser >&2
     cd frontend && E2E_BASE_URL="${base_url}" E2E_PUBLIC_URL="${public_url}" \
         E2E_GCS_URL="${gcs_url}" npx playwright test {{ARGS}}
 
@@ -202,17 +241,15 @@ _ensure-aws-login which:
     fi
 
 
-# Signs in to Google Cloud unless both of its sign-ins work: gcloud's own,
-# which gcloud commands use, and application default, which Terraform uses
-# for its state bucket. An expired one otherwise fails as invalid_rapt
-# partway through. Never call it inside $( ), which would hide the prompt.
+# Signs in to Google Cloud unless gcloud's sign-in works. An expired one
+# otherwise fails as invalid_rapt partway through. Never call it inside
+# $( ), which would hide the prompt.
 _ensure-gcp-login:
     #!/usr/bin/env bash
     set -euo pipefail
 
     signed_in() {
-        gcloud auth print-access-token >/dev/null 2>&1 \
-            && gcloud auth application-default print-access-token >/dev/null 2>&1
+        gcloud auth print-access-token >/dev/null 2>&1
     }
 
     if signed_in; then
@@ -331,6 +368,22 @@ _migrate-running-stack:
     # repositories, which each deploy reads. Safe to run every time: an
     # unchanged framework writes nothing.
     docker exec quill_backend sh -lc 'python -m app.features.passport.sync'
+
+
+# Install the Chromium that this checkout's Playwright needs, if it is missing.
+#
+# Each Playwright release wants its own Chromium build. A bump to Playwright,
+# from Renovate or by hand, leaves the old build in ~/.cache/ms-playwright
+# and the new one missing, so a check that the folder exists passes and the
+# tests then stop with "Executable doesn't exist". `playwright install`
+# compares versions itself: it does nothing when the right build is there,
+# and downloads it when it is not. No `--with-deps`: that installs system
+# packages with sudo, which a machine that has run Playwright before has.
+_playwright-browser:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd frontend
+    npx playwright install chromium
 
 
 # Refuse to run when the backend's Python on this machine is not CI's.
@@ -486,6 +539,9 @@ add-role-remote env:
     {{initialise}} "add-role ({{env}})"
     set -euo pipefail
 
+    {{gcp_sign_out}}
+    trap _sign_out_of_gcp_on_exit EXIT
+
     just _ensure-gcp-login
 
     PROJECT=$(just _gcp_env_project "{{env}}")
@@ -530,14 +586,24 @@ aws-login which="emails":
     # its own: Terraform reaches it through the management sign-in and the
     # role every organisation account is given (see infra/aws/main.tf).
     case "{{which}}" in
-        emails)     profile="quill-emails";     setting="AWS_EMAILS_ACCOUNT_ID" ;;
-        management) profile="quill-management"; setting="AWS_MANAGEMENT_ACCOUNT_ID" ;;
+        emails)
+            profile="quill-emails"
+            setting="AWS_EMAILS_ACCOUNT_ID"
+            account="Quill Medical Emails App"
+            ;;
+        management)
+            profile="quill-management"
+            setting="AWS_MANAGEMENT_ACCOUNT_ID"
+            account="Quill Medical Superadmin"
+            ;;
         *) echo "✗ Unknown account '{{which}}': emails or management."; exit 1 ;;
     esac
 
     # The account numbers live in backend/.env, which is gitignored, and not
-    # here: this repository is public.
-    want="$(grep "^${setting}=" backend/.env 2>/dev/null | cut -d= -f2-)"
+    # here: this repository is public. `|| true` because a missing file or
+    # line would otherwise end the recipe without a word, under pipefail,
+    # before the check below could say what is wrong.
+    want="$(grep "^${setting}=" backend/.env 2>/dev/null | cut -d= -f2- || true)"
 
     if [ -z "$want" ] || [ "$want" = "CHANGE_ME" ]; then
         echo "✗ ${setting} is not set in backend/.env, so the sign-in"
@@ -551,15 +617,16 @@ aws-login which="emails":
     aws configure set region eu-west-2 --profile "$profile"
 
     # The sign-in link names no account, so say which one before showing it,
-    # in red on a terminal so it stands out from the link.
-    name="$(printf '%s' "{{which}}" | tr '[:lower:]' '[:upper:]')"
+    # by the name the console shows, in red on a terminal so it stands out
+    # from the link.
+    name="$account"
 
     if [ -t 1 ]; then
         name="$(printf '\033[31m%s\033[0m' "$name")"
     fi
 
     echo
-    echo "==> Sign in to the ${name} account (${want})."
+    echo "==> Sign in to ${name} (${want})."
     echo "    Open that account's console in the browser, signing out of any"
     echo "    other AWS account there."
 
@@ -578,15 +645,72 @@ aws-login which="emails":
         --query Account --output text)"
 
     if [ "$got" != "$want" ]; then
-        echo "✗ Signed in to account $got, not $want ({{which}})."
-        echo "  Open the {{which}} account's console in the browser, close"
+        echo "✗ Signed in to account $got, not ${account} ($want)."
+        echo "  Open the ${account} console in the browser, close"
         echo "  any other AWS console session, and run this again."
         echo "  Do not use the $profile profile until it passes."
         exit 1
     fi
 
-    echo "Signed in to the {{which}} account ($got)."
+    echo "Signed in to ${account} ($got)."
     echo "Use it with: AWS_PROFILE=$profile aws ..."
+
+    # A signed-in profile can do anything in its account, and a forgotten
+    # one would last until AWS's own session limit. So the sign-in ends
+    # itself in an hour; signing in again starts the hour afresh. A user
+    # timer where systemd runs one, as on the dev box, and a background
+    # sleep elsewhere, whose process id is kept so the next sign-in can
+    # cancel it.
+    aws_bin="$(command -v aws)"
+    sign_out="for p in quill-emails quill-management; do '${aws_bin}' logout --profile \"\$p\" >/dev/null 2>&1; done"
+    pid_file="$HOME/.aws/quill-sign-out.pid"
+
+    if command -v systemd-run >/dev/null 2>&1 && systemctl --user show-environment >/dev/null 2>&1; then
+        systemctl --user stop quill-aws-sign-out.timer >/dev/null 2>&1 || true
+        systemd-run --user --quiet --collect --unit quill-aws-sign-out \
+            --on-active=1h /bin/bash -c "$sign_out"
+    else
+        if [ -f "$pid_file" ]; then
+            kill "$(cat "$pid_file")" >/dev/null 2>&1 || true
+        fi
+
+        nohup /bin/bash -c "sleep 3600; ${sign_out}; rm -f '${pid_file}'" >/dev/null 2>&1 &
+        echo $! > "$pid_file"
+    fi
+
+    echo "Signs out by itself in an hour, or now with: just aws-logout"
+
+
+alias alo := aws-logout
+# Sign out of both AWS accounts now, rather than waiting for the hour aws-login allows
+aws-logout:
+    #!/usr/bin/env bash
+    {{initialise}} "aws-logout"
+    set +x
+
+    # `aws logout` deletes the profile's cached login; an access token
+    # already handed to a running tool lives on for up to 15 minutes.
+    for profile in quill-emails quill-management; do
+        aws logout --profile "$profile" >/dev/null 2>&1 || true
+    done
+
+    # Nothing is left to sign out, so the hour's timer has no job.
+    systemctl --user stop quill-aws-sign-out.timer >/dev/null 2>&1 || true
+    pid_file="$HOME/.aws/quill-sign-out.pid"
+
+    if [ -f "$pid_file" ]; then
+        kill "$(cat "$pid_file")" >/dev/null 2>&1 || true
+        rm -f "$pid_file"
+    fi
+
+    left="$(find "$HOME/.aws/login/cache" -type f 2>/dev/null | wc -l)"
+
+    if [ "$left" -ne 0 ]; then
+        echo "✗ ${left} cached AWS login file(s) are still in ~/.aws/login/cache."
+        exit 1
+    fi
+
+    echo "Signed out of AWS. Sign in again with: just aws-login"
 
 
 alias bu := backend-update
@@ -611,6 +735,9 @@ build-admin env:
     #!/usr/bin/env bash
     {{initialise}} "build-admin ({{env}})"
     set -euo pipefail
+
+    {{gcp_sign_out}}
+    trap _sign_out_of_gcp_on_exit EXIT
 
     just _ensure-gcp-login
 
@@ -655,6 +782,9 @@ check-competency-seeding env:
     {{initialise}} "check-competency-seeding ({{env}})"
     set -euo pipefail
 
+    {{gcp_sign_out}}
+    trap _sign_out_of_gcp_on_exit EXIT
+
     just _ensure-gcp-login
 
     PROJECT=$(just _gcp_env_project "{{env}}")
@@ -695,6 +825,9 @@ create-superadmin env:
     #!/usr/bin/env bash
     {{initialise}} "create-superadmin ({{env}})"
     set -euo pipefail
+
+    {{gcp_sign_out}}
+    trap _sign_out_of_gcp_on_exit EXIT
 
     just _ensure-gcp-login
 
@@ -873,16 +1006,15 @@ frontend-update +packages:
 
 
 alias gl := gcp-login
-# Refresh both GCP credentials: the gcloud one and application default
+# Sign in to Google Cloud for an hour (gcloud's sign-in; Terraform takes a token from it)
 gcp-login:
     #!/usr/bin/env bash
     {{initialise}} "gcp-login"
 
-    # Two separate credentials that expire independently. `gcloud auth login`
-    # covers gcloud commands and direct API calls; application-default covers
-    # tools that read Application Default Credentials, Terraform among them.
-    # Having one valid and the other expired is the confusing case - terraform
-    # fails while gcloud works - so refresh both together.
+    # One sign-in, gcloud's own. Terraform does not get the second,
+    # application default, sign-in: the Terraform recipes hand it an
+    # hour's access token from this one instead, so there is one
+    # credential to keep and to sign out.
     #
     # On a Linux machine with no screen, such as the dev box over SSH,
     # there is no browser to open: `--no-launch-browser` prints a link to
@@ -893,7 +1025,46 @@ gcp-login:
     fi
 
     gcloud auth login "${no_browser[@]}"
-    gcloud auth application-default login "${no_browser[@]}"
+
+    # The login can do anything Mark can, secrets included, and a forgotten
+    # one lasts until Google asks again. So it ends itself in an hour;
+    # signing in again starts the hour afresh. A user timer where systemd
+    # runs one, as on the dev box, and a background sleep elsewhere, whose
+    # process id is kept so the next sign-in can cancel it. Pinned to the
+    # default gcloud settings, so Owl's own are never touched.
+    set +x
+    gcloud_bin="$(command -v gcloud)"
+    sign_out="export CLOUDSDK_CONFIG='$HOME/.config/gcloud'; '${gcloud_bin}' auth revoke --all --quiet >/dev/null 2>&1; '${gcloud_bin}' auth application-default revoke --quiet >/dev/null 2>&1"
+    pid_file="$HOME/.config/gcloud/quill-sign-out.pid"
+
+    if command -v systemd-run >/dev/null 2>&1 && systemctl --user show-environment >/dev/null 2>&1; then
+        systemctl --user stop quill-gcp-sign-out.timer >/dev/null 2>&1 || true
+        systemd-run --user --quiet --collect --unit quill-gcp-sign-out \
+            --on-active=1h /bin/bash -c "$sign_out"
+    else
+        if [ -f "$pid_file" ]; then
+            kill "$(cat "$pid_file")" >/dev/null 2>&1 || true
+        fi
+
+        nohup /bin/bash -c "sleep 3600; ${sign_out}; rm -f '${pid_file}'" >/dev/null 2>&1 &
+        echo $! > "$pid_file"
+    fi
+
+    echo "Signs out of Google Cloud by itself in an hour, or now with: just gcp-logout"
+
+
+alias glo := gcp-logout
+# Sign out of Google Cloud now, rather than waiting for the hour gcp-login allows
+gcp-logout:
+    #!/usr/bin/env bash
+    {{initialise}} "gcp-logout"
+    set +x
+
+    {{gcp_sign_out}}
+
+    # A token already handed to a running tool lives on until it expires,
+    # up to an hour; revoking stops it being renewed.
+    _sign_out_of_gcp
 
 
 alias gsh := guide-screenshots
@@ -920,6 +1091,7 @@ guide-screenshots *ARGS:
     docker compose -p "$(just _e2e-project)" -f compose.ci.yml \
         exec -T backend python scripts/seed_guides.py >&2
     echo "Guide stack is up at ${base_url}" >&2
+    just _playwright-browser >&2
     cd frontend && E2E_BASE_URL="${base_url}" \
         npx playwright test --config playwright.guides.config.ts {{ARGS}}
 
@@ -971,14 +1143,14 @@ initialise-repo:
     #!/usr/bin/env bash
     {{initialise}} "initialise"
 
-    # Git runs the tracked .husky/pre-commit directly, which itself runs
+    # Git runs the tracked .githooks/pre-commit directly, which itself runs
     # `pre-commit run`. The path is deliberately relative: git resolves it
     # against the root of whichever worktree is committing, so every
     # worktree runs its own branch's hook. An absolute path here would
     # point every worktree at one checkout's copy, and vanish silently if
     # that checkout moved. Not `pre-commit install`: it refuses to run while
     # core.hooksPath is set, and would be redundant anyway.
-    git config core.hooksPath .husky
+    git config core.hooksPath .githooks
 
     # The only package.json is the frontend's; the repository root has none.
     (cd frontend && yarn install)
@@ -1062,6 +1234,9 @@ migrate-current env:
     {{initialise}} "migrate-current ({{env}})"
     set -euo pipefail
 
+    {{gcp_sign_out}}
+    trap _sign_out_of_gcp_on_exit EXIT
+
     just _ensure-gcp-login
 
     PROJECT=$(just _gcp_env_project "{{env}}")
@@ -1141,6 +1316,9 @@ migrate-remote env:
     {{initialise}} "migrate-remote ({{env}})"
     set -euo pipefail
 
+    {{gcp_sign_out}}
+    trap _sign_out_of_gcp_on_exit EXIT
+
     just _ensure-gcp-login
 
     PROJECT=$(just _gcp_env_project "{{env}}")
@@ -1162,6 +1340,9 @@ newsletter-send env campaign confirm="" only_to="" limit="":
     #!/usr/bin/env bash
     {{initialise}} "newsletter-send ({{env}})"
     set -euo pipefail
+
+    {{gcp_sign_out}}
+    trap _sign_out_of_gcp_on_exit EXIT
 
     just _ensure-gcp-login
 
@@ -1300,6 +1481,9 @@ passport-delete env username confirm="":
     #!/usr/bin/env bash
     {{initialise}} "passport-delete ({{env}})"
     set -euo pipefail
+
+    {{gcp_sign_out}}
+    trap _sign_out_of_gcp_on_exit EXIT
 
     just _ensure-gcp-login
 
@@ -2910,6 +3094,7 @@ storybook-test:
     #!/usr/bin/env bash
     {{initialise}} "storybook-test"
     just _frontend-packages-current || exit 1
+    just _playwright-browser || exit 1
     cd frontend
 
     # A Storybook already up is used as it is and left running. Otherwise
@@ -2947,8 +3132,11 @@ terraform-aws:
     # read, so they are not printed.
     set +x
 
+    # `|| true`: without it a missing file ends the recipe silently, under
+    # pipefail, before the message below. backend/.env is in the main
+    # checkout only, since it is gitignored.
     for setting in AWS_EMAILS_ACCOUNT_ID AWS_EMAILS_DEV_ACCOUNT_ID AWS_MANAGEMENT_ACCOUNT_ID AWS_ID_ACCOUNT_ID; do
-        value="$(grep "^${setting}=" backend/.env 2>/dev/null | cut -d= -f2-)"
+        value="$(grep "^${setting}=" backend/.env 2>/dev/null | cut -d= -f2- || true)"
         if [ -z "$value" ] || [ "$value" = "CHANGE_ME" ]; then
             echo "✗ ${setting} is not set in backend/.env."
             exit 1
@@ -2961,14 +3149,53 @@ terraform-aws:
     export TF_VAR_identity_account_id="$(grep '^AWS_ID_ACCOUNT_ID=' backend/.env | cut -d= -f2-)"
 
     # The state is in the Cloud Storage bucket, so Google is needed too.
-    # Both AWS sign-ins are needed: the emails account for App production,
-    # and the management account, which holds the organisation's policy and
-    # is where the development account is reached from.
+    # Of the four AWS accounts, one needs a sign-in:
+    #
+    #   Quill Medical Superadmin   the organisation and its policy
+    #                              (management).
+    #   Quill Medical Emails App   reached through the Superadmin sign-in.
+    #   Quill Medical Emails Dev   reached through the Superadmin sign-in.
+    #   Quill Medical ID           the sign-in directory; only its number
+    #                              is read.
     just _ensure-gcp-login
-    just _ensure-aws-login emails
+
+    # Sign out of AWS and Google Cloud however this ends, an error
+    # included, so the sign-ins last only as long as the job. `aws logout`
+    # directly, not `just aws-logout`, which another checkout's Justfile
+    # may not have, and loudly if a login is left. The tab title is still
+    # cleared, as the trap set by initialise would have done.
+    {{gcp_sign_out}}
+
+    _sign_out_of_aws() {
+        for profile in quill-emails quill-management; do
+            aws logout --profile "$profile" >/dev/null 2>&1 || true
+        done
+
+        # The one-hour sign-out aws-login scheduled has nothing left to do.
+        systemctl --user stop quill-aws-sign-out.timer >/dev/null 2>&1 || true
+
+        if [ -n "$(find "$HOME/.aws/login/cache" -type f 2>/dev/null)" ]; then
+            echo "✗ Still signed in to AWS. Run: aws logout --profile quill-emails; aws logout --profile quill-management"
+        else
+            echo "Signed out of AWS."
+        fi
+
+        _sign_out_of_gcp || true
+        _clear_title
+    }
+
+    trap _sign_out_of_aws EXIT
+
+    echo "Needs one AWS sign-in: Quill Medical Superadmin."
+
     just _ensure-aws-login management
 
     cd infra/aws
+
+    # The state bucket is read with an hour's token from gcloud's sign-in,
+    # not a second sign-in. Trace off, so the token is not printed.
+    set +x
+    export GOOGLE_OAUTH_ACCESS_TOKEN="$(gcloud auth print-access-token)"
 
     # No -upgrade: the providers are the ones in the committed lock file.
     terraform init -input=false
@@ -3007,13 +3234,18 @@ terraform-github:
     bash scripts/check-terraform-version.sh host
 
     # The state is in the Cloud Storage bucket.
+    {{gcp_sign_out}}
+    trap _sign_out_of_gcp_on_exit EXIT
+
     just _ensure-gcp-login
 
     cd infra/github
 
-    # Trace off, so the token is not printed.
+    # Trace off, so the tokens are not printed. The state bucket is read
+    # with an hour's token from gcloud's sign-in, not a second sign-in.
     set +x
     export GITHUB_TOKEN=$(gh auth token)
+    export GOOGLE_OAUTH_ACCESS_TOKEN="$(gcloud auth print-access-token)"
     set -x
 
     # The organisation rulesets in teaching_rulesets.tf are read with this
@@ -3491,7 +3723,7 @@ worktree-create branch="":
     (cd "$DEST/frontend" && yarn install --immutable)
 
     # No hook setup is needed. core.hooksPath lives in the shared git config
-    # and is the relative `.husky`, which git resolves against the root of
+    # and is the relative `.githooks`, which git resolves against the root of
     # the worktree that is committing - so this worktree runs its own
     # branch's tracked hook from the moment it exists.
     echo ""

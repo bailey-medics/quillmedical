@@ -22,7 +22,7 @@
 # The policy that keeps every account in London is in organisation.tf.
 
 terraform {
-  required_version = ">= 1.17.1"
+  required_version = ">= 1.17.2"
 
   # Beside the GCP and GitHub state in the same bucket, under its own
   # prefix. State is read and written with the caller's own Google
@@ -40,14 +40,24 @@ terraform {
   }
 }
 
-# Each provider names its account, and refuses any other. The profiles
-# are the ones `just al` signs in; a sign-in that landed in the wrong
-# account, which has happened, fails here before anything is read.
+# Each provider names its account, and refuses any other, so a sign-in
+# that landed in the wrong account, which has happened, fails here
+# before anything is read.
+#
+# Both email accounts are reached from the one management sign-in
+# (`just al management`), through OrganizationAccountAccessRole. The App
+# production account was invited into the organisation, so its role is
+# made by Terraform below, not by AWS.
 provider "aws" {
   alias               = "app"
-  profile             = var.app_profile
+  profile             = var.management_profile
   region              = var.region
   allowed_account_ids = [var.app_account_id]
+
+  assume_role {
+    role_arn     = "arn:aws:iam::${var.app_account_id}:role/OrganizationAccountAccessRole"
+    session_name = "terraform-aws"
+  }
 }
 
 # The development account has no sign-in of its own. It is reached from
@@ -82,6 +92,35 @@ module "app" {
   # Read before each newsletter send, so somebody whose address bounced
   # or who pressed "spam" is marked unsubscribed in Quill too.
   may_read_suppression_list = true
+}
+
+# The role the management account steps in through, as it does into the
+# development account. AWS makes it in every account the organisation
+# creates, but this account was invited, so it has none. With it,
+# Terraform needs one sign-in, the management one, for both email
+# accounts. Only the management account may step in, and it needs
+# administrator rights because Terraform manages IAM here.
+resource "aws_iam_role" "app_organisation_access" {
+  provider = aws.app
+
+  name        = "OrganizationAccountAccessRole"
+  description = "Lets the management account manage this account, as in accounts the organisation creates"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { AWS = "arn:aws:iam::${var.management_account_id}:root" }
+      Action    = "sts:AssumeRole"
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "app_organisation_access" {
+  provider = aws.app
+
+  role       = aws_iam_role.app_organisation_access.name
+  policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
 }
 
 # ---------- Development ----------
