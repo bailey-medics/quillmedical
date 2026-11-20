@@ -512,7 +512,7 @@ def totp_step_matched(
     typed = code.encode()
 
     try:
-        totp = pyotp.TOTP(secret)
+        totp = pyotp.totp.TOTP(secret)
         now = int(totp.timecode(moment))
 
         for step in range(now + TOTP_WINDOW, now - TOTP_WINDOW - 1, -1):
