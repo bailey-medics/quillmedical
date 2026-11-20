@@ -279,6 +279,13 @@ const handleSubmit = async (data) => {
 
 If your handler throws an unexpected error, Form catches it and shows a generic error message.
 If the request exceeds `timeoutMs`, Form aborts and shows a timeout message automatically.
+A request that ignores the signal may still be running after that. Until it settles, the
+form refuses a second submit and warns before somebody leaves, saying the save is still
+running and that leaving does not stop it. If the form goes while a save runs, Form aborts
+it and ignores whatever it returns, so `afterSave` never runs from a page already left.
+
+If a field's own check throws while the form is checked before a save, Form shows
+"Could not validate the form" and stays usable, rather than staying locked.
 
 ## Partial success
 

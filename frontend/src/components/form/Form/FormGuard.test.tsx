@@ -48,9 +48,19 @@ function NameField() {
   return <TextField label="Name" {...methods.register("name")} />;
 }
 
-function NameForm({ onSubmit }: { onSubmit: Submit }) {
+function NameForm({
+  onSubmit,
+  timeoutMs,
+}: {
+  onSubmit: Submit;
+  timeoutMs?: number;
+}) {
   return (
-    <Form<Values> defaultValues={{ name: "" }} onSubmit={onSubmit}>
+    <Form<Values>
+      defaultValues={{ name: "" }}
+      onSubmit={onSubmit}
+      timeoutMs={timeoutMs}
+    >
       <Stack gap="md">
         <FormStatus />
         <NameField />
@@ -222,5 +232,167 @@ describe("Form guards", () => {
     window.dispatchEvent(event);
 
     expect(event.defaultPrevented).toBe(false);
+  });
+});
+
+describe("Form guards after a timeout or a crash", () => {
+  /** A name field whose own check is `validate`. */
+  function CheckedNameField({ validate }: { validate: () => boolean }) {
+    const { methods } = useFormContext();
+
+    return (
+      <TextField label="Name" {...methods.register("name", { validate })} />
+    );
+  }
+
+  it("unlocks the form when a field's own check throws", async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn<Submit>(async () => SAVED);
+    // React Hook Form also runs the check when the form mounts, so the
+    // throw is armed just before the submit, and fires once.
+    let broken = false;
+    const validate = (): boolean => {
+      if (broken) {
+        broken = false;
+        throw new Error("A broken check");
+      }
+
+      return true;
+    };
+
+    renderInRouter(
+      <Form<Values> defaultValues={{ name: "" }} onSubmit={onSubmit}>
+        <Stack gap="md">
+          <FormStatus />
+          <CheckedNameField validate={validate} />
+          <SubmitButton />
+        </Stack>
+      </Form>,
+    );
+    broken = true;
+    await user.click(screen.getByTestId("submit-button"));
+
+    expect(
+      await screen.findByText("Could not validate the form"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Your entries are still here. Please try again."),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByTestId("submit-button"));
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledOnce());
+  });
+
+  it("refuses a second submit after a confirmed save times out, until it settles", async () => {
+    const user = userEvent.setup();
+    const save = deferred();
+    const onSubmit = vi.fn<Submit>(() => save.promise);
+
+    const { container } = renderInRouter(
+      <Form<Values>
+        defaultValues={{ name: "Ann" }}
+        onSubmit={onSubmit}
+        timeoutMs={50}
+        confirm={{
+          title: "Send it?",
+          children: "This sends the name.",
+          acceptLabel: "Send",
+        }}
+      >
+        <Stack gap="md">
+          <FormStatus />
+          <SubmitButton />
+        </Stack>
+      </Form>,
+    );
+    await user.click(screen.getByTestId("submit-button"));
+    await user.click(await screen.findByRole("button", { name: "Send" }));
+    await screen.findByText("Request timed out");
+
+    // A script, not the held button: only the form's own guard stops it.
+    const form = container.querySelector("form");
+    if (!form) throw new Error("no form rendered");
+    await act(async () => {
+      fireEvent.submit(form);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    const accept = screen.queryByRole("button", { name: "Send" });
+    if (accept) await user.click(accept);
+
+    expect(onSubmit).toHaveBeenCalledOnce();
+    await act(async () => {
+      save.resolve(SAVED);
+      await save.promise;
+    });
+  });
+
+  it("warns before leaving while a timed-out save is still running", async () => {
+    const user = userEvent.setup();
+    const save = deferred();
+    renderInRouter(<NameForm onSubmit={() => save.promise} timeoutMs={50} />);
+
+    await user.click(screen.getByTestId("submit-button"));
+    await screen.findByText("Request timed out");
+    await user.click(screen.getByRole("link", { name: "Go elsewhere" }));
+
+    expect(
+      await screen.findByRole("dialog", { name: "Leave this page?" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Your changes are still being saved. If you leave now, the save carries on, but you will not see whether it worked.",
+      ),
+    ).toBeInTheDocument();
+    await act(async () => {
+      save.resolve(SAVED);
+      await save.promise;
+    });
+  });
+
+  it("asks the browser to warn before unloading while a timed-out save runs", async () => {
+    const user = userEvent.setup();
+    const save = deferred();
+    renderInRouter(<NameForm onSubmit={() => save.promise} timeoutMs={50} />);
+
+    await user.click(screen.getByTestId("submit-button"));
+    await screen.findByText("Request timed out");
+    const event = new Event("beforeunload", { cancelable: true });
+    window.dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(true);
+    await act(async () => {
+      save.resolve(SAVED);
+      await save.promise;
+    });
+  });
+
+  it("aborts the save when the form goes, and ignores its late result", async () => {
+    const user = userEvent.setup();
+    const save = deferred();
+    const afterSave = vi.fn();
+    let seen: AbortSignal | undefined;
+
+    const { unmount } = renderInRouter(
+      <Form<Values>
+        defaultValues={{ name: "Ann" }}
+        onSubmit={async (_data, { signal }) => {
+          seen = signal;
+          return { ...(await save.promise), afterSave };
+        }}
+      >
+        <SubmitButton />
+      </Form>,
+    );
+    await user.click(screen.getByTestId("submit-button"));
+    await waitFor(() => expect(seen).toBeDefined());
+    unmount();
+    await act(async () => {
+      save.resolve(SAVED);
+      await save.promise;
+    });
+
+    expect(seen?.aborted).toBe(true);
+    expect(afterSave).not.toHaveBeenCalled();
   });
 });
