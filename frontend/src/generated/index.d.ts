@@ -154,6 +154,8 @@ declare module "@/generated/jurisdiction-config.json" {
 
   interface Jurisdiction {
     display_name: string;
+    // "dmy" or "mdy", narrowed by isDateOrder in src/lib/dateOrder.ts.
+    date_order: string;
     regulatory_authority?: string;
     data_protection?: string;
     prescribing_regulations?: string;
