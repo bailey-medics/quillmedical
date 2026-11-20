@@ -1,0 +1,13 @@
+/* Looks like the text it wraps: the row is what shows it can be opened,
+   by its pointer and hover. Only keyboard focus draws a ring. */
+.open {
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  border-radius: var(--mantine-radius-xs);
+}
+
+.open:focus-visible {
+  outline: 2px solid var(--mantine-primary-color-filled);
+  outline-offset: 2px;
+}
