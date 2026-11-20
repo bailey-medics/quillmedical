@@ -9,7 +9,7 @@
 
 import { IconAlertTriangle } from "@/components/icons/appIcons";
 import type { Blocker } from "react-router-dom";
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import type { ReactNode } from "react";
 import { ConfirmModal } from "@/components/confirm-modal";
 
@@ -66,11 +66,20 @@ export default function DirtyFormNavigation({
 }: DirtyFormNavigationProps) {
   const proceededRef = useRef(false);
 
+  // Each blocked attempt starts afresh, so Stay always resets the blocker
+  // even if an earlier attempt's close never arrived.
+  useEffect(() => {
+    if (blocker.state === "blocked") proceededRef.current = false;
+  }, [blocker.state]);
+
   function handleProceed() {
-    proceededRef.current = true;
+    // Marked only once onProceed has returned: if it throws, the modal
+    // stays open and Stay must still reset the blocker.
     if (onProceed) {
       onProceed();
     }
+
+    proceededRef.current = true;
     blocker.proceed?.();
   }
 
@@ -88,6 +97,7 @@ export default function DirtyFormNavigation({
       opened={blocker.state === "blocked"}
       onClose={handleClose}
       onAccept={handleProceed}
+      accessibleTitle="Leave this page?"
       acceptLabel={acceptLabel}
       cancelLabel="Stay"
       icon={<IconAlertTriangle />}

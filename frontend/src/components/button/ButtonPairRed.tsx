@@ -31,8 +31,10 @@ interface ButtonPairRedProps {
   onCancel: () => void;
   /** Disables the accept button (aria-disabled, stays focusable) */
   acceptDisabled?: boolean;
-  /** Shows loading spinner on the accept button (hides label) */
+  /** Shows loading spinner on the accept button, and blocks it */
   acceptLoading?: boolean;
+  /** Disables the cancel button (aria-disabled, stays focusable) */
+  cancelDisabled?: boolean;
   /** HTML button type for the accept button (defaults to "button") */
   acceptType?: "button" | "submit";
   /** Horizontal alignment of the button group (defaults to "flex-end") */
@@ -47,9 +49,14 @@ export default function ButtonPairRed({
   onCancel,
   acceptDisabled = false,
   acceptLoading = false,
+  cancelDisabled = false,
   acceptType = "button",
   justify = "flex-end",
 }: ButtonPairRedProps) {
+  // A spinner on its own must stop a second press too: a direct caller
+  // that sets only acceptLoading would otherwise run the action twice.
+  const acceptBlocked = acceptDisabled || acceptLoading;
+
   return (
     <Group justify={justify} mt="xs" className={classes.group}>
       <Button
@@ -58,16 +65,13 @@ export default function ButtonPairRed({
         // primaryShade of 5 that is red.5, and white on it is 2.8:1.
         color="var(--alert-color)"
         onClick={
-          acceptDisabled
-            ? (e: React.MouseEvent) => e.preventDefault()
-            : onAccept
+          acceptBlocked ? (e: React.MouseEvent) => e.preventDefault() : onAccept
         }
-        aria-disabled={acceptDisabled || undefined}
+        aria-disabled={acceptBlocked || undefined}
+        aria-busy={acceptLoading || undefined}
         size="md"
         styles={{
-          root: acceptDisabled
-            ? { opacity: 0.6, cursor: "default" }
-            : undefined,
+          root: acceptBlocked ? { opacity: 0.6, cursor: "default" } : undefined,
         }}
       >
         {acceptLoading ? (
@@ -79,7 +83,21 @@ export default function ButtonPairRed({
           acceptLabel
         )}
       </Button>
-      <Button variant="outline" onClick={onCancel} size="md">
+      <Button
+        variant="outline"
+        onClick={
+          cancelDisabled
+            ? (e: React.MouseEvent) => e.preventDefault()
+            : onCancel
+        }
+        aria-disabled={cancelDisabled || undefined}
+        size="md"
+        styles={{
+          root: cancelDisabled
+            ? { opacity: 0.6, cursor: "default" }
+            : undefined,
+        }}
+      >
         {cancelLabel}
       </Button>
     </Group>

@@ -64,6 +64,20 @@ export const IconOnly: Story = {
   },
 };
 
+/**
+ * A slow action - press Delete, and both buttons hold until it settles,
+ * so the dialog cannot close over a delete still running
+ */
+export const SlowAction: Story = {
+  args: {
+    title: "Delete note",
+    acceptLabel: "Delete",
+    submittingLabel: "Deleting…",
+    children: "This note will be deleted.",
+    onAccept: () => new Promise<void>((resolve) => setTimeout(resolve, 3000)),
+  },
+};
+
 /** Interactive demo - click the trigger button to open, confirm to close */
 export const Interactive: Story = {
   args: { opened: false },

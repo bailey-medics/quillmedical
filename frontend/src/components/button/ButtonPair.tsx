@@ -38,6 +38,8 @@ interface ButtonPairProps {
   acceptDisabled?: boolean;
   /** Shows loading spinner on the accept button (hides label) */
   acceptLoading?: boolean;
+  /** Disables the cancel button (aria-disabled, stays focusable) */
+  cancelDisabled?: boolean;
   /** HTML button type for the accept button (defaults to "button") */
   acceptType?: "button" | "submit";
   /** Custom content for the accept button, overrides acceptLabel */
@@ -57,6 +59,7 @@ export default function ButtonPair({
   onCancel,
   acceptDisabled = false,
   acceptLoading = false,
+  cancelDisabled = false,
   acceptType = "button",
   acceptChildren,
   acceptTestId,
@@ -89,7 +92,21 @@ export default function ButtonPair({
         {acceptChildren ?? acceptLabel}
       </Button>
       {onCancel && (
-        <Button variant="outline" onClick={onCancel} size="md">
+        <Button
+          variant="outline"
+          onClick={
+            cancelDisabled
+              ? (e: React.MouseEvent) => e.preventDefault()
+              : onCancel
+          }
+          aria-disabled={cancelDisabled || undefined}
+          size="md"
+          styles={{
+            root: cancelDisabled
+              ? { opacity: 0.6, cursor: "default" }
+              : undefined,
+          }}
+        >
           {cancelLabel}
         </Button>
       )}

@@ -43,6 +43,16 @@ export const Submitting: Story = {
   },
 };
 
+/** Submitting with Cancel held, so the dialog cannot close over the action */
+export const SubmittingCancelHeld: Story = {
+  args: {
+    acceptLabel: "Delete",
+    submittingLabel: "Deleting…",
+    acceptLoading: true,
+    cancelDisabled: true,
+  },
+};
+
 export const DarkMode: Story = {
   ...Default,
   globals: { colorScheme: "dark" },
