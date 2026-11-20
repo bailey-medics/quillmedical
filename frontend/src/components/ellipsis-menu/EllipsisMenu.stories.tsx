@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { fn } from "storybook/test";
+import { expect, fn, userEvent, within } from "storybook/test";
 import { Stack } from "@mantine/core";
 import { IconPencil, IconTrash } from "@/components/icons/appIcons";
 import BaseCard from "@/components/base-card/BaseCard";
@@ -23,7 +23,7 @@ export const Default: Story = {
       {
         label: "Delete",
         icon: <IconTrash />,
-        color: "var(--alert-color)",
+        color: "var(--alert-text-color)",
         onClick: fn(),
       },
     ],
@@ -50,4 +50,27 @@ export const DarkMode: Story = {
       <EllipsisMenu {...args} />
     </Stack>
   ),
+};
+
+/**
+ * The menu open, so its items, the red Delete above all, are checked for
+ * contrast. It opens in a portal, so it is found in the page body.
+ */
+export const Open: Story = {
+  ...Default,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const page = within(canvasElement.ownerDocument.body);
+
+    await userEvent.click(canvas.getByRole("button", { name: "Actions" }));
+
+    await expect(
+      await page.findByRole("menuitem", { name: "Delete" }),
+    ).toBeInTheDocument();
+  },
+};
+
+export const OpenDarkMode: Story = {
+  ...Open,
+  globals: { colorScheme: "dark" },
 };
