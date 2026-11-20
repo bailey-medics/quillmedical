@@ -14,8 +14,8 @@
  * attempt would hide a real pass and count against a first-time pass.
  *
  * Somebody who moves between sites is shown at every one of them, one
- * line each, with each site's clinical lead on the same line beside it.
- * The filter finds them at any of their sites.
+ * line each, with each site's clinical lead written on the same line.
+ * The filter finds them at any of their sites, or by any of their leads.
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -65,19 +65,23 @@ function delegatesPath(bankId: string | null): string {
 
 // ── Columns ─────────────────────────────────────────────────────────
 
+/**
+ * A site and its clinical lead, as one line. Kept together because two
+ * columns of lines drift apart once a long site name wraps, and a lead
+ * then sits beside somebody else's site.
+ */
+function siteWithLead(site: DelegateSite): string {
+  return site.clinical_lead
+    ? `${site.name}, clinical lead ${site.clinical_lead}`
+    : `${site.name}, no clinical lead recorded`;
+}
+
 const columns: Column<Delegate>[] = [
   { header: "Name", render: (d) => d.name, accessor: (d) => d.name },
   {
-    header: "Site",
-    render: (d) => <CellLines lines={d.sites.map((s) => s.name)} />,
+    header: "Site and clinical lead",
+    render: (d) => <CellLines lines={d.sites.map(siteWithLead)} />,
     accessor: (d) => d.sites[0]?.name ?? "",
-  },
-  {
-    header: "Clinical lead",
-    render: (d) => (
-      <CellLines lines={d.sites.map((s) => s.clinical_lead ?? "-")} />
-    ),
-    accessor: (d) => d.sites[0]?.clinical_lead ?? "",
   },
   {
     header: "Assessment",
