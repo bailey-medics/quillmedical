@@ -957,7 +957,11 @@ to start a stack anywhere but the tip of `origin/main`, and says to run
      the section when there genuinely were none. **Each bullet makes sense
      on its own**: it names the code or the page the choice lives in, so
      "the loader" is `_check_part_retirement` in
-     `backend/app/cbac/competencies.py`.
+     `backend/app/cbac/competencies.py`. **A choice made in a `/g` run
+     says so in plain words**: "You chose this when we ran the grill me
+     skill." Never "in the plan's interview", which does not say which
+     step was meant, and never "in the plan's grill me", which reads
+     badly.
 
    - **`## Risks`** - security, data leaks, patient safety, anything that
      could go wrong beyond the code being incorrect. **Always present**,

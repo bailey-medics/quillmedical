@@ -275,7 +275,9 @@ nothing in the conversation makes merging part of this command.
      must agree with before merging).
    - **Then three sections**: `## Decisions to check` (what was chosen,
      instead of what, and why; `my reading` or `a guess` where it is not
-     certain; omitted when there were none), `## Risks` (always present,
+     certain; a choice made in a `/g` run reads "You chose this when we
+     ran the grill me skill", never "in the plan's interview"; omitted
+     when there were none), `## Risks` (always present,
      "None found." when nothing was found), and `## What has changed`
      (always present, what a user now sees, not a file list).
    - **Every bullet opens with its claim in bold**, five to eight words,
