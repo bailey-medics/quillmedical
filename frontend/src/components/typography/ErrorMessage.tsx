@@ -6,7 +6,7 @@
  * (avoids red/green ambiguity).
  */
 
-import { Box, Group, Text } from "@mantine/core";
+import { Box, Text } from "@mantine/core";
 import type { ReactNode } from "react";
 import { IconAlertCircle } from "@/components/icons/appIcons";
 import { typographyTokens } from "@/theme";
@@ -23,19 +23,22 @@ export interface ErrorMessageProps {
  * @param props - Component props
  * @returns Inline group with icon and bold error text
  */
+// Spans throughout: Mantine puts a field's error inside its own <p>, and a
+// <p> cannot hold a <div> or another <p>.
 export default function ErrorMessage({ children }: ErrorMessageProps) {
   return (
-    <Group gap={6} align="center" wrap="nowrap">
-      <Box className={classes.icon}>
+    <Box component="span" className={classes.root}>
+      <Box component="span" className={classes.icon}>
         <IconAlertCircle size="100%" color="var(--error-color)" />
       </Box>
       <Text
+        component="span"
         size="md"
         c="var(--error-color)"
         fw={typographyTokens.fontWeights.bold}
       >
         {children}
       </Text>
-    </Group>
+    </Box>
   );
 }

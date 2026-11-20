@@ -88,4 +88,29 @@ describe("RadioField", () => {
     );
     expect(screen.getByText("Choose your preference")).toBeInTheDocument();
   });
+
+  it("is described by its description and its error", () => {
+    renderWithMantine(
+      <RadioField
+        label="Contact"
+        description="Choose your preference"
+        error="Pick one"
+        options={options}
+        value={null}
+        onChange={() => {}}
+      />,
+    );
+
+    const group = screen.getByRole("radiogroup", { name: "Contact" });
+    const describedBy = (group.getAttribute("aria-describedby") ?? "")
+      .split(" ")
+      .filter(Boolean);
+    const described = describedBy.map(
+      (id) => document.getElementById(id)?.textContent,
+    );
+
+    expect(described).toEqual(
+      expect.arrayContaining(["Choose your preference", "Pick one"]),
+    );
+  });
 });

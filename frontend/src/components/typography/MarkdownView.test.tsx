@@ -420,6 +420,15 @@ describe("MarkdownView", () => {
       );
       expect(screen.getByText("Additional content")).toBeInTheDocument();
     });
+
+    it("renders children in the ordinary, formatted mode too", () => {
+      renderWithMantine(
+        <MarkdownView source="Content">
+          <div>Additional content</div>
+        </MarkdownView>,
+      );
+      expect(screen.getByText("Additional content")).toBeInTheDocument();
+    });
   });
 
   describe("Complex markdown", () => {
@@ -611,6 +620,21 @@ Another paragraph.`;
       expect(slot).toHaveAttribute("aria-hidden", "true");
       expect(container.querySelector("p")?.textContent).toBe(
         "Press Add , then save.",
+      );
+    });
+
+    it("draws the icon once loading finishes, with the same source", async () => {
+      const source = "Press :icon-user-plus: to add.";
+      const { container, rerender } = renderWithMantine(
+        <MarkdownView source={source} icons={icons} isLoading />,
+      );
+
+      rerender(<MarkdownView source={source} icons={icons} />);
+
+      await waitFor(() =>
+        expect(
+          container.querySelector("span[data-icon='user-plus'] svg"),
+        ).not.toBeNull(),
       );
     });
 

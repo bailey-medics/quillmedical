@@ -26,6 +26,19 @@ describe("AppTooltip", () => {
     expect(await screen.findByText("Dr Smith")).toBeInTheDocument();
   });
 
+  it("shows tooltip on keyboard focus", async () => {
+    const user = userEvent.setup();
+    renderWithMantine(
+      <AppTooltip label="Dr Jones" openDelay={0}>
+        <button>Focus me</button>
+      </AppTooltip>,
+    );
+
+    await user.tab();
+    expect(screen.getByRole("button", { name: "Focus me" })).toHaveFocus();
+    expect(await screen.findByText("Dr Jones")).toBeInTheDocument();
+  });
+
   it("hides tooltip when not hovering", () => {
     renderWithMantine(
       <AppTooltip label="Hidden text">

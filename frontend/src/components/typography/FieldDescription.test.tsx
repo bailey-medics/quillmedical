@@ -9,10 +9,13 @@ describe("FieldDescription", () => {
     expect(screen.getByText("Some description")).toBeInTheDocument();
   });
 
-  it("renders as a paragraph element", () => {
+  // Mantine puts a field's description inside its own <p>, which cannot
+  // hold another paragraph.
+  it("renders as a block-level span, so it can sit inside a paragraph", () => {
     renderWithMantine(<FieldDescription>Description text</FieldDescription>);
     const el = screen.getByText("Description text");
-    expect(el.tagName).toBe("P");
+    expect(el.tagName).toBe("SPAN");
+    expect(el).toHaveStyle({ display: "block" });
   });
 
   it("applies grey colour class", () => {

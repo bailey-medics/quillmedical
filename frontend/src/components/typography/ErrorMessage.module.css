@@ -1,4 +1,11 @@
+.root {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
 .icon {
+  display: block;
   flex-shrink: 0;
   width: 22px;
   height: 22px;

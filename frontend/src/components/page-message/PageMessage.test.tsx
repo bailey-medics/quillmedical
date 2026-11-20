@@ -11,10 +11,15 @@ import PageMessageDisplay from "./PageMessageDisplay";
 import PageHeader from "@/components/page-header";
 
 const mockNavigate = vi.fn();
-let mockLocation = {
+let mockLocation: {
+  pathname: string;
+  search: string;
+  hash?: string;
+  state: unknown;
+} = {
   pathname: "/test",
   search: "",
-  state: null as unknown,
+  state: null,
 };
 
 vi.mock("react-router-dom", () => ({
@@ -233,10 +238,27 @@ describe("PageMessage", () => {
       renderWithProvider();
 
       await waitFor(() => {
-        expect(mockNavigate).toHaveBeenCalledWith("/test", {
-          replace: true,
-          state: {},
-        });
+        expect(mockNavigate).toHaveBeenCalledWith(
+          { pathname: "/test", search: "", hash: undefined },
+          { replace: true, state: {} },
+        );
+      });
+    });
+
+    it("keeps the hash and other state when it clears the flash", async () => {
+      mockLocation = {
+        pathname: "/patients",
+        search: "?page=2",
+        hash: "#notes",
+        state: { flash: { title: "Saved" }, returnTo: "/home" },
+      };
+      renderWithProvider();
+
+      await waitFor(() => {
+        expect(mockNavigate).toHaveBeenCalledWith(
+          { pathname: "/patients", search: "?page=2", hash: "#notes" },
+          { replace: true, state: { returnTo: "/home" } },
+        );
       });
     });
 

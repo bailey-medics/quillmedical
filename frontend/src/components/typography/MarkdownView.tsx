@@ -421,7 +421,9 @@ export default function MarkdownView({
       }
     });
     return () => root.removeEventListener("error", onError, true);
-  }, [sanitizedHtml, imageBase]);
+    // `isLoading` and `asPlainText` swap the root out, so a change to
+    // either must look at the new one.
+  }, [sanitizedHtml, imageBase, isLoading, asPlainText]);
 
   // The slots an icon is drawn into. The markup is injected, so React
   // only learns of them once it is on the page, and draws each icon into
@@ -435,7 +437,7 @@ export default function MarkdownView({
         : [];
 
     setIconSlots(slots);
-  }, [sanitizedHtml, icons]);
+  }, [sanitizedHtml, icons, isLoading, asPlainText]);
 
   // Show loading skeleton (after hooks to follow rules of hooks)
   if (isLoading) {
@@ -510,6 +512,7 @@ export default function MarkdownView({
 
         return createPortal(drawn, slot, String(index));
       })}
+      {children}
     </>
   );
 }

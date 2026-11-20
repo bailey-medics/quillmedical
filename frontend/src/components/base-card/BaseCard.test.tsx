@@ -109,4 +109,28 @@ describe("BaseCard", () => {
     expect(card).toHaveClass("mine");
     expect(card.className.split(" ").length).toBeGreaterThan(1);
   });
+
+  it("applies a style given as a function of the theme", () => {
+    renderWithMantine(
+      <BaseCard data-testid="card" style={() => ({ marginTop: "7px" })}>
+        Content
+      </BaseCard>,
+    );
+
+    expect(screen.getByTestId("card")).toHaveStyle({ marginTop: "7px" });
+  });
+
+  it("applies every style given in an array", () => {
+    renderWithMantine(
+      <BaseCard
+        data-testid="card"
+        style={[{ marginTop: "7px" }, { marginBottom: "9px" }]}
+      >
+        Content
+      </BaseCard>,
+    );
+
+    const card = screen.getByTestId("card");
+    expect(card).toHaveStyle({ marginTop: "7px", marginBottom: "9px" });
+  });
 });

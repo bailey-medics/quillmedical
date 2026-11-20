@@ -17,6 +17,17 @@ describe("ErrorMessage", () => {
     expect(element).toHaveClass("mantine-Text-root");
   });
 
+  it("holds no block elements, so it can sit inside a paragraph", () => {
+    const { container } = renderWithMantine(
+      <p>
+        <ErrorMessage>Inside a paragraph</ErrorMessage>
+      </p>,
+    );
+
+    const paragraph = container.querySelector("p");
+    expect(paragraph?.querySelector("div, p")).toBeNull();
+  });
+
   it("renders with bold font weight", () => {
     renderWithMantine(<ErrorMessage>Bold error</ErrorMessage>);
 

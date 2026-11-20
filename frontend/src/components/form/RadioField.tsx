@@ -77,8 +77,15 @@ export default function RadioField({
       onChange={onChange}
       required={required}
       styles={fieldStyles}
+      // Through Mantine's own props, so the group is described by them
+      // and a screen reader reads them with it.
+      description={
+        description ? (
+          <FieldDescription>{description}</FieldDescription>
+        ) : undefined
+      }
+      error={error ? <ErrorMessage>{error}</ErrorMessage> : undefined}
     >
-      {description && <FieldDescription>{description}</FieldDescription>}
       <Stack gap="sm" mt={label ? "xs" : undefined}>
         {options.map((opt) => (
           <div
@@ -100,7 +107,6 @@ export default function RadioField({
           </div>
         ))}
       </Stack>
-      {error && <ErrorMessage>{error}</ErrorMessage>}
     </Radio.Group>
   );
 }
