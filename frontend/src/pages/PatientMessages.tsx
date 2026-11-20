@@ -46,11 +46,13 @@ export default function PatientMessages() {
           initial_message: data.initial_message,
           include_patient_as_participant: data.include_patient_as_participant,
         });
-        setModalOpen(false);
-        navigate(`/patients/${id}/messages/${created.id}`);
         return {
           state: "success",
           message: { title: "Conversation started" },
+          afterSave: () => {
+            setModalOpen(false);
+            navigate(`/patients/${id}/messages/${created.id}`);
+          },
         };
       } catch (err: unknown) {
         notifications.show({

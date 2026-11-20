@@ -202,18 +202,19 @@ export default function AddSiteToOrgPage() {
         await orgUnits.setClinicalLead(site.id, Number(data.clinicalLeadId));
       }
 
-      navigate(`/admin/organisations/${id}`, {
-        state: {
-          flash: {
-            variant: "success",
-            title: "Site created",
-            description: `${data.name} has been created and linked`,
-          },
-        },
-      });
       return {
         state: "success",
         message: { title: "Site created and linked" },
+        afterSave: () =>
+          void navigate(`/admin/organisations/${id}`, {
+            state: {
+              flash: {
+                variant: "success",
+                title: "Site created",
+                description: `${data.name} has been created and linked`,
+              },
+            },
+          }),
       };
     } catch (err) {
       return {

@@ -253,8 +253,14 @@ function TeachingRegisterPage() {
         marketing_opt_out: data.marketingOptOut,
       });
 
-      navigate("/verify-email-pending", { state: { email: data.email } });
-      return { state: "success", message: { title: "Account created" } };
+      return {
+        state: "success",
+        message: { title: "Account created" },
+        afterSave: () =>
+          void navigate("/verify-email-pending", {
+            state: { email: data.email },
+          }),
+      };
     } catch (err: unknown) {
       return { state: "error", message: registrationError(err) };
     }

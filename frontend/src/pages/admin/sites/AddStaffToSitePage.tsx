@@ -113,16 +113,19 @@ export default function AddStaffToSitePage() {
         await orgUnits.setClinicalLead(Number(id), values.user.id);
       }
 
-      navigate(`/admin/sites/${id}`, {
-        state: {
-          flash: {
-            title: "Staff member added",
-            description: `${values.user.username} has been added to this site`,
-          },
-        },
-      });
-
-      return { state: "success", message: { title: "Staff member added" } };
+      return {
+        state: "success",
+        message: { title: "Staff member added" },
+        afterSave: () =>
+          void navigate(`/admin/sites/${id}`, {
+            state: {
+              flash: {
+                title: "Staff member added",
+                description: `${values.user.username} has been added to this site`,
+              },
+            },
+          }),
+      };
     } catch (err) {
       return {
         state: "error",
