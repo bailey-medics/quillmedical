@@ -66,3 +66,48 @@ describe("dateInputMessage", () => {
     expect(dateInputMessage({ kind: "empty" })).toBeNull();
   });
 });
+
+describe("parseDateInput, month first", () => {
+  it.each([
+    ["03/04/2026", "2026-03-04"],
+    ["3/27/2026", "2026-03-27"],
+    ["03-27-2026", "2026-03-27"],
+    ["March 27, 2026", "2026-03-27"],
+    ["Mar 27 2026", "2026-03-27"],
+    ["Sept 1st, 2026", "2026-09-01"],
+    ["27 March 2026", "2026-03-27"],
+    ["2026-03-27", "2026-03-27"],
+  ])("reads %s as month, day, year: %s", (text, expected) => {
+    expect(parseDateInput(text, "mdy")).toEqual({
+      kind: "date",
+      value: expected,
+    });
+  });
+
+  it.each(["27/03/2026", "02/31/2026"])(
+    "refuses %s, a date that does not exist month first",
+    (text) => {
+      expect(parseDateInput(text, "mdy")).toEqual({ kind: "invalid" });
+    },
+  );
+
+  it("still refuses a two-digit year", () => {
+    expect(parseDateInput("2/1/80", "mdy")).toEqual({
+      kind: "two-digit-year",
+    });
+  });
+});
+
+describe("dateInputMessage, month first", () => {
+  it("gives a month-first example", () => {
+    expect(dateInputMessage({ kind: "invalid" }, "mdy")).toBe(
+      "Enter a real date as month, day and year, for example 03/27/2026",
+    );
+  });
+
+  it("keeps the British example by default", () => {
+    expect(dateInputMessage({ kind: "invalid" })).toBe(
+      "Enter a real date as day, month and year, for example 27/03/2026",
+    );
+  });
+});

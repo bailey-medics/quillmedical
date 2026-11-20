@@ -102,6 +102,26 @@ export const CalendarOpen: Story = {
   },
 };
 
+/**
+ * Month first, for an American reader. 03/04/2026 is read as 4 March,
+ * and the value shows as "March 14, 2026". A deployment sets this for
+ * every field through `date_order` in the jurisdiction config.
+ */
+export const MonthFirst: Story = {
+  args: {
+    label: "Observed on",
+    dateOrder: "mdy",
+    defaultValue: "2026-03-14",
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await expect(
+      canvas.getByDisplayValue("March 14, 2026"),
+    ).toBeInTheDocument();
+  },
+};
+
 /** A two-digit year is refused with a message, never guessed. */
 export const TwoDigitYear: Story = {
   args: {

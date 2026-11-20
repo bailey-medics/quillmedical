@@ -130,6 +130,50 @@ describe("DateField", () => {
     ).toBeInTheDocument();
   });
 
+  describe("Month first, for an American reader", () => {
+    it("shows a month-first placeholder", () => {
+      renderWithMantine(<DateField label="Observed on" dateOrder="mdy" />);
+      expect(screen.getByPlaceholderText("MM/DD/YYYY")).toBeInTheDocument();
+    });
+
+    it("shows a value month first", () => {
+      renderWithMantine(
+        <DateField
+          label="Observed on"
+          dateOrder="mdy"
+          defaultValue="2026-03-12"
+        />,
+      );
+      expect(screen.getByDisplayValue("March 12, 2026")).toBeInTheDocument();
+    });
+
+    it("reads a typed 03/04/2026 as 4 March", async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+      renderWithMantine(
+        <DateField label="Date of birth" dateOrder="mdy" onChange={onChange} />,
+      );
+
+      await user.type(screen.getByRole("textbox"), "03/04/2026");
+
+      expect(onChange).toHaveBeenLastCalledWith("2026-03-04");
+    });
+
+    it("gives a month-first example when a date cannot be read", async () => {
+      const user = userEvent.setup();
+      renderWithMantine(<DateField label="Due on" dateOrder="mdy" />);
+
+      await user.type(screen.getByRole("textbox"), "27/03/2026");
+      await user.tab();
+
+      expect(
+        await screen.findByText(
+          "Enter a real date as month, day and year, for example 03/27/2026",
+        ),
+      ).toBeInTheDocument();
+    });
+  });
+
   describe("Typed dates", () => {
     it("reads a typed 03/04/2026 as 3 April", async () => {
       const user = userEvent.setup();

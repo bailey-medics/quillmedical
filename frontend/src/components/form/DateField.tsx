@@ -11,9 +11,10 @@
  * `Date` through would mean parsing and re-serialising at both ends,
  * which is where a timezone silently shifts a clinical date by a day.
  *
- * **Typed dates are read day, month, year.** `parseDateInput` takes
- * 27/03/2026 or 27 March 2026, and refuses a two-digit year or a day that
- * does not exist, with a message, rather than guessing.
+ * **Typed dates are read day, month, year**, or month first where the
+ * jurisdiction or `dateOrder` says so. `parseDateInput` takes 27/03/2026
+ * or 27 March 2026, and refuses a two-digit year or a day that does not
+ * exist, with a message, rather than guessing.
  *
  * A date here carries no time of day, deliberately. Nobody recalls
  * whether a procedure was at 09:30 or 11:00 when logging five of them on
@@ -34,6 +35,7 @@
 import { DateInput, type DateInputProps } from "@mantine/dates";
 import { useState, type FocusEvent } from "react";
 import { dateInputMessage, parseDateInput } from "./parseDateInput";
+import { DEFAULT_DATE_ORDER, type DateOrder } from "@lib/dateOrder";
 import { ErrorMessage } from "@components/typography";
 import FieldDescription from "@components/typography/FieldDescription";
 import classes from "./DateField.module.css";
@@ -65,28 +67,49 @@ const CALENDAR_LABELS = {
   previousDecade: "Previous decade",
 };
 
-/** Mantine calls this on every keystroke; null leaves the value alone. */
-function parseTyped(text: string): string | null {
-  const parsed = parseDateInput(text);
+// What each order shows when the caller gives nothing else. A value is
+// written with the month as a word, so it cannot be misread either way.
+const ORDER_DEFAULTS: Record<
+  DateOrder,
+  { valueFormat: string; placeholder: string }
+> = {
+  dmy: { valueFormat: "D MMMM YYYY", placeholder: "DD/MM/YYYY" },
+  mdy: { valueFormat: "MMMM D, YYYY", placeholder: "MM/DD/YYYY" },
+};
 
-  return parsed.kind === "date" ? parsed.value : null;
+export interface DateFieldProps extends DateInputProps {
+  /**
+   * The order a typed date is read in. Defaults to the deployment's
+   * jurisdiction, from `shared/jurisdiction-config.yaml`.
+   */
+  dateOrder?: DateOrder;
 }
 
 export default function DateField({
+  dateOrder = DEFAULT_DATE_ORDER,
   description,
   error,
-  valueFormat = "D MMMM YYYY",
-  placeholder = "DD/MM/YYYY",
+  valueFormat = ORDER_DEFAULTS[dateOrder].valueFormat,
+  placeholder = ORDER_DEFAULTS[dateOrder].placeholder,
   clearButtonProps,
   onBlur,
   ...props
-}: DateInputProps) {
+}: DateFieldProps) {
   // Text that was typed and refused. Mantine puts the last good date
   // back on blur, so without a message the typing just vanishes.
   const [typedError, setTypedError] = useState<string | null>(null);
 
+  // Mantine calls this on every keystroke; null leaves the value alone.
+  function parseTyped(text: string): string | null {
+    const parsed = parseDateInput(text, dateOrder);
+
+    return parsed.kind === "date" ? parsed.value : null;
+  }
+
   function handleBlur(event: FocusEvent<HTMLInputElement>) {
-    setTypedError(dateInputMessage(parseDateInput(event.currentTarget.value)));
+    const parsed = parseDateInput(event.currentTarget.value, dateOrder);
+
+    setTypedError(dateInputMessage(parsed, dateOrder));
     onBlur?.(event);
   }
 
@@ -95,7 +118,6 @@ export default function DateField({
   return (
     <DateInput
       {...props}
-      // British reading order, matching the rest of the interface.
       valueFormat={valueFormat}
       dateParser={parseTyped}
       onBlur={handleBlur}
