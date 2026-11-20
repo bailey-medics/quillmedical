@@ -10,6 +10,11 @@
   font-weight: 500;
   color: var(--mantine-color-text);
   line-height: 1.55;
+
+  /* An email address or link has no spaces to break at, so on a phone it
+     would push the page sideways. It breaks anywhere rather than spill. */
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .markdown p {

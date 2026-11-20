@@ -27,11 +27,18 @@ export default function MultiSelectField({
   description,
   error,
   disabled,
+  readOnly,
+  dropdownOpened,
   ...props
 }: MultiSelectProps) {
   return (
     <MultiSelect
       {...props}
+      // Read-only shows no options, but Mantine still marks the list as
+      // open on a click, so a screen reader would announce an empty list.
+      readOnly={readOnly}
+      dropdownOpened={readOnly ? false : dropdownOpened}
+      aria-readonly={readOnly || undefined}
       disabled={disabled}
       rightSection={<SortChevron direction="neutral" />}
       description={
