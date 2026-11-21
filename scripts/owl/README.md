@@ -48,7 +48,7 @@ It is a service and not a scope because a scope runs its command inside the call
 grep NoNewPrivs /proc/$(systemctl --user show -p MainPID --value quill-tmux-server.service)/status
 ```
 
-`~/.local/bin/quill-sessions`, which starts the other worktrees' sessions at boot, lives only on the box, and starts the server the same way when it runs first. Its `systemd-run` line must match this script's, and on a rebuilt box it needs the change made by hand:
+`~/.local/bin/reboot-config`, which starts the other worktrees' sessions at boot, lives only on the box, and starts the server the same way when it runs first. Its `systemd-run` line must match this script's, and on a rebuilt box it needs the change made by hand:
 
 ```bash
 systemd-run --user --quiet --collect --unit="${TMUX_UNIT}" \

@@ -23,7 +23,7 @@
 # prompt would stall a run with nobody there to answer it. When `claude`
 # exits, a login shell takes its place, so the tmux session stays for a
 # person to start it again. Remote Control is on from the start, under the
-# worktree's name, as quill-sessions does for the others.
+# worktree's name, as reboot-config does for the others.
 #
 # The session must never stop to ask anything, because the watcher types
 # into the pane blind: on 4 November 2026 two alerts were typed into an
