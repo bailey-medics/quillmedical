@@ -146,13 +146,6 @@
       "syncedAt": "2026-08-30T06:05:05Z"
     },
     {
-      "source": ".github/prompts/play-finished-sound.prompt.md",
-      "target": ".claude/skills/play-finished-sound/SKILL.md",
-      "sourceSha256": "07b0b5978d0a380e813abbac6fedacfea3aaf33fcfd9e2405924c624a67933f7",
-      "targetSha256": "06ed8c98b2f37fc451ac9e54bcc9c6fd2b26e6d26468ceaf10e7b710c12d5de6",
-      "syncedAt": "2026-08-30T06:05:05Z"
-    },
-    {
       "source": ".github/prompts/read-copilot-instructions.prompt.md",
       "target": ".claude/skills/read-project-instructions/SKILL.md",
       "sourceSha256": "9749fe70a0f63bc1af200cb77513bd5d5352a2919d3549516df5d23f07f8218e",

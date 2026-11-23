@@ -43,8 +43,7 @@ refuses a line, read the line in the editor; do not paste it into a
 commit message, a pull request or a comment to ask about it.
 
 The hostname `devbox` and the username in paths are not refused: they
-say there is a box, not how to reach it, and `scripts/notification.sh`
-needs `devbox` to find its window.
+say there is a box, not how to reach it.
 
 Recorded on 1 November 2026, after a security review found a
 developer's machine addresses and hostnames published in a plan.
