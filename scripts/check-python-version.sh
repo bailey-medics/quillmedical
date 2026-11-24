@@ -18,7 +18,7 @@
 # reverse, and nothing says the two were never the same.
 #
 # The other Python that can drift is the bare `python3` on the PATH. The
-# scripts in scripts/ run on it: the stack recipes, the audit ledger. They
+# scripts in scripts/ run on it, such as the audit ledger's. They
 # are formatted for the pinned Python like every other Python file here,
 # so an older `python3` cannot read them, and stops at the first line it
 # does not understand with a bare SyntaxError. A guard inside the script

@@ -5,12 +5,17 @@ own small pull request. It lets a large change be reviewed as a series of
 units without waiting for each to merge before starting the next.
 
 This repository drives stacks through `gh stack` and a set of `just
-stack-*` recipes. Each recipe explains itself in its own comments. What no
+stack-*` recipes. The recipes and their scripts live in Mark's
+[mark-house-style](https://github.com/bailey-medics/mark-house-style)
+repository, in `just/stack.just` and `scripts/stack/`, which the `Justfile`
+loads with an optional `import?` line, so the same recipes serve every
+repository he works in. Each recipe explains itself in its own comments. What no
 file shows is the order they are used in, or the traps between them, which
 is what this page is for.
 
-It was written from the `Justfile`, `scripts/stack-status.py`,
-`scripts/stack-forget-merged.py`, the trigger comments in
+It was written from mark-house-style's `just/stack.just`,
+`scripts/stack/stack-status.py` and `scripts/stack/stack-forget-merged.py`,
+the trigger comments in
 `.github/workflows/ci.yml` and `.github/workflows/gate-breaking.yml`,
 `.github/scripts/ci/find-prior-approval.sh` and
 `.claude/skills/crpd/SKILL.md`. The decision to stack at all is in the
@@ -112,7 +117,8 @@ branch whose pull request has merged.
 
 That check goes by branch name, and a name is sometimes reused. So a
 merged pull request alone does not make a branch spent: one that also has
-an open pull request is left alone. `scripts/stack-branch-merged.sh` holds
+an open pull request is left alone. `scripts/stack/stack-branch-merged.sh`,
+in mark-house-style, holds
 the rule, and its tests record the case that prompted it, an earlier pull
 request merged from a name that a later one reused.
 

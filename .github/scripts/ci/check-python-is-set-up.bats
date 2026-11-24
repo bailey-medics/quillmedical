@@ -91,7 +91,7 @@ EOF
 
 @test "fails when a job names a .py file without calling python" {
   write_job "      - name: Run the script directly
-        run: ./scripts/stack-status.py --check"
+        run: ./scripts/readability.py --longest README.md"
 
   run bash "$SCRIPT" "$WORKFLOWS"
 

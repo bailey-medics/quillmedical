@@ -972,9 +972,8 @@ above stranded on a commit that no longer exists, and does it silently.
   `stack-add` do.
 
 **Check whether the branch is in a stack before committing.** `just stl`
-draws the stack, or says "No stack on this branch"; `python3
-scripts/stack-status.py --check` answers the same question by exit code, 0
-in a stack and 1 outside one. On an ordinary branch the "NEVER
+draws the stack, or says "No stack on this branch"; `just stack-check`
+answers the same question by exit code, 0 in a stack and 1 outside one. On an ordinary branch the "NEVER
 auto-commit/push" rule under **Critical Rules** applies unchanged.
 
 A branch that accumulates "fix: typo" on top of its real change is how a
