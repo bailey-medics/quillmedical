@@ -19,7 +19,7 @@
 # only when the next prompt agrees, so a one-message aside never renames
 # the tab.
 #
-# Works only in a `q` session (`q1` to `q99`, the ones `just c` makes) and
+# Works only in a `q` session (`q1` to `q99`, the ones `just cc` makes) and
 # in Owl's `owl` session. Owl's alerts arrive as `/clear` then `/alert`,
 # and a slash command is skipped, so during an alert the tab shows Claude
 # Code's own title instead. A plain shell, Owl's `towl` and a web session

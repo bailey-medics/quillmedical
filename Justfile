@@ -1,5 +1,12 @@
 set shell := ["bash", "-c"]
 
+# Mark's own recipes for the finished-response banners and the dev box's
+# remote desktop, from his mark-house-style repository, so they run here as
+# `just rfb` or `just rdp windows`. Optional: skipped wherever that
+# repository is not cloned, so nobody else needs it.
+import? '~/github/mark-house-style/just/banners.just'
+import? '~/github/mark-house-style/just/remote-desktop.just'
+
 
 default:
     just --list
@@ -813,7 +820,7 @@ check-workflows:
     pre-commit run zizmor --all-files
 
 
-alias c := claude-session
+alias cc := claude-session
 # Go to this worktree's Claude session in tmux, starting it or Claude again if needed (dev box)
 claude-session:
     @bash scripts/claude-session.sh

@@ -21,7 +21,7 @@
 # also typed the line into whatever a restored terminal was showing, Claude
 # included, so it is switched off on the box.
 #
-# A session of its own, rather than a window in a q session, keeps `just c`
+# A session of its own, rather than a window in a q session, keeps `just cc`
 # landing on Claude, and keeps it out of Owl's way: Owl types into
 # whichever window of the owl session is active.
 
