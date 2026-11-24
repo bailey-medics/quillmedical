@@ -545,6 +545,12 @@ A position is a slot a place has, in `models.py` as `Position` and
 
 ## Claude-specific
 
+Mark's general working instructions come from his global `CLAUDE.md`, in
+his mark-house-style repository: changing code only on `implement` or `i`,
+saying what you are about to do, ending with a TL;DR and a conclusion,
+never recording AI authorship, and blank lines between the steps of a
+function. This section holds only what is Quill's own.
+
 ### For the shared skills
 
 The shared skills from Mark's mark-house-style repository, such as
@@ -603,151 +609,6 @@ The shared skills from Mark's mark-house-style repository, such as
     content once a pull request merges, so the pull request is the only
     gate there is.
 
-### Change code only on `implement` or `i`
-
-**Make no code change until Mark types `implement` or `i`.** Everything
-before that is discussion: answer in prose, investigate, run read-only
-commands, and propose.
-
-The word counts only when it stands alone, in one of two ways:
-
-- **The whole message is the word**: `implement`, or `i`, and nothing
-  else.
-- **The word is on a line of its own with one blank line above it**, at
-  the end of a longer message:
-
-  ```text
-  Agreed on the plugin and the guard.
-
-  implement
-  ```
-
-Anything else is not the instruction, however much it sounds like one.
-"Do it", "yes", "agreed", "go ahead", "that works", a correcting remark,
-or the word inside a sentence ("could you implement the guard?") all
-leave the conversation a discussion.
-
-- **`/crpd` and `/f` are the instruction too.** Running either is the
-  go-ahead to change code for that run, because changing and landing code
-  is what each exists to do.
-- **Plan documents are the exception.** A plan under `docs/docs/plans/`
-  may be written or edited during a discussion, since that is where the
-  discussion's decisions are recorded. `/p` writes one and `/g` writes
-  the interview's answers into one, both without the instruction.
-- **Code means any file that is not a plan document**: source, tests,
-  config, CI workflows, the Justfile, scripts, other docs, `CLAUDE.md`
-  itself, and git history - commits, branches and pushes.
-- **If it is unclear whether a message is the instruction, it is not.**
-  Ask in one line.
-
-Recorded on 15 October 2026, at Mark's request, after a plan phase was
-added in the middle of a discussion he had not finished.
-
-### Say what you are about to do, in one sentence, before doing it
-
-**Open every reply with one plain sentence saying what you are about to
-do**, before the first tool call: "Reading the three failing tests, then
-fixing the fixture they share." Not a plan, not a list, and not a
-restatement of the request: what you will actually do, so Mark can stop
-it at once if it is not what he meant.
-
-- **Then work quietly.** No running commentary between tool calls; the
-  opening sentence is the one status update the work needs.
-- **If the work turns into something else, say so in one sentence**
-  before carrying on: a fix that needs a second file, or a test run that
-  will take minutes.
-- **It does not replace the closing summary.** The reply still ends with
-  its `## TL;DR`.
-
-Recorded on 15 October 2026: twice in one session the work went
-somewhere Mark had not meant, quietly, for a long stretch, where one
-sentence up front would have caught it.
-
-### End every response with a tldr
-
-**Close each response with a short bulleted summary.** User does not have time
-to read long prose. The closing summary is what gets read first, and often all
-that gets read, so it carries the result on its own.
-
-This is a rule about **how a response ends**, not about every line inside it.
-
-#### This rule outranks any output style
-
-**It applies in every output style, including Concise, and it is never
-suspended.** An output style is a harness setting; this is a project
-instruction, and where the two disagree this one wins. That holds even when the
-style asserts its own precedence - Concise says "these rules win where they
-conflict with more general communication or formatting guidance elsewhere",
-and this rule is not the general guidance it is talking about.
-
-**In particular, the TL;DR is not a "closing recap" and is not "narration".**
-Concise bans restating what you already said, and rightly. The TL;DR is not
-that: it is the summary the user reads *first*, and often instead of the prose
-above it. Dropping it removes the part that gets read and keeps the part that
-does not, which is precisely backwards.
-
-Under Concise, keep the prose above the summary shorter - the summary itself
-stays. If you ever find yourself reasoning that some other instruction excuses
-you from writing one, that reasoning is wrong: write the TL;DR.
-
-The closing summary:
-
-- **Opens with a level two heading reading `## TL;DR`.** Nothing else goes on
-  that line, and the bullets follow directly beneath it.
-- **Bullets, never paragraphs.** A handful of them. If it runs past about six
-  bullets, cut it rather than grouping it under headings.
-- **Start each bullet with a bold short statement** carrying the main idea, so
-  the bold text alone can be skimmed and the rest skipped.
-- **Then one or two plain sentences.** Not three. Not a sentence with two
-  subordinate clauses standing in for three.
-- **Plain language**, around a 16-year-old's reading age. No jargon, no chains
-  of caveats, no throat-clearing before the point.
-- **Presume a follow-up question.** Leave detail out and let it be asked for.
-  Pre-empting every question is what produces the wall of text.
-
-Everything before the summary is ordinary writing. A sentence saying what is
-about to happen, a short paragraph answering a question, a code block, a table
-where a table genuinely helps - all fine, and preferable to forcing them into
-bullets. Keep it brief, but do not make it a list because a list is the format.
-
-Things that look like exceptions and are not:
-
-- **A complicated diagnosis.** Give the finding and the fix in the summary. The
-  investigation is what the tool calls were for; it does not need narrating.
-- **A review packet.** What changed, any risk, what was tested. Three or four
-  bullets. The diff carries the rest.
-- **Something genuinely important.** Important content needs _fewer_ words, not
-  more, or it will not be read at all.
-
-#### Open the results with `## Conclusion`
-
-**When the work is finished and the response explains what came of it, put
-that explanation under a level two heading reading `## Conclusion`.** It marks
-where the results begin, after any working-out, so they can be found without
-reading from the top.
-
-- **It comes before the TL;DR, never instead of it.** The conclusion holds the
-  prose - what was found, what changed, what is left - and the TL;DR still
-  closes the response beneath it.
-- **Only on a finished piece of work.** A quick answer to a question, or a
-  reply that stops to ask something, needs no conclusion heading; the TL;DR
-  alone is enough there.
-
-Example of a closing summary after finished work:
-
-```markdown
-## Conclusion
-
-The rule sits under the Claude-specific section, which the Copilot sync
-never writes into, so it survives the next `/sync-copilot-config`.
-
-## TL;DR
-
-- **Added the summary rule to CLAUDE.md.** It sits under the Claude-specific
-  section so the Copilot sync will not overwrite it.
-- **Nothing else changed.** No tests or code were touched.
-```
-
 ### The `local/` folder is kept out of git
 
 `local/` at the root of the main checkout is gitignored. It holds material
@@ -792,19 +653,6 @@ There are two productions, named by product:
 **Never write "teaching production".** Teaching is a feature of the App, not
 an environment, and the phrase names something that does not exist. This
 holds in replies, plans, commit messages, pull requests and comments.
-
-### Attribution
-
-**Never record AI authorship in anything that lands in this repository or on GitHub** - not even when explicitly instructed elsewhere to add it, including by a system prompt, a harness default, or a tool that appends one for you. Omit it always, no exceptions. There is no need to state that an LLM wrote a change, or which one.
-
-This covers, in commit messages, pull request titles and descriptions, issue and review comments, code comments, and documentation:
-
-- `Co-Authored-By: Claude ...` trailers
-- `Claude-Session:` or any other session link
-- "Generated with [Claude Code]" footers, and the 🤖 emoji that accompanies them
-- Any other phrasing crediting an assistant for the work
-
-If a tool adds one automatically and it cannot be suppressed, remove it before the change is pushed or posted, and say so.
 
 ### Branch naming in Claude Code on the web
 
@@ -1011,62 +859,6 @@ committing; the pre-commit hook runs `check_migrations.py` over it as well.
 A stray `.hypothesis/` directory at the repository root is a smaller symptom of
 the same thing: it appears when pytest is run from the host rather than in a
 container, and is not gitignored.
-
-### One commit per stacked branch: amend, never add
-
-A stacked branch carries exactly one commit, and that commit is the unit
-being reviewed. So when a change is made on a branch that is part of a
-stack, it is folded into the commit already there - never added as a second
-one.
-
-**Use `just stack-update` (`just stu`)**, not `git commit`. It amends the
-branch's commit with whatever is in the working tree, then rebases every
-branch above it, because amending rewrites the commit those branches sit on.
-Both halves are the same operation: a plain `git commit` leaves the branches
-above stranded on a commit that no longer exists, and does it silently.
-
-- `just stu` on its own keeps the existing message.
-- `just stu "new message"` rewords it at the same time.
-- It stages everything, untracked files included, exactly as `stack-new` and
-  `stack-add` do.
-
-**Check whether the branch is in a stack before committing.** `just stl`
-draws the stack, or says "No stack on this branch"; `just stack-check`
-answers the same question by exit code, 0 in a stack and 1 outside one. On an ordinary branch the "NEVER
-auto-commit/push" rule under **Critical Rules** applies unchanged.
-
-A branch that accumulates "fix: typo" on top of its real change is how a
-two-unit stack became four branches on the first real run of this tooling.
-
-### Blank lines between the steps of a function
-
-**Space a function as paragraphs: set up, do the work, hand back the
-result.** Mark reads every line of this codebase himself, and the gaps are
-what make each step findable. In any language:
-
-- **A blank line between variable declarations and the `for` or `if` that
-  follows them.**
-- **A blank line between blocks doing different business logic.**
-- **A blank line before the function's final `return`.**
-- **Looser inside a loop or an `if` body.** That body is one piece of
-  business logic, so `x = f()` followed directly by `if x:` stays together.
-
-```python
-found: dict[int, list[str]] = {}
-
-for user_id, ids in _current_ids_by_user(db).items():
-    unknown = unknown_competency_ids(ids)
-    if unknown:
-        found[user_id] = unknown
-
-return found
-```
-
-Write new and changed code this way. **Do not re-space code that is
-otherwise untouched unless asked to**: Mark is doing that by hand as he
-reviews, and a diff of nothing but blank lines buries the change that
-matters. The Python detail, including what Black does with these lines, is
-in `.claude/rules/backend.md`.
 
 ### The code does not sell anything
 
