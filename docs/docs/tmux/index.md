@@ -32,14 +32,10 @@ set -g status off
 bind -T copy-mode    MouseDragEnd1Pane if -F "#{||:#{!=:#{selection_start_y},#{selection_end_y}},#{||:#{e|>|:#{e|-|:#{selection_end_x},#{selection_start_x}},2},#{e|<|:#{e|-|:#{selection_end_x},#{selection_start_x}},-2}}}" { send -X copy-pipe-no-clear } { send -X cancel }
 bind -T copy-mode-vi MouseDragEnd1Pane if -F "#{||:#{!=:#{selection_start_y},#{selection_end_y}},#{||:#{e|>|:#{e|-|:#{selection_end_x},#{selection_start_x}},2},#{e|<|:#{e|-|:#{selection_end_x},#{selection_start_x}},-2}}}" { send -X copy-pipe-no-clear } { send -X cancel }
 
-# Name the terminal tab after the session: "C3" and the conversation's
-# topic for Claude's q sessions, "Owl" and its topic for Owl's, "Tmux T3"
-# for the plain shells `just tw` opens and "Tmux Owl" for Owl's. The topic
-# is the @topic option, kept by .claude/hooks/tab-topic.sh; until it is set,
-# Claude Code's own pane title stands in, minus its status symbol, and an
-# idle "Claude Code" shows as the name alone
-set -g set-titles on
-set -g set-titles-string "#{?#{m:t*,#{session_name}},#{?#{==:#{session_name},towl},Tmux Owl,Tmux #{s/^t/T/:session_name}},#{?#{m:q[0-9]*,#{session_name}},C#{s/^q//:session_name}#{?#{@topic}, #{@topic},#{?#{m:*Claude Code,#{pane_title}},, #{s/^[^ ]* //:pane_title}}},#{?#{==:#{session_name},owl},Owl#{?#{@topic}, #{@topic},#{?#{m:*Claude Code,#{pane_title}},, #{s/^[^ ]* //:pane_title}}},#{session_name}}}}"
+# Name the terminal tab after the session. The rule lives in Mark's
+# mark-house-style repository, which its install script loads with this
+# line, so Quill, Turva and Juttu tabs all read the same way
+source-file ~/github/mark-house-style/scripts/tmux/titles.conf
 
 # In copy mode, a key with no copy-mode job leaves copy mode and is typed
 # at the prompt, so there is no need to press q first
@@ -91,9 +87,10 @@ reaches every session at once.
   of two characters or fewer, on one line, is dropped instead.
 
 - **Tab titles** - the terminal tab says which session it is showing.
-  A plain shell reads "Tmux T3". A Claude session reads "C3" and what
-  the conversation is about, such as "C3 Passport sign-off page": see
-  the next section. Owl's two sessions read "Owl" with its topic, and
+  A plain shell reads "Tmux T3". A Claude session reads "Quill-3" and
+  what the conversation is about, such as "Quill-3 Passport sign-off
+  page": see the next section. The main checkout's `q1` session reads
+  "Quill" alone, with no number. Owl's two sessions read "Owl" with its topic, and
   "Tmux Owl" for its shell. A session with no topic yet shows its name
   alone.
 
@@ -127,8 +124,9 @@ tmux's default. If your `mode-keys` is set to `vi`, the table is
 
 ## Tab titles that follow the conversation
 
-The project's Claude Code settings run `.claude/hooks/tab-topic.sh`
-after every message you send. It works only in a `q` session, the
+The project's Claude Code settings run the tab-topic hook after every
+message you send. It lives in Mark's mark-house-style repository, at
+`claude/hooks/tab-topic.sh`, and runs only where that is cloned. It works only in a `q` session, the
 ones `just cc` makes, and in Owl's `owl` session. It does nothing
 anywhere else.
 
@@ -150,8 +148,7 @@ something else, followed by a return to the work, leaves the title
 alone.
 
 **The title lives in tmux, not in Claude.** The hook stores it in the
-session's `@topic` option, and the `set-titles-string` line above shows
-it. Starting Claude again or running `/clear` clears it, and the next
+session's `@topic` option, and the title rule loaded above shows it. Starting Claude again or running `/clear` clears it, and the next
 message names the conversation afresh. Until then, Claude Code's own
 pane title fills the gap.
 
