@@ -110,7 +110,9 @@
       "syncedAt": "2026-09-03T06:23:19Z",
       "targetRenamed": true,
       "divergentByDesign": true,
-      "divergenceReason": "The Claude copy names `ide_selection` tags, which is how a selection reaches Claude Code and has no Copilot equivalent. Everything else is identical."
+      "divergenceReason": "The Claude copy names `ide_selection` tags, which is how a selection reaches Claude Code and has no Copilot equivalent. Everything else is identical.",
+      "sharedSkill": true,
+      "sharedReason": "The skill comes from mark-house-style's claude/skills/, linked into ~/.claude/skills/, so Quill keeps no copy."
     },
     {
       "source": ".github/prompts/fast-api-docs.prompt.md",
@@ -143,7 +145,9 @@
       "target": ".claude/skills/in-code-documentation/SKILL.md",
       "sourceSha256": "aac758795496c6c20fae41b68e515b0644aa5d1a319799a425f0a571fb2e75ea",
       "targetSha256": "aa7ddf2d5b1a9e1e800f643d94a59204934befe5e596d971b4115c85d72b161c",
-      "syncedAt": "2026-08-30T06:05:05Z"
+      "syncedAt": "2026-08-30T06:05:05Z",
+      "sharedSkill": true,
+      "sharedReason": "The skill comes from mark-house-style's claude/skills/, linked into ~/.claude/skills/, so Quill keeps no copy."
     },
     {
       "source": ".github/prompts/read-copilot-instructions.prompt.md",

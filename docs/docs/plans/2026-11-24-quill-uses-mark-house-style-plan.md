@@ -166,18 +166,22 @@ lands on `main` and every session pulls it at start. It must land together
 with Quill's pull request deleting its copies, or soon before it: in the
 gap, Quill runs the shared skills, which Phases 2 and 3 made complete.
 
-- [ ] Rename mark-house-style's skills from `t-crpd` and the rest to
+- [x] Rename mark-house-style's skills from `t-crpd` and the rest to
   `crpd`, `e`, `f`, `g`, `p`, `s` and `in-code-documentation`.
   `scripts/install.sh` links each skill into `~/.claude/skills/`, so it
   must also remove the old `t-` links, with a test. Update every mention
   of `/t-crpd`, `/t-f`, `/t-p` and `/t-g`: the global `CLAUDE.md`,
   Turva's rules in `projects/turva/rules/`, and the README.
 
-- [ ] Delete Quill's `.claude/skills/` copies of the seven, so nothing of
+- [x] Delete Quill's `.claude/skills/` copies of the seven, so nothing of
   Quill's is shadowed. Quill's own skills stay: `alert`, `ask`,
-  `sync-copilot-config`, `update-docs-docs` and the rest.
+  `sync-copilot-config`, `update-docs-docs` and the rest. Found while
+  building: `.claude/sync-manifest.json` would have the next
+  `/sync-copilot-config` write `e` and `in-code-documentation` back from
+  their Copilot prompts, so those two entries now carry
+  `sharedSkill: true`, and the sync skill leaves such a target unwritten.
 
-- [ ] Keep a back-up of `crpd` for Owl in
+- [x] Keep a back-up of `crpd` for Owl in
   `.claude/skill-backups/crpd/SKILL.md`. Owl's `/alert` run ends with
   `/crpd`, unattended, so it must work on a machine without
   mark-house-style. The folder is outside `.claude/skills/`, so Claude
@@ -185,7 +189,7 @@ gap, Quill runs the shared skills, which Phases 2 and 3 made complete.
   `/crpd`, and if no `crpd` skill is available, follow
   `.claude/skill-backups/crpd/SKILL.md` instead.
 
-- [ ] Write `scripts/check-skill-backups.sh` with bats tests in
+- [x] Write `scripts/check-skill-backups.sh` with bats tests in
   `scripts/tests/`. For each skill in `.claude/skill-backups/`, it
   compares the back-up with `~/.claude/skills/<name>/SKILL.md`. Where
   the two differ, it prints which, and the command that copies the
@@ -193,13 +197,17 @@ gap, Quill runs the shared skills, which Phases 2 and 3 made complete.
   because the back-up is then the one in use. The tests cover: the same,
   different, no personal copy, and no back-ups at all.
 
-- [ ] Run it from `.claude/hooks/session-start.sh`, so a session that
-  starts with the two drifted is told so in its context. Claude then
+- [x] Run it as a `SessionStart` hook of its own in
+  `.claude/settings.json`, so a session that starts with the two drifted
+  is told so in its context. Changed while building: the plan first said
+  `.claude/hooks/session-start.sh`, but that hook exits at once outside a
+  web session, and the dev box and the Mac are where personal skills
+  live. Claude then
   flags it in its first reply and offers to bring the back-up up to
   date. Add `just sync-skill-backups` to make the copy, so the fix is one
   command.
 
-- [ ] Commit and push the mark-house-style half to its `main`, then land
+- [x] Commit and push the mark-house-style half to its `main`, then land
   the Quill half with `/crpd` straight after, so the gap between the two
   is short.
 

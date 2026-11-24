@@ -211,7 +211,10 @@ could not reproduce, not a fault) is one message in place of the last two.
 5. **Run the targeted tests**: `just ub -k "<name>"` or
    `just uf <file>`. Never the full suite.
 6. **Open the pull request** with `/crpd`, only when
-   `QUILL_OWL=true` (see "Before anything else"). The stack key is
+   `QUILL_OWL=true` (see "Before anything else"). `/crpd` is a shared
+   skill from Mark's mark-house-style repository. If no `crpd` skill is
+   available, follow `.claude/skill-backups/crpd/SKILL.md` instead, which
+   is a copy of it kept for exactly this. The stack key is
    always `owl`, so the branch is `feature/owl-<what-it-fixes>` and the
    title `Owl: <what it fixes>`; use it even when another of Owl's pull
    requests is still open, since each alert is a stack of its own. The

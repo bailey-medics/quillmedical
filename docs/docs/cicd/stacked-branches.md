@@ -17,8 +17,8 @@ It was written from mark-house-style's `just/stack.just`,
 `scripts/stack/stack-status.py` and `scripts/stack/stack-forget-merged.py`,
 the trigger comments in
 `.github/workflows/ci.yml` and `.github/workflows/gate-breaking.yml`,
-`.github/scripts/ci/find-prior-approval.sh` and
-`.claude/skills/crpd/SKILL.md`. The decision to stack at all is in the
+`.github/scripts/ci/find-prior-approval.sh`, and the shared `crpd` skill in
+mark-house-style's `claude/skills/crpd/SKILL.md`. The decision to stack at all is in the
 [stacked branches plan](../plans/2026-09-14-stacked-branches-plan.md).
 
 ## The rules
