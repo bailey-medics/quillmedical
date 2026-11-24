@@ -26,9 +26,9 @@
 #     default of a variable, `${CI_X_IMAGE:-...}`, so that
 #     use-mirrored-images.sh can point it at the copy.
 #   - a workflow or action that names an image from anywhere but GitHub's
-#     own registry or Google's mirror of Docker Hub. There are no
-#     exceptions: the last, the drift check's Postgres, went to the
-#     mirror on 12 October 2026.
+#     own registry. There are no exceptions: the last, BuildKit, went to
+#     the mirror on 24 November 2026. It is named in
+#     .github/buildkit/Dockerfile, which this checks with the others.
 #   - an image the mirror copies that is named by tag alone, with no
 #     `@sha256:` digest. A tag moves when a patch is released and the copy
 #     does not follow it: mirror-images.yml runs when a name changes, on no
@@ -44,11 +44,10 @@ set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/../shared/logging.sh" "check-mirrored-images"
 
 # Registries a workflow may name outright. GitHub's own is pulled with the
-# job's login. Google's mirror of Docker Hub holds BuildKit's own image. It
-# is not unlimited: it refused the Dockerfile syntax image with 429 Too Many
-# Requests on 28 October 2026, which is why that image now comes from the
-# mirror here in CI.
-ALLOWED_REGISTRIES=("ghcr.io/" "mirror.gcr.io/")
+# job's login. Google's mirror of Docker Hub is not on the list: it has a
+# limit on requests a minute that every caller shares, and refused the
+# Dockerfile syntax image on 28 October 2026 and BuildKit on 24 November.
+ALLOWED_REGISTRIES=("ghcr.io/")
 
 fail=0
 

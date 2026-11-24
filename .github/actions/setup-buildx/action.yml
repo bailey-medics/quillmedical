@@ -1,0 +1,28 @@
+name: Set up Docker Buildx
+description: >-
+  Set up Docker Buildx with BuildKit from this repository's own mirror in
+  GHCR, or from the public image named in .github/buildkit/Dockerfile where
+  the mirror does not hold it yet. Needs a login to ghcr.io first, and the
+  job's packages: read.
+
+outputs:
+  fell_back:
+    description: >-
+      The public BuildKit image, where the mirror did not hold the copy.
+      Empty when Buildx runs the copy.
+    value: ${{ steps.buildkit.outputs.fell_back }}
+
+runs:
+  using: composite
+  steps:
+    - name: Choose the BuildKit image
+      id: buildkit
+      shell: bash
+      env:
+        OWNER: ${{ github.repository_owner }}
+      run: bash .github/scripts/ci/use-mirrored-buildkit.sh "$OWNER" .github/buildkit/Dockerfile
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+      with:
+        driver-opts: image=${{ steps.buildkit.outputs.image }}
