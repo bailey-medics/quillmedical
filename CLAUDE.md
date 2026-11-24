@@ -545,6 +545,57 @@ A position is a slot a place has, in `models.py` as `Position` and
 
 ## Claude-specific
 
+### For the shared skills
+
+The shared skills from Mark's mark-house-style repository, such as
+`/t-crpd` and `/t-f`, read this section for what is particular to Quill.
+
+- **Targeted tests**: `just ub -k "<test name>"` for the backend,
+  `just uf src/path/to/file.test.tsx` for the frontend, and
+  `just ts <folder>` for shell scripts and their bats tests. Run only
+  what the unit touched; see "Test tiers" above for when a full run is
+  justified.
+- **Plans** live in `docs/docs/plans/`, each registered in
+  `docs/docs/plans/index.md`.
+- **Readability**: score a pull request description with
+  `python3 scripts/readability.py --longest <file>`.
+- **Merging to `main` deploys to App production** with no further gate.
+- **Checks that guard a stack**: `backend/scripts/check_migrations.py`
+  in the pre-commit hook for the migration chain, and the `oasdiff`
+  check on the pull request for breaking API changes.
+- **`auto-pr.yml`** opens a pull request with a placeholder body and a
+  `Feature: <the branch words>` title, both safe to replace.
+- **Other repositories**: the teaching content lives in repositories of
+  its own, cloned under `teaching-repos/` in the main checkout. Each is
+  named by its full or short name:
+
+  - **`eoeeta-teaching`, or `eoeeta`** -
+    `~/github/quillmedical/teaching-repos/eoeeta-teaching`,
+    `bailey-medics/eoeeta-teaching`.
+  - **`eoeeta-teaching-testing`, `eoeeta-teaching-test` or
+    `eoeeta-test`** -
+    `~/github/quillmedical/teaching-repos/eoeeta-teaching-testing`,
+    `bailey-medics/eoeeta-teaching-testing`.
+  - **`respiratory-teaching`, or `resp`** -
+    `~/github/quillmedical/teaching-repos/respiratory-teaching`,
+    `bailey-medics/respiratory-teaching`.
+
+  For any of them:
+
+  - **The stack key names an area of the teaching content**, such as
+    `Colonoscopy`, not an area of the application.
+  - **The tests are `just validate-teaching`**, which checks every
+    module in every teaching repository. It needs the dev stack running
+    in the main checkout. If it cannot run, say so rather than skipping
+    it silently.
+  - **The description is written about teaching content.** "What has
+    changed" says what a learner or an educator would now see, and
+    `## Risks` covers clinical accuracy, anything identifying a patient
+    in an image or a case, and licensing of what was added.
+  - **Merging matters more, not less.** The sync serves the newest
+    content once a pull request merges, so the pull request is the only
+    gate there is.
+
 ### Change code only on `implement` or `i`
 
 **Make no code change until Mark types `implement` or `i`.** Everything
