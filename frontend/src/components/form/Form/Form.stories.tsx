@@ -459,8 +459,11 @@ export const ConfirmThenNavigate: Story = {
         title: "Staff member removed",
         description: `${data.username} has been removed from the organisation.`,
       });
-      setPage("destination");
-      return { state: "success", message: { title: "" } };
+      return {
+        state: "success",
+        message: { title: "" },
+        afterSave: () => setPage("destination"),
+      };
     };
 
     return (
@@ -520,8 +523,11 @@ export const SubmitAndNavigate: Story = {
         title: "Letter sent",
         description: "Discharge letter has been sent to the GP.",
       });
-      setPage("destination");
-      return { state: "success", message: { title: "" } };
+      return {
+        state: "success",
+        message: { title: "" },
+        afterSave: () => setPage("destination"),
+      };
     };
 
     return (

@@ -241,16 +241,20 @@ export default function CreateSitePage() {
         await orgUnits.setClinicalLead(site.id, Number(data.clinicalLeadId));
       }
 
-      navigate(`/admin/sites/${site.id}`, {
-        state: {
-          flash: {
-            variant: "success",
-            title: "Site created",
-            description: `${site.name} has been created`,
-          },
-        },
-      });
-      return { state: "success", message: { title: "Site created" } };
+      return {
+        state: "success",
+        message: { title: "Site created" },
+        afterSave: () =>
+          void navigate(`/admin/sites/${site.id}`, {
+            state: {
+              flash: {
+                variant: "success",
+                title: "Site created",
+                description: `${site.name} has been created`,
+              },
+            },
+          }),
+      };
     } catch (err) {
       return {
         state: "error",

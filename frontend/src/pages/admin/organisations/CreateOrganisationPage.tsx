@@ -94,18 +94,19 @@ export default function CreateOrganisationPage() {
         parent_id: null,
         location: data.location.trim() || null,
       });
-      navigate("/admin/organisations", {
-        state: {
-          flash: {
-            variant: "success",
-            title: "Organisation created",
-            description: `${data.name.trim()} has been created successfully`,
-          },
-        },
-      });
       return {
         state: "success",
         message: { title: "Organisation created" },
+        afterSave: () =>
+          void navigate("/admin/organisations", {
+            state: {
+              flash: {
+                variant: "success",
+                title: "Organisation created",
+                description: `${data.name.trim()} has been created successfully`,
+              },
+            },
+          }),
       };
     } catch (err) {
       return {
