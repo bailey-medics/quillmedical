@@ -1803,6 +1803,12 @@ storybook-test:
     fi
 
 
+alias ssb := sync-skill-backups
+# Bring the back-ups in .claude/skill-backups/ up to date from your personal shared skills
+sync-skill-backups:
+    @bash scripts/check-skill-backups.sh sync
+
+
 alias syt := sync-teaching
 # Sync all local question banks into the DB and serve the newest version of each (no restart needed)
 sync-teaching:

@@ -1,16 +1,28 @@
 ---
 name: crpd
 description: Commit, rebase, push and describe one stacked branch
-argument-hint: "[repo: eoeeta-teaching|eoeeta-teaching-testing|respiratory-teaching] [draft]"
-allowed-tools: Bash(git status:*), Bash(git diff:*), Bash(git log:*), Bash(git branch:*), Bash(git rev-parse:*), Bash(git fetch:*), Bash(just stack-log:*), Bash(just stack-log-long:*), Bash(just stack-files:*), Bash(git switch:*), Bash(just stack-add:*), Bash(just stack-new:*), Bash(just stack-fresh:*), Bash(just stack-sync:*), Bash(just stack-rebase:*), Bash(just stack-submit:*), Bash(just stack-move:*), Bash(gh stack view:*), Bash(gh pr list:*), Bash(gh pr view:*), Bash(gh pr edit:*), Bash(gh pr ready:*), Bash(just stack-check), Bash(STACK_REPO=* just stack-*), Bash(git -C *), Bash(just validate-teaching:*)
-disallowed-tools: Bash(gh pr merge:*), Bash(gh stack merge:*), Bash(git rebase:*), Bash(git commit:*), Bash(git reset:*), Bash(git cherry-pick:*), Bash(git stash:*), mcp__github__merge_pull_request, mcp__github__enable_pr_auto_merge
+argument-hint: "[repo] [draft]"
+allowed-tools: Bash(git status:*), Bash(git diff:*), Bash(git log:*), Bash(git branch:*), Bash(git rev-parse:*), Bash(git fetch:*), Bash(just stack-log:*), Bash(just stack-log-long:*), Bash(just stack-files:*), Bash(git switch:*), Bash(just stack-add:*), Bash(just stack-new:*), Bash(just stack-fresh:*), Bash(just stack-sync:*), Bash(just stack-rebase:*), Bash(just stack-submit:*), Bash(just stack-move:*), Bash(gh stack view:*), Bash(gh pr list:*), Bash(gh pr view:*), Bash(gh pr edit:*), Bash(gh pr ready:*), Bash(just stack-check), Bash(STACK_REPO=* just stack-*), Bash(git -C *), Bash(just validate-teaching:*), Bash(just -g stack-log:*), Bash(just -g stack-log-long:*), Bash(just -g stack-files:*), Bash(just -g stack-add:*), Bash(just -g stack-new:*), Bash(just -g stack-fresh:*), Bash(just -g stack-sync:*), Bash(just -g stack-rebase:*), Bash(just -g stack-submit:*), Bash(just -g stack-move:*), Bash(./s/lint:*), Bash(./s/test:*), Bash(./s/frontend:*)
+disallowed-tools: Bash(gh pr merge:*), Bash(gh stack merge:*), Bash(git rebase:*), Bash(git commit:*), Bash(git reset:*), Bash(git cherry-pick:*), Bash(git stash:*), Bash(git push:*), Bash(gh pr create:*), Bash(gh stack unstack:*), mcp__github__merge_pull_request, mcp__github__enable_pr_auto_merge
 ---
 
 # Commit, rebase, push and describe one stacked branch
 
-The single act that finishes one unit of a stack. `/nst-crp` does this for a
-branch cut from `main`; this does it for a branch whose base is the branch
-below it.
+The single act that finishes one unit of work. The uncommitted work becomes
+a new branch with a single commit, stacked on the branch checked out, or
+starting a new stack from `main`, and that branch gets its own pull
+request.
+
+**Where this skill needs to know something about the repository**, such as
+its test commands, read the repository's "For the shared skills" section,
+in its `CLAUDE.md` or `AGENTS.md` or in a rule Claude Code has loaded. Where
+the section says nothing on a point, do without it and say so in the
+report.
+
+**The stack recipes are `just stack-*`.** They come from Mark's
+mark-house-style repository. In a repository whose justfile imports the
+global one, run them as written; anywhere else, run them as
+`just -g stack-*`.
 
 **One call, one branch, one pull request.** The uncommitted work becomes a
 new branch stacked on the current one, with a single commit, and that branch
@@ -108,40 +120,34 @@ These hold on every run.
 
 Up to two space-separated arguments, both optional, in either order:
 
-- A **repository** name - `eoeeta-teaching`, `eoeeta-teaching-testing` or
-  `respiratory-teaching`, or the short form of one, `eoeeta`,
-  `eoeeta-test` or `resp`. Omitted, the run acts on **quillmedical**. See
+- A **repository** name, from the list of other repositories in the
+  repository's "For the shared skills" section, by its full or short
+  name. Omitted, the run acts on the checkout it was run from. See
   "Target repository" below.
 - **`draft`** - leave the pull request a draft. Omitted, the pull request
   is taken out of draft once it is described. Neither merges anything.
 - **`ready`** is accepted and changes nothing, since ready is the default.
   It is kept so that `/crpd ready`, typed from habit, still works.
 
-So `/crpd`, `/crpd draft`, `/crpd eoeeta-teaching`, `/crpd eoeeta` and
-`/crpd eoeeta-teaching draft` are all valid. `draft` and `ready` together
-are an error, and so is any other token: stop and ask what was meant rather
-than guessing.
+So `/crpd`, `/crpd draft`, `/crpd <repo>` and `/crpd <repo> draft`
+are all valid. `draft` and `ready` together are an error, and so is any
+other token: stop and ask what was meant rather than guessing.
 
-Default to marking it ready. Run by hand, `/crpd` usually finishes a small
-change the human means to review and merge soon, and marking it ready
-starts the heavy CI tier while they read it rather than after. `/f` passes
-`draft`: in a long unattended run the whole stack is reviewed the next
-morning, and a draft is the correct state until a human has read it.
+Default to marking it ready. Run by hand, `/crpd` usually finishes a
+small change the human means to review and merge soon, and marking it
+ready starts any CI that waits for a ready pull request while they read
+it. `/f` passes `draft`: in a long unattended run the whole stack is
+reviewed the next morning, and a draft is the correct state until a
+human has read it.
 
 The arguments supplied to this command are: `$ARGUMENTS`
 
 ## Target repository
 
-The teaching content lives in repositories of its own, cloned under
-`teaching-repos/` in the main checkout. Each is a separate git repository
-with its own `main`, its own pull requests and its own stack.
-
-| Argument | Repository path                                                             | GitHub repository                   |
-| -------- | --------------------------------------------------------------------------- | ----------------------------------- |
-| _(none)_ | the checkout this was run from                                              | `bailey-medics/quillmedical`        |
-| `eoeeta-teaching` or `eoeeta` | `/Users/markbailey/github/quillmedical/teaching-repos/eoeeta-teaching`      | `bailey-medics/eoeeta-teaching`     |
-| `eoeeta-teaching-testing`, `eoeeta-teaching-test` or `eoeeta-test` | `/Users/markbailey/github/quillmedical/teaching-repos/eoeeta-teaching-testing` | `bailey-medics/eoeeta-teaching-testing` |
-| `respiratory-teaching` or `resp` | `/Users/markbailey/github/quillmedical/teaching-repos/respiratory-teaching` | `bailey-medics/respiratory-teaching` |
+Some repositories have others they look after, such as Quill Medical's
+teaching repositories. The "For the shared skills" section lists them,
+each with a short name, its path on disk and its GitHub name, and says
+what differs for it.
 
 **One repository per run.** A run makes one branch and one pull request,
 and those belong to one repository. There is no `all`: work in two
@@ -149,12 +155,12 @@ repositories is two runs, and two stacks.
 
 With no repository argument, everything below is read exactly as written.
 With one, the same steps run against that repository, and three things
-change in how each command is written. Call the path from the table
-`<repo>` and the GitHub name `<owner/name>`.
+change in how each command is written. Call its path `<repo>` and its
+GitHub name `<owner/name>`.
 
 - **Every `just stack-*` recipe takes the repository from `STACK_REPO`.**
-  The teaching repositories have no Justfile, so the recipes are run from
-  the quillmedical checkout and told where to act:
+  A repository with no justfile of its own is acted on from the checkout
+  this was run from:
 
   ```bash
   STACK_REPO=<repo> just stack-log
@@ -164,34 +170,21 @@ change in how each command is written. Call the path from the table
 
   Set it on **every** stack recipe in the run, `stack-new`, `stack-add`,
   `stack-rebase`, `stack-sync`, `stack-files` and `stack-submit` alike. A
-  recipe run without it acts on quillmedical, and says nothing about the
-  mistake: it would commit quillmedical's uncommitted work instead.
+  recipe run without it acts on the checkout it was run from, and says
+  nothing about the mistake: it would commit that checkout's uncommitted
+  work instead.
 - **Every `git` command names the repository**: `git -C <repo> status
   --short`, `git -C <repo> fetch origin main`, `git -C <repo> switch main`.
 - **Every `gh` command names it too**: `gh pr list -R <owner/name> …`,
   `gh pr edit <number> -R <owner/name> …`, `gh pr ready <number> -R
-  <owner/name>`. Without `-R`, `gh` answers about quillmedical. `gh stack
-  view` has no `-R`; run it as `(cd <repo> && gh stack view --json)`.
+  <owner/name>`. Without `-R`, `gh` answers about the checkout it was run
+  from. `gh stack view` has no `-R`; run it as
+  `(cd <repo> && gh stack view --json)`.
 
-Four things differ in substance, and nothing else does:
-
-- **The stack key is chosen for that repository**, and checked against
-  that repository's open pull requests. The key names an area of the
-  teaching content, such as `Colonoscopy`, not an area of the application.
-- **The tests in step 4 are the content validation**, `just
-  validate-teaching`, which checks every module in every teaching
-  repository. It needs the dev stack running in the main checkout. If it
-  cannot run, say so in the report rather than skipping it silently: never
-  claim it passed.
-- **The description is written about teaching content.** "What has
-  changed" says what a learner or an educator would now see. The "Risks"
-  section still stands, and for content means clinical accuracy, anything
-  identifying a patient in an image or a case, and licensing of what was
-  added.
-- **Merging matters more, not less.** The sync serves the newest version
-  of the content once a pull request merges, so the pull request is the
-  only gate there is. Marking it ready, the default, is not merging it;
-  never merge it.
+What else differs, such as the tests in step 4, what the stack key
+names, or what the description is written about, is in that
+repository's entry in the section. Merging never becomes this command's
+job, for any repository.
 
 ## Before anything
 
@@ -220,7 +213,7 @@ Four things differ in substance, and nothing else does:
      `main` does not, and `stack-new` cuts the new branch from it.
    - **"No stack on this branch", on any other branch** - stop and say so.
      Committing here would put the work on a branch that is not part of any
-     stack, and `/nst-crp` is the command for that.
+     stack, and landing that is not this command's job.
 
    The merged case is easy to miss, because `stack-log` still draws the
    stack - every branch simply carries `merged`. Read the marks, not the
@@ -254,9 +247,8 @@ Four things differ in substance, and nothing else does:
    whose pull request has merged. That refusal means this step was
    skipped. Do what it says, never work round it.
 
-   **Two ways a stack can look merged and not be.** Both happened on
-   15 October 2026; see the [stacked pull requests land on main
-   plan](../../../docs/docs/plans/2026-10-15-stacked-pull-requests-land-on-main-plan.md).
+   **Two ways a stack can look merged and not be.** Both happened in
+   Quill Medical on 15 October 2026.
 
    - **A pull request GitHub closed without merging.** When the branch
      beneath it is deleted after a merge into another branch, GitHub
@@ -365,7 +357,9 @@ to start a stack anywhere but the tip of `origin/main`, and says to run
      again.
    - **The message** is conventional-commit style, matching the branch's own
      history: `fix(tooling): stack-log-long could not read pull requests`.
-     Describe what the change does, not what you did.
+     Describe what the change does, not what you did. Where the "For the
+     shared skills" section asks for more, such as a body saying whether a
+     particular file needed changing, add it.
    - **Read the diff before naming either.** `git diff --stat` and the diff
      itself; the name and message should come from the code, not from what
      the conversation was about.
@@ -432,7 +426,8 @@ to start a stack anywhere but the tip of `origin/main`, and says to run
    nothing else, and the branch name is the weaker half.
 
    **Set the title, because nothing else will get it right.**
-   `auto-pr.yml` builds titles as `Feature: <the branch words>` and
+   A repository's own automation may build a title, such as Quill
+   Medical's `auto-pr.yml` making `Feature: <the branch words>`, and
    `gh stack submit` falls back to the commit subject, so whichever
    opens the pull request produces something close but not this. Set it
    alongside the description in step 9:
@@ -476,7 +471,7 @@ to start a stack anywhere but the tip of `origin/main`, and says to run
      with the switch. `-d`, never `-D`: the branch holds no commit of its
      own, so git deletes it without being forced, and if it will not, it
      is not empty and something else is wrong.
-   - **Fix the cause the same way `/nst-crp` does.** A hook that rewrote
+   - **Fix the cause.** A hook that rewrote
      files, or a spelling fix, is mechanical: apply it and re-run
      without pausing. A formatter that rewrote a file has already fixed
      it, so the re-run is the whole fix. Anything needing you to write or
@@ -543,13 +538,11 @@ to start a stack anywhere but the tip of `origin/main`, and says to run
    If `just stack-log` ever warns that a branch needs rebasing, that is
    the trunk having moved, and step 5 deals with it.
 
-4. **Run the targeted tests for what this branch touched** - `just ub -k
-   "..."` and `just uf src/path/to/file.test.tsx` - and nothing wider. For
-   a teaching repository it is `just validate-teaching` instead: see
-   "Target repository". CI's
-   fast tier runs the full suites on every push and the merge queue re-runs
-   them against current `main`; a local full run duplicates that. See "Test
-   tiers" in `CLAUDE.md`.
+4. **Run the targeted tests for what this branch touched**, with the
+   commands the "For the shared skills" section names, and nothing wider.
+   For another repository named in the arguments, run the tests its entry
+   names. CI runs the full suites on every push; a local full run
+   duplicates that, unless the repository's instructions say otherwise.
 
    If a test fails, stop and report it. Fixing it is a code change nobody has
    reviewed, and by this point the unit is being landed rather than built.
@@ -621,7 +614,8 @@ to start a stack anywhere but the tip of `origin/main`, and says to run
    asks for are visible only in the change itself.
 
 8. **Check you are not overwriting a human.** Replace the body without asking
-   only when it is empty, is the `auto-pr.yml` placeholder, carries only
+   only when it is empty, is a placeholder the repository's own
+   automation wrote, such as Quill Medical's `auto-pr.yml`, carries only
    gh-stack's `<sub>Stack created with…</sub>` footer, or carries the
    `<!-- crp:pr-summary -->` marker meaning it was generated here before.
    Anything else is someone's writing: show it, and ask before replacing it.
@@ -642,7 +636,8 @@ to start a stack anywhere but the tip of `origin/main`, and says to run
    them what the diff already shows.
 
    **The body is an opening, a triage block, then three level-two
-   sections.** This is pull request #2263 written that way:
+   sections.** This is Quill Medical's pull request #2263 written that
+   way:
 
    ```markdown
    Changing your email address now needs confirming. Quill sends a link to
@@ -760,7 +755,7 @@ to start a stack anywhere but the tip of `origin/main`, and says to run
    ### When this pull request must wait to merge
 
    **Some units can only merge after something else has happened**: a
-   lower pull request has merged, its deploy to App production has
+   lower pull request has merged, its deploy to production has
    finished, or Terraform has applied it. Build and land those units
    anyway. The wait is written into the description, so it is the first
    thing the reader meets, before the triage block:
@@ -769,7 +764,7 @@ to start a stack anywhere but the tip of `origin/main`, and says to run
    **Merge only after:**
 
    1. Merge #2482.
-   2. Wait for its deploy to App production to finish.
+   2. Wait for its deploy to production to finish.
    3. Run `just terraform-github`, and check it applied.
    4. Then merge this.
    ```
@@ -909,7 +904,7 @@ to start a stack anywhere but the tip of `origin/main`, and says to run
    same job. A sentence reaching for an em dash is usually one clause too
    long, so the honest fix is to split it.
 
-   **British English throughout**, as `CLAUDE.md` requires: organisation,
+   **British English throughout**, as the working instructions require: organisation,
    behaviour, recognise, licence as the noun. Identifiers, route paths and
    library names keep whatever spelling the code gives them.
 
@@ -987,11 +982,15 @@ to start a stack anywhere but the tip of `origin/main`, and says to run
    ### Score it, and rewrite up to twice
 
    Write the body to a file in the scratchpad, `attempt-1.md`, and score
-   it before anything reaches GitHub:
+   it before anything reaches GitHub, with the readability command the
+   "For the shared skills" section names, such as:
 
    ```bash
    python3 scripts/readability.py --longest <path to attempt-1.md>
    ```
+
+   Where the section names none, skip the scoring, post the first attempt,
+   and say in the report that it was not scored.
 
    It prints the Flesch reading ease and the Flesch-Kincaid grade, with
    code spans, URLs and the triage labels taken out first so that a real

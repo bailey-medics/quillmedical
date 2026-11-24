@@ -73,6 +73,11 @@ Maintain `.claude/sync-manifest.json`. For each synced source file record: the s
 
 Never delete an orphaned or diverged target. Report it and let me decide.
 
+A manifest entry may carry `sharedSkill: true`. Its target is one of the
+shared skills from Mark's mark-house-style repository, linked into
+`~/.claude/skills/`, so Quill keeps no copy of it. Never write that target,
+and never report it as missing or orphaned: report it once, as **shared**.
+
 A manifest entry may carry `divergentByDesign: true` with a `divergenceReason`.
 That target will always differ from its source, because the difference is a
 platform feature with no counterpart on the other side (Copilot's `get_errors`

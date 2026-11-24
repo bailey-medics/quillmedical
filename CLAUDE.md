@@ -548,7 +548,7 @@ A position is a slot a place has, in `models.py` as `Position` and
 ### For the shared skills
 
 The shared skills from Mark's mark-house-style repository, such as
-`/t-crpd` and `/t-f`, read this section for what is particular to Quill.
+`/crpd` and `/f`, read this section for what is particular to Quill.
 
 - **Targeted tests**: `just ub -k "<test name>"` for the backend,
   `just uf src/path/to/file.test.tsx` for the frontend, and
