@@ -213,7 +213,7 @@ gap, Quill runs the shared skills, which Phases 2 and 3 made complete.
 
 ## Phase 5: CLAUDE.md says each thing once
 
-- [ ] Remove from the `## Claude-specific` section of Quill's
+- [x] Remove from the `## Claude-specific` section of Quill's
   `CLAUDE.md` everything the global `CLAUDE.md` already says: change code
   only on `implement` or `i`, say what you are about to do, end with a
   TL;DR and a conclusion, attribution, and the blank lines between steps.
@@ -222,12 +222,12 @@ gap, Quill runs the shared skills, which Phases 2 and 3 made complete.
   not sell anything". The section is never written by
   `/sync-copilot-config`, so the cut is safe from the next sync.
 
-- [ ] Check anything Quill's copy says more strictly than the global
+- [x] Check anything Quill's copy says more strictly than the global
   one, and move the stricter wording into mark-house-style's global
   `claude/CLAUDE.md`, so every repository gets it. Then remove Quill's
   copy. Name each passage moved in this phase's pull request.
 
-- [ ] Commit and push the mark-house-style half to its `main`, then land
+- [x] Commit and push the mark-house-style half to its `main`, then land
   the Quill half with `/crpd`.
 
 ## Decisions
