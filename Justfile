@@ -1,14 +1,13 @@
 set shell := ["bash", "-c"]
 
-# Mark's own recipes for the finished-response banners, the dev box's remote
-# desktop and stacked pull requests, from his mark-house-style repository, so
-# they run here as `just rfb`, `just rdp windows` or `just stack-submit`.
-# Optional: skipped wherever that repository is not cloned, so nobody else
-# needs it. The stack recipes act on another repository when STACK_REPO is
-# set, such as a teaching repository under teaching-repos/.
-import? '~/github/mark-house-style/just/banners.just'
-import? '~/github/mark-house-style/just/remote-desktop.just'
-import? '~/github/mark-house-style/just/stack.just'
+# Each developer's own global justfile, so their personal recipes run here as
+# plain `just <recipe>`: Mark's banners, remote desktop, tmux sessions and
+# stacked pull requests, such as `just rfb`, `just cc` or `just stack-submit`.
+# Optional: skipped for anybody who has none. It must set nothing, such as
+# `shell`, which this file sets, and must not reuse a recipe name from this
+# file, or just will not load. The stack recipes act on another repository
+# when STACK_REPO is set, such as a teaching repository under teaching-repos/.
+import? '~/.config/just/justfile'
 
 
 default:
@@ -749,12 +748,6 @@ check-workflows:
     # over every file it reads rather than the staged ones. Offline: the
     # audits that look things up on GitHub run in CI, which has a token.
     pre-commit run zizmor --all-files
-
-
-alias cc := claude-session
-# Go to this worktree's Claude session in tmux, starting it or Claude again if needed (dev box)
-claude-session:
-    @bash scripts/claude-session.sh
 
 
 alias cs := create-superadmin
@@ -2171,12 +2164,6 @@ test-shell-scripts *ARGS:
         run_suite .claude/hooks
         run_suite scripts/tests
     fi
-
-
-alias tw := tmux-window
-# Go to a plain shell in tmux for this worktree, starting it if needed (dev box); `just tw 2` for a second
-tmux-window NUMBER="":
-    @bash scripts/tmux-window.sh {{quote(NUMBER)}}
 
 
 alias ub := unit-tests-backend

@@ -8,9 +8,10 @@
 # that is already there is left alone, so one a person is sitting in
 # survives a restart of the daemon.
 #
-# The session is owl, the name scripts/claude-session.sh gives Owl's
+# The session is owl, the name `just cc` (mark-house-style's
+# scripts/tmux/claude-session.sh) gives Owl's
 # worktree, quillmedical-owl, so `acc` attaches to it as to any other
-# worktree. While this service is enabled, claude-session.sh refuses to
+# worktree. While this service is enabled, that script refuses to
 # start a plain Claude there: one started that way would lack the
 # environment and the flags below, and this script would find it and
 # leave it alone.
