@@ -565,6 +565,13 @@ The shared skills from Mark's mark-house-style repository, such as
   check on the pull request for breaking API changes.
 - **`auto-pr.yml`** opens a pull request with a placeholder body and a
   `Feature: <the branch words>` title, both safe to replace.
+- **Tests that need a service**: the unit tests (`just ub`, `just uf`)
+  need none; `just e2e` brings up its own stack; `just validate-teaching`
+  needs the dev stack running in the main checkout.
+- **In-code documentation** covers the whole code base, and leaves
+  Alembic migrations in `backend/alembic/versions/` and the dependency
+  locks alone. A complex Storybook component has a `description` in its
+  meta export.
 - **Other repositories**: the teaching content lives in repositories of
   its own, cloned under `teaching-repos/` in the main checkout. Each is
   named by its full or short name:
