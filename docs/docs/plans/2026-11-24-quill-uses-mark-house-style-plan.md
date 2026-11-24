@@ -140,15 +140,23 @@ anything switches over.
 
 ## Phase 3: the five small shared skills do everything Quill's do
 
-- [ ] Merge Quill's `p`, `g`, `s`, `e` and `in-code-documentation` into
+- [x] Merge Quill's `p`, `g`, `s`, `e` and `in-code-documentation` into
   mark-house-style's `t-` versions, the same way as Phase 2. They are
   small, from 16 to 110 lines each.
 
-- [ ] Try `/t-p` on a scratch plan and `/t-s` on an explanation, in the
+- [x] Try `/t-p` on a scratch plan and `/t-s` on an explanation, in the
   same kind of temporary worktree, and compare each with Quill's. Remove
   the worktree afterwards, and delete the scratch plan.
 
-- [ ] Commit and push the mark-house-style half to its `main`, then land
+  Done on 24 November 2026. `/t-p` wrote the scratch plan in
+  `docs/docs/plans/` and registered it in the index, as Quill's plans
+  rule asks. `t-s` differs from Quill's `s` by one line of wording, so a
+  comparison was enough. One thing came up: an open session served the
+  `t-p` it had cached before the edit, and only a second call loaded the
+  new one. After editing a shared skill, check the loaded text is the new
+  one before trusting a trial.
+
+- [x] Commit and push the mark-house-style half to its `main`, then land
   the Quill half with `/crpd`.
 
 ## Phase 4: drop the prefix, with Owl's back-up copy
