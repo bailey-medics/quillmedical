@@ -1156,11 +1156,6 @@ initialise-repo:
     (cd frontend && yarn install)
     just aj
 
-    # Without this the Stop-hook banner still works, but shows the
-    # default osascript icon, so a failure here is not worth stopping the
-    # setup for. macOS only; the script exits cleanly elsewhere.
-    just notifier-app || echo "Notifier not built; banners will use the default icon."
-
 
 alias kp8 := kill-port-8000
 # Kill any processes listening on port 8000
@@ -1433,26 +1428,6 @@ newsletter-send env campaign confirm="" only_to="" limit="":
     fi
 
     exit "${STATUS:-0}"
-
-
-alias na := notifier-app
-# Build the Quill-branded macOS notifier used by the Stop-hook banner (macOS only, one-off)
-notifier-app:
-    #!/usr/bin/env bash
-    {{initialise}} "notifier-app"
-    set -euo pipefail
-
-    ./scripts/build-notifier-app.sh
-
-
-alias nli := notify-listen-install
-# Install the launchd agent that fetches the dev box's banners and shows them (macOS only; run again after the scripts change)
-notify-listen-install:
-    #!/usr/bin/env bash
-    {{initialise}} "notify-listen-install"
-    set -euo pipefail
-
-    ./scripts/notification-listen-install.sh
 
 
 alias owi := owl-install

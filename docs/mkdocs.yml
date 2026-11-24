@@ -41,7 +41,6 @@ nav:
       - Deployment modes and features: concepts/deployment-modes-and-features.md
   - Engineering conventions:
       - Overview: conventions/index.md
-      - Finished-response notifications: conventions/finished-response-notifications.md
       - The audit ledger: conventions/audit-ledger.md
   - Backend:
       - Overview: backend/index.md
@@ -277,7 +276,6 @@ nav:
           - nst-crpf: llm/skills/nst-crpf.md
           - nst-follow-the-plan-document: llm/skills/nst-follow-the-plan-document.md
           - p: llm/skills/p.md
-          - play-finished-sound: llm/skills/play-finished-sound.md
           - read-project-instructions: llm/skills/read-project-instructions.md
           - run-all-tests: llm/skills/run-all-tests.md
           - strong-static-typing-defensive-programming: llm/skills/strong-static-typing-defensive-programming.md
