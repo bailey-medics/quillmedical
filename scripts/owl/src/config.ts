@@ -76,7 +76,7 @@ export function readConfig(env: NodeJS.ProcessEnv): Config {
     alertApps: alertApps(env),
     summoners: idList(env, "OWL_SUMMONERS", /^[UW][A-Z0-9]{8,}$/, "a comma-separated list of Slack member ids, such as U0123456789"),
     worktree: env["OWL_WORKTREE"] || join(home, "github", "quillmedical-owl"),
-    // Owl's own session, which scripts/claude-session.sh also names owl.
+    // Owl's own session, which `just cc` also names owl.
     tmuxTarget: env["OWL_TMUX_TARGET"] || "owl",
     // The same folder .claude/hooks/owl-busy.sh writes the flag in.
     stateDirectory: env["OWL_STATE"] || join(stateHome, "quill-owl"),
