@@ -155,8 +155,11 @@ means the allowed-domains change above has not been applied to this environment.
 
 ## Tab topic
 
-`tab-topic.sh` is a different kind of hook: it serves the dev box, not the
-web. After each prompt in a `q` tmux session, it asks a small model whether
+The tab-topic hook is a different kind of hook: it serves the dev box, not
+the web, and lives in Mark's mark-house-style repository, at
+`claude/hooks/tab-topic.sh`, so Turva and Juttu share it. `settings.json`
+runs it only where that repository is cloned. After each prompt in a `q`
+tmux session, it asks a small model whether
 the conversation has moved to a new goal, and keeps a short title for it in
 the session's `@topic` option. The tmux config shows that title in the
 terminal tab. A new title waits for a second prompt to agree with it, and
