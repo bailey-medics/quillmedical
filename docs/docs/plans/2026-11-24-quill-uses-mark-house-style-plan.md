@@ -103,7 +103,7 @@ skills before the shared ones can stand in for them. Keeping `t-` means
 both run side by side, and the shared ones can be tried in Quill before
 anything switches over.
 
-- [ ] Add a "For the shared skills" section to Quill's `CLAUDE.md`, under
+- [x] Add a "For the shared skills" section to Quill's `CLAUDE.md`, under
   `## Claude-specific`, holding what the skills need to know about Quill:
   the targeted test commands (`just ub -k`, `just uf <file>`, `just ts`),
   the plans folder and its index, the readability command
@@ -112,13 +112,13 @@ anything switches over.
   mark-house-style's `projects/turva/rules/turva.md`, which `turva-link`
   copies into Turva, so no Turva pull request is needed.
 
-- [ ] Merge Quill's `crpd` and `f` into mark-house-style's `t-crpd` and
+- [x] Merge Quill's `crpd` and `f` into mark-house-style's `t-crpd` and
   `t-f`. Quill's have grown past the Turva originals, for example
   `crpd`'s readability scoring, its stack key and its handling of a
   merged stack. Everything general moves across; everything Quill-only
   becomes "read the repository's section for the shared skills".
 
-- [ ] Try them in a temporary Quill worktree, made with
+- [x] Try them in a temporary Quill worktree, made with
   `git worktree add` from `origin/main`, so the trial starts a stack of
   its own instead of joining the one `/f` is building. Run
   `/t-crpd draft` on a one-line change there, and check it names the
@@ -128,7 +128,14 @@ anything switches over.
   and remove the worktree, and say how the trial went in this phase's
   pull request.
 
-- [ ] Commit and push the mark-house-style half to its `main`, then land
+  Done on 24 November 2026 as #2544, closed without merging. `/t-crpd
+  draft` started a stack, committed, pushed, found the pull request,
+  read its files and posted a scored description as Quill's `crpd`
+  does. One thing came up that is not the skill's: a worktree made
+  fresh with `git worktree add` has no `node_modules`, so the
+  pre-commit hook stops until `just yarn-install` has run in it.
+
+- [x] Commit and push the mark-house-style half to its `main`, then land
   the Quill half with `/crpd`.
 
 ## Phase 3: the five small shared skills do everything Quill's do
