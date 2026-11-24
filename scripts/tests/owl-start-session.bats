@@ -37,7 +37,7 @@ EOF
     cat > "${BATS_TEST_TMPDIR}/bin/systemctl" <<EOF
 #!/usr/bin/env bash
 if [ "\$2" = "is-active" ]; then
-    [ "\${SERVICE_ACTIVE:-}" = "1" ] && [ "\$4" = "quill-tmux-server.service" ]
+    [ "\${SERVICE_ACTIVE:-}" = "1" ] && [ "\$4" = "tmux-server.service" ]
 fi
 EOF
     chmod +x "${BATS_TEST_TMPDIR}/bin/tmux" \
@@ -180,7 +180,7 @@ EOF
 @test "the session starts in a transient service of its own, outside Owl's" {
     run "$SCRIPT"
     [ "$status" -eq 0 ]
-    grep -q -- "^--user --quiet --collect --unit=quill-tmux-server --property=Type=forking tmux new-session -d -s owl -c ${OWL_WORKTREE} bash -lc " "$SYSTEMD_RUN_CALLS"
+    grep -q -- "^--user --quiet --collect --unit=tmux-server --property=Type=forking tmux new-session -d -s owl -c ${OWL_WORKTREE} bash -lc " "$SYSTEMD_RUN_CALLS"
     grep -q "^new-session -d -s owl " "$CALLS"
 }
 
