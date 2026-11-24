@@ -127,7 +127,8 @@ def describe_progress(
     ``scan`` is where the malware scan has got to, where a scan job is
     configured and the transcode has not yet run: the scan comes first,
     so its states sit in the first stage. ``scan_detail`` is the
-    signature named for ``infected``; ``scan_requested_at`` is what
+    signature named for ``infected``, or the job's reason for
+    ``failed``; ``scan_requested_at`` is what
     says a pending scan has run too long.
     """
     now = now or datetime.now(UTC)
@@ -215,10 +216,18 @@ def describe_progress(
             is_final=True,
         )
     if link.transcode_started_at is None and scan == "failed":
+        # The job's reason, where it gave one, because uploading again
+        # does not help when the reason is a limit the file always hits.
+        label = (
+            f"The malware check failed ({scan_detail})"
+            if scan_detail
+            else "The malware check failed; upload the file again"
+        )
+
         return MediaProgress(
             stage=1,
             total_stages=_TOTAL_STAGES,
-            label="The malware check failed; upload the file again",
+            label=label,
             in_progress=False,
             stalled=True,
             is_final=True,

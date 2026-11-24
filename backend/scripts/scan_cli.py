@@ -71,14 +71,20 @@ Verdict = Literal["clean", "infected", "failed"]
 #: as a fault rather than cut off with no report at all.
 _SCAN_CEILING = 25 * 60
 
-#: How large a file ClamAV will scan, and how much it will read from
-#: one. Its defaults are 25 MB and 100 MB, and a file over them is
-#: skipped and reported as if it were clean, which is how every lecture
-#: would have passed without being looked at. Both are set to the upload
-#: limit, 2047 MiB, just under the 2 GiB that ClamAV can scan at all: it
-#: refused a 2.84 GB file with these at 4000 MB, which is only the most
-#: the option accepts.
-_SIZE_LIMITS = ("--max-filesize=2047M", "--max-scansize=2047M")
+#: How large a file ClamAV will scan, and how much it will read in all.
+#: Its defaults are 25 MB and 100 MB, and a file over them is skipped
+#: and reported as if it were clean, which is how every lecture would
+#: have passed without being looked at.
+#:
+#: The file size is the upload limit, 2047 MiB, just under the 2 GiB
+#: that ClamAV can open at all: it refused a 2.84 GB file at a higher
+#: setting.
+#:
+#: The scan size counts everything ClamAV reads, the parts it unpacks
+#: from inside the file as well as the file itself, so it must be
+#: larger than the file. A 1.4 GB QuickTime lecture ran out at 2047 MiB.
+#: 4000 MB is the most the option accepts.
+_SIZE_LIMITS = ("--max-filesize=2047M", "--max-scansize=4000M")
 
 #: How long ClamAV may spend on one file, in milliseconds. Its default is
 #: two minutes, and a 2 GB lecture took longer than that on 20 October
