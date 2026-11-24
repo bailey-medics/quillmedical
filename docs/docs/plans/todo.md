@@ -139,3 +139,5 @@ clinical/NHS go-live.
 - [ ] Configure email routing for `bailey-medics/quillmedical` notifications — manual GitHub routing setup; documented as required in `docs/docs/dependencies/automatic-updates.md`
 - [ ] Create repo labels: `dependencies`, `security`, `major-version-bump`, `hotfix`, `tier-1-clinical`, `back-merge` — no `github_issue_label` Terraform resources found; may exist manually on GitHub
 - [ ] Update all libraries to most recent — Renovate (`renovate.json`) and Dependabot configured for ongoing updates; one-time catch-up not evidenced as complete
+
+<!-- Trial of the shared t-crpd skill: close this pull request without merging. -->
