@@ -119,20 +119,17 @@ jobs:
       - name: Configure Docker for Artifact Registry
         run: gcloud auth configure-docker ${{ env.AR_REGISTRY }} --quiet
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
-        # BuildKit's own image, from Google's mirror of Docker Hub. Pulled
-        # from Docker Hub itself it is rate limited, and one such failure
-        # stopped a deploy on 9 October 2026.
-        with:
-          driver-opts: image=mirror.gcr.io/moby/buildkit:buildx-stable-1
-
-      - name: Log in to GHCR, for the mirrored base images
+      - name: Log in to GHCR, for the mirrored images
         uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
+      # BuildKit from the mirror, pulled with the login above. See
+      # .github/buildkit/Dockerfile for why.
+      - name: Set up Docker Buildx
+        uses: ./.github/actions/setup-buildx
 
       # Build on this repository's own copies of Python, Node and Caddy and
       # not on the public registry, which refuses a caller that asks too

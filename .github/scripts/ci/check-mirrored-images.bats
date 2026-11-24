@@ -30,7 +30,7 @@ jobs:
   build:
     steps:
       - with:
-          driver-opts: image=mirror.gcr.io/moby/buildkit:buildx-stable-1
+          driver-opts: image=ghcr.io/bailey-medics/mirror/buildkit@sha256:abc
       - run: gcloud run deploy --image=${{ env.REGISTRY }}/backend:latest
 WORKFLOW
 }
@@ -203,6 +203,38 @@ ACTION
   [[ "$output" == *"actions/setup/action.yml: image moby/buildkit:latest"* ]]
 }
 
+@test "fails for a workflow that names Google's mirror of Docker Hub" {
+  # Its limit on requests a minute is shared by every caller, and it
+  # refused BuildKit on 24 November 2026.
+  cat > "${REPO}/.github/workflows/other.yml" <<'WORKFLOW'
+jobs:
+  a:
+    steps:
+      - with:
+          driver-opts: image=mirror.gcr.io/moby/buildkit:buildx-stable-1
+WORKFLOW
+
+  run run_check
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *".github/workflows/other.yml: image mirror.gcr.io/moby/buildkit:buildx-stable-1"* ]]
+}
+
+@test "an image chosen by an earlier step is not checked here" {
+  # The setup-buildx action hands Buildx the image use-mirrored-buildkit.sh
+  # chose. That image is checked where it is named, in its Dockerfile.
+  cat > "${REPO}/.github/actions/setup/action.yml" <<'ACTION'
+runs:
+  steps:
+    - with:
+        driver-opts: image=${{ steps.buildkit.outputs.image }}
+ACTION
+
+  run run_check
+
+  [ "$status" -eq 0 ]
+}
+
 @test "a workflow may name an image in GitHub's own registry" {
   cat > "${REPO}/.github/workflows/other.yml" <<'WORKFLOW'
 jobs:
@@ -263,7 +295,7 @@ COMPOSE
 }
 
 @test "the real repository passes" {
-  run bash -c "cd '${ROOT}' && bash '${SCRIPT}' compose.ci.yml backend/Dockerfile backend/Dockerfile.caption frontend/Dockerfile"
+  run bash -c "cd '${ROOT}' && bash '${SCRIPT}' compose.ci.yml backend/Dockerfile backend/Dockerfile.caption frontend/Dockerfile .github/buildkit/Dockerfile"
 
   [ "$status" -eq 0 ]
 }
@@ -289,7 +321,7 @@ COMPOSE
   # then fall back to the public registry on every build.
   checked="$(grep -o 'check-mirrored-images.sh [^"]*' "${ROOT}/.github/workflows/ci.yml" | head -1)"
 
-  for dockerfile in backend/Dockerfile backend/Dockerfile.caption frontend/Dockerfile; do
+  for dockerfile in backend/Dockerfile backend/Dockerfile.caption frontend/Dockerfile .github/buildkit/Dockerfile; do
     [[ "$checked" == *"${dockerfile}"* ]]
     grep -q "$dockerfile" "${ROOT}/.github/workflows/mirror-images.yml"
   done
