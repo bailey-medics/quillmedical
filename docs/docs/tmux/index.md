@@ -6,7 +6,7 @@ running, and you attach to it again from wherever you are.
 
 Two recipes take you into tmux for the worktree you are standing in:
 
-- **`just c`** - the `q` session (`q1`, `q2` and so on) running Claude
+- **`just cc`** - the `q` session (`q1`, `q2` and so on) running Claude
   Code. It starts the session when it is missing, starts Claude again
   when it has exited, and attaches or switches to it.
 - **`just tw`** - the `t` session (`t1`, `t2` and so on), a plain shell
@@ -129,7 +129,7 @@ tmux's default. If your `mode-keys` is set to `vi`, the table is
 
 The project's Claude Code settings run `.claude/hooks/tab-topic.sh`
 after every message you send. It works only in a `q` session, the
-ones `just c` makes, and in Owl's `owl` session. It does nothing
+ones `just cc` makes, and in Owl's `owl` session. It does nothing
 anywhere else.
 
 1. It sends the current title, your previous message and your newest
