@@ -1,0 +1,13 @@
+# The heavy tier of Quill Medical's CI: jobs gated on a pull request not being
+# a draft, in .github/workflows/ci.yml. `just stack-log` reads this list to
+# show the fast and heavy tiers as two marks, fast then heavy. A name ending
+# in * is a prefix, for a job fanned out over a matrix whose legs report as
+# "<name> (2/3)". Keep it in step with ci.yml and infra/github/branch_rules.tf.
+Storybook interaction tests
+SAST
+E2E image build
+E2E (Playwright)
+Competency catalogue check
+DB migration immutability check
+Storybook interaction tests (*
+E2E (Playwright) (*

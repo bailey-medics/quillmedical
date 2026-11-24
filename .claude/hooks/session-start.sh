@@ -100,8 +100,7 @@ report_host_python() {
     cat <<WRONG_PYTHON
 $message
 Until that is put right, the recipes that run a script from scripts/ will
-refuse to run in this session: the stack recipes (just stack-log, just
-stack-new and the rest) and the audit ledger ones (just reviewed, just
+refuse to run in this session: the audit ledger ones (just reviewed, just
 review-status). The unit tests are not affected: they run in containers.
 WRONG_PYTHON
 }

@@ -98,7 +98,7 @@ guard() {
 }
 
 @test "a python script is let through" {
-    guard "python3 scripts/stack-status.py --check"
+    guard "python3 scripts/readability.py --longest README.md"
     [ "$status" -eq 0 ]
 }
 

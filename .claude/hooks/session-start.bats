@@ -258,7 +258,7 @@ project_pinned_with_python3() {
     [ "$status" -eq 0 ]
     [[ "$output" == *"python3 on this machine is Python 3.12.3"* ]]
     [[ "$output" == *"pinned to 3.14.7"* ]]
-    [[ "$output" == *"the stack recipes"* ]]
+    [[ "$output" == *"the audit ledger ones"* ]]
 }
 
 @test "carries on when the project has no Python check to run" {
