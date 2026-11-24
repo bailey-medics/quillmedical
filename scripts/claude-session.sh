@@ -4,7 +4,7 @@
 #
 # Each worktree has one tmux session: q1 for ~/github/quillmedical, q2 and
 # up for quillmedical-2 and up, and owl for quillmedical-owl, Owl's own.
-# ~/.local/bin/quill-sessions starts the numbered ones at boot. This:
+# ~/.local/bin/reboot-config starts the numbered ones at boot. This:
 #
 #   - starts the session, with Claude in it, when there is none;
 #   - starts Claude again in it when Claude has exited and left the shell;
