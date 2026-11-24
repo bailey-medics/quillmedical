@@ -1,25 +1,17 @@
-# Home and dev set-up details stay out of the repository
+# Quill's additions to the home-details rule
 
-The repository is public, and the docs site publishes every page under
-`docs/docs/`, plans included. Anything written here can be read by
-anyone, and stays readable in git history after it is deleted. So
-nothing that locates or reaches the machines Quill is built on goes into
-code, docs, comments, commit messages or pull requests:
+These add to the shared `home-details.md` rule in Mark's mark-house-style
+repository, which says what stays out of the repository and why. Read
+the two together.
 
-- **Addresses** - on the home network or the tailnet, IPv4 or IPv6.
-- **The tailnet's name** - the `<name>.ts.net` that Tailscale gives it.
-  The bare suffix `.ts.net` names nothing and is fine.
-- **Device names** - the hostnames of laptops, phones and the dev box's
-  peers, and their MAC addresses.
-- **The network itself** - the router's make or model, the Wi-Fi name,
-  the ISP.
-- **The place** - an address, a town, anything that says where the
-  machines are.
+**The docs site publishes every page under `docs/docs/`, plans
+included**, so a plan is as public as the code.
 
-**A plan that has to refer to one says it in angle brackets**:
-`<the box's LAN address>`, `<the Mac's Tailscale name>`. The step is
-about which machine could reach what, not about the value, and reads
-just as well.
+**The dev box's private network is a Tailscale tailnet.** Its name, the
+`<name>.ts.net` that Tailscale gives it, stays out. The bare suffix
+`.ts.net` names nothing and is fine. A plan names a machine in angle
+brackets, such as `<the box's LAN address>` or `<the Mac's Tailscale
+name>`.
 
 **`scripts/check-home-details.sh` enforces what a pattern can see.** It
 runs as the `check-home-details` pre-commit hook, and CI runs it over
@@ -39,11 +31,10 @@ secret. Each developer keeps their own.
 
 **The check never prints what it matched**, only the file, the line and
 the rule's name, because CI logs are as public as the files. When it
-refuses a line, read the line in the editor; do not paste it into a
-commit message, a pull request or a comment to ask about it.
+refuses a line, read the line in the editor.
 
-The hostname `devbox` and the username in paths are not refused: they
-say there is a box, not how to reach it.
+The hostname `devbox` is not refused: it says there is a box, not how to
+reach it.
 
 Recorded on 1 November 2026, after a security review found a
 developer's machine addresses and hostnames published in a plan.

@@ -16,7 +16,8 @@
   loses all of that and is how tests came to run against the wrong worktree.
 - `just --list` shows every recipe with its alias and a one-line description.
 - If no recipe does what you need, say so rather than improvising; the fix is
-  usually to add one, following the conventions in `.claude/rules/just.md`.
+  usually to add one, following the conventions in the shared `just.md`
+  rule from mark-house-style and Quill's additions in `.claude/rules/just.md`.
 
 See the `Justfile` if you want to know more.
 

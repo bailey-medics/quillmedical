@@ -130,3 +130,4 @@
 - [Stack Watch Expands the Current Branch](2026-11-10-stack-watch-expands-the-current-branch-plan.md)
 - [One Framework per Repository](2026-11-12-one-framework-per-repository-plan.md)
 - [Turva Review Backport](2026-11-19-turva-review-backport-plan.md)
+- [Quill Uses mark-house-style](2026-11-24-quill-uses-mark-house-style-plan.md)
