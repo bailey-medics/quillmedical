@@ -607,14 +607,16 @@ where the text is right and the system is not.
       DMCC subscription rules expected for contracts from 1 January
       2027. None bites while every user has a sponsor.
 
-- [ ] **Read both drafts end to end and settle what is still open**
+- [x] **Read both drafts end to end and settle what is still open**
       before they go live: the bracketed facts (effective date, ICO
       registration number, VAT number, payment processor), the retention
       periods proposed in Phase 1, and the open questions listed under
       "Questions still open" in the research below. Mark reviews these
       himself; no outside review is planned. The liability cap, the
       consumer cancellation wording and the processor terms are the
-      clauses to read most slowly.
+      clauses to read most slowly. Done: version 1.0 of both, effective
+      20 October 2026, was sent to EoEETA, who reviewed it and cleared
+      it for use. Go-live is 20 November 2026.
 
 - [ ] **Publish before go-live.** The EoEETA service goes live when the
       app is finished, which Mark expects three to six weeks from
@@ -624,7 +626,7 @@ where the text is right and the system is not.
       people to whatever those pages say. Everything in this phase has to
       be done by then.
 
-- [ ] **Render the terms and privacy policy on the public site,**
+- [x] **Render the terms and privacy policy on the public site,**
       replacing the placeholders in
       `frontend/public_pages/src/pages/terms-of-service.tsx` and
       `frontend/public_pages/src/pages/privacy-policy.tsx`. Use the
@@ -634,12 +636,17 @@ where the text is right and the system is not.
       the three legal pages look alike. Keep the hero at the top with a
       one-paragraph summary in plain English, then the dark background
       for the sections. Numbered clauses in the terms so they can be cited.
+      Done on 20 November 2026: each page was generated from the
+      reviewed Markdown and checked against it word for word, so the
+      published text is exactly what EoEETA cleared. The version line
+      sits in the hero, and "In short" opens the sections.
 
-- [ ] **Keep the Markdown and the page in step.** The Markdown in
-      `docs/docs/legal/` is the reviewed text; the page is its rendering.
-      Add a note at the top of each page file saying where the source is
-      and that the two must change together, as the accessibility
-      statement does for its evidence.
+- [x] **Keep the Markdown and the page in step.** Superseded on
+      20 November 2026, by Mark's decision: `docs/docs/legal/` was
+      deleted when the pages went live, so the two page files are the
+      one source of each document and there is nothing to keep in step.
+      A note at the top of each page file says so, and gives the
+      versioning rule that `docs/docs/legal/index.md` used to hold.
 
 - [ ] **Deploy the public site** and check
       <https://quill-medical.com/terms-of-service> and
@@ -679,9 +686,12 @@ where the text is right and the system is not.
   law, which the organisation route does not need. A direct organisation
   customer gets the SaaS agreement from Phase 4, the same as EoEETA.
 
-- **Source text lives in `docs/docs/legal/` as Markdown** - a reviewer
-  reads and marks up text, not TSX. The page is a rendering of the
-  reviewed text, not the other way round.
+- **Source text lived in `docs/docs/legal/` as Markdown while it was
+  drafted** - a reviewer reads and marks up text, not TSX. Changed on
+  20 November 2026, by Mark's decision, when the documents went live:
+  the Markdown was deleted so that there is one source of truth, the
+  page files under `frontend/public_pages/src/pages/`. Two copies of a
+  legal text drift, and the one people agree to is the published page.
 
 - **Clinical records are declared out of scope for now** - the FHIR and
   EHRbase services hold demo data only and are not offered to any
