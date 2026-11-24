@@ -309,6 +309,22 @@ class TestScan:
         assert p.label == "The malware check failed; upload the file again"
         assert p.is_final is True
 
+    def test_failed_names_the_reason_the_job_gave(self) -> None:
+        # Uploading again does not help when the reason is a limit the
+        # file always hits, so the card says what the job said.
+        reason = (
+            "too large to scan in full "
+            "(Heuristics.Limits.Exceeded.MaxScanSize)"
+        )
+
+        p = describe_progress(
+            _link(), now=NOW, scan="failed", scan_detail=reason
+        )
+
+        assert p.label == f"The malware check failed ({reason})"
+        assert p.stalled is True
+        assert p.is_final is True
+
     def test_the_scan_is_not_consulted_once_the_transcode_has_started(
         self,
     ) -> None:

@@ -391,9 +391,11 @@ class TestLargeFiles:
             scan_file(Path("upload"))
 
         args = run.call_args.args[0]
-        # The upload limit, just under the 2 GiB ClamAV can scan at all.
+        # The upload limit, just under the 2 GiB ClamAV can open at all.
         assert "--max-filesize=2047M" in args
-        assert "--max-scansize=2047M" in args
+        # More than the file, because what ClamAV unpacks from inside
+        # it counts too: a 1.4 GB QuickTime file ran out at 2047M.
+        assert "--max-scansize=4000M" in args
         assert "--alert-exceeds-max=yes" in args
         assert args[-1] == "upload"
 

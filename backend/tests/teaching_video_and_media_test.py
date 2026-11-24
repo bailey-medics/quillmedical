@@ -596,9 +596,13 @@ def test_a_video_over_the_size_limit_gets_no_upload_address(
 
 
 def test_the_size_limit_is_one_the_virus_scan_can_read() -> None:
-    """ClamAV cannot scan a file over 2 GiB, whatever it is told. The
-    upload limit and the scan's own limit are the same number, below
-    that, so no upload is accepted that the scan could never pass.
+    """ClamAV cannot open a file over 2 GiB, whatever it is told. The
+    upload limit and the scan's file limit are the same number, below
+    that, so no upload is accepted that the scan could never open.
+
+    The scan size is larger than the file, because it counts what
+    ClamAV unpacks from inside the file too: a 1.4 GB QuickTime lecture
+    ran out when the two were equal.
 
     On 22 October 2026 a 2.84 GB lecture, allowed by a 3 GiB limit, was
     uploaded and then failed its scan.
@@ -611,7 +615,7 @@ def test_the_size_limit_is_one_the_virus_scan_can_read() -> None:
     assert MAX_MEDIA_UPLOAD_BYTES < 2 * 1024 * mib
     assert _SIZE_LIMITS == (
         f"--max-filesize={MAX_MEDIA_UPLOAD_BYTES // mib}M",
-        f"--max-scansize={MAX_MEDIA_UPLOAD_BYTES // mib}M",
+        "--max-scansize=4000M",
     )
 
 
