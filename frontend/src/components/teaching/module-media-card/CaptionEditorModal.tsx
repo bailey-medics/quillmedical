@@ -73,17 +73,25 @@ export default function CaptionEditorModal({
 
   const text = edited ?? webvtt ?? "";
 
+  // Every way out clears what was typed. The page keeps one modal
+  // mounted for every video, so typing left behind here was shown, and
+  // could be saved, as the next video's captions.
+  const close = () => {
+    setEdited(null);
+    onClose();
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {
-      if (await onSave(text)) onClose();
+      if (await onSave(text)) close();
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <Modal opened={opened} onClose={onClose} size="xl" title="Edit captions">
+    <Modal opened={opened} onClose={close} size="xl" title="Edit captions">
       <Stack gap="md">
         {filename && <Heading>{filename}</Heading>}
 
@@ -128,7 +136,7 @@ export default function CaptionEditorModal({
         <ButtonPair
           acceptLabel="Save captions"
           onAccept={handleSave}
-          onCancel={onClose}
+          onCancel={close}
           acceptLoading={saving}
           acceptDisabled={loading || saving}
         />
