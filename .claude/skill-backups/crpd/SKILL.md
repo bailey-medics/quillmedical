@@ -636,7 +636,8 @@ to start a stack anywhere but the tip of `origin/main`, and says to run
    them what the diff already shows.
 
    **The body is an opening, a triage block, then three level-two
-   sections.** This is Quill Medical's pull request #2263 written that
+   sections**, with a fourth, `## Screenshots`, when the unit changes what
+   a person sees. This is Quill Medical's pull request #2263 written that
    way:
 
    ```markdown
@@ -972,6 +973,18 @@ to start a stack anywhere but the tip of `origin/main`, and says to run
      "sixteen tests" tells the reader nothing on its own; say what the
      tests pin down.
 
+   - **`## Screenshots`** - last, and only when the unit changes what a
+     person sees, or the plan asks for them. **A new or changed Storybook
+     component always counts**: screenshot each of its stories, from the
+     story's own page in a running Storybook, so a person reviews the
+     component as well as the page that uses it. Save each PNG in the
+     scratchpad, beside the attempt files, and never in the repository.
+     Reference each one by its local path, as
+     `![The hazard form in dark mode](./hazard-form-dark.png)`, with a
+     sentence beside it saying what it shows. The path is uploaded when
+     the body is posted, below. Leave the section out when there is
+     nothing to see.
+
    ### Closing
 
    Finish with `<!-- crp:pr-summary -->` on its own line - nothing after
@@ -1031,6 +1044,32 @@ to start a stack anywhere but the tip of `origin/main`, and says to run
 
    `--body-file` rather than `--body`: the body holds backticks, quotes
    and newlines, and passing it inline leaves them at the shell's mercy.
+
+   **With a `## Screenshots` section, add one `--attach` for each image
+   the body references**, in the same edit:
+
+   ```bash
+   gh pr edit <number> \
+     --title "Passport: what this branch does" \
+     --body-file <path to the chosen attempt> \
+     --attach <path to the first image> \
+     --attach <path to the second image>
+   ```
+
+   - **`--attach` uploads each image to GitHub's attachment storage**, as
+     dragging it in on the website does, and swaps its local path in the
+     body for the uploaded link. Nothing goes into a branch or into Git
+     history. Paths in the body are read relative to the body file's
+     folder, which is why the images sit beside the attempts.
+   - **Attach every image the body references.** A path with no matching
+     `--attach` stays a local path, and shows as a broken image.
+   - **It needs `gh` 2.99.0 or newer and a person's token.** The Actions
+     `GITHUB_TOKEN` and GitHub App tokens are refused. Never fall back to
+     an orphan branch, a cookie tool or a browser: say in the report that
+     the screenshots could not be posted, and why.
+   - **A partial failure still updates the body**, with the images that
+     did upload, and exits non-zero. Say in the report which images
+     failed.
 
    Keep every attempt's ease, in order, for the report.
 
