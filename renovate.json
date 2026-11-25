@@ -94,7 +94,7 @@
   ],
   "extends": ["config:recommended", "helpers:pinGitHubActionDigests"],
   "constraints": {
-    "poetry": "2.5.1"
+    "poetry": "2.5.2"
   },
   "timezone": "Europe/London",
   "schedule": ["on wednesday"],
