@@ -46,7 +46,7 @@
 # `gcloud auth login` would quietly take it back.
 #
 # The tmux server is started as a transient systemd service of its own,
-# quill-tmux-server.service, never in this service's process group. Whichever
+# tmux-server.service, never in this service's process group. Whichever
 # `tmux new-session` runs first starts the server, and at boot that is this
 # script, run by quill-owl.service. A server started in the
 # service's group is killed with it, so a restart of the watcher once closed
@@ -96,8 +96,8 @@ readonly ALLOWED_TOOLS=(
 )
 
 # The service the tmux server runs in, so `systemctl --user status
-# quill-tmux-server.service` finds it.
-readonly TMUX_UNIT="quill-tmux-server"
+# tmux-server.service` finds it.
+readonly TMUX_UNIT="tmux-server"
 
 # Runs a tmux command that may start the server, in a service of its own.
 #

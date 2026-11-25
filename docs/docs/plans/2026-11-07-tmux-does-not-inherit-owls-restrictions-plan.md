@@ -18,7 +18,7 @@ process group. Owl itself keeps `NoNewPrivileges=true`.
 
 - [x] **Drop `--scope` from `start_tmux` in
       `scripts/owl/start-session.sh`.** Call
-      `systemd-run --user --unit=quill-tmux-server --collect
+      `systemd-run --user --unit=tmux-server --collect
       --property=Type=forking tmux new-session -d ...` instead, which asks
       the user manager to spawn tmux itself. A process the user manager
       spawns inherits nothing from Owl, so the server has no flag, and it
@@ -26,7 +26,7 @@ process group. Owl itself keeps `NoNewPrivileges=true`.
       command with no ordering between units. `Type=forking` because
       `tmux new-session -d` starts the server and the client exits; check
       systemd tracks the server as the unit's main process
-      (`systemctl --user status quill-tmux-server.service`) and that
+      (`systemctl --user status tmux-server.service`) and that
       `--collect` does not reap it when the client exits. The check that
       a running server or active unit is not asked for again stays,
       pointed at the service rather than the scope.
@@ -71,16 +71,16 @@ process group. Owl itself keeps `NoNewPrivileges=true`.
 ## Phase 2: Tests and docs
 
 - [x] **`scripts/tests/owl-start-session.bats`** asserts the
-      `systemd-run` call carries `--unit=quill-tmux-server` and
+      `systemd-run` call carries `--unit=tmux-server` and
       `Type=forking` and no `--scope`, and keeps the tests that an active
       unit is not asked for again and that a running session starts no
       unit.
 
 - [x] **`scripts/owl/README.md`** says the server is a transient service
-      named `quill-tmux-server`, why a scope was not enough, and that
+      named `tmux-server`, why a scope was not enough, and that
       the server's `NoNewPrivs` should read 0. The check asks systemd for
       the server's process ID,
-      `systemctl --user show -p MainPID --value quill-tmux-server.service`,
+      `systemctl --user show -p MainPID --value tmux-server.service`,
       because `pgrep -f "tmux: server"` found nothing on the box: `-f`
       matches the command line, which still reads `tmux new-session ...`.
 
