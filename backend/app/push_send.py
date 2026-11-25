@@ -48,7 +48,7 @@ class SendTestOut(BaseModel):
 def send_test(
     _u: User = DEP_REQUIRE_OPERATOR,
     _csrf: User = DEP_REQUIRE_CSRF,
-    db: Session = Depends(get_core_db),
+    db: Session = Depends(get_core_db, scope="function"),
 ) -> SendTestOut:
     """Send test push notification to all subscribed clients.
 

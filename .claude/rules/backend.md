@@ -132,6 +132,12 @@ commits once when the route returns without error and rolls back if
 anything raises. So a request is one transaction: either all of its
 writes land or none do.
 
+- **Declare the session with `scope="function"`**:
+  `Depends(get_core_db, scope="function")`. Without it, FastAPI commits
+  after the response has gone, and after any background task, so a page
+  that asks again at once reads the old data.
+  `backend/tests/every_session_commits_before_the_response_test.py`
+  checks every route.
 - **Use `db.flush()` when a generated value is needed mid-request**, such
   as a new row's `id` or an `onupdate` timestamp. A flush sends the
   pending changes without ending the transaction, so the row can still be

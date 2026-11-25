@@ -105,7 +105,7 @@ def requires_feature(feature_key: str) -> Callable[..., User]:
 
     def _check(
         request: Request,
-        db: Session = Depends(get_core_db),
+        db: Session = Depends(get_core_db, scope="function"),
     ) -> User:
         user = get_current_user(request, db)
 

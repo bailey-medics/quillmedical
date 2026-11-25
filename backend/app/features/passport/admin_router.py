@@ -48,7 +48,7 @@ passport_admin_router = APIRouter(
     dependencies=[DEP_REQUIRE_OPERATOR],
 )
 
-_DEP_SESSION = Depends(get_core_db)
+_DEP_SESSION = Depends(get_core_db, scope="function")
 
 #: Said where no job is set up: a developer's machine and the end-to-end
 #: stack, which have no Cloud Run job to start.

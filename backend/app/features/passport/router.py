@@ -190,7 +190,7 @@ _FEATURE_GATE = requires_feature("passport")
 
 
 def _feature_unless_reading_your_own(
-    request: Request, db: Session = Depends(get_core_db)
+    request: Request, db: Session = Depends(get_core_db, scope="function")
 ) -> None:
     """The passport feature gate, waived for a holder reading their own.
 
@@ -235,7 +235,7 @@ def _feature_unless_reading_your_own(
 
 
 def _lock_the_passport_being_written(
-    request: Request, db: Session = Depends(get_core_db)
+    request: Request, db: Session = Depends(get_core_db, scope="function")
 ) -> None:
     """One writer at a time for the passport a request is about to change.
 
@@ -275,7 +275,7 @@ passport_router = APIRouter(
 #: malformed id is a 404 rather than an exception from the store.
 _PASSPORT_ID = re.compile(r"^[0-9a-f]{32}$")
 
-_DEP_SESSION = Depends(get_core_db)
+_DEP_SESSION = Depends(get_core_db, scope="function")
 
 
 #: Reaching the passport feature at all.

@@ -32,7 +32,7 @@ router = APIRouter()
 )
 def ci_scan_complete(
     body: ScanCompleteIn,
-    db: Session = Depends(get_core_db),
+    db: Session = Depends(get_core_db, scope="function"),
     _caller: str = DEP_REQUIRE_JOB_IDENTITY,
 ) -> ScanCompleteOut:
     """Record what the scan job found for one object.

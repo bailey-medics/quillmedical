@@ -27,7 +27,7 @@ from app.security import decode_token, verify_csrf
 
 logger = logging.getLogger(__name__)
 
-DEP_GET_SESSION = Depends(get_core_db)
+DEP_GET_SESSION = Depends(get_core_db, scope="function")
 
 
 #: Who issues a Google identity token, as ``id_token`` itself accepts.

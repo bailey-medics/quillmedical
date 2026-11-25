@@ -25,7 +25,7 @@ from app.schemas.inbox import (
 
 logger = logging.getLogger(__name__)
 
-_DEP_SESSION = Depends(get_core_db)
+_DEP_SESSION = Depends(get_core_db, scope="function")
 
 router = APIRouter(prefix="/inbox", tags=["inbox"])
 
