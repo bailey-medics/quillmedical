@@ -99,32 +99,46 @@ readonly ALLOWED_TOOLS=(
 # tmux-server.service` finds it.
 readonly TMUX_UNIT="tmux-server"
 
+# How many fifths of a second to wait for another starter's server.
+readonly TMUX_WAIT_TRIES="${TMUX_WAIT_TRIES:-25}"
+
 # Runs a tmux command that may start the server, in a service of its own.
 #
-# If no server is running, the command starts one, and the service lasts as
-# long as the server: Type=forking because the tmux client starts the server
-# and exits, and systemd then takes the server as the service's main process.
-# If a server is already running, the command only asks it for a session, and
-# the service ends when the command returns. Either way the server is outside
-# this service, and the user manager, not this process, started it.
+# A server already running only needs asking for a session, so tmux runs as
+# it is. Without systemd-run, as in the tests' container, it runs as it is
+# too.
 #
-# systemd refuses a unit name already in use, so while the service is active,
-# which means the server is already in it, tmux runs as it is. Without
-# systemd-run, as in the tests' container, it runs as it is too.
-# --collect lets a failed service go, so it never holds the name.
+# With no server, the command starts one in the service, which lasts as long
+# as the server: Type=forking because the tmux client starts the server and
+# exits, and systemd then takes the server as the service's main process. The
+# server is outside this service, and the user manager, not this process,
+# started it. --collect lets a failed service go, so it never holds the name.
+#
+# At boot, other scripts on the box start tmux sessions at the same moment as
+# this, and systemd refuses a unit name already in use. The starter that
+# loses waits for the winner's server, then asks it.
 start_tmux() {
-    if ! command -v systemd-run >/dev/null 2>&1; then
+    if ! command -v systemd-run >/dev/null 2>&1 || tmux list-sessions >/dev/null 2>&1; then
         tmux "$@"
         return
     fi
 
-    if systemctl --user is-active --quiet "${TMUX_UNIT}.service" 2>/dev/null; then
-        tmux "$@"
+    if systemd-run --user --quiet --collect --unit="${TMUX_UNIT}" \
+        --property=Type=forking tmux "$@"; then
         return
     fi
 
-    systemd-run --user --quiet --collect --unit="${TMUX_UNIT}" \
-        --property=Type=forking tmux "$@"
+    local try
+    for ((try = 0; try < TMUX_WAIT_TRIES; try++)); do
+        sleep 0.2
+        if tmux list-sessions >/dev/null 2>&1; then
+            tmux "$@"
+            return
+        fi
+    done
+
+    echo "✗ No tmux server came up, in ${TMUX_UNIT}.service or out of it." >&2
+    return 1
 }
 
 main() {

@@ -2,12 +2,15 @@
 # Tests for owl/start-session.sh, which starts the alert
 # watcher's Claude Code session in tmux unless one is already running.
 #
-# tmux is replaced by a stub that records what it was asked and answers
-# `has-session` with whatever SESSION_EXISTS says, so no tmux server is
-# started and no claude runs. systemd-run and systemctl are stubs too:
-# systemd-run records its options and runs the command after them, and
-# `systemctl is-active` answers with whatever SERVICE_ACTIVE says, and only
-# for the tmux server's service, so no test reaches the real systemd.
+# tmux is replaced by a stub that records what it was asked, answers
+# `has-session` with whatever SESSION_EXISTS says, and answers
+# `list-sessions`, which asks whether a server is running, with whatever
+# SERVER_RUNNING says, so no tmux server is started and no claude runs.
+#
+# systemd-run is a stub too, so no test reaches the real systemd. It records
+# its options and runs the command after them. With NAME_TAKEN=1 it acts as
+# if another starter took the service's name a moment before: it refuses,
+# and that starter's server comes up, unless NO_OTHER_SERVER=1.
 
 setup() {
     SCRIPT="${BATS_TEST_DIRNAME}/../owl/start-session.sh"
@@ -16,7 +19,8 @@ setup() {
     export OWL_STATE="${BATS_TEST_TMPDIR}/state"
     export HOME="${BATS_TEST_TMPDIR}/home"
     SYSTEMD_RUN_CALLS="${BATS_TEST_TMPDIR}/systemd-run-calls"
-    unset OWL_TMUX_TARGET SESSION_EXISTS SERVICE_ACTIVE
+    SERVER_UP="${BATS_TEST_TMPDIR}/server-up"
+    unset OWL_TMUX_TARGET SESSION_EXISTS SERVER_RUNNING NAME_TAKEN NO_OTHER_SERVER TMUX_WAIT_TRIES
 
     mkdir -p "${OWL_WORKTREE}" "${BATS_TEST_TMPDIR}/bin"
     cat > "${BATS_TEST_TMPDIR}/bin/tmux" <<EOF
@@ -24,25 +28,25 @@ setup() {
 printf '%s\n' "\$*" >> "${CALLS}"
 if [ "\$1" = "has-session" ]; then
     [ "\${SESSION_EXISTS:-}" = "1" ]
+elif [ "\$1" = "list-sessions" ]; then
+    [ "\${SERVER_RUNNING:-}" = "1" ] || [ -e "${SERVER_UP}" ]
 fi
 EOF
     cat > "${BATS_TEST_TMPDIR}/bin/systemd-run" <<EOF
 #!/usr/bin/env bash
 printf '%s\n' "\$*" >> "${SYSTEMD_RUN_CALLS}"
+if [ "\${NAME_TAKEN:-}" = "1" ]; then
+    [ "\${NO_OTHER_SERVER:-}" = "1" ] || touch "${SERVER_UP}"
+    echo "Unit tmux-server.service was already loaded" >&2
+    exit 1
+fi
 while [ "\$#" -gt 0 ] && [ "\${1#--}" != "\$1" ]; do
     shift
 done
 exec "\$@"
 EOF
-    cat > "${BATS_TEST_TMPDIR}/bin/systemctl" <<EOF
-#!/usr/bin/env bash
-if [ "\$2" = "is-active" ]; then
-    [ "\${SERVICE_ACTIVE:-}" = "1" ] && [ "\$4" = "tmux-server.service" ]
-fi
-EOF
     chmod +x "${BATS_TEST_TMPDIR}/bin/tmux" \
-        "${BATS_TEST_TMPDIR}/bin/systemd-run" \
-        "${BATS_TEST_TMPDIR}/bin/systemctl"
+        "${BATS_TEST_TMPDIR}/bin/systemd-run"
     export PATH="${BATS_TEST_TMPDIR}/bin:${PATH}"
 }
 
@@ -190,11 +194,28 @@ EOF
     [ "$(grep -c -- "--scope" "$SYSTEMD_RUN_CALLS")" -eq 0 ]
 }
 
-@test "a service already running is not asked for again" {
-    SERVICE_ACTIVE=1 run "$SCRIPT"
+@test "a server already running is asked for the session, with no service" {
+    SERVER_RUNNING=1 run "$SCRIPT"
+
     [ "$status" -eq 0 ]
     [ ! -e "$SYSTEMD_RUN_CALLS" ]
     grep -q "^new-session -d -s owl " "$CALLS"
+}
+
+@test "when another starter takes the service's name, its server is asked for the session" {
+    NAME_TAKEN=1 run "$SCRIPT"
+
+    [ "$status" -eq 0 ]
+    grep -q -- "--unit=tmux-server " "$SYSTEMD_RUN_CALLS"
+    grep -q "^new-session -d -s owl -c ${OWL_WORKTREE} bash -lc " "$CALLS"
+}
+
+@test "when the name is taken and no server comes up, it fails and starts nothing" {
+    NAME_TAKEN=1 NO_OTHER_SERVER=1 TMUX_WAIT_TRIES=2 run "$SCRIPT"
+
+    [ "$status" -eq 1 ]
+    [ "$(grep -c new-session "$CALLS")" -eq 0 ]
+    [[ "$output" == *"No tmux server came up"* ]]
 }
 
 @test "without systemd-run, the session starts through tmux as it is" {
