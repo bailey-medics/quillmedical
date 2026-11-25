@@ -137,7 +137,7 @@ is safe on `main` alone.
 
 ## Phase 2: Refuse to start an attempt until the videos are played
 
-- [ ] In `start_assessment` in `backend/app/features/teaching/router.py`,
+- [x] In `start_assessment` in `backend/app/features/teaching/router.py`,
       after `bank_to_sit` and before an attempt is drawn, call
       `videos_to_play`. If it lists anything, raise a new
       `VideosNotPlayed` from `backend/app/features/teaching/errors.py`,
@@ -146,14 +146,19 @@ is safe on `main` alone.
       nobody is locked out of an attempt they started. The greyed-out
       button in Phase 3 is only a guide; this is what enforces the rule.
 
-- [ ] Add `videos_to_play: list[str]` to `QuestionBankOut` in
+- [x] Add `videos_to_play: list[str]` to `QuestionBankOut` in
       `backend/app/features/teaching/schemas.py`, filled in by
       `list_question_banks` (`GET /api/teaching/question-banks`), which
-      the module page already reads. It is an added field, so the
-      `oasdiff` check sees no breaking change. Regenerate the frontend
-      types it feeds.
+      the module page already reads, through a new `user_id` argument to
+      `question_bank_rows` in `backend/app/features/teaching/listing.py`.
+      It is an added field, so the `oasdiff` check sees no breaking
+      change. The frontend's `QuestionBank` type in
+      `frontend/src/features/teaching/types.ts` is written by hand, not
+      generated, so Phase 3 adds the field there.
 
-- [ ] Tests, beside the route: starting is refused while a video is
+- [x] Tests, in `backend/tests/teaching_videos_before_assessment_test.py`,
+      reusing the helpers of `teaching_starting_an_attempt_test.py`:
+      starting is refused while a video is
       unplayed, and allowed once all are; an attempt in progress is
       handed back without the check; a module without the setting is
       never refused; `GET /api/teaching/question-banks` lists the keys

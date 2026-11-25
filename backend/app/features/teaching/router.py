@@ -68,6 +68,7 @@ from app.features.teaching.attempts import (
     unfinished_attempts,
 )
 from app.features.teaching.enrolment import enrolled_on_offer, is_enrolled
+from app.features.teaching.errors import VideosNotPlayed
 from app.features.teaching.listing import (
     admin_bank_rows,
     bank_organisation_rows,
@@ -167,7 +168,10 @@ from app.features.teaching.storage import (
 from app.features.teaching.video_access import (
     sign_cookie,
 )
-from app.features.teaching.video_plays import record_play
+from app.features.teaching.video_plays import (
+    record_play,
+    videos_to_play,
+)
 from app.features.uploads import scan as upload_scan
 from app.features.uploads.models import UploadScan
 from app.models import (
@@ -434,7 +438,7 @@ def list_question_banks(
     ``banks_on_show_to``, which asks for the modules competency itself;
     what is said of each is ``question_bank_rows``.
     """
-    return question_bank_rows(db, banks_on_show_to(db, user))
+    return question_bank_rows(db, banks_on_show_to(db, user), user_id=user.id)
 
 
 @teaching_router.get(
@@ -748,6 +752,14 @@ def start_assessment(
     if under_way is not None:
         attempt = pick_up_attempt(db, under_way)
     else:
+        # A module may keep its assessment closed until every learning
+        # video has been played. The greyed-out button on the module page
+        # only guides; this is what enforces it. An attempt already under
+        # way is handed back above without asking, so nobody is locked
+        # out of one they started.
+        if videos_to_play(db, user.id, bank.config):
+            raise VideosNotPlayed()
+
         if len(bank.published_items) < bank.min_pool_size:
             raise HTTPException(
                 409,

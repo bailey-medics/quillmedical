@@ -28,6 +28,10 @@ class QuestionBankOut(BaseModel):
     has_learning: bool = False
     cover_image_url: str | None = None
     cover_image_focus: str | None = None
+    #: The ``<Video ref>`` keys the learner must still play before the
+    #: assessment opens. Empty when it is open to them, including on
+    #: every module that does not ask for plays.
+    videos_to_play: list[str] = Field(default_factory=list)
 
 
 class QuestionBankDetailOut(QuestionBankOut):
