@@ -17,6 +17,7 @@ import { StateMessage } from "@/components/message-cards";
 import { IconAlertCircle } from "@/components/icons/appIcons";
 import { BodyText, Heading, PageHeader } from "@/components/typography";
 import { QuestionResultsTable } from "@/components/teaching/question-results-table";
+import { formatScore } from "@/components/teaching/score-breakdown";
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { api } from "@/lib/api";
@@ -30,11 +31,6 @@ function formatDateTime(iso: string): string {
     hour: "2-digit",
     minute: "2-digit",
   });
-}
-
-/** One decimal place, as the score breakdown on the result page shows it. */
-function formatPercentage(value: number): string {
-  return `${(value * 100).toFixed(1)}%`;
 }
 
 function outcomeLabel(isPassed: boolean | null): string {
@@ -126,7 +122,7 @@ export default function AssessmentQuestionResultsPage() {
             {/* Absent from a backend older than this page, mid-deploy */}
             {(results.criteria ?? []).map((c) => (
               <BodyText key={c.name}>
-                {c.name}: {formatPercentage(c.value)}
+                {c.name}: {formatScore(c.value)}
               </BodyText>
             ))}
           </Stack>

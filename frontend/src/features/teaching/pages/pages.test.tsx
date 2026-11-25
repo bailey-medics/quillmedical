@@ -524,10 +524,10 @@ describe("AssessmentQuestionResultsPage", () => {
     renderPage();
 
     expect(
-      await screen.findByText("High confidence rate: 78.0%"),
+      await screen.findByText("High confidence rate: 78.00%"),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("High confidence accuracy: 66.7%"),
+      screen.getByText("High confidence accuracy: 66.67%"),
     ).toBeInTheDocument();
   });
 
