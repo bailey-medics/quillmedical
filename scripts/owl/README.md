@@ -90,7 +90,7 @@ Read from the environment, which the systemd unit loads from `~/.config/quill-ow
 - **`OWL_SUMMONERS`** - the Slack member ids who may ask Owl a question with a mention, comma-separated, such as `U0123456789`. Optional: empty means nobody may. In Slack, open a profile, then the three dots, then "Copy member ID".
 - **`OWL_WORKTREE`** - defaults to `~/github/quillmedical-owl`.
 - **`OWL_TMUX_TARGET`** - defaults to `owl`.
-- **`OWL_STATE`** - defaults to `~/.local/state/quill-owl`, the folder `.claude/hooks/owl-busy.sh` keeps the busy flag in.
+- **`OWL_STATE`** - defaults to `~/.local/state/quill-owl`, the folder `.claude/hooks/owl-busy.sh` keeps the busy flag in. Leave it there: `session-settings.json` lets Claude read alerts in that folder only, so `start-session.sh` refuses any other.
 - **`OWL_CERTIFICATE`** - defaults to `~/.config/quill-owl/pki/watcher.crt`, the client certificate whose expiry it watches.
 - **`OWL_RECORD_EVENTS=1`** - saves every channel event to `events/` in the state folder, for checking the message shapes against `src/messages.ts`. Off otherwise: the journal never holds alert text.
 

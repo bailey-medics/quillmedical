@@ -19,6 +19,7 @@ import AssessmentResultBadge from "@/components/badge/AssessmentResultBadge";
 import PassIcon from "@/components/icons/PassIcon";
 import FailIcon from "@/components/icons/FailIcon";
 import type { CriterionResult } from "@/features/teaching/types";
+import { formatScore } from "./formatScore";
 
 interface ScoreBreakdownProps {
   /** Assessment criteria results to display */
@@ -47,7 +48,7 @@ export function ScoreBreakdown({ criteria }: ScoreBreakdownProps) {
                 <BodyTextInline>{c.name}</BodyTextInline>
               </Group>
               <Group gap="xs" pl={36}>
-                <BodyTextBold>{(c.value * 100).toFixed(1)}%</BodyTextBold>
+                <BodyTextBold>{formatScore(c.value)}</BodyTextBold>
                 <BodyText>/ {(c.threshold * 100).toFixed(0)}%</BodyText>
                 <AssessmentResultBadge result={c.passed ? "pass" : "fail"} />
               </Group>
@@ -59,7 +60,7 @@ export function ScoreBreakdown({ criteria }: ScoreBreakdownProps) {
                 <BodyTextInline>{c.name}</BodyTextInline>
               </Group>
               <Group gap="xs">
-                <BodyTextBold>{(c.value * 100).toFixed(1)}%</BodyTextBold>
+                <BodyTextBold>{formatScore(c.value)}</BodyTextBold>
                 <BodyText>/ {(c.threshold * 100).toFixed(0)}%</BodyText>
                 <AssessmentResultBadge result={c.passed ? "pass" : "fail"} />
               </Group>

@@ -26,10 +26,30 @@ describe("ScoreBreakdown", () => {
     expect(screen.getByText("Fail")).toBeInTheDocument();
   });
 
-  it("displays percentage values", () => {
+  it("displays percentage values to two decimal places", () => {
     renderWithMantine(<ScoreBreakdown criteria={criteria} />);
-    expect(screen.getByText("78.0%")).toBeInTheDocument();
-    expect(screen.getByText("60.0%")).toBeInTheDocument();
+    expect(screen.getByText("78.00%")).toBeInTheDocument();
+    expect(screen.getByText("60.00%")).toBeInTheDocument();
+  });
+
+  it("never shows a near miss as the pass mark", () => {
+    // 96 right out of 113 is 84.96%, which one decimal place showed as
+    // 85.0% beside a fail.
+    renderWithMantine(
+      <ScoreBreakdown
+        criteria={[
+          {
+            name: "High confidence accuracy",
+            value: 0.8496,
+            threshold: 0.85,
+            passed: false,
+          },
+        ]}
+      />,
+    );
+
+    expect(screen.getByText("84.96%")).toBeInTheDocument();
+    expect(screen.getByText("Fail")).toBeInTheDocument();
   });
 
   it("displays threshold values", () => {

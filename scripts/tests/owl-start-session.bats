@@ -18,11 +18,11 @@ setup() {
     SCRIPT="${BATS_TEST_DIRNAME}/../owl/start-session.sh"
     CALLS="${BATS_TEST_TMPDIR}/tmux-calls"
     export OWL_WORKTREE="${BATS_TEST_TMPDIR}/quillmedical-owl"
-    export OWL_STATE="${BATS_TEST_TMPDIR}/state"
     export HOME="${BATS_TEST_TMPDIR}/home"
+    export OWL_STATE="${HOME}/.local/state/quill-owl"
     SYSTEMD_RUN_CALLS="${BATS_TEST_TMPDIR}/systemd-run-calls"
     SERVER_UP="${BATS_TEST_TMPDIR}/server-up"
-    unset OWL_TMUX_TARGET SESSION_EXISTS SERVER_RUNNING NAME_TAKEN NO_OTHER_SERVER TMUX_WAIT_TRIES
+    unset OWL_TMUX_TARGET SESSION_EXISTS SERVER_RUNNING NAME_TAKEN NO_OTHER_SERVER TMUX_WAIT_TRIES XDG_STATE_HOME
 
     mkdir -p "${OWL_WORKTREE}" "${BATS_TEST_TMPDIR}/bin"
     cat > "${BATS_TEST_TMPDIR}/bin/tmux" <<EOF
@@ -75,30 +75,40 @@ EOF
     grep -q "export QUILL_OWL=true CLOUDSDK_CONFIG=${HOME}/.config/quill-owl/gcloud CLAUDE_CODE_DISABLE_FEEDBACK_SURVEY=1; claude --remote-control " "$CALLS"
 }
 
-@test "the alert files are added through settings, so Claude does not ask to trust them" {
+@test "the session settings add the alerts folder, so Claude does not ask to trust it" {
+    local settings="${BATS_TEST_DIRNAME}/../owl/session-settings.json"
+
+    run jq -r '.permissions.additionalDirectories[]' "$settings"
+
+    [ "$status" -eq 0 ]
+    [ "$output" = "~/.local/state/quill-owl/alerts" ]
+}
+
+@test "the alerts folder is never given with --add-dir, which asks at every start" {
     run "$SCRIPT"
 
     [ "$status" -eq 0 ]
-    run jq -r '.permissions.additionalDirectories[]' "${OWL_STATE}/session-settings.json"
-    [ "$output" = "${OWL_STATE}/alerts" ]
     run ! grep -q -- "--add-dir" "$CALLS"
 }
 
-@test "the written settings keep everything in the settings beside the script" {
-    local settings="${BATS_TEST_DIRNAME}/../owl/session-settings.json"
+@test "a state folder moved by OWL_STATE is refused, and nothing is started" {
+    export OWL_STATE="${BATS_TEST_TMPDIR}/elsewhere"
 
     run "$SCRIPT"
 
-    [ "$status" -eq 0 ]
-    run jq -S 'del(.permissions.additionalDirectories)' "${OWL_STATE}/session-settings.json"
-    [ "$output" = "$(jq -S . "$settings")" ]
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Unset OWL_STATE and XDG_STATE_HOME"* ]]
+    run ! grep -q "new-session" "$CALLS"
 }
 
-@test "the written settings can be read by the user alone" {
+@test "a state folder moved by XDG_STATE_HOME is refused" {
+    unset OWL_STATE
+    export XDG_STATE_HOME="${BATS_TEST_TMPDIR}/xdg"
+
     run "$SCRIPT"
 
-    [ "$status" -eq 0 ]
-    [ "$(stat -c %a "${OWL_STATE}/session-settings.json")" = "600" ]
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Unset OWL_STATE and XDG_STATE_HOME"* ]]
 }
 
 @test "the session runs in auto mode, so tool calls are decided rather than asked about" {
@@ -111,9 +121,13 @@ EOF
     grep -q -- "--disallowedTools AskUserQuestion " "$CALLS"
 }
 
-@test "the session loads the settings written to the state folder" {
+@test "the session loads its own settings, from beside the script" {
+    local settings
+
+    settings="$(cd "${BATS_TEST_DIRNAME}/../owl" && pwd)/session-settings.json"
+
     run "$SCRIPT"
-    grep -qF -- "--settings ${OWL_STATE}/session-settings.json " "$CALLS"
+    grep -qF -- "--settings ${settings} " "$CALLS"
 }
 
 @test "the session settings refuse reads outside the worktree rather than asking" {
@@ -248,7 +262,7 @@ EOF
     local tools="${BATS_TEST_TMPDIR}/tools"
     mkdir -p "$tools"
     cp "${BATS_TEST_TMPDIR}/bin/tmux" "$tools/"
-    for tool in bash mkdir chmod basename jq; do
+    for tool in bash mkdir chmod basename; do
         ln -s "$(command -v "$tool")" "$tools/$tool"
     done
 

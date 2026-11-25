@@ -43,10 +43,10 @@
 # permissions.additionalDirectories, never --add-dir. Claude Code asks
 # whether to trust a folder given with --add-dir, at every start, so Owl
 # sat at that question after each restart and missed alerts. A folder
-# listed in a --settings file is added without asking. Its path is only
-# known here, so the script writes a copy of the file with the folder in,
-# to the state folder, and passes that. One --settings flag, not two: a
-# second one replaces the first file's list instead of adding to it.
+# listed in a --settings file is added without asking. The file names the
+# folder as ~/.local/state/quill-owl/alerts, so the state folder must be
+# there: one moved by OWL_STATE or XDG_STATE_HOME is refused, because the
+# watcher would write alerts where Claude cannot read them.
 #
 # CLOUDSDK_CONFIG gives the session gcloud settings of its own, holding the
 # log reader's key and nothing else. The watcher runs as the same user as
@@ -68,7 +68,8 @@
 #
 # OWL_TMUX_TARGET, OWL_WORKTREE and
 # OWL_STATE change the session name, the worktree and the
-# state folder, as they do for the daemon.
+# state folder, as they do for the daemon. The state folder is checked
+# against the one session-settings.json names, as above.
 set -euo pipefail
 
 # Pushing and opening pull requests go through the stack recipes only, as
@@ -170,20 +171,19 @@ main() {
         return 1
     fi
 
+    if [ "${state}" != "${HOME}/.local/state/quill-owl" ]; then
+        echo "✗ Owl's state folder is ${state}, but session-settings.json lets Claude read alerts in ~/.local/state/quill-owl only. Unset OWL_STATE and XDG_STATE_HOME." >&2
+        return 1
+    fi
+
     mkdir -p "${state}/alerts"
     chmod 0700 "${state}" "${state}/alerts"
-
-    local session_settings="${state}/session-settings.json"
-    jq --arg alerts "${state}/alerts" \
-        '.permissions.additionalDirectories = [$alerts]' \
-        "${settings}" >"${session_settings}"
-    chmod 0600 "${session_settings}"
 
     local command
     command="export QUILL_OWL=true CLOUDSDK_CONFIG=$(printf '%q' "${gcloud_config}") CLAUDE_CODE_DISABLE_FEEDBACK_SURVEY=1; claude"
     command+=" --remote-control $(printf '%q' "$(basename "${worktree}")")"
     command+=" --permission-mode auto"
-    command+=" --settings $(printf '%q' "${session_settings}")"
+    command+=" --settings $(printf '%q' "${settings}")"
     command+=" --disallowedTools AskUserQuestion"
     command+=" --allowedTools $(printf '%q ' "${ALLOWED_TOOLS[@]}")"
     command+="; exec bash -l"
