@@ -44,6 +44,7 @@ from app.features.teaching.schemas import (
     DelegateOut,
     DelegateSiteOut,
 )
+from app.features.teaching.video_plays import videos_to_play
 from app.models import OrgUnit, User, org_unit_member
 from app.organisations import get_member_org_unit_ids
 
@@ -360,7 +361,10 @@ def learning_module_rows(
 
 
 def question_bank_rows(
-    db: Session, shown: dict[str, BankOnShow]
+    db: Session,
+    shown: dict[str, BankOnShow],
+    *,
+    user_id: int | None = None,
 ) -> list[dict[str, Any]]:
     """What a learner's list says about each question bank on show.
 
@@ -383,6 +387,8 @@ def question_bank_rows(
     Args:
         db: Core database session.
         shown: What ``banks_on_show_to`` gave: bank id to how it stands.
+        user_id: The learner the list is for, whose unplayed videos
+            each row names. Left out, no row names any.
 
     Returns:
         The fields of ``QuestionBankOut`` for each bank, as plain
@@ -465,6 +471,11 @@ def question_bank_rows(
                 ),
                 "cover_image_url": cover_image_url,
                 "cover_image_focus": config.cover_image_focus,
+                "videos_to_play": (
+                    videos_to_play(db, user_id, config)
+                    if user_id is not None
+                    else []
+                ),
             }
         )
 

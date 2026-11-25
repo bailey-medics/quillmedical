@@ -991,6 +991,7 @@ def test_a_bank_row_says_what_the_promoted_version_says(
             "has_learning": True,
             "cover_image_url": None,
             "cover_image_focus": None,
+            "videos_to_play": [],
         }
     ]
 

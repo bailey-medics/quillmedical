@@ -113,6 +113,19 @@ class AssessmentNotOpen(TeachingError):
     message = "This assessment is not currently open"
 
 
+class VideosNotPlayed(TeachingError):
+    """The module asks for every learning video to be played first.
+
+    Raised when a delegate starts an attempt on a module whose
+    ``module.yaml`` sets ``playVideosBeforeAssessment`` before pressing
+    play on each of its videos. The same words as the note under the
+    disabled button on the module page.
+    """
+
+    status_code = 403
+    message = "Complete the learning section first"
+
+
 class AssessmentNotFound(TeachingError):
     """No attempt by that id is this learner's.
 
