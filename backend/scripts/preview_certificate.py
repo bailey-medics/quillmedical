@@ -13,7 +13,8 @@ The PDF is written to /tmp/certificate-preview.pdf - copy it to the
 host to view:
 
     docker cp quill_backend:/tmp/certificate-preview.pdf .
-    open certificate-preview.pdf
+
+`just preview-certificate` does all three, and opens the copy.
 """
 
 from __future__ import annotations
@@ -44,6 +45,20 @@ _PASS_SUMMARY = (  # nosec B105
 )
 _COMPLETION_DATE = "31 March 2026"
 _EXAM_REF = "eoeeta-1-42"
+
+
+def _version_of(config: dict[str, Any]) -> int | None:
+    """The assessment's version, as a real certificate prints it.
+
+    None when the file gives no whole number, so the preview then shows
+    no version rather than a made-up one.
+    """
+    version = config.get("version")
+
+    if isinstance(version, int) and not isinstance(version, bool):
+        return version
+
+    return None
 
 
 def main() -> None:
@@ -116,6 +131,7 @@ def main() -> None:
         completion_date=_COMPLETION_DATE,
         style=style,
         exam_ref=exam_ref,
+        version=_version_of(config),
     )
 
     out = Path(args.output)

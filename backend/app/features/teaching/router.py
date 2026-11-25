@@ -1187,6 +1187,7 @@ def _maybe_enqueue_certificate_emails(
             pass_summary=certificate_pass_summary(criteria_results),
             completion_date=completion_date,
             exam_ref=exam_ref,
+            version=assessment.bank_version,
         )
         if pdf_bytes:
             attachments.append(

@@ -272,6 +272,7 @@ def certificate_pdf(
         completion_date=completion_date,
         style=style,
         exam_ref=assessment.exam_ref,
+        version=assessment.bank_version,
     )
 
     # Clean up temp file downloaded from GCS

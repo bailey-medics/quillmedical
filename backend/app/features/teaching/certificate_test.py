@@ -13,9 +13,11 @@ from pathlib import Path
 import pytest
 from PIL import Image
 from pydantic import ValidationError
+from reportlab.lib.pagesizes import A4  # type: ignore[import-untyped]
 from reportlab.pdfgen import canvas  # type: ignore[import-untyped]
 
 from app.features.teaching.certificate import (
+    RESULT_LINE_RGB,
     CertificateStyle,
     TextFieldStyle,
     _wrap_text,
@@ -156,6 +158,143 @@ class TestGenerateCertificatePdf:
         assert isinstance(result, bytes)
         assert result[:5] == b"%PDF-"
         assert len(result) > 1000
+
+    @staticmethod
+    def _record_centred(
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> dict[str, float]:
+        """Record the height of every centred line, keyed by its text."""
+        drawn: dict[str, float] = {}
+
+        def record(self: canvas.Canvas, x: float, y: float, text: str) -> None:
+            drawn[text] = y
+
+        monkeypatch.setattr(canvas.Canvas, "drawCentredString", record)
+
+        return drawn
+
+    def test_version_is_drawn_under_the_exam_ref_after_an_empty_line(
+        self, background: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        drawn = self._record_centred(monkeypatch)
+        style = parse_certificate_style({"exam_ref": {"y": 0.3, "size": 15}})
+
+        generate_certificate_pdf(
+            background_path=background,
+            exam_title="Test Exam",
+            candidate_name="Jane Smith",
+            pass_summary="Pass",
+            completion_date="1 April 2026",
+            style=style,
+            exam_ref="eoeeta-dcp-42",
+            version=12,
+        )
+
+        ref_y = drawn["Exam reference: eoeeta-dcp-42"]
+        assert drawn["Version: 12"] == pytest.approx(ref_y - 15 * 1.2 * 2)
+
+    def test_without_an_exam_ref_the_version_takes_its_line(
+        self, background: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        drawn = self._record_centred(monkeypatch)
+        style = CertificateStyle()
+        _, page_h = A4
+
+        generate_certificate_pdf(
+            background_path=background,
+            exam_title="Test Exam",
+            candidate_name="Jane Smith",
+            pass_summary="Pass",
+            completion_date="1 April 2026",
+            style=style,
+            version=12,
+        )
+
+        assert drawn["Version: 12"] == pytest.approx(page_h * style.exam_ref.y)
+
+    def test_the_result_line_is_large_bold_and_red(
+        self, background: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        fonts: list[tuple[str, float]] = []
+        colours: list[tuple[float, float, float]] = []
+        drawn: list[tuple[str, tuple[str, float], tuple[float, ...]]] = []
+
+        def set_font(self: canvas.Canvas, name: str, size: float) -> None:
+            fonts.append((name, size))
+
+        def set_colour(
+            self: canvas.Canvas, r: float, g: float, b: float
+        ) -> None:
+            colours.append((r, g, b))
+
+        def draw(self: canvas.Canvas, x: float, y: float, text: str) -> None:
+            drawn.append((text, fonts[-1], colours[-1]))
+
+        monkeypatch.setattr(canvas.Canvas, "setFont", set_font)
+        monkeypatch.setattr(canvas.Canvas, "setFillColorRGB", set_colour)
+        monkeypatch.setattr(canvas.Canvas, "drawCentredString", draw)
+        style = parse_certificate_style(
+            {
+                "pass_summary": {
+                    "font": "Times-Roman",
+                    "size": 15,
+                    "colour": "#000000",
+                }
+            }
+        )
+
+        generate_certificate_pdf(
+            background_path=background,
+            exam_title="Test Exam",
+            candidate_name="Jane Smith",
+            pass_summary="Passed\nHigh confidence rate: 78%",
+            completion_date="1 April 2026",
+            style=style,
+        )
+
+        by_text = {text: (font, colour) for text, font, colour in drawn}
+        assert by_text["Passed"] == (
+            ("Times-Bold", 22),
+            RESULT_LINE_RGB,
+        )
+        assert by_text["High confidence rate: 78%"] == (
+            ("Times-Roman", 15),
+            (0.0, 0.0, 0.0),
+        )
+
+    def test_a_result_with_no_scores_is_drawn_alone(
+        self, background: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        drawn = self._record_centred(monkeypatch)
+        style = CertificateStyle()
+        _, page_h = A4
+
+        generate_certificate_pdf(
+            background_path=background,
+            exam_title="Test Exam",
+            candidate_name="Jane Smith",
+            pass_summary="Passed",
+            completion_date="1 April 2026",
+            style=style,
+        )
+
+        assert drawn["Passed"] == pytest.approx(page_h * style.pass_summary.y)
+
+    def test_no_version_draws_no_version_line(
+        self, background: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        drawn = self._record_centred(monkeypatch)
+
+        generate_certificate_pdf(
+            background_path=background,
+            exam_title="Test Exam",
+            candidate_name="Jane Smith",
+            pass_summary="Pass",
+            completion_date="1 April 2026",
+            exam_ref="eoeeta-dcp-42",
+        )
+
+        assert not [text for text in drawn if text.startswith("Version")]
 
     def test_generates_without_exam_ref(self, background: Path) -> None:
         result = generate_certificate_pdf(

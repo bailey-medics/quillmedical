@@ -561,6 +561,7 @@ def test_the_certificate_carries_the_words_of_the_attempt(
         "pass_summary": "Passed\nSure of it: 90%",
         "completion_date": "5 March 2026",
         "exam_ref": f"POLYP-{mine.id}",
+        "version": mine.bank_version,
     }
 
 
