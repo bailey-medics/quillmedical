@@ -45,6 +45,7 @@ MODULES_ROUTES = {
     ("GET", "/teaching/modules"),
     ("GET", "/teaching/modules/{module_id}/learning"),
     ("POST", "/teaching/modules/{module_id}/video-access"),
+    ("POST", "/teaching/modules/{module_id}/videos/{media_key}/plays"),
     ("POST", "/teaching/assessments"),
     ("GET", "/teaching/assessments/{assessment_id}/current"),
     ("GET", "/teaching/assessments/{assessment_id}/item/{display_order}"),

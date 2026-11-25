@@ -26,9 +26,9 @@ import { Link, List, Section } from "../statementParts";
 import "../global-styles";
 import { createRoot } from "react-dom/client";
 
-const VERSION = "1.0";
+const VERSION = "1.1";
 
-const EFFECTIVE = "20 October 2026";
+const EFFECTIVE = "25 November 2026";
 
 createRoot(document.getElementById("root")!).render(
   <PublicMantineProvider>
@@ -126,15 +126,16 @@ createRoot(document.getElementById("root")!).render(
                 an organisation that gives you access under an agreement with
                 us: a training academy, an NHS trust, a royal college, a medical
                 school or an employer. Your sponsor is the controller of your
-                training records: your enrolments, your assessment attempts and
-                answers, and your results and certificates, made within its
-                programme. We are its processor. That means your sponsor decides
-                why those records exist, who at the sponsor sees them, how long
-                they are kept and whether they are passed on, and we act on its
-                written instructions under the data protection terms of our
-                agreement with it. Your sponsor should give you its own privacy
-                notice. Please forward requests about your training record to
-                your sponsor.
+                training records: your enrolments, the learning videos you
+                started, your assessment attempts and answers, and your results
+                and certificates, made within its programme. We are its
+                processor. That means your sponsor decides why those records
+                exist, who at the sponsor sees them, how long they are kept and
+                whether they are passed on, and we act on its written
+                instructions under the data protection terms of our agreement
+                with it. Your sponsor should give you its own privacy notice.
+                Please forward requests about your training record to your
+                sponsor.
               </PublicBodyText>
               <PublicBodyText>
                 2.3 <strong>If you deal with us directly.</strong> If you create
@@ -315,10 +316,11 @@ createRoot(document.getElementById("root")!).render(
                 items={[
                   <>
                     <strong>What</strong> - which modules you are enrolled in,
-                    when, and who enrolled you; each assessment attempt, when it
-                    started and finished, the time limit, each answer you gave
-                    and whether it was correct, your score and whether you
-                    passed; and certificates.
+                    when, and who enrolled you; which learning videos you
+                    started, and when; each assessment attempt, when it started
+                    and finished, the time limit, each answer you gave and
+                    whether it was correct, your score and whether you passed;
+                    and certificates.
                   </>,
                   <>
                     <strong>Why</strong> - this is the record of your training

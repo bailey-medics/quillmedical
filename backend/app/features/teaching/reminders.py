@@ -103,7 +103,7 @@ def _aware(value: datetime) -> datetime:
     return value if value.tzinfo else value.replace(tzinfo=UTC)
 
 
-def _served_config(
+def served_config(
     db: Session, org_unit_id: int, question_bank_id: str
 ) -> QuestionBankConfig | None:
     """The version of a module an organisation serves, or None.
@@ -176,7 +176,7 @@ def due_enrolment_reminders(db: Session, now: datetime) -> list[DueReminder]:
         if NOT_REMINDED in user.get_final_competencies():
             continue
 
-        config = _served_config(
+        config = served_config(
             db, enrolment.org_unit_id, enrolment.question_bank_id
         )
 
@@ -382,7 +382,7 @@ def due_renewal_notices(db: Session, now: datetime) -> list[DueRenewal]:
         if assessment.renewal_notice_sent_at is not None:
             continue
 
-        config = _served_config(
+        config = served_config(
             db, assessment.org_unit_id, assessment.question_bank_id
         )
 

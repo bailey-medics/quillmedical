@@ -102,6 +102,12 @@ class QuestionBankConfig(Base):
     enrolment_reminder_count: Mapped[int | None] = mapped_column(
         Integer, nullable=True
     )
+    #: Whether a delegate must press play on every video in the learning
+    #: section before starting an attempt, from
+    #: ``playVideosBeforeAssessment``. Copied at sync, as the timings are.
+    play_videos_before_assessment: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=false()
+    )
     synced_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(UTC),
@@ -513,6 +519,49 @@ class ModuleEnrolment(Base):
             return False
 
         return self.ends_on is None or aware(self.ends_on) > now
+
+
+class ModuleVideoPlay(Base):
+    """One press of play on one video in a module's learning section.
+
+    Recorded only for a module whose ``module.yaml`` sets
+    ``playVideosBeforeAssessment``, where playing every video unlocks
+    the assessment; ``app.features.teaching.video_plays`` works out what
+    is still to play.
+
+    **A row is never updated or deleted.** Each press is a row, so there
+    is a record of who played what and when, and the reset when a pass
+    runs out is a date comparison rather than a deletion.
+
+    No ``org_unit_id``: the play is the person's, whichever organisation
+    they take the module through.
+    """
+
+    __tablename__ = "module_video_play"
+    __table_args__ = (
+        Index(
+            "ix_module_video_play_user_module",
+            "user_id",
+            "question_bank_id",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    #: The module, as ``question_bank_id`` names it everywhere here.
+    question_bank_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    #: The ``ref`` in ``<Video ref="video-1" />``.
+    media_key: Mapped[str] = mapped_column(String(255), nullable=False)
+    #: When play was pressed, by the server's clock.
+    played_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        nullable=False,
+    )
 
 
 class QuestionBankOrgStatus(Base):

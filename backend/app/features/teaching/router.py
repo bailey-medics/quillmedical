@@ -113,6 +113,7 @@ from app.features.teaching.module_content import (
     video_prefix_to_grant,
 )
 from app.features.teaching.object_paths import media_object_path
+from app.features.teaching.reminders import served_config
 from app.features.teaching.schemas import (
     AdminBankDetailOut,
     AdminBankOut,
@@ -166,6 +167,7 @@ from app.features.teaching.storage import (
 from app.features.teaching.video_access import (
     sign_cookie,
 )
+from app.features.teaching.video_plays import record_play
 from app.features.uploads import scan as upload_scan
 from app.features.uploads.models import UploadScan
 from app.models import (
@@ -494,6 +496,46 @@ def get_learning_content(
     org_id = resolve_visible_module(user, db, module_id)
 
     return learning_content(db, organisation_id=org_id, module_id=module_id)
+
+
+# api-schema-check: allow-opaque-permanent
+@teaching_router.post(
+    "/modules/{module_id}/videos/{media_key}/plays",
+    dependencies=[_DEP_MODULES, DEP_REQUIRE_CSRF],
+    status_code=204,
+)
+def record_video_play(
+    module_id: str,
+    media_key: str,
+    user: User = DEP_CURRENT_USER,
+    db: Session = _DEP_SESSION,
+) -> Response:
+    """Record that the delegate pressed play on one learning video.
+
+    Gated as the learning content is: the competency, then
+    ``resolve_visible_module``, so a module the caller may not open is a
+    404 like any other. A video the module's learning section does not
+    name is a 404 too.
+
+    Otherwise 204, and a play is recorded only when the module asks for
+    plays, through ``playVideosBeforeAssessment``. The browser posts
+    every play without knowing the setting, and nothing is kept for a
+    module that never asked for it.
+    """
+    from app.features.teaching import media
+
+    org_id = resolve_visible_module(user, db, module_id)
+    config = served_config(db, org_id, module_id)
+
+    if config is None or not config.play_videos_before_assessment:
+        return Response(status_code=204)
+
+    if media_key not in media.get_referenced_media_keys(module_id):
+        raise HTTPException(404, "Video not found")
+
+    record_play(db, user.id, module_id, media_key)
+
+    return Response(status_code=204)
 
 
 @teaching_router.get(

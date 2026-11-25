@@ -811,6 +811,22 @@ class TestModuleScheduleReachesTheConfig:
         assert config.renewal_months is None
         assert config.enrolment_reminder_every_days is None
         assert config.enrolment_reminder_count is None
+        assert config.play_videos_before_assessment is False
+
+    def test_play_videos_before_assessment_is_copied(
+        self, db_session, organisation, admin_user, tmp_path: Path
+    ) -> None:
+        bank = _make_bank(tmp_path)
+        self._write_module(tmp_path, "playVideosBeforeAssessment: true\n")
+
+        sync_question_bank(
+            bank,
+            org_unit_id=organisation.id,
+            user_id=admin_user.id,
+            db=db_session,
+        )
+
+        assert self._config(db_session).play_videos_before_assessment
 
     def test_no_module_yaml_at_all_leaves_them_empty(
         self, db_session, organisation, admin_user, tmp_path: Path

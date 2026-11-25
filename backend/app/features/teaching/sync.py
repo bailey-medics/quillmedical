@@ -171,11 +171,14 @@ class ModuleSchedule:
             enrolled who has not finished an attempt, or None.
         enrolment_reminder_count: How many such reminders to send, or
             None.
+        play_videos_before_assessment: Whether every video must be
+            played before the assessment opens.
     """
 
     renewal_months: int | None = None
     enrolment_reminder_every_days: int | None = None
     enrolment_reminder_count: int | None = None
+    play_videos_before_assessment: bool = False
 
 
 def _load_module_schedule(bank_dir: Path) -> ModuleSchedule:
@@ -205,6 +208,7 @@ def _load_module_schedule(bank_dir: Path) -> ModuleSchedule:
         renewal_months=module.renewalMonths,
         enrolment_reminder_every_days=module.enrolmentReminderEveryDays,
         enrolment_reminder_count=module.enrolmentReminderCount,
+        play_videos_before_assessment=module.playVideosBeforeAssessment,
     )
 
 
@@ -217,6 +221,9 @@ def _apply_schedule(
         schedule.enrolment_reminder_every_days
     )
     config.enrolment_reminder_count = schedule.enrolment_reminder_count
+    config.play_videos_before_assessment = (
+        schedule.play_videos_before_assessment
+    )
 
 
 def _actor_for(user_id: int | None) -> str:
@@ -471,6 +478,9 @@ def sync_question_bank(
                     schedule.enrolment_reminder_every_days
                 ),
                 enrolment_reminder_count=schedule.enrolment_reminder_count,
+                play_videos_before_assessment=(
+                    schedule.play_videos_before_assessment
+                ),
                 synced_by=user_id,
                 synced_by_actor=_actor_for(user_id),
             )
