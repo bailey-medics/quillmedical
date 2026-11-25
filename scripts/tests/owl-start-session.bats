@@ -12,6 +12,8 @@
 # if another starter took the service's name a moment before: it refuses,
 # and that starter's server comes up, unless NO_OTHER_SERVER=1.
 
+bats_require_minimum_version 1.5.0
+
 setup() {
     SCRIPT="${BATS_TEST_DIRNAME}/../owl/start-session.sh"
     CALLS="${BATS_TEST_TMPDIR}/tmux-calls"
@@ -68,9 +70,35 @@ EOF
     grep -q "^new-session -d -s owl -c ${OWL_WORKTREE} bash -lc " "$CALLS"
 }
 
-@test "the session runs claude as the watcher, and may read the alert files" {
+@test "the session runs claude as the watcher" {
     run "$SCRIPT"
-    grep -q "export QUILL_OWL=true CLOUDSDK_CONFIG=${HOME}/.config/quill-owl/gcloud CLAUDE_CODE_DISABLE_FEEDBACK_SURVEY=1; claude --add-dir ${OWL_STATE}/alerts" "$CALLS"
+    grep -q "export QUILL_OWL=true CLOUDSDK_CONFIG=${HOME}/.config/quill-owl/gcloud CLAUDE_CODE_DISABLE_FEEDBACK_SURVEY=1; claude --remote-control " "$CALLS"
+}
+
+@test "the alert files are added through settings, so Claude does not ask to trust them" {
+    run "$SCRIPT"
+
+    [ "$status" -eq 0 ]
+    run jq -r '.permissions.additionalDirectories[]' "${OWL_STATE}/session-settings.json"
+    [ "$output" = "${OWL_STATE}/alerts" ]
+    run ! grep -q -- "--add-dir" "$CALLS"
+}
+
+@test "the written settings keep everything in the settings beside the script" {
+    local settings="${BATS_TEST_DIRNAME}/../owl/session-settings.json"
+
+    run "$SCRIPT"
+
+    [ "$status" -eq 0 ]
+    run jq -S 'del(.permissions.additionalDirectories)' "${OWL_STATE}/session-settings.json"
+    [ "$output" = "$(jq -S . "$settings")" ]
+}
+
+@test "the written settings can be read by the user alone" {
+    run "$SCRIPT"
+
+    [ "$status" -eq 0 ]
+    [ "$(stat -c %a "${OWL_STATE}/session-settings.json")" = "600" ]
 }
 
 @test "the session runs in auto mode, so tool calls are decided rather than asked about" {
@@ -83,13 +111,9 @@ EOF
     grep -q -- "--disallowedTools AskUserQuestion " "$CALLS"
 }
 
-@test "the session loads its own settings, from beside the script" {
-    local settings
-
-    settings="$(cd "${BATS_TEST_DIRNAME}/../owl" && pwd)/session-settings.json"
-
+@test "the session loads the settings written to the state folder" {
     run "$SCRIPT"
-    grep -qF -- "--settings ${settings} " "$CALLS"
+    grep -qF -- "--settings ${OWL_STATE}/session-settings.json " "$CALLS"
 }
 
 @test "the session settings refuse reads outside the worktree rather than asking" {
@@ -224,7 +248,7 @@ EOF
     local tools="${BATS_TEST_TMPDIR}/tools"
     mkdir -p "$tools"
     cp "${BATS_TEST_TMPDIR}/bin/tmux" "$tools/"
-    for tool in bash mkdir chmod basename; do
+    for tool in bash mkdir chmod basename jq; do
         ln -s "$(command -v "$tool")" "$tools/$tool"
     done
 
