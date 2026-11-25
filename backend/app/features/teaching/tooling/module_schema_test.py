@@ -118,3 +118,13 @@ def test_the_codes_are_whispers() -> None:
     assert CAPTION_LANGUAGES["en"] == "english"
     assert CAPTION_LANGUAGES["cy"] == "welsh"
     assert len(CAPTION_LANGUAGES) == 100
+
+
+def test_a_module_does_not_ask_for_video_plays_by_default() -> None:
+    assert ModuleYaml(**_module()).playVideosBeforeAssessment is False
+
+
+def test_a_module_may_ask_for_video_plays() -> None:
+    module = ModuleYaml(**_module(playVideosBeforeAssessment=True))
+
+    assert module.playVideosBeforeAssessment is True

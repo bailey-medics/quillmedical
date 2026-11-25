@@ -87,6 +87,9 @@ THEIRS: dict[RouteKey, str] = {
     ("POST", "/api/teaching/modules/{module_id}/video-access"): (
         "watching a lecture in a module they are enrolled on"
     ),
+    ("POST", "/api/teaching/modules/{module_id}/videos/{media_key}/plays"): (
+        "pressing play on a lecture in a module they are enrolled on"
+    ),
     ("POST", "/api/teaching/assessments"): "starting their own attempt",
     ("GET", "/api/teaching/assessments/history"): "their own attempts",
 }

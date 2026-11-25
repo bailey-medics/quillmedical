@@ -131,3 +131,4 @@
 - [One Framework per Repository](2026-11-12-one-framework-per-repository-plan.md)
 - [Turva Review Backport](2026-11-19-turva-review-backport-plan.md)
 - [Quill Uses mark-house-style](2026-11-24-quill-uses-mark-house-style-plan.md)
+- [Play Videos Before Assessment](2026-11-25-play-videos-before-assessment-plan.md)

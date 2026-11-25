@@ -148,6 +148,11 @@ class ModuleYaml(BaseModel):
     #: stopping. Both or neither: a module with neither sends none.
     enrolmentReminderEveryDays: Whole | None = Field(default=None, gt=0)
     enrolmentReminderCount: Whole | None = Field(default=None, gt=0)
+    #: Whether a delegate must press play on every video in the learning
+    #: section before starting the assessment. The unlock lasts until
+    #: their pass runs out, ``renewalMonths`` after passing. Left out, the
+    #: assessment is open from the start.
+    playVideosBeforeAssessment: bool = False
     coverImage: str | None = None
     coverImageFocus: Whole | None = None
     #: Words the module's video captions should spell right, such as
