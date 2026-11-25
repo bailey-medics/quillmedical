@@ -947,11 +947,14 @@ gcp-login:
     # hour's access token from this one instead, so there is one
     # credential to keep and to sign out.
     #
-    # On a Linux machine with no screen, such as the dev box over SSH,
-    # there is no browser to open: `--no-launch-browser` prints a link to
-    # open on another device and asks for the code it shows.
+    # On Linux, always the link-and-code sign-in: `--no-launch-browser`
+    # prints a link to open on any device and asks for the code it shows.
+    # The default sends the browser back to localhost, which works only
+    # on the machine running gcloud. On the dev box the person is usually
+    # elsewhere, over a remote desktop or a VS Code tunnel, even when
+    # there is a screen, so a display says nothing about where they are.
     no_browser=()
-    if [ "$(uname)" = "Linux" ] && [ -z "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]; then
+    if [ "$(uname)" = "Linux" ]; then
         no_browser=(--no-launch-browser)
     fi
 

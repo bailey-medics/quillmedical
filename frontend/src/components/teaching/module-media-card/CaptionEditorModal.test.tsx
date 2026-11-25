@@ -4,6 +4,7 @@ import { renderWithMantine } from "@test/test-utils";
 import CaptionEditorModal from "./CaptionEditorModal";
 
 const VTT = "WEBVTT\n\n00:00:01.000 --> 00:00:03.000\nThe caecum is entered";
+const SECOND_VTT = "WEBVTT\n\n00:00:01.000 --> 00:00:03.000\nA second lecture";
 
 describe("CaptionEditorModal", () => {
   it("shows the loaded captions for editing", () => {
@@ -100,6 +101,42 @@ describe("CaptionEditorModal", () => {
     await user.click(getByRole("button", { name: "Save captions" }));
 
     expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("shows the next video's captions after saving the last one", async () => {
+    // The page keeps one modal for every video. Typing left over from
+    // the first was shown as the second's captions, ready to save.
+    const user = userEvent.setup();
+    const props = {
+      onClose: vi.fn(),
+      onSave: vi.fn().mockResolvedValue(true),
+    };
+    const { getByLabelText, getByRole, rerender } = renderWithMantine(
+      <CaptionEditorModal opened webvtt={VTT} {...props} />,
+    );
+
+    await user.type(getByLabelText("WebVTT captions"), " slowly");
+    await user.click(getByRole("button", { name: "Save captions" }));
+    rerender(<CaptionEditorModal opened={false} webvtt={VTT} {...props} />);
+    rerender(<CaptionEditorModal opened webvtt={SECOND_VTT} {...props} />);
+
+    expect(getByLabelText("WebVTT captions")).toHaveValue(SECOND_VTT);
+  });
+
+  it("drops cancelled typing when it opens again", async () => {
+    const user = userEvent.setup();
+    const props = { onClose: vi.fn(), onSave: vi.fn() };
+    const { getByLabelText, getByRole, rerender } = renderWithMantine(
+      <CaptionEditorModal opened webvtt={VTT} {...props} />,
+    );
+
+    await user.type(getByLabelText("WebVTT captions"), " slowly");
+    await user.click(getByRole("button", { name: "Cancel" }));
+    rerender(<CaptionEditorModal opened={false} webvtt={VTT} {...props} />);
+    rerender(<CaptionEditorModal opened webvtt={VTT} {...props} />);
+
+    expect(props.onClose).toHaveBeenCalled();
+    expect(getByLabelText("WebVTT captions")).toHaveValue(VTT);
   });
 
   it("shows what went wrong", () => {
