@@ -176,7 +176,7 @@ class SubscribeOut(BaseModel):
 def subscribe(
     sub: PushSubscriptionIn,
     current_user: User = DEP_REQUIRE_CSRF,
-    db: Session = Depends(get_core_db),
+    db: Session = Depends(get_core_db, scope="function"),
 ) -> SubscribeOut:
     """Register a new push notification subscription.
 

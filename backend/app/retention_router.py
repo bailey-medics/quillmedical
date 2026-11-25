@@ -49,7 +49,7 @@ router = APIRouter(
     dependencies=[MAY_DECIDE],
 )
 
-_DEP_SESSION = Depends(get_core_db)
+_DEP_SESSION = Depends(get_core_db, scope="function")
 
 
 @router.get("/reviews", response_model=RetentionReviewListOut)

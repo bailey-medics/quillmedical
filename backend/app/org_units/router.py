@@ -114,7 +114,7 @@ from app.schemas.organisations import (
 from app.users.closure_notice import send_closure_notice
 from app.users.scope import check_account_in_scope
 
-_DEP_SESSION = Depends(get_core_db)
+_DEP_SESSION = Depends(get_core_db, scope="function")
 
 
 DEP_REQUIRE_MANAGE_USERS = Depends(has_competency("manage_users"))

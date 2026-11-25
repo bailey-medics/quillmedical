@@ -191,7 +191,7 @@ teaching_router = APIRouter(
     dependencies=[Depends(requires_feature("teaching"))],
 )
 
-_DEP_SESSION = Depends(get_core_db)
+_DEP_SESSION = Depends(get_core_db, scope="function")
 
 
 # The two doors a learner goes through. Every learner route carries one

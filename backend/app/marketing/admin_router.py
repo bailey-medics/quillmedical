@@ -42,7 +42,7 @@ router = APIRouter(
     dependencies=[MAY_USE_NEWSLETTER],
 )
 
-_DEP_SESSION = Depends(get_core_db)
+_DEP_SESSION = Depends(get_core_db, scope="function")
 
 #: How much of an upload is read at a time.
 _CHUNK = 64 * 1024

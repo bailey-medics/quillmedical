@@ -96,17 +96,29 @@ def get_core_db() -> Generator[Session]:
     generated columns without ending the transaction, so the row stays
     rollback-able if something later in the request fails.
 
+    **Always declare it with `scope="function"`**, as
+    `Depends(get_core_db, scope="function")`. FastAPI's default runs the
+    code after `yield` only once the response has been sent, and after
+    any background task, so the commit came after the browser had its
+    answer. A page that then asked again read the old data: a user just
+    deactivated still showed as active. Function scope commits before
+    the response leaves. Every declaration must use the same scope, or
+    one request could be handed two sessions. A test walks every route
+    to hold this.
+
     Yields:
         Session: SQLAlchemy database session for core database.
 
     Example:
         ```python
         @router.get("/users")
-        def list_users(db: Session = Depends(get_core_db)):
+        DEP_SESSION = Depends(get_core_db, scope="function")
+
+        def list_users(db: Session = DEP_SESSION):
             return db.scalars(select(User)).all()
 
         @router.post("/users")
-        def create_user(user_in: UserCreate, db: Session = Depends(get_core_db)):
+        def create_user(user_in: UserCreate, db: Session = DEP_SESSION):
             user = User(**user_in.model_dump())
             db.add(user)
             db.flush()

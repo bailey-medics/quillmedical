@@ -61,7 +61,7 @@ router = APIRouter()
 )
 def ci_transcode_complete(
     body: TranscodeCompleteIn,
-    db: Session = Depends(get_core_db),
+    db: Session = Depends(get_core_db, scope="function"),
     _caller: str = DEP_REQUIRE_JOB_IDENTITY,
 ) -> TranscodeCompleteOut:
     """Record that the transcode job produced and verified its outputs.
@@ -92,7 +92,7 @@ def ci_transcode_complete(
 )
 def ci_caption_complete(
     body: CaptionCompleteIn,
-    db: Session = Depends(get_core_db),
+    db: Session = Depends(get_core_db, scope="function"),
     _caller: str = DEP_REQUIRE_JOB_IDENTITY,
 ) -> CaptionCompleteOut:
     """Record that a caption track exists for one asset.
@@ -119,7 +119,7 @@ def ci_caption_complete(
 )
 def ci_no_speech(
     body: CaptionCompleteIn,
-    db: Session = Depends(get_core_db),
+    db: Session = Depends(get_core_db, scope="function"),
     _caller: str = DEP_REQUIRE_JOB_IDENTITY,
 ) -> CaptionCompleteOut:
     """Record that the caption job found no speech in one asset.
@@ -143,7 +143,7 @@ def ci_no_speech(
 )
 def ci_poster_complete(
     body: PosterCompleteIn,
-    db: Session = Depends(get_core_db),
+    db: Session = Depends(get_core_db, scope="function"),
     _caller: str = DEP_REQUIRE_JOB_IDENTITY,
 ) -> PosterCompleteOut:
     """Record that a retaken poster is in the bucket.
