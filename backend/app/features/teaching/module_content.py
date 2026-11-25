@@ -462,6 +462,7 @@ def _slide_row(
         "video_src_1080p": video["src_1080p"],
         "video_poster": video["poster"],
         "video_captions": video["captions"],
+        "video_ref": slide.video_ref,
     }
 
 

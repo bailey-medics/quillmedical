@@ -68,6 +68,7 @@ interface ApiSlide {
   video_src_1080p?: string;
   video_poster?: string;
   video_captions?: string;
+  video_ref?: string | null;
   duration_seconds?: number;
   image_src?: string;
   image_alt?: string;
@@ -89,6 +90,7 @@ function toCompiledSlide(s: ApiSlide): CompiledSlide {
     videoSrc1080p: s.video_src_1080p,
     videoPoster: s.video_poster,
     videoCaptions: s.video_captions,
+    videoRef: s.video_ref ?? undefined,
     durationSeconds: s.duration_seconds,
     imageSrc: s.image_src,
     imageAlt: s.image_alt,

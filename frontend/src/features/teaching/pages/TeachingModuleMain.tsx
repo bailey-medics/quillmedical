@@ -24,6 +24,9 @@ import TeachingLayout from "@/components/layouts/TeachingLayout";
 import TeachingMainNav from "@/components/navigation/teaching/TeachingMainNav";
 import type { QuestionBank } from "@/features/teaching/types";
 
+/** Shown under the disabled "Start assessment" button. */
+const LOCKED_REASON = "Complete the learning section first";
+
 export default function TeachingModuleMain() {
   const { bankId } = useParams<{ bankId: string }>();
   const navigate = useNavigate();
@@ -89,6 +92,9 @@ export default function TeachingModuleMain() {
   }
 
   const hasLearning = bank.has_learning;
+  // A module may keep its assessment locked until every learning video
+  // has been played. The server refuses a start too; this only guides.
+  const assessmentLocked = (bank.videos_to_play ?? []).length > 0;
 
   return (
     <TeachingLayout sidebar={sidebarNav} drawerContent={sidebarNav}>
@@ -112,6 +118,8 @@ export default function TeachingModuleMain() {
               title="Start assessment"
               subtitle="Test your knowledge with a timed multiple-choice assessment."
               buttonLabel="Start assessment"
+              disabled={assessmentLocked}
+              disabledReason={LOCKED_REASON}
               onClick={() =>
                 navigate(
                   `/teaching/assessment/new?bank=${bank.question_bank_id}`,
@@ -126,6 +134,8 @@ export default function TeachingModuleMain() {
             subtitle="Test your knowledge with a timed multiple-choice assessment."
             buttonLabel="Start assessment"
             fullWidth
+            disabled={assessmentLocked}
+            disabledReason={LOCKED_REASON}
             onClick={() =>
               navigate(`/teaching/assessment/new?bank=${bank.question_bank_id}`)
             }

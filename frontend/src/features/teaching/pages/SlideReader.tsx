@@ -16,6 +16,7 @@ import React, {
   useEffect,
   useLayoutEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -29,6 +30,7 @@ import NotFoundLayout from "@/components/layouts/NotFoundLayout";
 import { IconAlertCircle } from "@/components/icons/appIcons";
 import { StateMessage } from "@/components/message-cards";
 import { getModuleSlides } from "@/features/teaching/learning-data";
+import { api } from "@/lib/api";
 import type { CompiledSlide } from "@/features/teaching/types";
 import { arrowKeysAreSpokenFor } from "@/features/teaching/arrowKeys";
 
@@ -153,6 +155,33 @@ export default function SlideReader() {
     // Phase 2: debounced POST to bookmark endpoint
   }, []);
 
+  // The slide whose video has been recorded as played, so a pause and
+  // play again on the same slide posts nothing more. Moving to another
+  // slide and back counts as a new view.
+  const playRecordedOn = useRef<number | null>(null);
+
+  // Tell the server play was pressed, for a module that keeps its
+  // assessment locked until every video is played. Posted on every
+  // module: the reader does not load the module's settings, and the
+  // server keeps nothing for a module that does not ask.
+  const handleVideoPlay = useCallback(() => {
+    const ref = currentSlide?.videoRef;
+
+    if (!moduleId || !ref || playRecordedOn.current === currentIndex) {
+      return;
+    }
+
+    playRecordedOn.current = currentIndex;
+
+    // A failed post is let go: the video keeps playing, and pressing
+    // play again on another visit records it then.
+    api
+      .post(
+        `/teaching/modules/${encodeURIComponent(moduleId)}/videos/${encodeURIComponent(ref)}/plays`,
+      )
+      .catch(() => undefined);
+  }, [moduleId, currentSlide?.videoRef, currentIndex]);
+
   if (loading) {
     return (
       <TeachingLayout fluid>
@@ -218,6 +247,7 @@ export default function SlideReader() {
           slide={currentSlide}
           moduleId={moduleId}
           onVideoProgress={handleVideoProgress}
+          onVideoPlay={handleVideoPlay}
         />
 
         {/* On every screen size, not only phones: the side list and the

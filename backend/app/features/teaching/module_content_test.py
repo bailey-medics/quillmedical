@@ -563,6 +563,7 @@ def test_the_pages_from_the_bucket_are_given_slide_by_slide(
                 "image_caption": None,
                 "image_position": None,
                 **NO_VIDEO,
+                "video_ref": None,
             },
             {
                 "slide_index": 1,
@@ -578,6 +579,7 @@ def test_the_pages_from_the_bucket_are_given_slide_by_slide(
                 "image_caption": None,
                 "image_position": None,
                 **NO_VIDEO,
+                "video_ref": None,
             },
         ],
     }
@@ -700,6 +702,19 @@ def test_a_transcoded_video_plays_at_720p_with_nothing_else_claimed(
         **NO_VIDEO,
         "video_src": "asset1-720p.mp4",
     }
+
+
+def test_a_video_slide_names_its_ref_for_recording_plays(
+    db_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    org = _organisation(db_session)
+    _link(db_session, org)
+    _bucket(monkeypatch, VIDEO)
+    _media(monkeypatch)
+
+    (slide,) = _pages(db_session, org.id)["slides"]
+
+    assert slide["video_ref"] == "lecture-01"
 
 
 def test_each_other_file_is_named_only_where_the_link_records_it(

@@ -30,7 +30,26 @@ vi.mock("@/components/layouts/TeachingLayout", () => ({
   default: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }));
 vi.mock("@/components/teaching/slide-viewer/SlideViewer", () => ({
-  default: ({ slide }: { slide: CompiledSlide }) => <h1>{slide.title}</h1>,
+  // A Play button stands in for the video player's own, so a test can
+  // press play without a real video.
+  default: ({
+    slide,
+    onVideoPlay,
+  }: {
+    slide: CompiledSlide;
+    onVideoPlay?: () => void;
+  }) => (
+    <>
+      <h1>{slide.title}</h1>
+      <button type="button" onClick={onVideoPlay}>
+        Play
+      </button>
+    </>
+  ),
+}));
+
+vi.mock("@/lib/api", () => ({
+  api: { post: vi.fn() },
 }));
 
 vi.mock("@/components/navigation/teaching/TeachingMainNav", () => ({
@@ -38,6 +57,7 @@ vi.mock("@/components/navigation/teaching/TeachingMainNav", () => ({
 }));
 
 import { getModuleSlides } from "@/features/teaching/learning-data";
+import { api } from "@/lib/api";
 import SlideReader from "./SlideReader";
 
 const slides: CompiledSlide[] = [
@@ -215,4 +235,64 @@ describe("SlideReader arrow keys", { timeout: 10_000 }, () => {
       expect(notPrevented).toBe(true);
     },
   );
+});
+
+describe("SlideReader records a press of play", () => {
+  const videoSlides: CompiledSlide[] = [
+    {
+      slideIndex: 0,
+      layout: "video-slide",
+      title: "First video",
+      videoSrc: "asset1-720p.mp4",
+      videoRef: "video-1",
+    },
+    { slideIndex: 1, layout: "section-title", title: "Summary" },
+  ];
+  const post = vi.mocked(api.post);
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    (getModuleSlides as Mock).mockResolvedValue(videoSlides);
+    post.mockResolvedValue(undefined);
+  });
+
+  it("posts the video's ref the first time play is pressed", async () => {
+    renderAt(0);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Play" }));
+
+    expect(post).toHaveBeenCalledTimes(1);
+    expect(post).toHaveBeenCalledWith(
+      "/teaching/modules/cxr/videos/video-1/plays",
+    );
+  });
+
+  it("posts once for a slide however often play is pressed", async () => {
+    renderAt(0);
+    const play = await screen.findByRole("button", { name: "Play" });
+
+    fireEvent.click(play);
+    fireEvent.click(play);
+
+    expect(post).toHaveBeenCalledTimes(1);
+  });
+
+  it("posts nothing for a slide with no hosted video", async () => {
+    renderAt(1);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Play" }));
+
+    expect(post).not.toHaveBeenCalled();
+  });
+
+  it("keeps going when the post fails", async () => {
+    post.mockRejectedValue(new Error("offline"));
+    renderAt(0);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Play" }));
+
+    expect(
+      await screen.findByRole("heading", { name: "First video" }),
+    ).toBeInTheDocument();
+  });
 });
