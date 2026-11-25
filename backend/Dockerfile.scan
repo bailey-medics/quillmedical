@@ -50,7 +50,7 @@ WORKDIR /app
 # on GitHub (the `digest` of each `.deb`). The build fails until they are,
 # which is the point: a package that is not the one reviewed is refused.
 # renovate: datasource=github-releases depName=Cisco-Talos/clamav extractVersion=^clamav-(?<version>.+)$
-ARG CLAMAV_VERSION=1.4.6
+ARG CLAMAV_VERSION=1.4.7
 ARG CLAMAV_SHA256_AMD64=d3ee9e401974855a1edc1761b1425417d126de618d5f0c91cd51209f69f6fcc2
 ARG CLAMAV_SHA256_ARM64=a29cc95aeb225f0dc1b99024b49f1cc109502cb17aaf168637d0901aa9674fe8
 ARG TARGETARCH
