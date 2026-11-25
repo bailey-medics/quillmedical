@@ -32,6 +32,7 @@ from reportlab.lib.pagesizes import (  # type: ignore[import-untyped]
 from reportlab.pdfgen import canvas  # type: ignore[import-untyped]
 
 from app.features.teaching.tooling.certificate_schema import (
+    BOLD_FONT,
     CertificateStyle,
     TextFieldStyle,
 )
@@ -270,6 +271,7 @@ def generate_certificate_pdf(
     completion_date: str,
     style: CertificateStyle | None = None,
     exam_ref: str | None = None,
+    version: int | None = None,
 ) -> bytes:
     """Render a PDF certificate with text overlaid on the background.
 
@@ -290,6 +292,9 @@ def generate_certificate_pdf(
         when None.
     exam_ref:
         Optional exam reference number, e.g. "eoeeta-1-42".
+    version:
+        Optional version of the assessment the candidate sat, printed
+        under the exam reference, e.g. "Version: 12".
 
     Returns
     -------
@@ -337,8 +342,8 @@ def generate_certificate_pdf(
         c, candidate_name, style.candidate_name, cx, page_h, max_text_width
     )
 
-    # --- Pass summary ---
-    _draw_field(
+    # --- Pass summary: the result in large red, then the scores ---
+    _draw_pass_summary(
         c, pass_summary, style.pass_summary, cx, page_h, max_text_width
     )
 
@@ -349,6 +354,10 @@ def generate_certificate_pdf(
     if exam_ref:
         ref_text = f"Exam reference: {exam_ref}"
         _draw_field(c, ref_text, style.exam_ref, cx, page_h, max_text_width)
+
+    # --- Assessment version, on the line under the exam reference ---
+    if version is not None:
+        _draw_version(c, version, style.exam_ref, cx, page_h, bool(exam_ref))
 
     c.showPage()
     c.save()
@@ -379,6 +388,80 @@ def _draw_field(
         font_name,
         font_size,
     )
+
+
+def _draw_version(
+    c: Canvas,
+    version: int,
+    field_style: TextFieldStyle,
+    cx: float,
+    page_h: float,
+    below_exam_ref: bool,
+) -> None:
+    """Draw "Version: N", centred, in the exam reference's style.
+
+    Under the exam reference, with an empty line between them, when there
+    is one, so it follows wherever a bank puts that field. On the exam
+    reference's own line when there is none.
+    """
+    y = page_h * field_style.y
+
+    if below_exam_ref:
+        y -= field_style.size * 1.2 * 2
+
+    r, g, b = field_style.rgb
+
+    c.setFont(field_style.resolved_font, field_style.size)
+    c.setFillColorRGB(r, g, b)
+    c.drawCentredString(cx, y, f"Version: {version}")
+
+
+#: How much larger the result line is than the scores under it.
+RESULT_LINE_SCALE = 1.5
+
+#: The result line's colour, the same on every bank's certificate.
+RESULT_LINE_RGB = (0.75, 0.10, 0.10)
+
+
+def _draw_pass_summary(
+    c: Canvas,
+    text: str,
+    field_style: TextFieldStyle,
+    cx: float,
+    page_h: float,
+    max_width: float,
+) -> None:
+    """Draw the pass summary, its first line large, bold and red.
+
+    The first line is the result, such as "Passed". It sits where the
+    top of the block always did, and the scores follow beneath it in
+    the field's own style.
+    """
+    result, _, scores = text.partition("\n")
+    size = field_style.size
+    result_size = round(size * RESULT_LINE_SCALE)
+    score_lines = (
+        _wrap_text(c, scores, field_style.resolved_font, size, max_width)
+        if scores
+        else []
+    )
+    line_height = size * 1.2
+    top_y = page_h * field_style.y + line_height * len(score_lines) / 2
+
+    c.setFont(BOLD_FONT[field_style.font], result_size)
+    c.setFillColorRGB(*RESULT_LINE_RGB)
+    c.drawCentredString(cx, top_y, result)
+
+    if not scores:
+        return
+
+    r, g, b = field_style.rgb
+    c.setFont(field_style.resolved_font, size)
+    c.setFillColorRGB(r, g, b)
+    first_score_y = top_y - result_size * 1.2
+
+    for i, line in enumerate(score_lines):
+        c.drawCentredString(cx, first_score_y - i * line_height, line)
 
 
 def _draw_centred(

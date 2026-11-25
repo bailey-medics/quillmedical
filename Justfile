@@ -1500,7 +1500,16 @@ preview-certificate bank="colonoscopy-optical-diagnosis-test":
     just _worktree-guard quill_backend
     docker exec quill_backend python -m scripts.preview_certificate --bank "{{bank}}"
     docker cp quill_backend:/tmp/certificate-preview.pdf .
-    open certificate-preview.pdf
+
+    # `open` is the Mac's. A Linux box with a screen has xdg-open; one
+    # reached over SSH or a tunnel has neither, so the path is printed.
+    if command -v open >/dev/null 2>&1 && [ "$(uname)" = "Darwin" ]; then
+        open certificate-preview.pdf
+    elif command -v xdg-open >/dev/null 2>&1 && [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]; then
+        xdg-open certificate-preview.pdf
+    else
+        echo "Preview written to $(pwd)/certificate-preview.pdf"
+    fi
 
 
 alias pb := prune-branches

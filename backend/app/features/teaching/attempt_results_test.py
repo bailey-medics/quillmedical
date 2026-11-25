@@ -640,6 +640,7 @@ def test_the_certificate_is_handed_the_words_of_the_attempt(
         "pass_summary": "Passed\nSure of it: 90%",
         "completion_date": "5 March 2026",
         "exam_ref": "POLYP-9",
+        "version": assessment.bank_version,
     }
 
 
