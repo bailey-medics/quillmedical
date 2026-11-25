@@ -21,6 +21,12 @@ export interface QuestionBank {
   has_learning: boolean;
   cover_image_url: string | null;
   cover_image_focus: number | null;
+  /**
+   * The videos the learner must still play before the assessment opens,
+   * by their MDX `ref`. Empty when it is open, including on every module
+   * that does not ask for plays. Absent from an older backend.
+   */
+  videos_to_play?: string[];
 }
 
 export interface AssessmentPageConfig {
@@ -369,6 +375,12 @@ export interface CompiledSlide {
    * code identical in both environments.
    */
   videoSrc?: string;
+  /**
+   * The MDX `ref` of a hosted video, such as `video-1`. Not a path: it is
+   * the name the slide reader gives when it records that play was
+   * pressed.
+   */
+  videoRef?: string;
   /**
    * Filename of the 1080p rendition, where the transcode job made one.
    *

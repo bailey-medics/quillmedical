@@ -41,6 +41,8 @@ export interface SlideLayoutVideoProps {
   forceLoading?: boolean;
   /** Called with playback position in seconds */
   onVideoProgress?: (seconds: number) => void;
+  /** Called each time playback starts or resumes */
+  onVideoPlay?: () => void;
   /** Resume position in seconds */
   resumeAt?: number;
 }
@@ -51,6 +53,7 @@ export default function SlideLayoutVideo({
   baseUrlOverride,
   forceLoading = false,
   onVideoProgress,
+  onVideoPlay,
   resumeAt,
 }: SlideLayoutVideoProps) {
   // Only hosted video needs a grant. A YouTube slide asks for nothing,
@@ -103,6 +106,7 @@ export default function SlideLayoutVideo({
           posterUrl={withBase(slide.videoPoster)}
           captionsUrl={withBase(slide.videoCaptions)}
           onProgress={onVideoProgress}
+          onPlay={onVideoPlay}
           resumeAt={resumeAt}
         />
       )}

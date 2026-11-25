@@ -80,6 +80,11 @@ class LearningSlideOut(BaseModel):
     video_src_1080p: str | None = None
     #: Poster frame, shown before playback begins.
     video_poster: str | None = None
+    #: The MDX ``ref`` itself, such as ``video-1``: the name the browser
+    #: gives when it records that play was pressed, through
+    #: ``POST /modules/{module_id}/videos/{media_key}/plays``. Not a
+    #: path to anything. Null on a slide with no hosted video.
+    video_ref: str | None = None
     #: WebVTT captions. A WCAG 2.1 AA requirement for the learning
     #: centre, produced by the caption job rather than the transcode one,
     #: so this stays None until that job exists.

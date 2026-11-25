@@ -52,6 +52,7 @@ export default function VideoPlayerV10({
   posterUrl,
   captionsUrl,
   onProgress,
+  onPlay,
   resumeAt,
 }: VideoPlayerV10Props) {
   const target = useRef<PlaybackTarget | null>(null);
@@ -110,6 +111,10 @@ export default function VideoPlayerV10({
     }
   }, [onProgress]);
 
+  const handlePlay = useCallback(() => {
+    onPlay?.();
+  }, [onPlay]);
+
   if (!youtubeId && !activeSrc) return null;
 
   return (
@@ -129,6 +134,7 @@ export default function VideoPlayerV10({
                 src={youtubeId}
                 onCanPlay={handleCanPlay}
                 onTimeUpdate={handleTimeUpdate}
+                onPlay={handlePlay}
               />
             ) : (
               <Video
@@ -138,6 +144,7 @@ export default function VideoPlayerV10({
                 playsInline
                 onCanPlay={handleCanPlay}
                 onTimeUpdate={handleTimeUpdate}
+                onPlay={handlePlay}
               >
                 {/* No `default`: the track is offered through the
                     captions button and is not switched on when the

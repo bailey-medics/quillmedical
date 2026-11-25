@@ -166,30 +166,45 @@ is safe on `main` alone.
 
 ## Phase 3: Record plays in the slide reader, and lock the assessment card
 
-- [ ] Add an `onPlay` callback to `ActiveVideoPlayer` in
+- [x] Send each video slide's MDX `ref` from
+      `GET /api/teaching/modules/{module_id}/learning`, as a new
+      `video_ref` on `LearningSlideOut` in
+      `backend/app/features/teaching/schemas.py`, filled in by `_slide_row`
+      in `module_content.py`. Found while building: the slides carried
+      only the resolved file name, never the `ref`, so the browser had no
+      name to post. It is an added field, so the `oasdiff` check sees no
+      breaking change. The frontend maps it to `videoRef` on
+      `CompiledSlide`, in `learning-data.ts`, and adds `videos_to_play`
+      to its hand-written `QuestionBank` type in `types.ts`.
+
+- [x] Add an `onPlay` callback to `ActiveVideoPlayer` in
       `frontend/src/components/teaching/video-player/`, passed through to
       both players it can choose, `VideoPlayer` and `VideoPlayerV10`,
       and fired on the video's `play` event. Pass it from
       `SlideLayoutVideo` through `SlideViewer` to `SlideReader`.
 
-- [ ] In `SlideReader`, post to the Phase 1 route through `api.ts` the
+- [x] In `SlideReader`, post to the Phase 1 route through `api.ts` the
       first time play is pressed on each slide view. It posts on every
       module, because it does not load the module's settings; the route
       decides whether to record it. A failed post is ignored: the video
       keeps playing, and the delegate can press play again.
 
-- [ ] On the module page, `TeachingModuleMain.tsx`, set `disabled` on the
+- [x] On the module page, `TeachingModuleMain.tsx`, set `disabled` on the
       "Start assessment" `ActionCard` while `videos_to_play` is not
       empty, with `disabledReason` "Complete the learning section first".
       `ActionCard` already shows the reason in grey beneath a disabled
       button, so no new component is needed. Both places the card is
       built (with and without learning content) take the same rule.
 
-- [ ] Tests: `ActionCard`'s disabled story already exists; add
+- [x] Tests: `ActionCard`'s disabled story already exists; add
       `TeachingModuleMain` tests for a locked and an unlocked card, and a
       `SlideReader` test that pressing play posts once per slide view and
       not again on a second press. An end-to-end test is left out:
-      Playwright's stack has no transcoded video to play.
+      Playwright's stack has no transcoded video to play. Built as a new
+      `TeachingModuleMain.test.tsx`, since the page had no tests, four
+      `SlideReader` tests, a `VideoPlayerV10` test that a play event is
+      passed on, and a `module_content_test.py` test that a video slide
+      names its `ref`.
 
 ## Phase 4: Turn it on for EoEETA
 
@@ -197,13 +212,15 @@ is safe on `main` alone.
 production, because the teaching repository's checks read the module
 schema from Quill.
 
-- [ ] In `bailey-medics/eoeeta-teaching`, add
+- [x] In `bailey-medics/eoeeta-teaching`, add
       `playVideosBeforeAssessment: true` to
       `modules/colonoscopy-optical-diagnosis/module.yaml`, with a comment
       saying EoEETA asked for it, and the same in
       `eoeeta-teaching-testing`, so the test module behaves like the real
       one. Run `just validate-teaching`. One `/crpd eoeeta` and one
-      `/crpd eoeeta-test`.
+      `/crpd eoeeta-test`: bailey-medics/eoeeta-teaching#21 and
+      bailey-medics/eoeeta-teaching-testing#10, each carrying the
+      "Merge only after" list.
 
 ## Decisions
 

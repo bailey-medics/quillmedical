@@ -254,6 +254,17 @@ describe("VideoPlayerV10", () => {
       expect(onProgress).toHaveBeenCalledWith(12);
     });
 
+    it("says when a hosted video starts playing", () => {
+      const onPlay = vi.fn();
+      const { getByTestId } = renderWithMantine(
+        <VideoPlayerV10 src="/clip.mp4" onPlay={onPlay} />,
+      );
+
+      fireEvent.play(getByTestId("v10-video"));
+
+      expect(onPlay).toHaveBeenCalledTimes(1);
+    });
+
     it("reports the position of a YouTube video as it plays", () => {
       const onProgress = vi.fn();
       renderWithMantine(

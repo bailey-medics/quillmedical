@@ -58,6 +58,12 @@ export interface VideoPlayerProps {
   captionsUrl?: string;
   /** Called with current playback position in seconds */
   onProgress?: (seconds: number) => void;
+  /**
+   * Called each time playback starts or resumes, by the learner or the
+   * player. The slide reader uses the first one on each slide to record
+   * that the learner opened the video.
+   */
+  onPlay?: () => void;
   /** Resume playback from this position (seconds) */
   resumeAt?: number;
 }
@@ -69,6 +75,7 @@ export default function VideoPlayer({
   posterUrl,
   captionsUrl,
   onProgress,
+  onPlay,
   resumeAt,
 }: VideoPlayerProps) {
   const playerRef = useRef<HTMLVideoElement | null>(null);
@@ -152,6 +159,10 @@ export default function VideoPlayer({
     }
   }, [onProgress]);
 
+  const handlePlay = useCallback(() => {
+    onPlay?.();
+  }, [onPlay]);
+
   if (!src) return null;
 
   return (
@@ -181,6 +192,7 @@ export default function VideoPlayer({
               controls
               onCanPlay={handleReady}
               onTimeUpdate={handleTimeUpdate}
+              onPlay={handlePlay}
             >
               {/* No `default`: the track is offered in the player's
                   own captions menu rather than switched on when the
@@ -203,6 +215,7 @@ export default function VideoPlayer({
               controls
               onCanPlay={handleReady}
               onTimeUpdate={handleTimeUpdate}
+              onPlay={handlePlay}
             />
           )}
         </Suspense>

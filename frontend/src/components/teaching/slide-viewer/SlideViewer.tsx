@@ -25,6 +25,8 @@ export interface SlideViewerProps {
   moduleId?: string;
   /** Called with playback position for video slides */
   onVideoProgress?: (seconds: number) => void;
+  /** Called each time playback starts or resumes on a video slide */
+  onVideoPlay?: () => void;
   /** Resume position for video slides (seconds) */
   videoResumeAt?: number;
 }
@@ -33,6 +35,7 @@ export default function SlideViewer({
   slide,
   moduleId,
   onVideoProgress,
+  onVideoPlay,
   videoResumeAt,
 }: SlideViewerProps) {
   switch (slide.layout) {
@@ -44,6 +47,7 @@ export default function SlideViewer({
           slide={slide}
           moduleId={moduleId}
           onVideoProgress={onVideoProgress}
+          onVideoPlay={onVideoPlay}
           resumeAt={videoResumeAt}
         />
       );
