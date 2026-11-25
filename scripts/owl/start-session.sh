@@ -19,7 +19,7 @@
 # The session runs `claude` in quillmedical-owl with QUILL_OWL=true,
 # which is what turns on the busy-flag hook and the standing permission in
 # CLAUDE.md, and nothing else sets it. It may read the alert files the
-# daemon writes (--add-dir), and runs without a prompt only the commands
+# daemon writes, and runs without a prompt only the commands
 # the /alert skill needs beyond reading and testing (--allowedTools): a
 # prompt would stall a run with nobody there to answer it. When `claude`
 # exits, a login shell takes its place, so the tmux session stays for a
@@ -38,6 +38,15 @@
 # switches off the tips and suggestions drawn in the pane, so what the
 # watcher reads there is the prompt and nothing else. It is passed with
 # --settings, so it applies to this session and no other worktree.
+#
+# The alerts folder is added through that file's
+# permissions.additionalDirectories, never --add-dir. Claude Code asks
+# whether to trust a folder given with --add-dir, at every start, so Owl
+# sat at that question after each restart and missed alerts. A folder
+# listed in a --settings file is added without asking. Its path is only
+# known here, so the script writes a copy of the file with the folder in,
+# to the state folder, and passes that. One --settings flag, not two: a
+# second one replaces the first file's list instead of adding to it.
 #
 # CLOUDSDK_CONFIG gives the session gcloud settings of its own, holding the
 # log reader's key and nothing else. The watcher runs as the same user as
@@ -164,11 +173,17 @@ main() {
     mkdir -p "${state}/alerts"
     chmod 0700 "${state}" "${state}/alerts"
 
+    local session_settings="${state}/session-settings.json"
+    jq --arg alerts "${state}/alerts" \
+        '.permissions.additionalDirectories = [$alerts]' \
+        "${settings}" >"${session_settings}"
+    chmod 0600 "${session_settings}"
+
     local command
-    command="export QUILL_OWL=true CLOUDSDK_CONFIG=$(printf '%q' "${gcloud_config}") CLAUDE_CODE_DISABLE_FEEDBACK_SURVEY=1; claude --add-dir $(printf '%q' "${state}/alerts")"
+    command="export QUILL_OWL=true CLOUDSDK_CONFIG=$(printf '%q' "${gcloud_config}") CLAUDE_CODE_DISABLE_FEEDBACK_SURVEY=1; claude"
     command+=" --remote-control $(printf '%q' "$(basename "${worktree}")")"
     command+=" --permission-mode auto"
-    command+=" --settings $(printf '%q' "${settings}")"
+    command+=" --settings $(printf '%q' "${session_settings}")"
     command+=" --disallowedTools AskUserQuestion"
     command+=" --allowedTools $(printf '%q ' "${ALLOWED_TOOLS[@]}")"
     command+="; exec bash -l"
