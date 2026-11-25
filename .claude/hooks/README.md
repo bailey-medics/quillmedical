@@ -166,7 +166,8 @@ terminal tab. A new title waits for a second prompt to agree with it, and
 `/clear` or a fresh start clears it. It works in Owl's `owl` session too,
 where Claude Code's own title fills in while an alert runs, because an
 alert arrives as a slash command and the hook skips those. Anywhere else it
-does nothing. See [the tmux page](../../docs/docs/tmux/index.md).
+does nothing. See
+[the tmux page in mark-house-style](https://github.com/bailey-medics/mark-house-style/blob/main/scripts/tmux/README.md).
 
 ## Owl's Bash guard
 
