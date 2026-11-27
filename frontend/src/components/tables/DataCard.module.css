@@ -2,6 +2,11 @@
   overflow-wrap: anywhere;
 }
 
+/* Only a card that opens shows the pointer. */
+.clickable {
+  cursor: pointer;
+}
+
 .header {
   flex-shrink: 0;
 }

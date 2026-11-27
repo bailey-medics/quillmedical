@@ -43,10 +43,12 @@ export default function SearchField({
   const [internalValue, setInternalValue] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Uncontrolled unless a value is given. A caller may listen through
+  // onChange without owning the value, and typing must still show.
   const currentValue = value ?? internalValue;
   const handleChange = (newValue: string) => {
-    if (onChange) onChange(newValue);
-    else setInternalValue(newValue);
+    if (value === undefined) setInternalValue(newValue);
+    onChange?.(newValue);
   };
 
   // Auto-expand when controlled value becomes non-empty

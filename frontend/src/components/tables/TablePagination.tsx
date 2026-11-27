@@ -73,9 +73,14 @@ function PageSize({ value, onChange }: TablePaginationPageSizeProps) {
   return (
     <Group gap="xs">
       <BodyText>Items per page:</BodyText>
-      <Menu>
+      {/* Focus goes to the size in use, not to Mantine's hidden
+          placeholder, so a keyboard user lands on a real choice. */}
+      <Menu withInitialFocusPlaceholder={false}>
         <Menu.Target>
-          <UnstyledButton className={classes.pageSizeButton}>
+          <UnstyledButton
+            className={classes.pageSizeButton}
+            aria-label={`Items per page: ${value}`}
+          >
             <Group gap={4}>
               <BodyText>{value}</BodyText>
               <IconChevronDown size={20} />
@@ -84,7 +89,11 @@ function PageSize({ value, onChange }: TablePaginationPageSizeProps) {
         </Menu.Target>
         <Menu.Dropdown>
           {PAGE_SIZE_OPTIONS.map((option) => (
-            <Menu.Item key={option} onClick={() => onChange(option)}>
+            <Menu.Item
+              key={option}
+              onClick={() => onChange(option)}
+              data-autofocus={option === value || undefined}
+            >
               {option}
             </Menu.Item>
           ))}

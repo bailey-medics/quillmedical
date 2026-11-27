@@ -71,16 +71,16 @@ This plan writes Quill's own fixes for the bugs that apply, using the Turva comm
 
 ## Phase 6: Tables and search
 
-- [ ] **Let typing work in an uncontrolled `SearchField`**, at `components/search/SearchFields.tsx:48`. With `onChange` and no `value`, the internal state never updates, so typing does nothing.
-- [ ] **Announce an error, not the result count**, at `components/tables/DataTable.tsx:173-176`. `LiveStatus` reads out "1 result" while the error panel shows.
-- [ ] **Add `aria-sort` to sort headers**, at `components/tables/SortHeader.tsx:37`.
-- [ ] **Stop a `0` rendering as a stray cell**, at `DataTableWithResults.tsx:192, 201, 207` and `DataCard.tsx:122`. `subRowContent && ...` and `footer && ...` render `0`. Compare against `null` and `undefined` instead.
-- [ ] **Make read-only rows look read-only.** `DataCard`'s `onClick` is required (`DataCard.tsx:46, 132`), so tables pass `() => {}` (`DataTable.tsx:396`, `DataTableWithResults.tsx:163`) and the card shows a pointer with no action. Make it optional and drop the pointer without it.
-- [ ] **Stop a click on a control inside a row also opening the row.** A button, checkbox or label in a cell bubbles to the row's handler. Ignore events whose target is inside an interactive element. `EllipsisMenu` already stops propagation.
-- [ ] **Let a keyboard user open a row through its first cell.** Where a table has `onRowClick`, render the first cell's content as a `TextLink`-styled button that calls the same handler, so it takes focus and opens on Enter. The row keeps its mouse click, and no column is added, so no table changes layout. In the card layout, the card's title takes the same button.
-- [ ] **Show the pagination whenever rows exceed `pageSize`**, at `DataTable.tsx:303`, not only above 10. No Quill page uses a smaller size today, so this is latent. Clamp a `pageSize` below 1 or not a whole number to 10, and warn in development; Turva throws, which is heavy for a prop typo.
-- [ ] **Name the page-size picker and focus its first item**, at `components/tables/TablePagination.tsx:76-87`.
-- [ ] **Add tests and stories** for each, including an error-state announcement test, a keyboard test that tabs to the first-cell link and opens the row with Enter, and a test that a click on a control inside a cell does not open the row.
+- [x] **Let typing work in an uncontrolled `SearchField`**, at `components/search/SearchFields.tsx:48`. With `onChange` and no `value`, the internal state never updates, so typing does nothing.
+- [x] **Announce an error, not the result count**, at `components/tables/DataTable.tsx:173-176`. `LiveStatus` reads out "1 result" while the error panel shows.
+- [x] **Add `aria-sort` to sort headers**, at `components/tables/SortHeader.tsx:37`.
+- [x] **Stop a `0` rendering as a stray cell**, at `DataTableWithResults.tsx:192, 201, 207` and `DataCard.tsx:122`. `subRowContent && ...` and `footer && ...` render `0`. Compare against `null` and `undefined` instead.
+- [x] **Make read-only rows look read-only.** `DataCard`'s `onClick` is required (`DataCard.tsx:46, 132`), so tables pass `() => {}` (`DataTable.tsx:396`, `DataTableWithResults.tsx:163`) and the card shows a pointer with no action. Make it optional and drop the pointer without it.
+- [x] **Stop a click on a control inside a row also opening the row.** A button, checkbox or label in a cell bubbles to the row's handler. Ignore events whose target is inside an interactive element. `EllipsisMenu` already stops propagation.
+- [x] **Let a keyboard user open a row through its first cell.** Where a table has `onRowClick`, render the first cell's content as a `TextLink`-styled button that calls the same handler, so it takes focus and opens on Enter. The row keeps its mouse click, and no column is added, so no table changes layout. In the card layout, the card's title takes the same button.
+- [x] **Show the pagination whenever rows exceed `pageSize`**, at `DataTable.tsx:303`, not only above 10. No Quill page uses a smaller size today, so this is latent. Clamp a `pageSize` below 1 or not a whole number to 10, and warn in development; Turva throws, which is heavy for a prop typo.
+- [x] **Name the page-size picker and focus its first item**, at `components/tables/TablePagination.tsx:76-87`.
+- [x] **Add tests and stories** for each, including an error-state announcement test, a keyboard test that tabs to the first-cell link and opens the row with Enter, and a test that a click on a control inside a cell does not open the row.
 
 ## Phase 7: Cards and menus
 
