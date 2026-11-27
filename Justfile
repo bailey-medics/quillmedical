@@ -2193,8 +2193,13 @@ unit-tests-backend *ARGS:
     # Runs from the shared dev image against THIS worktree's checkout, so it
     # needs neither the dev stack nor ownership of it. `run` builds the image
     # if it is missing. In-memory SQLite: no database service involved.
+    #
+    # One pytest-xdist worker per core, as CI runs them. Each worker is its
+    # own process with its own in-memory database, so no test shares state
+    # with another. `just ub -n0` runs them one at a time, since the last
+    # `-n` given wins.
     docker compose -p "$(just _test-project)" -f compose.unit-tests.yml \
-        run --rm backend sh -lc "pytest -q -m 'not integration' {{ARGS}}"
+        run --rm backend sh -lc "pytest -q -n auto -m 'not integration' {{ARGS}}"
 
 
 alias uf := unit-tests-frontend
