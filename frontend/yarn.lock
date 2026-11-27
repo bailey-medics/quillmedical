@@ -8758,6 +8758,7 @@ __metadata:
     js-yaml: "npm:^5.4.3"
     jsdom: "npm:^31.0.0"
     lint-staged: "npm:^17.6.0"
+    marked: "npm:^18.1.3"
     pdfjs-dist: "npm:^6.4.299"
     playwright: "npm:^1.64.0"
     postcss: "npm:^8.5.29"
@@ -11237,6 +11238,15 @@ __metadata:
   version: 3.1.0
   resolution: "markdown-table@npm:3.1.0"
   checksum: 10c0/5a31e5bd749c6d79d0cf496c2d257efb16cf45a90278408dc11dfbb40ccc7be70114e2db79bd9e8580ddd42de04dc687b5a578c9777c8cd66eea56390d78ab60
+  languageName: node
+  linkType: hard
+
+"marked@npm:^18.1.3":
+  version: 18.2.1
+  resolution: "marked@npm:18.2.1"
+  bin:
+    marked: bin/marked.js
+  checksum: 10c0/6b266b2b20b2cc7e4275087f6c32f8a1b7f9ce5e73e233a4f46614a59617b7afc8d613bbcb57bacaea5da8f6ad5a830fe10384564106d2d1afb354ba1b0bb9e0
   languageName: node
   linkType: hard
 
