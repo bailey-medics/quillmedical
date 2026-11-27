@@ -98,4 +98,31 @@ describe("SelectField", () => {
       screen.queryByRole("option", { name: "Oncology" }),
     ).not.toBeInTheDocument();
   });
+  describe("Read-only", () => {
+    // Mantine shows no options when read-only, but still marks the list
+    // as open on a click, so a screen reader announces an empty list.
+    it("stays announced as closed when clicked", async () => {
+      const user = userEvent.setup();
+      renderWithMantine(
+        <SelectField label="Patient" data={options} readOnly />,
+      );
+      const field = screen.getByRole("combobox", { name: "Patient" });
+
+      await user.click(field);
+
+      expect(field).not.toHaveAttribute("aria-expanded", "true");
+      expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+    });
+
+    it("says it is read-only", () => {
+      renderWithMantine(
+        <SelectField label="Patient" data={options} readOnly />,
+      );
+
+      expect(screen.getByRole("combobox", { name: "Patient" })).toHaveAttribute(
+        "aria-readonly",
+        "true",
+      );
+    });
+  });
 });

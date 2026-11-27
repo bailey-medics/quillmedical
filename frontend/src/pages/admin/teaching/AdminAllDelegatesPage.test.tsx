@@ -38,6 +38,16 @@ function delegate(
   };
 }
 
+/** The text of each line in a cell, split where it breaks. */
+function linesOf(cell: HTMLElement | undefined): string[] {
+  const copy = cell?.cloneNode(true);
+  if (!(copy instanceof HTMLElement)) return [];
+
+  copy.querySelectorAll("br").forEach((br) => br.replaceWith("\n"));
+
+  return (copy.textContent ?? "").split("\n");
+}
+
 /** Answer the modules call with `modules`, and each results call by path. */
 function mockApi(
   modules: { bank_id: string; title: string }[],
@@ -158,17 +168,33 @@ describe("AdminAllDelegatesPage", () => {
       renderWithRouter(<AdminAllDelegatesPage />);
     }
 
-    it("is shown at every site, each beside its clinical lead", async () => {
+    it("is shown at every site, each on one line with its own clinical lead", async () => {
       showBoth();
 
       const row = (await screen.findByText("ben")).closest("tr");
       expect(row).not.toBeNull();
       const cells = within(row as HTMLElement).getAllByRole("cell");
 
-      // The second and third columns, a line for each site.
-      expect(cells[1]?.innerHTML.split("<br>")).toHaveLength(3);
-      expect(cells[1]).toHaveTextContent("NorthfieldRiversideDay unit");
-      expect(cells[2]).toHaveTextContent("Dr KowalskiDr Hughes-");
+      // One line a site, holding the site and its lead together, so a
+      // long site name that wraps cannot push a lead beside another site.
+      expect(linesOf(cells[1])).toEqual([
+        "Northfield, clinical lead Dr Kowalski",
+        "Riverside, clinical lead Dr Hughes",
+        "Day unit, no clinical lead recorded",
+      ]);
+    });
+
+    it("has one column for the site and its clinical lead", async () => {
+      showBoth();
+
+      await screen.findByText("ben");
+
+      expect(
+        screen.getByRole("columnheader", { name: /Site and clinical lead/ }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("columnheader", { name: /^Clinical lead/ }),
+      ).not.toBeInTheDocument();
     });
 
     it("is found by filtering on their second site's clinical lead", async () => {

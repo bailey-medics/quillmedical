@@ -1,10 +1,15 @@
 /**
  * CellLines
  *
- * Several values in one table cell, one to a line. Two columns given
- * lists of the same length line up, so a value and the one beside it in
- * the next column read across: a delegate's sites, and each site's
- * clinical lead.
+ * Several values in one table cell, one to a line: a delegate's sites.
+ *
+ * **Values that belong together go in one line**, such as "Northfield
+ * General Hospital, clinical lead Dr Thomas Kowalski". Never split them
+ * across two columns of lines and rely on the lines lining up. They only
+ * do while nothing wraps: a long value in one column pushes the lines
+ * below it down, and the other column's values then sit beside the wrong
+ * ones. On a phone the table becomes cards, and the two columns become
+ * two separate lists.
  *
  * Bare text, like `FormattedDate`, so `CellContent` gives it the body
  * text style; `cellText.ts` names it for that reason.
@@ -29,7 +34,7 @@ export default function CellLines({ lines, empty = "-" }: CellLinesProps) {
   return (
     <>
       {lines.map((line, index) => (
-        // Two lines may say the same, two sites with no clinical lead.
+        // Two lines may say the same, so the index is the key.
         <Fragment key={index}>
           {index > 0 && <br />}
           {line}

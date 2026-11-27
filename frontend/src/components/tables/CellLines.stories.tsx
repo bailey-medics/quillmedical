@@ -2,7 +2,7 @@
  * CellLines Storybook Stories
  *
  * Shown in a table of delegates, where it is used: somebody at one, two
- * or three sites, with each site's clinical lead on the line beside it.
+ * or three sites, each line holding a site and its clinical lead.
  */
 
 import type { Meta, StoryObj } from "@storybook/react-vite";
@@ -31,8 +31,10 @@ interface Delegate {
   sites: Site[];
 }
 
+// Long enough to wrap in a narrow column, which is what used to push
+// every clinical lead below it beside the wrong site.
 const NORTHFIELD: Site = {
-  name: "Northfield General Hospital",
+  name: "Northfield General Hospital Outpatient and Day Surgery Centre",
   clinical_lead: "Dr Thomas Kowalski",
 };
 const RIVERSIDE: Site = {
@@ -48,17 +50,18 @@ const delegates: Delegate[] = [
   { id: 4, name: "Daniel Osborne", sites: [] },
 ];
 
+/** A site and its clinical lead, together on one line. */
+function siteWithLead(site: Site): string {
+  return site.clinical_lead
+    ? `${site.name}, clinical lead ${site.clinical_lead}`
+    : `${site.name}, no clinical lead recorded`;
+}
+
 const columns: Column<Delegate>[] = [
   { header: "Name", render: (d) => d.name },
   {
-    header: "Site",
-    render: (d) => <CellLines lines={d.sites.map((s) => s.name)} />,
-  },
-  {
-    header: "Clinical lead",
-    render: (d) => (
-      <CellLines lines={d.sites.map((s) => s.clinical_lead ?? "-")} />
-    ),
+    header: "Site and clinical lead",
+    render: (d) => <CellLines lines={d.sites.map(siteWithLead)} />,
   },
 ];
 
@@ -67,8 +70,9 @@ function DelegatesTable() {
     <Stack gap="sm">
       <DataTable data={delegates} columns={columns} getRowKey={(d) => d.id} />
       <StoryNote>
-        One, two and three sites, then none. Each clinical lead is on the line
-        of its site; a site with no lead shows a dash.
+        One, two and three sites, then none. Each line holds a site and its
+        clinical lead, so the first site's long name can wrap without moving any
+        lead beside another site.
       </StoryNote>
     </Stack>
   );

@@ -32,11 +32,18 @@ const fieldStyles = {
 export default function SelectField({
   description,
   error,
+  readOnly,
+  dropdownOpened,
   ...props
 }: SelectProps) {
   return (
     <Select
       {...props}
+      // Read-only shows no options, but Mantine still marks the list as
+      // open on a click, so a screen reader would announce an empty list.
+      readOnly={readOnly}
+      dropdownOpened={readOnly ? false : dropdownOpened}
+      aria-readonly={readOnly || undefined}
       description={
         description ? (
           <FieldDescription>{description}</FieldDescription>
