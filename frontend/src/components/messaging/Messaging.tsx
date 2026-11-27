@@ -20,6 +20,20 @@ import React, { useEffect, useRef, useState } from "react";
 import ProfilePic from "@/components/profile-pic";
 import BodyText from "@/components/typography/BodyText";
 import BodyTextInline from "@/components/typography/BodyTextInline";
+import { formatInDateOrder } from "@lib/dateFormat";
+
+/** When a message was sent: "27/03/2026 14:05", or month first where dates are. */
+function sentAt(timestamp: string): string {
+  const when = new Date(timestamp);
+  const day = formatInDateOrder(when, {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+  const time = formatInDateOrder(when, { hour: "2-digit", minute: "2-digit" });
+
+  return `${day} ${time}`;
+}
 
 /** Renders **bold** markdown syntax as <strong> elements. */
 function renderBold(text: string): React.ReactNode[] {
@@ -220,24 +234,7 @@ export default function Messaging({
                               marginRight: avatarSizePixels + 8,
                             }}
                           >
-                            <BodyText>
-                              {new Date(m.timestamp).toLocaleDateString(
-                                "en-GB",
-                                {
-                                  day: "2-digit",
-                                  month: "2-digit",
-                                  year: "numeric",
-                                },
-                              )}{" "}
-                              {new Date(m.timestamp).toLocaleTimeString(
-                                "en-GB",
-                                {
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                  hour12: false,
-                                },
-                              )}
-                            </BodyText>
+                            <BodyText>{sentAt(m.timestamp)}</BodyText>
                           </div>
                         )}
                         {m.actions && m.actions.length > 0 && (
@@ -314,24 +311,7 @@ export default function Messaging({
                               marginLeft: avatarSizePixels + 8,
                             }}
                           >
-                            <BodyText>
-                              {new Date(m.timestamp).toLocaleDateString(
-                                "en-GB",
-                                {
-                                  day: "2-digit",
-                                  month: "2-digit",
-                                  year: "numeric",
-                                },
-                              )}{" "}
-                              {new Date(m.timestamp).toLocaleTimeString(
-                                "en-GB",
-                                {
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                  hour12: false,
-                                },
-                              )}
-                            </BodyText>
+                            <BodyText>{sentAt(m.timestamp)}</BodyText>
                           </div>
                         )}
                         {m.actions && m.actions.length > 0 && (

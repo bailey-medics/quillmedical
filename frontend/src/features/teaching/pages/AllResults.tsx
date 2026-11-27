@@ -15,9 +15,10 @@ import { StateMessage } from "@/components/message-cards";
 import { IconAlertCircle } from "@/components/icons/appIcons";
 import SelectField from "@/components/form/SelectField";
 import type { EducatorResult, QuestionBank } from "@/features/teaching/types";
+import { formatInDateOrder } from "@lib/dateFormat";
 
 function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-GB", {
+  return formatInDateOrder(new Date(iso), {
     day: "numeric",
     month: "short",
     year: "numeric",

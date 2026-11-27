@@ -15,9 +15,10 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { EmptyState } from "@/components/typography";
 import type { SyncHistory } from "@/features/teaching/types";
+import { formatInDateOrder } from "@lib/dateFormat";
 
 function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-GB", {
+  return formatInDateOrder(new Date(iso), {
     day: "numeric",
     month: "short",
     year: "numeric",

@@ -17,6 +17,7 @@ import BaseCard from "@/components/base-card/BaseCard";
 import StateMessage from "@/components/message-cards/StateMessage";
 import { IconMessage } from "@/components/icons/appIcons";
 import { Group, Skeleton, Stack, UnstyledButton } from "@mantine/core";
+import { formatInDateOrder } from "@lib/dateFormat";
 
 export type MessageThread = {
   /** Unique thread identifier */
@@ -56,7 +57,11 @@ function formatTime(timestamp: string): string {
     if (diffHours < 24)
       return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
     if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
-    return date.toLocaleDateString();
+    return formatInDateOrder(date, {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
   } catch {
     return timestamp;
   }
