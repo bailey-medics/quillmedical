@@ -13,6 +13,7 @@ import { IconMail } from "@/components/icons/appIcons";
 import Heading from "@/components/typography/Heading";
 import BodyText from "@/components/typography/BodyText";
 import BodyTextInline from "@/components/typography/BodyTextInline";
+import { formatInDateOrder } from "@lib/dateFormat";
 
 export type LetterSummary = {
   /** Unique letter identifier */
@@ -38,7 +39,7 @@ type Props = {
 };
 
 function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-GB", {
+  return formatInDateOrder(new Date(iso), {
     day: "numeric",
     month: "long",
     year: "numeric",

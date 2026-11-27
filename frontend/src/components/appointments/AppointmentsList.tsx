@@ -14,6 +14,7 @@ import { IconCalendar } from "@/components/icons/appIcons";
 import BodyText from "@components/typography/BodyText";
 import BodyTextBold from "@components/typography/BodyTextBold";
 import Heading from "@components/typography/Heading";
+import { formatInDateOrder } from "@lib/dateFormat";
 
 export type Appointment = {
   id: string;
@@ -34,7 +35,7 @@ type Props = {
 };
 
 function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-GB", {
+  return formatInDateOrder(new Date(iso), {
     weekday: "long",
     day: "numeric",
     month: "long",

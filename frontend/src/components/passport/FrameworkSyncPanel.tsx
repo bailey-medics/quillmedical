@@ -19,6 +19,7 @@ import ResultMessage from "@/components/message-cards/ResultMessage";
 import PageHeader from "@/components/page-header";
 import { BodyText, Heading } from "@/components/typography";
 import type { FrameworkSyncRun, FrameworkSyncStatus } from "@lib/passport";
+import { formatInDateOrder } from "@lib/dateFormat";
 
 export interface FrameworkSyncPanelProps {
   /** Whether the sync is set up here, and its last run. Null until loaded. */
@@ -35,9 +36,9 @@ export interface FrameworkSyncPanelProps {
   onSync: () => void;
 }
 
-/** A moment, in British English: "4 Nov 2026, 16:00". */
+/** A moment, such as "4 Nov 2026, 16:00", in this deployment's date order. */
 function when(iso: string): string {
-  return new Date(iso).toLocaleString("en-GB", {
+  return formatInDateOrder(new Date(iso), {
     dateStyle: "medium",
     timeStyle: "short",
   });

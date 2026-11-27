@@ -110,11 +110,7 @@ export default function AdminPatientsPage() {
     {
       header: "Birth date",
       render: (patient) =>
-        patient.birthDate ? (
-          <FormattedDate date={patient.birthDate} locale="en-GB" />
-        ) : (
-          "N/A"
-        ),
+        patient.birthDate ? <FormattedDate date={patient.birthDate} /> : "N/A",
     },
     {
       header: "Gender",

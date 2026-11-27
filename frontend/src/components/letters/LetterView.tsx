@@ -13,6 +13,7 @@ import { IconArrowLeft } from "@/components/icons/appIcons";
 import IconButton from "@/components/button/IconButton";
 import { BodyTextInline, MarkdownView } from "@/components/typography";
 import type { ReactNode } from "react";
+import { formatInDateOrder } from "@lib/dateFormat";
 
 /**
  * Letter
@@ -91,7 +92,11 @@ export default function LetterView({
   if (!letter) return null;
 
   const formattedDate = letter.date
-    ? new Date(letter.date).toLocaleDateString()
+    ? formatInDateOrder(new Date(letter.date), {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      })
     : null;
 
   return (

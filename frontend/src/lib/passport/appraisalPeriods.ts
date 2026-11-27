@@ -8,6 +8,7 @@
  */
 
 import type { AppraisalPeriod } from "./types";
+import { formatInDateOrder } from "@lib/dateFormat";
 
 /** Parses an ISO `YYYY-MM-DD` date into its parts, without a timezone. */
 function parts(isoDate: string): { year: number; month: number; day: number } {
@@ -93,21 +94,21 @@ function shortDay(isoDate: string): string {
   return `${day} ${shortMonthAndYear(isoDate)}`;
 }
 
-const DAY_MONTH_AND_YEAR = new Intl.DateTimeFormat("en-GB", {
+const DAY_MONTH_AND_YEAR: Intl.DateTimeFormatOptions = {
   day: "numeric",
   month: "long",
   year: "numeric",
   timeZone: "UTC",
-});
+};
 
 /** Midnight UTC on an ISO date, so formatting cannot shift the day. */
 function atUtcMidnight(isoDate: string): Date {
   return new Date(`${isoDate}T00:00:00Z`);
 }
 
-/** "1 October 2025". */
+/** "1 October 2025", or "October 1, 2025" month first. */
 export function formatDay(isoDate: string): string {
-  return DAY_MONTH_AND_YEAR.format(atUtcMidnight(isoDate));
+  return formatInDateOrder(atUtcMidnight(isoDate), DAY_MONTH_AND_YEAR);
 }
 
 /** A value naming one period, for a select option or a React key. */

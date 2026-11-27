@@ -79,6 +79,7 @@ import {
   type EnrolmentOrganisation,
 } from "@/components/teaching/module-enrolment-editor";
 import { MAX_FULL_NAME, MAX_USERNAME } from "@/lib/fieldLimits";
+import { formatInDateOrder } from "@lib/dateFormat";
 
 /**
  * An organisation and the org_units inside it, all in place ids.
@@ -199,7 +200,7 @@ interface UserFormData {
 /** A `YYYY-MM-DD` day as it is read aloud: "1 March 2027". */
 function formatDay(day: string): string {
   const [year, month, date] = day.split("-").map(Number);
-  return new Date(year, month - 1, date).toLocaleDateString("en-GB", {
+  return formatInDateOrder(new Date(year, month - 1, date), {
     day: "numeric",
     month: "long",
     year: "numeric",

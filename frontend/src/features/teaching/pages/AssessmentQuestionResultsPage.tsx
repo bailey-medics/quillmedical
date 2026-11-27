@@ -22,9 +22,10 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { api } from "@/lib/api";
 import type { AssessmentQuestionResults } from "@/features/teaching/types";
+import { formatInDateOrder } from "@lib/dateFormat";
 
 function formatDateTime(iso: string): string {
-  return new Date(iso).toLocaleString("en-GB", {
+  return formatInDateOrder(new Date(iso), {
     day: "numeric",
     month: "short",
     year: "numeric",

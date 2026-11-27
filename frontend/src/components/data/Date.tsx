@@ -5,6 +5,12 @@
  * Accepts ISO 8601 date strings (YYYY-MM-DD) from the backend (FHIR format).
  */
 
+import {
+  DATE_LOCALE,
+  formatInDateOrder,
+  type DateLocale,
+} from "@lib/dateFormat";
+
 const PLAIN_DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
 
 /** Midnight UTC on a plain date's day, or null for a day that does not exist. */
@@ -25,8 +31,11 @@ function plainDateToUtc(parts: RegExpExecArray): globalThis.Date | null {
 type FormattedDateProps = {
   /** ISO 8601 date (YYYY-MM-DD) or timestamp from the backend */
   date: string;
-  /** Locale for date formatting. Defaults to 'en-GB' (British English) */
-  locale?: "en-GB" | "en-US";
+  /**
+   * Locale for date formatting. Defaults to this deployment's, from
+   * `date_order` in the jurisdiction config.
+   */
+  locale?: DateLocale;
   /** Date format style */
   format?: "short" | "medium" | "long" | "full";
 };
@@ -37,7 +46,7 @@ type FormattedDateProps = {
  * Displays a formatted date with locale-specific formatting.
  *
  * @example
- * // British format: 12/05/1980
+ * // In this deployment's order, such as 12/05/1980
  * <FormattedDate date="1980-05-12" />
  *
  * @example
@@ -50,7 +59,7 @@ type FormattedDateProps = {
  */
 export default function FormattedDate({
   date,
-  locale = "en-GB",
+  locale = DATE_LOCALE,
   format = "short",
 }: FormattedDateProps) {
   if (!date) {
@@ -98,10 +107,11 @@ export default function FormattedDate({
                 weekday: "long",
               };
 
-    const formattedDate = new Intl.DateTimeFormat(locale, {
-      ...formatOptions,
-      ...(plainDate && { timeZone: "UTC" }),
-    }).format(dateObj);
+    const formattedDate = formatInDateOrder(
+      dateObj,
+      { ...formatOptions, ...(plainDate && { timeZone: "UTC" }) },
+      locale,
+    );
 
     return <>{formattedDate}</>;
   } catch (error) {
