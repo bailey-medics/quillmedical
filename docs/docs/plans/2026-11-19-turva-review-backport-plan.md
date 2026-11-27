@@ -60,12 +60,14 @@ This plan writes Quill's own fixes for the bugs that apply, using the Turva comm
 
 ## Phase 5: A timed-out save stops
 
-- [ ] **Hand `onSubmit` an abort signal**, at `Form.tsx:195-202` and `:81`. The timeout aborts a controller, but `onSubmit(data)` never sees it, so the request carries on and a late success can still navigate. Change the signature to `onSubmit(data, { signal })` and pass the signal to `api.ts`. Callers that ignore it keep working, since the argument is extra.
-- [ ] **Keep the submit button disabled until the request settles**, even after the timeout message shows. Today the button re-enables in the `timeout` state, so a retry can write twice while the first request still runs.
-- [ ] **Hold Cancel in `SubmitButton` while a request is unsettled**, at `components/form/Form/SubmitButton.tsx:56-61`, using Phase 1's `cancelDisabled`.
-- [ ] **Clear a stale error from an earlier opening of `PasswordConfirmModal`**, at `components/confirm-modal/PasswordConfirmModal.tsx:70-76, 89-90`. Close it mid-request and reopen, and the old request's error lands in the new dialog. Count openings, as Phase 1 does for `ConfirmModal`, and clear the fields on close as well as open.
-- [ ] **Respect reduced motion in `FormStatus`**: scroll to the message instantly when the person has asked for less motion.
-- [ ] **Add tests**: a timed-out save keeps the button disabled until the promise settles, the signal is aborted, Cancel is held, and a reopened password dialog shows no old error.
+- [x] **Hand `onSubmit` an abort signal**, at `Form.tsx:195-202` and `:81`. The timeout aborts a controller, but `onSubmit(data)` never sees it, so the request carries on and a late success can still navigate. Change the signature to `onSubmit(data, { signal })` and pass the signal to `api.ts`. Callers that ignore it keep working, since the argument is extra.
+
+  **Not built: `onSubmit` takes no signal.** The signal was first offered and then removed, because passing it on would do harm. The form holds its button until the request settles (the next step). A save that passed the signal to `fetch` would settle at the timeout, when the browser stops waiting, so the button would unlock while the server may still be writing, and a second press could write twice. An abort cannot recall a request the server already has. Turva's `Form` offers the same signal and none of its pages passes it to a save; its repeat saves are made safe by a version check on the server. The form keeps its own controller for the timeout and ignores a late result, so a late success neither navigates nor marks the form saved. What is left, somebody leaving after a timeout and saving again from a fresh page, needs the server to refuse a repeat: a version on each record for edits and a one-time key for creates. That is backend work for a plan of its own.
+- [x] **Keep the submit button disabled until the request settles**, even after the timeout message shows. Today the button re-enables in the `timeout` state, so a retry can write twice while the first request still runs.
+- [x] **Hold Cancel in `SubmitButton` while a request is unsettled**, at `components/form/Form/SubmitButton.tsx:56-61`, using Phase 1's `cancelDisabled`.
+- [x] **Clear a stale error from an earlier opening of `PasswordConfirmModal`**, at `components/confirm-modal/PasswordConfirmModal.tsx:70-76, 89-90`. Close it mid-request and reopen, and the old request's error lands in the new dialog. Count openings, as Phase 1 does for `ConfirmModal`, and clear the fields on close as well as open.
+- [x] **Respect reduced motion in `FormStatus`**: scroll to the message instantly when the person has asked for less motion.
+- [x] **Add tests**: a timed-out save keeps the button disabled until the promise settles, Cancel is held, and a reopened password dialog shows no old error.
 
 ## Phase 6: Tables and search
 
