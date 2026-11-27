@@ -45,8 +45,12 @@ test("plays the self-hosted video to its end", async ({
 
   // Quill's player starts it, its clock moves, and it plays to the end.
   const player = page.getByRole("group", { name: "Media player" });
-  await player.getByRole("button", { name: "Play" }).click();
-  await expect(player.getByRole("button", { name: "Pause" })).toBeVisible({
+  // Video.js 10.4's skin draws a centre play button as well as the
+  // control bar's, both with the same label, so take the first.
+  await player.getByRole("button", { name: "Play" }).first().click();
+  await expect(
+    player.getByRole("button", { name: "Pause" }).first(),
+  ).toBeVisible({
     timeout: 15_000,
   });
   const video = player.locator("video");
