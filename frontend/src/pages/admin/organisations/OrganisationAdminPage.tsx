@@ -274,7 +274,7 @@ export default function OrganisationAdminPage() {
           {
             label: "Remove from organisation",
             icon: <IconUserMinus />,
-            color: "var(--alert-color)",
+            color: "var(--alert-text-color)",
             onClick: () => setRemovingMember(member),
           },
         ]}
@@ -322,7 +322,7 @@ export default function OrganisationAdminPage() {
           {
             label: "Delete site",
             icon: <IconTrash />,
-            color: "var(--alert-color)",
+            color: "var(--alert-text-color)",
             onClick: () => setRemovingSite(site),
           },
         ]}

@@ -153,7 +153,7 @@ export default function AdminOrganisationsPage() {
                   {
                     label: "Remove organisation",
                     icon: <IconTrash />,
-                    color: "var(--alert-color)",
+                    color: "var(--alert-text-color)",
                     onClick: () => setRemovingOrg(org),
                   },
                 ]}

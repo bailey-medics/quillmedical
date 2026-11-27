@@ -84,10 +84,10 @@ This plan writes Quill's own fixes for the bugs that apply, using the Turva comm
 
 ## Phase 7: Cards and menus
 
-- [ ] **Offer sorting in the card layout.** On a phone the table becomes cards and `SortHeader` disappears, as it is only in the table branch (around `DataTable.tsx:443`). Above the cards, show a sort control built from the existing `SelectField`, listing the sortable columns and their direction, and only when the table has sortable columns. It drives the same sort state as the headers.
-- [ ] **Let a long label wrap in `DataCard`**, at `DataCard.tsx:109` (`wrap="nowrap"`).
-- [ ] **Fix the ellipsis menu's colours.** Callers pass `var(--alert-color)`, a fill colour, as text (`Messages.tsx:128`, `SiteAdminPage.tsx:182` and others): move them to the text colour token. Replace the hard-coded hex in `components/ellipsis-menu/EllipsisMenu.module.css:3-12` with tokens, and render nothing when `items` is empty. Turva maps the colour at runtime with an inline style, which Quill's no-inline-styles rule forbids.
-- [ ] **Add tests and stories**: a mobile story with the sort control, a test that choosing a sort reorders the cards, a card story with a long label, and an ellipsis menu story in both colour schemes.
+- [x] **Offer sorting in the card layout.** On a phone the table becomes cards and `SortHeader` disappears, as it is only in the table branch (around `DataTable.tsx:443`). Above the cards, show a sort control built from the existing `SelectField`, listing the sortable columns and their direction, and only when the table has sortable columns. It drives the same sort state as the headers.
+- [x] **Let a long label wrap in `DataCard`**, at `DataCard.tsx:109` (`wrap="nowrap"`).
+- [x] **Fix the ellipsis menu's colours.** Callers pass `var(--alert-color)`, a fill colour, as text (`Messages.tsx:128`, `SiteAdminPage.tsx:182` and others): move them to the text colour token. Replace the hard-coded hex in `components/ellipsis-menu/EllipsisMenu.module.css:3-12` with tokens, and render nothing when `items` is empty. Turva maps the colour at runtime with an inline style, which Quill's no-inline-styles rule forbids.
+- [x] **Add tests and stories**: a mobile story with the sort control, a test that choosing a sort reorders the cards, a card story with a long label, and an ellipsis menu story in both colour schemes.
 
 ## Phase 8: Markdown parsing
 

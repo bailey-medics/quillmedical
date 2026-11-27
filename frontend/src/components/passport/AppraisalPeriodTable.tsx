@@ -82,7 +82,7 @@ export default function AppraisalPeriodTable({
             {
               label: "Remove",
               icon: <IconTrash />,
-              color: "var(--alert-color)",
+              color: "var(--alert-text-color)",
               onClick: () => onRemove(period),
             },
           ]}
