@@ -8,6 +8,8 @@
 jurisdictions:
   uk:
     display_name: "United Kingdom"
+    # The order a typed date is read in: dmy (27/03/2026) or mdy (03/27/2026).
+    date_order: dmy
     regulatory_authority: "Care Quality Commission (CQC)"
     data_protection: "UK GDPR (Data Protection Act 2018)"
     prescribing_regulations: "Misuse of Drugs Regulations 2001"
@@ -55,6 +57,7 @@ jurisdictions:
 
   us:
     display_name: "United States"
+    date_order: mdy
     regulatory_authority: "Various (FDA, state medical boards)"
     data_protection: "HIPAA (Health Insurance Portability and Accountability Act)"
     prescribing_regulations: "Controlled Substances Act (DEA schedules)"
@@ -92,6 +95,7 @@ jurisdictions:
 
   eu:
     display_name: "European Union"
+    date_order: dmy
     regulatory_authority: "EMA (European Medicines Agency) + national authorities"
     data_protection: "GDPR (General Data Protection Regulation)"
     prescribing_regulations: "Varies by member state"
@@ -116,6 +120,7 @@ jurisdictions:
 
   au:
     display_name: "Australia"
+    date_order: dmy
     regulatory_authority: "Therapeutic Goods Administration (TGA)"
     data_protection: "Privacy Act 1988 (Australian Privacy Principles)"
     prescribing_regulations: "Poisons Standard (SUSMP)"
