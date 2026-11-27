@@ -20,6 +20,7 @@
   "include": [
     "vite.config.ts",
     "eslint.config.ts",
+    "lint-staged.config.ts",
     "postcss.config.ts",
     "test-runner-jest.config.ts",
     "scripts/**/*.ts"
